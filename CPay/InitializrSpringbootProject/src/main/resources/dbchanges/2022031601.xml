@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queries>
+    <Query id="2022-03-16-00">
+        <Sql>
+            ALTER TABLE `merchant_transactions_log` ADD COLUMN safaricom_request_reference VARCHAR(255) NOT NULL DEFAULT '';
+        </Sql>
+        <RollBack>
+            ALTER TABLE `merchant_transactions_log` DROP COLUMN safaricom_request_reference;
+        </RollBack>
+    </Query>
+    <Query id="2020-02-21-01">
+        <Sql>
+            ALTER TABLE merchant_statement ADD COLUMN safaricom_balance DOUBLE NOT NULL DEFAULT 0
+        </Sql>
+        <RollBack>
+            ALTER TABLE merchant_statement DROP COLUMN safaricom_balance
+        </RollBack>
+    </Query>
+</Queries>

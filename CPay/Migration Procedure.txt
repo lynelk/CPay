@@ -1,0 +1,16 @@
+Migration Procedure
+1. Stop the gateway on server: 3.126.66.245 using: /etc/init.d/cpayadmin/shutdown.sh
+2. dump the database: mysqldump cpayadmin > 2020_08_13.sql -u cpayadmin -pmBG=v#MeAxs1
+3. move the gateway to server 18.232.105.137 using:
+    scp -i key.pem 
+4. move the database 2020_08_13.sql to server 18.232.105.137 using:
+    scp -i key.pem 
+5. Import the database 2020_08_13.sql to cpayadmin on server 18.232.105.137 using:
+6. Move keys as well to server 18.232.105.137
+
+6. Change the cpay.citotech.net domain ip address to point to 18.232.105.137
+
+
+%s/utf8mb4_0900_ai_ci/utf8mb4_unicode_ci/g
+
+firewall-cmd --zone=public --permanent --add-port=443/tcp

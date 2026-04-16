@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queries>
+    <Query id="2020-03-12-00">
+        <Sql>
+            ALTER TABLE merchant_transactions_log ADD COLUMN resolved_by VARCHAR(255) NOT NULL DEFAULT ''
+        </Sql>
+        <RollBack>
+            ALTER TABLE merchant_transactions_log DROP COLUMN resolved_by;
+        </RollBack>
+    </Query>
+</Queries>

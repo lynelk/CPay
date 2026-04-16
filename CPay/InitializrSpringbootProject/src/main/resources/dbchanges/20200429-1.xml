@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queries>
+    <Query id="2020-04-29-00">
+        <Sql>
+            ALTER TABLE `accounts_register` ADD COLUMN provided_name VARCHAR(255) NOT NULL DEFAULT '';
+        </Sql>
+        <RollBack>
+            ALTER TABLE `accounts_register` DROP COLUMN provided_name;
+        </RollBack>
+    </Query>
+    <Query id="2020-04-29-01">
+        <Sql>
+            ALTER TABLE `accounts_register` ADD COLUMN merchant_name VARCHAR(255) NOT NULL DEFAULT '';
+        </Sql>
+        <RollBack>
+            ALTER TABLE `accounts_register` DROP COLUMN merchant_name;
+        </RollBack>
+    </Query>
+    <Query id="2020-04-29-02">
+        <Sql>
+            ALTER TABLE `accounts_register` ADD COLUMN merchant_id VARCHAR(255) NOT NULL DEFAULT '';
+        </Sql>
+        <RollBack>
+            ALTER TABLE `accounts_register` DROP COLUMN merchant_id;
+        </RollBack>
+    </Query>
+    <Query id="2020-04-29-03">
+        <Sql>
+            ALTER TABLE `accounts_register` ADD INDEX (`merchant_id`);
+        </Sql>
+        <RollBack>
+            ALTER TABLE `accounts_register` DROP KEY `merchant_id`;
+        </RollBack>
+    </Query>
+    <Query id="2020-04-29-04">
+        <Sql>
+            ALTER TABLE `accounts_register` ADD UNIQUE KEY (`account`);
+        </Sql>
+        <RollBack>
+            ALTER TABLE `accounts_register` DROP KEY `account`;
+        </RollBack>
+    </Query>
+    <Query id="2020-04-29-05">
+        <Sql>
+            ALTER TABLE `accounts_register` DROP KEY `unique_account_name`;
+        </Sql>
+        <RollBack>
+            ALTER TABLE `accounts_register` ADD UNIQUE KEY `unique_account_name`(`account`,`account_type`);
+        </RollBack>
+    </Query>
+</Queries>
