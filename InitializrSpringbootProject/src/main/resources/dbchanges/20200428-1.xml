@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queries>
+    <Query id="2020-04-28-00">
+        <Sql>
+            CREATE TABLE `accounts_register` (
+                `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                `account` varchar(255) NOT NULL DEFAULT '',
+                `first_name` varchar(255) NOT NULL DEFAULT '',
+                `last_name` varchar(255) NOT NULL DEFAULT '',
+                `address` varchar(255) NOT NULL DEFAULT '',
+                `dob` varchar(255) NOT NULL DEFAULT '',
+                `account_type` enum ('MSISDN', 'EMAIL') NOT NULL DEFAULT 'MSISDN',
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `unique_account_name` (`account`,`account_type`)
+            ) ENGINE=InnoDB;
+        </Sql>
+        <RollBack>
+            DROP TABLE IF EXISTS accounts_register;
+        </RollBack>
+    </Query>
+</Queries>

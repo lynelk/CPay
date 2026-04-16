@@ -1,0 +1,2 @@
+On import for personalized message use special variables in your message e.g:
+{COLB}

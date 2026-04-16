@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queries>
+    <Query id="2020-02-20-01">
+        <Sql>
+            CREATE TABLE merchant_sms (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `merchant_id` BIGINT UNSIGNED,
+                `charge` DOUBLE NOT NULL DEFAULT 0,
+                `cost` DOUBLE NOT NULL DEFAULT 0,
+                `total_recipients` INT DEFAULT 0,
+                `status` VARCHAR(255) NOT NULL DEFAULT '',
+                `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `trace` MEDIUMBLOB,
+                `content` TEXT, 
+                `recipients` MEDIUMBLOB,
+                `gw_response` MEDIUMBLOB,
+                `smsgw` VARCHAR(255) NOT NULL DEFAULT '',
+                FOREIGN KEY (`merchant_id`) REFERENCES `merchants` (`id`) ON DELETE SET NULL
+            ) ENGINE=InnoDB;
+        </Sql>
+        <RollBack>
+            DROP TABLE IF EXISTS merchant_sms;
+        </RollBack>
+    </Query>
+    <Query id="2020-02-20-02">
+        <Sql>
+            ALTER TABLE merchant_sms ADD COLUMN created_by VARCHAR(255) NOT NULL DEFAULT ''
+        </Sql>
+        <RollBack>
+            ALTER TABLE merchant_sms DROP COLUMN created_by
+        </RollBack>
+    </Query>
+</Queries>
