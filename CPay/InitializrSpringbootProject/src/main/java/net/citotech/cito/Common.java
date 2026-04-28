@@ -22,7 +22,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -41,12 +40,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -300,85 +293,43 @@ public class Common {
     * Returns HttpRequestREsponse class
     */
     
-    public static HttpRequestResponse doHttpRequest(String method, String url, 
+    public static HttpRequestResponse doHttpRequest(String method, String url,
             String data, Map<String, String> headers) {
         HttpRequestResponse r = new HttpRequestResponse();
-            r.setUrl(url);
-            r.setRequestData(data);
-            r.setRequestHeaders(headers);
-        TrustManager[] dummyTrustManager = getTrustmanager();
+        r.setUrl(url);
+        r.setRequestData(data);
+        r.setRequestHeaders(headers);
         try {
-            SSLContext sc;
-            try {
-                //sc = SSLContext.getInstance("TLS");
-                sc = SSLContext.getInstance("SSL");
-                sc.init(null, dummyTrustManager, new java.security.SecureRandom());
-                
-                HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            } catch (NoSuchAlgorithmException ex) {
-                r.setResponse("");
-                r.setErrorMessage(ex.getMessage());
-                Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-                return r;
-            }
-            
-            // Create all-trusting host name verifier
-            HostnameVerifier allHostsValid = new HostnameVerifier() {
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            };
-            HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
-            
             HttpURLConnection con;
-            URL rquestUrl = new URL(url);
-            if (rquestUrl.getProtocol().toLowerCase().equals("https")) {
-                con = (HttpsURLConnection) rquestUrl.openConnection();
-                //con.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            } else {
-                con = (HttpURLConnection) rquestUrl.openConnection();
-            }
-            
+            URL requestUrl = new URL(url);
+            con = (HttpURLConnection) requestUrl.openConnection();
+
             con.setRequestMethod(method);
-            
             for (Map.Entry<String, String> h : headers.entrySet()) {
                 con.setRequestProperty(h.getKey(), h.getValue());
             }
-            
             con.setConnectTimeout(HTTP_REQUEST_TIMEOUT_MILLISECONDS);
             con.setReadTimeout(HTTP_REQUEST_READTIMEOUT_MILLISECONDS);
             con.setDoOutput(true);
-            
-            
-            
-            //methods without the body.
-            List<String> methods = new ArrayList();
-            methods.add("DELETE");
-            methods.add("PUT");
-            methods.add("POST");
-            
-            if (methods.contains(method)) {
+
+            List<String> bodyMethods = new ArrayList<>();
+            bodyMethods.add("DELETE");
+            bodyMethods.add("PUT");
+            bodyMethods.add("POST");
+            if (bodyMethods.contains(method)) {
                 DataOutputStream out = new DataOutputStream(con.getOutputStream());
                 out.writeBytes(data);
                 out.flush();
                 out.close();
             }
-            
-            //Now read the content of the response
+
             int status = con.getResponseCode();
-            
-            Reader streamReader = null;
+            Reader streamReader;
             if (status > 299) {
-                if (con.getErrorStream() == null) {
-                    streamReader = null;
-                } else {
-                    streamReader = new InputStreamReader(con.getErrorStream());
-                }
+                streamReader = con.getErrorStream() == null ? null : new InputStreamReader(con.getErrorStream());
             } else {
                 streamReader = new InputStreamReader(con.getInputStream());
             }
-            
-            //streamReader = new InputStreamReader(con.getInputStream());
             StringBuffer content = new StringBuffer();
             if (streamReader != null) {
                 BufferedReader in = new BufferedReader(streamReader);
@@ -387,21 +338,14 @@ public class Common {
                     content.append(inputLine);
                 }
                 in.close();
-                r.setStatusCode(status);
-                r.setResponse(content.toString());
-                r.setRequestHeaders(headers);
-            } else {
-                content.append("");
-                r.setStatusCode(status);
-                r.setResponse(content.toString());
-                r.setRequestHeaders(headers);
             }
+            r.setStatusCode(status);
+            r.setResponse(content.toString());
+
             Map<String, String> rHeaders = new HashMap<>();
-           
             con.getHeaderFields().entrySet().stream()
                 .filter(entry -> entry.getKey() != null)
                 .forEach(entry -> {
-                
                     List headerValues = entry.getValue();
                     String sHeaderValue = "";
                     Iterator it = headerValues.iterator();
@@ -411,28 +355,11 @@ public class Common {
                             sHeaderValue += it.next();
                         }
                     }
-
-                    rHeaders.put(entry.getKey(), sHeaderValue);   
-            });
+                    rHeaders.put(entry.getKey(), sHeaderValue);
+                });
             r.setResponseHeaders(rHeaders);
             r.setErrorMessage("");
-            con.disconnect(); 
-            
-            return r;
-        } catch (MalformedURLException ex) {
-            r.setResponse("");
-            r.setErrorMessage(ex.getMessage());
-            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-            return r;
-        } catch (IOException ex) {
-            r.setResponse("");
-            r.setErrorMessage(ex.getMessage());
-            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-            return r;
-        } catch (KeyManagementException ex) {
-            r.setResponse("");
-            r.setErrorMessage(ex.getMessage());
-            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            con.disconnect();
             return r;
         } catch (Exception ex) {
             r.setResponse("");
@@ -440,25 +367,6 @@ public class Common {
             Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             return r;
         }
-    }
-    
-    public static TrustManager[] getTrustmanager() {
-        TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-
-            @Override
-            public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
-                // Not implemented
-            }
-
-            @Override
-            public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
-                // Not implemented
-            }
-        } };
-        return trustAllCerts;
     }
     
     public static String base64Encode(String content) {

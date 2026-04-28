@@ -43,13 +43,13 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     
     static public String BALANCE_TYPE = "mtnmm_balance";
     
-    String api_collections_user = "cae741ea-f020-48db-8392-436ec51ce005";
-    String api_collections_key = "a978581f16764719be31e5d1b7abce92";
-    String api_collections_subscription = "8937d7376f7e4783a4cfab491d5f1d31";
-    
-    String api_disbursements_user = "90f8d6c5-98fd-4bef-9276-ac9785380bc5";
-    String api_disbursements_key = "af9b9c5a662444a0a93a12cb1fa187026";
-    String api_disbursements_subscription = "06618e0b22ce46e28e904f1c70d62f82";
+    String api_collections_user = "";
+    String api_collections_key = "";
+    String api_collections_subscription = "";
+
+    String api_disbursements_user = "";
+    String api_disbursements_key = "";
+    String api_disbursements_subscription = "";
     
     public static String[] prefix = {"25677", "25678", "25676"};
     
