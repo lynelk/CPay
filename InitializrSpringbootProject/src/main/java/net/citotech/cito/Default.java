@@ -41,7 +41,6 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StreamUtils;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -74,7 +73,7 @@ public class Default {
     private PlatformTransactionManager transactionManager;
     
     /*@GetMapping(path="/portal")
-    @CrossOrigin
+
     public String index () {
         return "index.html";
     }*/

@@ -16,6 +16,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 //import jdk.nashorn.internal.objects.Global;
 import net.citotech.cito.Model.User;
+import net.citotech.cito.security.LoginRateLimiter;
+import net.citotech.cito.security.PasswordUtils;
 
 //import jdk.nashorn.internal.parser.JSONParser;
 //import jdk.nashorn.internal.runtime.Context;
@@ -50,7 +52,6 @@ import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 /**
@@ -63,25 +64,21 @@ public class AuthenticationController {
     
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
-    
+
+    @Autowired
+    LoginRateLimiter rateLimiter;
+
     private HttpSession session;
     
     @PostMapping(path="/authenticate")
-    @CrossOrigin(origins = "http://localhost:2019")
     public String authenticatedUser (@RequestBody Map<String, String> requestBody, 
-            HttpServletRequest request, HttpServletResponse response) throws NoSuchAlgorithmException {
-        //Set the response header
-        //response.setHeader("Access-Control-Allow-Origin", "http://localhost:2019");
-       
-        //Thread.sleep(6000);
-        
+            HttpServletRequest request, HttpServletResponse response) {
         //First set session variable
         session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            //sessionUser = (User) session.getAttribute("user");
-            
+
             if (session.getAttribute("user") != null) {
                 sessionUser = (User) session.getAttribute("user");
                 
@@ -94,23 +91,39 @@ public class AuthenticationController {
             String username = requestBody.get("username");
             String password = requestBody.get("password");
 
-
-            User u  = getUserByEmailAndPassword(username, password);
-            
-            if (u == null) {
-                return GeneralException
-                    .getError("103", GeneralException.ERRORS_103);
+            // Rate-limit by IP address to prevent brute-force attacks
+            String clientIp = Common.getIpAddress(request);
+            if (!rateLimiter.tryConsume(clientIp)) {
+                return GeneralException.getError("138",
+                        "Too many login attempts. Please try again later.");
             }
+
+            // Fetch by email only; verify password in code (supports BCrypt + legacy SHA-256)
+            User u = getUserByEmail(username);
+            if (u == null || !PasswordUtils.verifyPassword(password, u.getPassword())) {
+                return GeneralException.getError("103", GeneralException.ERRORS_103);
+            }
+
+            // Upgrade legacy SHA-256 hash to BCrypt on first successful login
+            if (PasswordUtils.isLegacyHash(u.getPassword())) {
+                upgradeToBcrypt(u.getId(), password, Common.DB_TABLE_ADMIN);
+            }
+
             //Check if the user's account is suspended
             if (u.getStatus().equals("SUSPENDED")) {
-                return GeneralException
-                    .getError("137", GeneralException.ERRORS_137);
+                return GeneralException.getError("137", GeneralException.ERRORS_137);
             }
-            
+
+            // Session fixation protection: invalidate old session, create a fresh one
+            session.invalidate();
+            session = request.getSession(true);
+
             //Now set session values
             session.setAttribute("email", u.getEmail());
             session.setAttribute("phone", u.getPhone());
             session.setAttribute("user", u);
+
+            rateLimiter.recordSuccess(clientIp);
             
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
@@ -155,21 +168,14 @@ public class AuthenticationController {
     
     
     @PostMapping(path="/authenticateMerchantUser")
-    @CrossOrigin(origins = "http://localhost:2019")
     public String authenticateMerchantUser (@RequestBody Map<String, String> requestBody, 
-            HttpServletRequest request, HttpServletResponse response) throws NoSuchAlgorithmException {
-        //Set the response header
-        //response.setHeader("Access-Control-Allow-Origin", "http://localhost:2019");
-       
-        //Thread.sleep(6000);
-        
+            HttpServletRequest request, HttpServletResponse response) {
         //First set session variable
         session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            //sessionUser = (User) session.getAttribute("user");
-            
+
             if (session.getAttribute("merchantUser") != null) {
                 sessionUser = (MerchantUser) session.getAttribute("merchantUser");
                 
@@ -183,25 +189,39 @@ public class AuthenticationController {
             String password = requestBody.get("password");
             String merchant_account = requestBody.get("account_number");
 
-
-            MerchantUser u  = getMerchantUserByEmailAndPassword(merchant_account, username, password);
-            
-            if (u == null) {
-                return GeneralException
-                    .getError("103", GeneralException.ERRORS_103);
+            // Rate-limit by IP address to prevent brute-force attacks
+            String clientIp = Common.getIpAddress(request);
+            if (!rateLimiter.tryConsume(clientIp)) {
+                return GeneralException.getError("138",
+                        "Too many login attempts. Please try again later.");
             }
-            
+
+            // Fetch by email + merchant number; verify password in code
+            MerchantUser u = getMerchantUserByEmail(merchant_account, username);
+            if (u == null || !PasswordUtils.verifyPassword(password, u.getPassword())) {
+                return GeneralException.getError("103", GeneralException.ERRORS_103);
+            }
+
+            // Upgrade legacy SHA-256 hash to BCrypt on first successful login
+            if (PasswordUtils.isLegacyHash(u.getPassword())) {
+                upgradeToBcrypt(u.getId(), password, Common.DB_TABLE_MERCHANT_USERS);
+            }
+
             //Check if the user's account is suspended
             if (u.getStatus().equals("SUSPENDED")) {
-                return GeneralException
-                    .getError("137", GeneralException.ERRORS_137);
+                return GeneralException.getError("137", GeneralException.ERRORS_137);
             }
-            
+
+            // Session fixation protection: invalidate old session, create a fresh one
+            session.invalidate();
+            session = request.getSession(true);
+
             //Now set session values
             session.setAttribute("email", u.getEmail());
             session.setAttribute("phone", u.getPhone());
             session.setAttribute("merchantUser", u);
-           
+
+            rateLimiter.recordSuccess(clientIp);
             
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
@@ -383,6 +403,7 @@ public class AuthenticationController {
                 user.setName(rs.getString("name"));
                 user.setEmail(rs.getString("email"));
                 user.setPhone(rs.getString("phone"));
+                user.setPassword(rs.getString("password"));
                 user.setId(rs.getLong("id"));
                 user.setStatus(rs.getString("status"));
                 user.setCreated_on(rs.getString("created_on"));
@@ -403,9 +424,9 @@ public class AuthenticationController {
 
         return listUsers.get(0);
     }
-    
-    
-    
+
+
+
     /*
     * Gets a user by email address
     * @Param email: User's email address
@@ -431,6 +452,7 @@ public class AuthenticationController {
                 user.setName(rs.getString("name"));
                 user.setEmail(rs.getString("email"));
                 user.setPhone(rs.getString("phone"));
+                user.setPassword(rs.getString("password"));
                 user.setId(rs.getLong("id"));
                 user.setStatus(rs.getString("status"));
                 user.setCreated_on(rs.getString("created_on"));
@@ -451,13 +473,26 @@ public class AuthenticationController {
 
         return listUsers.get(0);
     }
+
+    /**
+     * Updates a user's stored password hash from legacy SHA-256 to BCrypt.
+     * Called silently after a successful login with a legacy hash.
+     */
+    private void upgradeToBcrypt(long userId, String rawPassword, String tableName) {
+        try {
+            String bcryptHash = PasswordUtils.hashPassword(rawPassword);
+            String sql = "UPDATE " + tableName + " SET password=:password WHERE id=:id";
+            Map<String, Object> params = new HashMap<>();
+            params.put("password", bcryptHash);
+            params.put("id", userId);
+            jdbcTemplate.update(sql, params);
+        } catch (Exception ex) {
+            Logger.getLogger(AuthenticationController.class.getName())
+                    .log(Level.SEVERE, "Failed to upgrade password hash", ex);
+        }
+    }
+
     
-    
-        /*
-    * Checks if user is still logged in
-    */
-    @PostMapping(path="/isMerchantUserLoggedIn")
-    @CrossOrigin
     public String isMerchantUserLoggedIn (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -516,7 +551,7 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/isLoggedIn")
-    @CrossOrigin
+    
     public String isLoggedIn (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -570,7 +605,7 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/requestMerchantUserResetPassword")
-    @CrossOrigin
+    
     public String requestMerchantUserResetPassword(@RequestBody Map<String, String> requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -640,7 +675,7 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/requestResetPassword")
-    @CrossOrigin
+    
     public String requestResetPassword (@RequestBody Map<String, String> requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -708,7 +743,7 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/requestResetPasswordMerchant")
-    @CrossOrigin
+    
     public String requestResetPasswordMerchant (@RequestBody Map<String, String> requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -777,7 +812,7 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/resetPassword")
-    @CrossOrigin
+    
     public String resetPassword (@RequestBody Map<String, String> requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -812,7 +847,7 @@ public class AuthenticationController {
             
             Map<String, Object> parameters = new HashMap<String, Object>();
             String verification_code = Common.randomNumericString(6);
-            parameters.put("password", Common.getSha256EncodedString(newPassword));
+            parameters.put("password", PasswordUtils.hashPassword(newPassword));
             parameters.put("id", u.getId());
             
             long retVal = jdbcTemplate.update(sql, parameters);
@@ -858,7 +893,7 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/resetPasswordMerchant")
-    @CrossOrigin
+    
     public String resetPasswordMerchant (@RequestBody Map<String, String> requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -895,7 +930,7 @@ public class AuthenticationController {
             
             Map<String, Object> parameters = new HashMap<String, Object>();
             
-            parameters.put("password", Common.getSha256EncodedString(newPassword));
+            parameters.put("password", PasswordUtils.hashPassword(newPassword));
             parameters.put("id", u.getId());
             
             long retVal = jdbcTemplate.update(sql, parameters);

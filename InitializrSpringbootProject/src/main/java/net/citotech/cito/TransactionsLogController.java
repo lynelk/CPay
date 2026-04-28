@@ -47,7 +47,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import net.citotech.cito.security.ColumnAllowlist;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -108,7 +108,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getTransactions")
-    @CrossOrigin
+
     public String getTransactions (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -148,15 +148,17 @@ public class TransactionsLogController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
-                    sqlSelect += " WHERE "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist.validate(category);
+                    sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
+                    parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
             
             sqlSelect += " ORDER BY id DESC ";
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
             }
             
             RowMapper rm = new RowMapper<Transaction>() {
@@ -232,7 +234,7 @@ public class TransactionsLogController {
     }
     
     @PostMapping(path="/getMerchantTransactions")
-    @CrossOrigin
+
     public String getMerchantTransactions (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -284,8 +286,9 @@ public class TransactionsLogController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist.validate(category);
+                    sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
+                    parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
             
@@ -455,7 +458,7 @@ public class TransactionsLogController {
     }
     
     @PostMapping(path="/getMerchantPayments")
-    @CrossOrigin
+
     public String getMerchantPayments (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -500,8 +503,9 @@ public class TransactionsLogController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist.validate(category);
+                    sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
+                    parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
             
@@ -617,7 +621,7 @@ public class TransactionsLogController {
     }
     
     @PostMapping(path="/getMerchantSms")
-    @CrossOrigin
+
     public String getMerchantSms (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -664,8 +668,9 @@ public class TransactionsLogController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist.validate(category);
+                    sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
+                    parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
             
@@ -692,8 +697,9 @@ public class TransactionsLogController {
             
             sqlSelect += " ORDER BY id DESC ";
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
             }
             
             RowMapper rm = new RowMapper<MerchantSms>() {
@@ -779,7 +785,7 @@ public class TransactionsLogController {
     }
     
     @PostMapping(path="/getDashboardDetailsPayinsVsPayouts")
-    @CrossOrigin
+
     public String getDashboardDetailsPayinsVsPayouts (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -908,7 +914,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsPayinsVsPayoutsMerchant")
-    @CrossOrigin
+
     public String getDashboardDetailsPayinsVsPayoutsMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1038,7 +1044,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsTxPerGateway")
-    @CrossOrigin
+
     public String getDashboardDetailsTxPerGateway (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1168,7 +1174,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsNetworkBalances")
-    @CrossOrigin
+
     public String getDashboardDetailsNetworkBalances (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1254,7 +1260,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsTxPerGatewayMerchant")
-    @CrossOrigin
+
     public String getDashboardDetailsTxPerGatewayMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1383,7 +1389,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsTransactionTypes")
-    @CrossOrigin
+
     public String getDashboardDetailsTransactionTypes (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1527,7 +1533,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsTransactionTypesMerchant")
-    @CrossOrigin
+
     public String getDashboardDetailsTransactionTypesMerchant(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1671,7 +1677,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsTxVolumes")
-    @CrossOrigin
+
     public String getDashboardDetailsTxVolumes (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1815,7 +1821,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getDashboardDetailsTxVolumesMerchant")
-    @CrossOrigin
+
     public String getDashboardDetailsTxVolumesMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1960,7 +1966,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/testCheckstatusCron")
-    @CrossOrigin
+
     @Scheduled(fixedDelay = 60000, initialDelay = 1000)
     public String testCheckstatusCron (/*@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response*/) {
@@ -2539,7 +2545,7 @@ public class TransactionsLogController {
     * API to add a new admin to the database
     */
     @PostMapping(path="/recordTransaction")
-    @CrossOrigin
+
     public String recordTransaction (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -2702,7 +2708,7 @@ public class TransactionsLogController {
     * API to add a new admin to the database
     */
     @PostMapping(path="/buySms")
-    @CrossOrigin
+
     public String buySms (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -3072,7 +3078,7 @@ public class TransactionsLogController {
     }
     
     @PostMapping(path="/getMerchantStatement")
-    @CrossOrigin
+
     public String getMerchantStatement (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -3120,8 +3126,9 @@ public class TransactionsLogController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist.validate(category);
+                    sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
+                    parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
             
@@ -3140,8 +3147,9 @@ public class TransactionsLogController {
             
             sqlSelect += " ORDER BY id DESC ";
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
             }
             
             RowMapper rm = new RowMapper<Statement>() {
@@ -3226,7 +3234,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/getMerchantStatementByMerchant")
-    @CrossOrigin
+
     public String getMerchantStatementByMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -3278,8 +3286,9 @@ public class TransactionsLogController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist.validate(category);
+                    sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
+                    parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
             
@@ -3406,7 +3415,7 @@ public class TransactionsLogController {
     }
     
     @PostMapping(path="/testMtnTokens")
-    @CrossOrigin
+
     public String testMtnTokens (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException {
         
@@ -3422,7 +3431,7 @@ public class TransactionsLogController {
     }
     
     @PostMapping(path="/testMtnPayIn")
-    @CrossOrigin
+
     public String testMtnPayIn (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException, JSONException {
         
@@ -3449,7 +3458,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/testMtnPayOut")
-    @CrossOrigin
+
     public String testMtnPayOut (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException, JSONException {
         
@@ -3474,7 +3483,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/testMtnPayInCheckStatus")
-    @CrossOrigin
+
     public String testMtnPayInCheckStatus (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException, JSONException {
         
@@ -3542,7 +3551,7 @@ public class TransactionsLogController {
     * API to create a PayIn
     */
     @PostMapping(path="/addPayInTransaction")
-    @CrossOrigin
+
     public String addPayInTransaction (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -3668,7 +3677,7 @@ public class TransactionsLogController {
     * API to create bulk payment
     */
     @PostMapping(path="/addPayment")
-    @CrossOrigin
+
     public String addPayment (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -3881,7 +3890,7 @@ public class TransactionsLogController {
     * API to create bulk payment
     */
     @PostMapping(path="/saveSms")
-    @CrossOrigin
+
     public String saveSms (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -4080,7 +4089,7 @@ public class TransactionsLogController {
     * API to create bulk payment
     */
     @PostMapping(path="/cancelSms")
-    @CrossOrigin
+
     public String cancelSms(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         try {
@@ -4165,7 +4174,7 @@ public class TransactionsLogController {
     * API to create bulk payment
     */
     @PostMapping(path="/editPayment")
-    @CrossOrigin
+
     public String editPayment(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -4375,7 +4384,7 @@ public class TransactionsLogController {
     * API to start a payment
     */
     @PostMapping(path="/startPayment")
-    @CrossOrigin
+
     public String startPayment(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -4488,7 +4497,7 @@ public class TransactionsLogController {
     * API to start a payment
     */
     @PostMapping(path="/stopPayment")
-    @CrossOrigin
+
     public String stopPayment(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -4594,7 +4603,7 @@ public class TransactionsLogController {
     private String lockfiledirectory;
     
     @PostMapping(path="/paymentsPayCron")
-    @CrossOrigin
+
     @Scheduled(fixedDelay = 30000, initialDelay = 1000)
     public String paymentsPayCron () {
         //Set the response header
@@ -4896,7 +4905,7 @@ public class TransactionsLogController {
     * API to start a payment
     */
     @PostMapping(path="/testParseXml")
-    @CrossOrigin
+
     public String testParseXml(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         
@@ -4943,7 +4952,7 @@ public class TransactionsLogController {
     * API to start a payment
     */
     @PostMapping(path="/resolveTransaction")
-    @CrossOrigin
+
     public String resolveTransaction(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -5350,8 +5359,13 @@ public class TransactionsLogController {
     
     
     @PostMapping("/uploadBeneficiariesFile")
-    public String uploadBeneficiariesFile(@RequestParam("file") MultipartFile file) {
-        //String fileDestination = lockfiledirectory+File.separator+Common.CLASS_PATH_UPLOAD_DIRECTORY; 
+    public String uploadBeneficiariesFile(@RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
+        // Require an authenticated session
+        session = request.getSession();
+        if (session.getAttribute("merchantUser") == null && session.getAttribute("user") == null) {
+            return GeneralException.getError("107", GeneralException.ERRORS_107);
+        }
         try {
             /*File directory = new File(fileDestination);
             
@@ -5449,12 +5463,17 @@ public class TransactionsLogController {
     
     
     @PostMapping("/uploadSmsRecipientsFile")
-    public String uploadSmsRecipientsFile(@RequestParam("file") MultipartFile file) {
+    public String uploadSmsRecipientsFile(@RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
+        // Require an authenticated session
+        session = request.getSession();
+        if (session.getAttribute("merchantUser") == null && session.getAttribute("user") == null) {
+            return GeneralException.getError("107", GeneralException.ERRORS_107);
+        }
 
         Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, "Params:", "");
         
-        //String fileDestination = lockfiledirectory+File.separator+Common.CLASS_PATH_UPLOAD_DIRECTORY; 
         try {
            
             
@@ -5554,7 +5573,7 @@ public class TransactionsLogController {
     
     
     @PostMapping(path="/testSendPendingSmsCron")
-    @CrossOrigin
+
     @Scheduled(fixedDelay = 3000, initialDelay = 1000)
     public String testSendPendingSmsCron (/*@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response*/) {

@@ -37,7 +37,6 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StreamUtils;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,7 +59,7 @@ public class SettingsController {
     private HttpSession session;
     
     @PostMapping(path="/getSettings")
-    @CrossOrigin
+
     public String getSettings (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException {
         //Set the response header
@@ -122,7 +121,7 @@ public class SettingsController {
     
     
     @PostMapping(path="/getMerchantSettings")
-    @CrossOrigin
+
     public String getMerchantSettings (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException {
         //Set the response header
@@ -218,7 +217,7 @@ public class SettingsController {
     }
     
     @PostMapping(path="/updateSettings")
-    @CrossOrigin
+
     public String updateSettings (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException {
         //Set the response header
@@ -258,7 +257,7 @@ public class SettingsController {
     }
     
     @PostMapping(path="/updateMerchantSettings")
-    @CrossOrigin
+
     public String updateMerchantSettings (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) throws IOException {
         //Set the response header

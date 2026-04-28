@@ -28,7 +28,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import net.citotech.cito.security.ColumnAllowlist;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,7 +58,7 @@ public class MerchantsController {
     private HttpSession session;
     
     @PostMapping(path="/getMerchants")
-    @CrossOrigin
+
     public String getMerchants (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -103,8 +103,9 @@ public class MerchantsController {
                 }
             }
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
             }
             
             RowMapper rm = new RowMapper<Merchant>() {
@@ -384,7 +385,7 @@ public class MerchantsController {
     * API to add new merchant by Authorized app.
     */
     @PostMapping(path="/internalAppAddMerchant")
-    @CrossOrigin
+
     public String internalAppAddMerchant(@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         
@@ -589,7 +590,7 @@ public class MerchantsController {
     * API to add a new merchant to the database
     */
     @PostMapping(path="/addMerchant")
-    @CrossOrigin
+
     public String addMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -865,7 +866,7 @@ public class MerchantsController {
     * API to add a new admin to the database
     */
     @PostMapping(path="/editMerchant")
-    @CrossOrigin
+
     public String editMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1158,7 +1159,7 @@ public class MerchantsController {
     * API to deleteing an admin from the database
     */
     @PostMapping(path="/deleteMerchant")
-    @CrossOrigin
+
     public String deleteAdmin (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
