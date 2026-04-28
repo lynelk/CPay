@@ -103,8 +103,33 @@ public class Common {
     public static String CLASS_PATH_UPLOAD_DIRECTORY = "uploadDir";
     public static String CLASS_PATH_PAYMENTS_CRON_TX_LOCK = "payments_cron_tx.lock";
     
-    private static final String ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    /** Set to {@code true} only in local development (via {@code custom.ssl.skip-verify=true}). */
+    private static volatile boolean skipSslVerify = false;
+
+    /** Application base URL used in outbound email links (e.g. password-reset). */
+    private static volatile String appBaseUrl = "";
+
+    /**
+     * Called at startup by {@link net.citotech.cito.config.SslConfig} to set
+     * the application base URL used in outbound email links.
+     */
+    public static void setAppBaseUrl(String url) {
+        appBaseUrl = (url != null) ? url : "";
+    }
+
+
+    public static void setSslSkipVerify(boolean skip) {
+        skipSslVerify = skip;
+        if (skip) {
+            Logger.getLogger(Common.class.getName()).log(Level.WARNING,
+                "SECURITY WARNING: SSL certificate verification is DISABLED "
+                + "(custom.ssl.skip-verify=true). Do NOT use in production.");
+        }
+    }
+
+
     private static final String NUMERIC_STRING = "0123456789";
+    private static final String ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     
     public static int HTTP_REQUEST_TIMEOUT_MILLISECONDS = 30000;
     public static int HTTP_REQUEST_READTIMEOUT_MILLISECONDS = 60000;
@@ -306,35 +331,20 @@ public class Common {
             r.setUrl(url);
             r.setRequestData(data);
             r.setRequestHeaders(headers);
-        TrustManager[] dummyTrustManager = getTrustmanager();
         try {
-            SSLContext sc;
-            try {
-                //sc = SSLContext.getInstance("TLS");
-                sc = SSLContext.getInstance("SSL");
-                sc.init(null, dummyTrustManager, new java.security.SecureRandom());
-                
-                HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            } catch (NoSuchAlgorithmException ex) {
-                r.setResponse("");
-                r.setErrorMessage(ex.getMessage());
-                Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-                return r;
-            }
-            
-            // Create all-trusting host name verifier
-            HostnameVerifier allHostsValid = new HostnameVerifier() {
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            };
-            HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
-            
-            HttpURLConnection con;
             URL rquestUrl = new URL(url);
-            if (rquestUrl.getProtocol().toLowerCase().equals("https")) {
-                con = (HttpsURLConnection) rquestUrl.openConnection();
-                //con.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            HttpURLConnection con;
+
+            if ("https".equalsIgnoreCase(rquestUrl.getProtocol())) {
+                HttpsURLConnection httpsConn = (HttpsURLConnection) rquestUrl.openConnection();
+                if (skipSslVerify) {
+                    // Development-only bypass – do NOT enable in production.
+                    SSLContext sc = SSLContext.getInstance("SSL");
+                    sc.init(null, getTrustmanager(), new java.security.SecureRandom());
+                    httpsConn.setSSLSocketFactory(sc.getSocketFactory());
+                    httpsConn.setHostnameVerifier((hostname, session) -> true);
+                }
+                con = httpsConn;
             } else {
                 con = (HttpURLConnection) rquestUrl.openConnection();
             }
@@ -1575,7 +1585,7 @@ public class Common {
         Setting emailContentManage = Common.getSettings("email_tmp_on_creating_merchant_user", jdbcTemplate);
         String emailContent_ = emailContentManage.getSetting_value()
                 .replace("{name}", u.getName());
-        emailContent_ = emailContent_.replace("{url}", "http://localhost:2020/portal");
+        emailContent_ = emailContent_.replace("{url}", appBaseUrl);
         emailContent_ = emailContent_.replace("{merchant_number}", u.getMerchant_number());
         emailContent_ = emailContent_.replace("{username}", u.getEmail());
         final String emailContent = emailContent_.replace("{password}", password);

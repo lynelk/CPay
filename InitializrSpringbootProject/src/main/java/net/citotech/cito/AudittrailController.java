@@ -26,7 +26,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import net.citotech.cito.security.ColumnAllowlist;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,7 +50,7 @@ public class AudittrailController {
     private HttpSession session;
     
     @PostMapping(path="/getAudittrails")
-    @CrossOrigin
+
     public String getAudittrails (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -90,15 +90,21 @@ public class AudittrailController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " WHERE "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    try {
+                        String safeCategory = ColumnAllowlist.validate(category);
+                        sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
+                        parameters.addValue(safeCategory, "%" + value + "%");
+                    } catch (IllegalArgumentException e) {
+                        return GeneralException.getError("101", "Invalid search field.");
+                    }
                 }
             }
             
             sqlSelect +=" ORDER BY id DESC ";
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
             }
             
             RowMapper rm = new RowMapper<AuditTrail>() {
@@ -155,7 +161,7 @@ public class AudittrailController {
     
     
     @PostMapping(path="/getMerchantAudittrails")
-    @CrossOrigin
+
     public String getMerchantAudittrails (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -203,8 +209,9 @@ public class AudittrailController {
             
             sqlSelect +=" ORDER BY id DESC ";
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
             }
             
             RowMapper rm = new RowMapper<AuditTrail>() {

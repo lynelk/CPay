@@ -1,1 +1,67 @@
+## ─── Node / React ────────────────────────────────────────────────────────────
 node_modules/
+build/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+## ─── Java / Maven ────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+## ─── Credentials and secrets – NEVER commit these ───────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+# Exceptions: example/template files that document what is needed
+!*.example.pem
+!*.example.key
+
+## ─── Application configuration with real credentials ────────────────────────
+# Use application-local.properties or environment variables instead
+application-local.properties
+
+## ─── Lock / temporary files ─────────────────────────────────────────────────
+*.lock
+*.log
+*.tmp
+*.DS_Store
+Thumbs.db
+
+## ─── IDE files ───────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+nbproject/
+nb-configuration.xml
+.vscode/
+*.suo
+*.user
+
+## ─── Compiled/generated static assets ───────────────────────────────────────
+# The React production build should be generated in CI, not committed
+InitializrSpringbootProject/src/main/resources/static/
+
+## ─── Sensitive data files accidentally tracked in this project ───────────────
+CPay/LightsailDefaultKey-eu-central-1.pem
+CPay/getbalances.txt
+CPay/customers_emails.txt
+CPay/jars/
+clientside/tests/php/keys/

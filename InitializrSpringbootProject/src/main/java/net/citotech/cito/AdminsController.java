@@ -33,8 +33,8 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import net.citotech.cito.security.ColumnAllowlist;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,7 +58,7 @@ public class AdminsController {
     private HttpSession session;
     
     @PostMapping(path="/getAdmins")
-    @CrossOrigin
+
     public String getAdmins (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -98,13 +98,43 @@ public class AdminsController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " WHERE "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    try {
+                        String safeCategory = ColumnAllowlist.validate(category);
+                        sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
+                        parameters.addValue(safeCategory, "%" + value + "%");
+                    } catch (IllegalArgumentException e) {
+                        return GeneralException.getError("101", "Invalid search field.");
+                    }
                 }
             }
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            String sqlCount = "SELECT COUNT(*) FROM "+Common.DB_TABLE_ADMIN+" ";
+            if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
+                String catForCount = searchValue.getString("category");
+                String valForCount = searchValue.getString("value");
+                if (!valForCount.equals("all") && !catForCount.isEmpty() && !valForCount.isEmpty()) {
+                    try {
+                        String safeCat = ColumnAllowlist.validate(catForCount);
+                        sqlCount += " WHERE " + safeCat + " LIKE :" + safeCat;
+                    } catch (IllegalArgumentException e) { /* ignore for count */ }
+                }
+            }
+            long totalCount = jdbcTemplate.queryForObject(sqlCount, parameters, Long.class);
+
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
+            }
+
+            int currentPageNum = 0;
+            if (currentPage != null && !currentPage.isEmpty()) {
+                try {
+                    currentPageNum = Integer.parseInt(currentPage.trim());
+                } catch (NumberFormatException e) {
+                    Logger.getLogger(AdminsController.class.getName())
+                            .log(Level.WARNING, "Invalid currentPage value: {0}", currentPage);
+                    currentPageNum = 0;
+                }
             }
             
             RowMapper rm = new RowMapper<User>() {
@@ -127,6 +157,8 @@ public class AdminsController {
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
+            resJson.put("totalCount", totalCount);
+            resJson.put("currentPage", currentPageNum);
             JSONArray admins_array = new JSONArray();
             for (User us : listUsers) {
                 JSONObject u_p_ = new JSONObject();
@@ -160,7 +192,7 @@ public class AdminsController {
     
     
     @PostMapping(path="/getAdminsMerchant")
-    @CrossOrigin
+
     public String getAdminsMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -206,8 +238,9 @@ public class AdminsController {
                 }
             }
             
-            if (pageSize != null && pageSize.isEmpty()) {
-                sqlSelect += " LIMIT "+pageSize+" ";
+            if (pageSize != null && !pageSize.isEmpty()) {
+                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
+                sqlSelect += " LIMIT " + _limit;
             }
             
             RowMapper rm = new RowMapper<MerchantUser>() {
@@ -502,7 +535,7 @@ public class AdminsController {
     * API to add a new admin to the database
     */
     @PostMapping(path="/addAdmin")
-    @CrossOrigin
+
     public String addAdmin (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -630,7 +663,7 @@ public class AdminsController {
     * API to add a new admin to the database
     */
     @PostMapping(path="/addAdminMerchant")
-    @CrossOrigin
+
     public String addAdminMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -773,7 +806,7 @@ public class AdminsController {
     * API to add a new admin to the database
     */
     @PostMapping(path="/editAdmin")
-    @CrossOrigin
+
     public String editAdmin (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -913,7 +946,7 @@ public class AdminsController {
     * API to add a new admin to the database
     */
     @PostMapping(path="/editAdminMerchant")
-    @CrossOrigin
+
     public String editAdminMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1053,7 +1086,7 @@ public class AdminsController {
     * API to deleteing an admin from the database
     */
     @PostMapping(path="/deleteAdmin")
-    @CrossOrigin
+
     public String deleteAdmin (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1153,7 +1186,7 @@ public class AdminsController {
     * API to deleteing an admin from the database
     */
     @PostMapping(path="/deleteAdminMerchant")
-    @CrossOrigin
+
     public String deleteAdminMerchant (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
