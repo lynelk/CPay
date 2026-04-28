@@ -122,6 +122,7 @@ public class Common {
 
 
     private static final String NUMERIC_STRING = "0123456789";
+    private static final String ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     
     public static int HTTP_REQUEST_TIMEOUT_MILLISECONDS = 30000;
     public static int HTTP_REQUEST_READTIMEOUT_MILLISECONDS = 60000;
