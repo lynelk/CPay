@@ -40,7 +40,9 @@ public class LoginRateLimiter {
                 // New window
                 return new Entry(1, now);
             }
-            return new Entry(existing.count + 1, existing.windowStart);
+            // Cap at MAX_ATTEMPTS + 1 to prevent unbounded counter growth
+            int newCount = Math.min(existing.count + 1, MAX_ATTEMPTS + 1);
+            return new Entry(newCount, existing.windowStart);
         });
         return entry.count <= MAX_ATTEMPTS;
     }

@@ -106,11 +106,18 @@ public class Common {
     /** Set to {@code true} only in local development (via {@code custom.ssl.skip-verify=true}). */
     private static volatile boolean skipSslVerify = false;
 
+    /** Application base URL used in outbound email links (e.g. password-reset). */
+    private static volatile String appBaseUrl = "";
+
     /**
-     * Called at startup by {@link net.citotech.cito.config.SslConfig} to configure whether
-     * SSL certificate verification should be skipped for outbound HTTPS requests.
-     * Must only be enabled in development/sandbox environments.
+     * Called at startup by {@link net.citotech.cito.config.SslConfig} to set
+     * the application base URL used in outbound email links.
      */
+    public static void setAppBaseUrl(String url) {
+        appBaseUrl = (url != null) ? url : "";
+    }
+
+
     public static void setSslSkipVerify(boolean skip) {
         skipSslVerify = skip;
         if (skip) {
@@ -1578,7 +1585,7 @@ public class Common {
         Setting emailContentManage = Common.getSettings("email_tmp_on_creating_merchant_user", jdbcTemplate);
         String emailContent_ = emailContentManage.getSetting_value()
                 .replace("{name}", u.getName());
-        emailContent_ = emailContent_.replace("{url}", System.getenv().getOrDefault("APP_BASE_URL", ""));
+        emailContent_ = emailContent_.replace("{url}", appBaseUrl);
         emailContent_ = emailContent_.replace("{merchant_number}", u.getMerchant_number());
         emailContent_ = emailContent_.replace("{username}", u.getEmail());
         final String emailContent = emailContent_.replace("{password}", password);

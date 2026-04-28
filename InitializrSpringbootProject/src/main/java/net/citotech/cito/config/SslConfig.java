@@ -7,11 +7,13 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.PostConstruct;
 
 /**
- * Propagates the {@code custom.ssl.skip-verify} property to {@link Common}
- * so that outbound HTTPS requests can be made without certificate verification
- * in development / sandbox environments.
+ * Propagates runtime configuration properties to {@link Common} at startup.
  *
- * <p>This flag must be {@code false} (the default) in production.
+ * <ul>
+ *   <li>{@code custom.ssl.skip-verify} – skip SSL certificate verification for
+ *       outbound HTTPS calls (development / sandbox only).</li>
+ *   <li>{@code app.base.url} – base URL used in outbound email links.</li>
+ * </ul>
  */
 @Configuration
 public class SslConfig {
@@ -19,8 +21,12 @@ public class SslConfig {
     @Value("${custom.ssl.skip-verify:false}")
     private boolean skipVerify;
 
+    @Value("${app.base.url:}")
+    private String appBaseUrl;
+
     @PostConstruct
     public void configure() {
         Common.setSslSkipVerify(skipVerify);
+        Common.setAppBaseUrl(appBaseUrl);
     }
 }

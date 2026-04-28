@@ -128,7 +128,13 @@ public class AdminsController {
 
             int currentPageNum = 0;
             if (currentPage != null && !currentPage.isEmpty()) {
-                try { currentPageNum = Integer.parseInt(currentPage.trim()); } catch (NumberFormatException e) { currentPageNum = 0; }
+                try {
+                    currentPageNum = Integer.parseInt(currentPage.trim());
+                } catch (NumberFormatException e) {
+                    Logger.getLogger(AdminsController.class.getName())
+                            .log(Level.WARNING, "Invalid currentPage value: {0}", currentPage);
+                    currentPageNum = 0;
+                }
             }
             
             RowMapper rm = new RowMapper<User>() {
