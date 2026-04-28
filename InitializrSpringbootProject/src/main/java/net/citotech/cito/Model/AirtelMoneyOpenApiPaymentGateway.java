@@ -46,13 +46,13 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway{
     
     static public String BALANCE_TYPE = "airtelmm_balance";//airteloapimm_balance";
     
-    String api_collections_user = "dfe860fe-897a-4cc0-839d-005b7d531d2c";
-    String api_collections_key = "97eee400-4e1c-4e34-b380-0e919d9427b0";
+    String api_collections_user = "";
+    String api_collections_key = "";
     String api_collections_subscription = "";
     
-    String api_disbursements_user = "dfe860fe-897a-4cc0-839d-005b7d531d2c";
-    String api_disbursements_key = "97eee400-4e1c-4e34-b380-0e919d9427b0";
-    String api_disbursements_subscription = "06618e0b22ce46e28e904f1c70d62f82";
+    String api_disbursements_user = "";
+    String api_disbursements_key = "";
+    String api_disbursements_subscription = "";
     
     /*String publicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCkq3XbDI1s8Lu7SpUBP+bqOs/MC6PKWz\n" +
         "6n/0UkqTiOZqKqaoZClI3BUDTrSIJsrN1Qx7ivBzsaAYfsB0CygSSWay4iyUcnMVEDrNVO\n" +

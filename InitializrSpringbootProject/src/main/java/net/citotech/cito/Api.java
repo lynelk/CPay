@@ -41,10 +41,14 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import net.citotech.cito.security.CallbackUrlValidator;
+import net.citotech.cito.security.SignatureVerificationService;
+import net.citotech.cito.service.RateLimiterService;
 
 /**
  *
@@ -59,6 +63,8 @@ public class Api {
     TransactionTemplate transactionTemplate;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    RateLimiterService rateLimiterService;
     
     @Value( "${custom.gatewaystate}" )
     private String gatewaystate;
@@ -70,7 +76,7 @@ public class Api {
     * API to add a new admin to the database
     */
     @PostMapping(path="/doMobileMoneyPayIn")
-
+    @CrossOrigin
     public String doMobileMoneyPayIn (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -114,6 +120,10 @@ public class Api {
                 return GeneralException
                     .getError("123", String.format(GeneralException.ERRORS_123,amount_string));
             }
+
+            if (amount <= 0) {
+                return GeneralException.getError("123", String.format(GeneralException.ERRORS_123, amount_string));
+            }
             
             String description = sObject.getString("description");
             String reference = sObject.getString("reference");
@@ -123,6 +133,18 @@ public class Api {
             //String signature = Common.base64Decode(signatureBase64);
             String callback_url = sObject.getString("callback_url");
             String origanting_ip = Common.getIpAddress(request);
+
+            // Validate callback_url to prevent SSRF
+            String callbackUrlError = CallbackUrlValidator.validate(callback_url);
+            if (callbackUrlError != null) {
+                return GeneralException.getError("124", callbackUrlError);
+            }
+
+            // Rate limiting per merchant_number
+            if (!rateLimiterService.tryConsume(merchant_number)) {
+                response.setStatus(429);
+                return GeneralException.getError("145", GeneralException.ERRORS_145);
+            }
             
             //Get this merchant
             Merchant merchant = Common.getMerchantByAccountNumber(merchant_number+"", jdbcTemplate);
@@ -136,44 +158,28 @@ public class Api {
                 return GeneralException
                     .getError("137", GeneralException.ERRORS_137);
             }
+
+            // Check IP whitelist per merchant
+            Setting ipWhitelistSetting = Common.getMerchantSettings("api_allowed_ips", merchant.getId(), jdbcTemplate);
+            if (ipWhitelistSetting != null && !ipWhitelistSetting.getSetting_value().isEmpty()) {
+                String allowedIps = ipWhitelistSetting.getSetting_value();
+                boolean ipAllowed = false;
+                for (String ip : allowedIps.split(",")) {
+                    if (ip.trim().equals(origanting_ip)) {
+                        ipAllowed = true;
+                        break;
+                    }
+                }
+                if (!ipAllowed) {
+                    return GeneralException.getError("139", String.format(GeneralException.ERRORS_139, origanting_ip));
+                }
+            }
             
             //Verify signature
             String signedData = merchant_number+payer_number+amount_string+reference+description;
-            //Logger.getLogger(Common.class.getName()).log(Level.SEVERE, "SignedData: "+signedData, "");
-            //Get Merchant public key
-            if (merchant.getPublic_key() == null || merchant.getPublic_key().isEmpty()) {
-                //Now keys configured then
-                return GeneralException
-                    .getError("115", GeneralException.ERRORS_115);
-            }
-            
-            
-            //Now verify signature.
-            Signature sign = Signature.getInstance("SHA256withRSA");
-            String base64_public_key = merchant.getPublic_key();
-            base64_public_key = base64_public_key.replace("-----BEGIN PUBLIC KEY-----\n", "");
-            String base64_cleaned = base64_public_key.replace("\n-----END PUBLIC KEY-----\n", "");
-            PublicKey publicKey = Common.getPublicKeyFromBase64String(base64_cleaned);
-            sign.initVerify(publicKey);
-            sign.update(signedData.getBytes());
-            
-            //Try to decode base64 to byte array
-            byte[] signature_content;
-            try{
-                signature_content = Base64.getDecoder().decode(signatureBase64);
-            } catch (Exception e) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (signature_content.length < 256) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (!sign.verify(signature_content)) {
-                return GeneralException
-                    .getError("116", GeneralException.ERRORS_116);
+            String sigError = SignatureVerificationService.verify(merchant, signedData, signatureBase64);
+            if (sigError != null) {
+                return sigError;
             }
             
             //Now check if the merchant is not suspended
@@ -290,7 +296,7 @@ public class Api {
     * Initiate a Mobile Money payout request
     */
     @PostMapping(path="/doMobileMoneyPayOut")
-
+    @CrossOrigin
     public String doMobileMoneyPayOut (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -334,6 +340,10 @@ public class Api {
                 return GeneralException
                     .getError("123", String.format(GeneralException.ERRORS_123,amount_string));
             }
+
+            if (amount <= 0) {
+                return GeneralException.getError("123", String.format(GeneralException.ERRORS_123, amount_string));
+            }
             
             String description = sObject.getString("description");
             String reference = sObject.getString("reference");
@@ -342,6 +352,18 @@ public class Api {
             String signatureBase64 = sObject.getString("signature");
             String callback_url = sObject.getString("callback_url");
             String origanting_ip = Common.getIpAddress(request);
+
+            // Validate callback_url to prevent SSRF
+            String callbackUrlError = CallbackUrlValidator.validate(callback_url);
+            if (callbackUrlError != null) {
+                return GeneralException.getError("124", callbackUrlError);
+            }
+
+            // Rate limiting per merchant_number
+            if (!rateLimiterService.tryConsume(merchant_number)) {
+                response.setStatus(429);
+                return GeneralException.getError("145", GeneralException.ERRORS_145);
+            }
             
             //Get this merchant
             Merchant merchant = Common.getMerchantByAccountNumber(merchant_number+"", jdbcTemplate);
@@ -355,44 +377,28 @@ public class Api {
                 return GeneralException
                     .getError("137", GeneralException.ERRORS_137);
             }
+
+            // Check IP whitelist per merchant
+            Setting ipWhitelistSetting = Common.getMerchantSettings("api_allowed_ips", merchant.getId(), jdbcTemplate);
+            if (ipWhitelistSetting != null && !ipWhitelistSetting.getSetting_value().isEmpty()) {
+                String allowedIps = ipWhitelistSetting.getSetting_value();
+                boolean ipAllowed = false;
+                for (String ip : allowedIps.split(",")) {
+                    if (ip.trim().equals(origanting_ip)) {
+                        ipAllowed = true;
+                        break;
+                    }
+                }
+                if (!ipAllowed) {
+                    return GeneralException.getError("139", String.format(GeneralException.ERRORS_139, origanting_ip));
+                }
+            }
             
             //Verify signature
             String signedData = merchant_number+payee_number+amount_string+reference+description;
-            //Logger.getLogger(Common.class.getName()).log(Level.SEVERE, "SignedData: "+signedData, "");
-            //Get Merchant public key
-            if (merchant.getPublic_key() == null || merchant.getPublic_key().isEmpty()) {
-                //Now keys configured then
-                return GeneralException
-                    .getError("115", GeneralException.ERRORS_115);
-            }
-            
-            
-            //Now verify signature.
-            Signature sign = Signature.getInstance("SHA256withRSA");
-            String base64_public_key = merchant.getPublic_key();
-            base64_public_key = base64_public_key.replace("-----BEGIN PUBLIC KEY-----\n", "");
-            String base64_cleaned = base64_public_key.replace("\n-----END PUBLIC KEY-----\n", "");
-            PublicKey publicKey = Common.getPublicKeyFromBase64String(base64_cleaned);
-            sign.initVerify(publicKey);
-            sign.update(signedData.getBytes());
-            
-            //Try to decode base64 to byte array
-            byte[] signature_content;
-            try{
-                signature_content = Base64.getDecoder().decode(signatureBase64);
-            } catch (Exception e) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (signature_content.length < 256) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (!sign.verify(signature_content)) {
-                return GeneralException
-                    .getError("116", GeneralException.ERRORS_116);
+            String sigError = SignatureVerificationService.verify(merchant, signedData, signatureBase64);
+            if (sigError != null) {
+                return sigError;
             }
             
             //Now check if the merchant is not suspended
@@ -535,7 +541,7 @@ public class Api {
     * API to check the status of an earlier submitted transaction
     */
     @PostMapping(path="/doTransactionCheckStatus")
-
+    @CrossOrigin
     public String doTransactionCheckStatus (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -591,41 +597,9 @@ public class Api {
             
             //Verify signature
             String signedData = merchant_number+reference;
-            //Logger.getLogger(Common.class.getName()).log(Level.SEVERE, "SignedData: "+signedData, "");
-            //Get Merchant public key
-            if (merchant.getPublic_key() == null || merchant.getPublic_key().isEmpty()) {
-                //Now keys configured then
-                return GeneralException
-                    .getError("115", GeneralException.ERRORS_115);
-            }
-            
-            
-            //Now verify signature.
-            Signature sign = Signature.getInstance("SHA256withRSA");
-            String base64_public_key = merchant.getPublic_key();
-            base64_public_key = base64_public_key.replace("-----BEGIN PUBLIC KEY-----\n", "");
-            String base64_cleaned = base64_public_key.replace("\n-----END PUBLIC KEY-----\n", "");
-            PublicKey publicKey = Common.getPublicKeyFromBase64String(base64_cleaned);
-            sign.initVerify(publicKey);
-            sign.update(signedData.getBytes());
-            
-            //Try to decode base64 to byte array
-            byte[] signature_content;
-            try{
-                signature_content = Base64.getDecoder().decode(signatureBase64);
-            } catch (Exception e) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (signature_content.length < 256) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (!sign.verify(signature_content)) {
-                return GeneralException
-                    .getError("116", GeneralException.ERRORS_116);
+            String sigError = SignatureVerificationService.verify(merchant, signedData, signatureBase64);
+            if (sigError != null) {
+                return sigError;
             }
             
             //Now check if the merchant is not suspended
@@ -1451,41 +1425,9 @@ public class Api {
             
             //Verify signature
             String signedData = merchant_number;
-            //Logger.getLogger(Common.class.getName()).log(Level.SEVERE, "SignedData: "+signedData, "");
-            //Get Merchant public key
-            if (merchant.getPublic_key() == null || merchant.getPublic_key().isEmpty()) {
-                //Now keys configured then
-                return GeneralException
-                    .getError("115", GeneralException.ERRORS_115);
-            }
-            
-            
-            //Now verify signature.
-            Signature sign = Signature.getInstance("SHA256withRSA");
-            String base64_public_key = merchant.getPublic_key();
-            base64_public_key = base64_public_key.replace("-----BEGIN PUBLIC KEY-----\n", "");
-            String base64_cleaned = base64_public_key.replace("\n-----END PUBLIC KEY-----\n", "");
-            PublicKey publicKey = Common.getPublicKeyFromBase64String(base64_cleaned);
-            sign.initVerify(publicKey);
-            sign.update(signedData.getBytes());
-            
-            //Try to decode base64 to byte array
-            byte[] signature_content;
-            try{
-                signature_content = Base64.getDecoder().decode(signatureBase64);
-            } catch (Exception e) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (signature_content.length < 256) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (!sign.verify(signature_content)) {
-                return GeneralException
-                    .getError("116", GeneralException.ERRORS_116);
+            String sigError = SignatureVerificationService.verify(merchant, signedData, signatureBase64);
+            if (sigError != null) {
+                return sigError;
             }
             
             //Now check if the merchant is not suspended

@@ -62,6 +62,8 @@ public class GeneralException {
     public static String ERRORS_142 = "Transaction not process as expected.";
     public static String ERRORS_143 = "Transaction not was not successful.";
     public static String ERRORS_144 = "Transaction %s (%s) was already updated.";
+    public static String ERRORS_145 = "Rate limit exceeded. Please retry after 60 seconds.";
+    public static String ERRORS_146 = "Amount %s is out of the allowed range [%s, %s].";
     
     
     public static String getError(String code, String message) {

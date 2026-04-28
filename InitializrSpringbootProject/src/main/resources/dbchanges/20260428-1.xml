@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Changes>
+    <Query id="20260428-add-callback-retry-fields">
+        <Sql>
+            ALTER TABLE merchant_transactions_log 
+            ADD COLUMN callback_status VARCHAR(20) DEFAULT 'PENDING' AFTER callback_trace,
+            ADD COLUMN callback_retry_count INT DEFAULT 0 AFTER callback_status,
+            ADD COLUMN callback_next_retry DATETIME NULL AFTER callback_retry_count
+        </Sql>
+        <RollBack>
+            ALTER TABLE merchant_transactions_log
+            DROP COLUMN callback_status,
+            DROP COLUMN callback_retry_count,
+            DROP COLUMN callback_next_retry
+        </RollBack>
+    </Query>
+    <Query id="20260428-add-idempotency-keys-table">
+        <Sql>
+            CREATE TABLE IF NOT EXISTS idempotency_keys (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                idempotency_key VARCHAR(255) NOT NULL,
+                merchant_id BIGINT NOT NULL,
+                response_body TEXT,
+                created_on DATETIME DEFAULT NOW(),
+                expires_on DATETIME,
+                INDEX idx_idempotency_key (idempotency_key, merchant_id)
+            )
+        </Sql>
+        <RollBack>
+            DROP TABLE IF EXISTS idempotency_keys
+        </RollBack>
+    </Query>
+</Changes>

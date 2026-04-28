@@ -43,8 +43,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
     static public String BALANCE_TYPE = "safaricom_balance";
 
-    String api_consumer_key = "kqxFcX8qkJHmQgEK";
-    String api_consumer_secret = "P4GoccSlHkFb6tauA84L2s27Np5JRCb9";
+    String api_consumer_key = "";
+    String api_consumer_secret = "";
 
     String callbackBaseUrl = "";
 
