@@ -36,10 +36,14 @@ application-local.properties
 
 ## ─── Lock / temporary files ─────────────────────────────────────────────────
 *.lock
+!clientside/yarn.lock
 *.log
 *.tmp
+.DS_Store
 *.DS_Store
 Thumbs.db
+# Microsoft Office temporary files
+~$*
 
 ## ─── IDE files ───────────────────────────────────────────────────────────────
 .idea/
@@ -51,6 +55,7 @@ Thumbs.db
 .factorypath
 nbproject/
 nb-configuration.xml
+nbactions.xml
 .vscode/
 *.suo
 *.user
@@ -59,9 +64,11 @@ nb-configuration.xml
 # The React production build should be generated in CI, not committed
 InitializrSpringbootProject/src/main/resources/static/
 
-## ─── Sensitive data files accidentally tracked in this project ───────────────
-CPay/LightsailDefaultKey-eu-central-1.pem
-CPay/getbalances.txt
-CPay/customers_emails.txt
-CPay/jars/
+## ─── Runtime token / credential cache files ─────────────────────────────────
+nulldefault_*.json
+
+## ─── Sensitive data files ────────────────────────────────────────────────────
+getbalance*.txt
+customers_emails.txt
+jars/
 clientside/tests/php/keys/
