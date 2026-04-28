@@ -15,21 +15,27 @@ public class JokeService {
     }
 
     public String fetchRandomJoke() {
+        return getRandomJoke();
+    }
+
+    public String fetchJokeByType(String type) {
+        return getJokeByType(type);
+    }
+
+    public String getRandomJoke() {
         try {
             String response = restTemplate.getForObject("https://official-joke-api.appspot.com/jokes/random", String.class);
             return parseJoke(response);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            // Handle the error
             return "Error fetching the joke: " + e.getMessage();
         }
     }
 
-    public String fetchJokeByType(String type) {
+    public String getJokeByType(String type) {
         try {
             String response = restTemplate.getForObject(String.format("https://official-joke-api.appspot.com/jokes/%s/random", type), String.class);
             return parseJoke(response);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            // Handle the error
             return "Error fetching the joke: " + e.getMessage();
         }
     }
