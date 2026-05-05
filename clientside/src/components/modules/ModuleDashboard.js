@@ -8,6 +8,7 @@ import common from "../Common";
 import Progress from "../Progress";
 import LinearChart from './LinearChart';
 import styles from '../styles';
+import AIInsightsPanel from '../AIInsightsPanel';
 
 class ModuleDashboardC extends React.Component {
     constructor(props) {
@@ -16,7 +17,8 @@ class ModuleDashboardC extends React.Component {
             chartData: null, 
             chartDataTxTypes:null,
             chartDataTxVolumes:null,
-            chartDataTxNetworkBalances: null
+            chartDataTxNetworkBalances: null,
+            recentTransactions: [],
         };
     }
 
@@ -25,6 +27,7 @@ class ModuleDashboardC extends React.Component {
         this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypes");
         this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumes");
         this.getData("chartDataTxNetworkBalances","getDashboardDetailsNetworkBalances");
+        this.getRecentTransactions();
         //console.log(JSON.stringify(this.props));
         setInterval(() => {
             this.getData("chartDataTxNetworkBalances","getDashboardDetailsNetworkBalances");
@@ -117,6 +120,32 @@ class ModuleDashboardC extends React.Component {
         });
     }
 
+    getRecentTransactions() {
+        fetch(common.base_url+"/transactions/getTransactions", {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            body: JSON.stringify({ pageSize: 200, searchingValue: { value: "", category: "" }, sort: 'asc' })
+        }).then(response => response.text())
+        .then(response_ => {
+            let res;
+            try {
+                res = JSON.parse(response_);
+                if (res.code === "000") {
+                    this.setState({ recentTransactions: res.data || [] });
+                }
+            } catch (ex) {
+                // non-critical – AI panel will simply show empty state
+            }
+        }).catch(() => {
+            // non-critical – AI panel will simply show empty state
+        });
+    }
+
     render () {
         return (
             <div>
@@ -165,6 +194,7 @@ class ModuleDashboardC extends React.Component {
                     </Panel>
                     <Messager ref={ref => this.messager = ref}></Messager>
                 </div>
+                <AIInsightsPanel transactions={this.state.recentTransactions} />
             </div>
         );
     }

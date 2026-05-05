@@ -55,14 +55,14 @@ export function median(values) {
 /**
  * Detect anomalies using Z-score method.
  *
- * @param {Array<{amount: number, [key: string]: any}>} transactions
+ * @param {Array<{original_amount: number, [key: string]: any}>} transactions
  * @param {number} threshold  Z-score threshold (default 2.5)
  * @returns {Array} Transactions flagged as anomalies, each augmented with a
  *                  `zScore` property.
  */
 export function detectAnomalies(transactions, threshold = 2.5) {
     if (!transactions || transactions.length < 3) return [];
-    const amounts = transactions.map(t => Number(t.amount) || 0);
+    const amounts = transactions.map(t => Number(t.original_amount) || 0);
     const mu = mean(amounts);
     const sd = stdDev(amounts);
     if (sd === 0) return [];
@@ -251,7 +251,7 @@ class AIInsightsPanel extends React.Component {
             return;
         }
 
-        const amounts = transactions.map(t => Number(t.amount) || 0);
+        const amounts = transactions.map(t => Number(t.original_amount) || 0);
         const mu = mean(amounts);
         const sd = stdDev(amounts);
         const med = median(amounts);
@@ -353,7 +353,7 @@ class AIInsightsPanel extends React.Component {
                                         </span>
                                         <span style={{ marginLeft: spacing.sm, flex: 1 }}>
                                             {tx.tx_type || 'Transaction'} &nbsp;·&nbsp;
-                                            <strong>{formatAmount(tx.amount, currency)}</strong>
+                                            <strong>{formatAmount(tx.original_amount, currency)}</strong>
                                         </span>
                                         <span style={{ color: colors.secondaryLabel, fontSize: typography.caption1.fontSize }}>
                                             {tx.payer_number || ''}

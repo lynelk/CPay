@@ -93,14 +93,14 @@ describe('detectAnomalies', () => {
     });
 
     test('returns empty array for fewer than 3 transactions', () => {
-        expect(detectAnomalies([{ amount: 100 }, { amount: 200 }])).toEqual([]);
+        expect(detectAnomalies([{ original_amount: 100 }, { original_amount: 200 }])).toEqual([]);
     });
 
     test('detects obvious outlier', () => {
         // 9 normal transactions + 1 clear outlier; Z-score of outlier ≈ 2.85 > 2.5
         const transactions = [
-            ...Array.from({ length: 9 }, (_, i) => ({ id: i + 1, amount: 100 })),
-            { id: 10, amount: 10000 },
+            ...Array.from({ length: 9 }, (_, i) => ({ id: i + 1, original_amount: 100 })),
+            { id: 10, original_amount: 10000 },
         ];
         const anomalies = detectAnomalies(transactions);
         expect(anomalies.length).toBeGreaterThan(0);
@@ -108,16 +108,16 @@ describe('detectAnomalies', () => {
     });
 
     test('returns no anomalies for uniform amounts', () => {
-        const transactions = Array.from({ length: 10 }, (_, i) => ({ id: i, amount: 500 }));
+        const transactions = Array.from({ length: 10 }, (_, i) => ({ id: i, original_amount: 500 }));
         expect(detectAnomalies(transactions)).toEqual([]);
     });
 
     test('augments result with zScore property', () => {
         const transactions = [
-            { id: 1, amount: 100 },
-            { id: 2, amount: 100 },
-            { id: 3, amount: 100 },
-            { id: 4, amount: 5000 },
+            { id: 1, original_amount: 100 },
+            { id: 2, original_amount: 100 },
+            { id: 3, original_amount: 100 },
+            { id: 4, original_amount: 5000 },
         ];
         const anomalies = detectAnomalies(transactions, 1.0);
         expect(anomalies.length).toBeGreaterThan(0);
@@ -126,10 +126,10 @@ describe('detectAnomalies', () => {
 
     test('respects custom threshold', () => {
         const transactions = [
-            { id: 1, amount: 100 },
-            { id: 2, amount: 200 },
-            { id: 3, amount: 150 },
-            { id: 4, amount: 1000 },
+            { id: 1, original_amount: 100 },
+            { id: 2, original_amount: 200 },
+            { id: 3, original_amount: 150 },
+            { id: 4, original_amount: 1000 },
         ];
         // High threshold – nothing detected
         const high = detectAnomalies(transactions, 10);
