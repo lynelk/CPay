@@ -10652,6 +10652,11 @@ typedarray@^0.0.6:
   resolved "https://registry.npmjs.org/typedarray/-/typedarray-0.0.6.tgz"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
+typescript@*, "typescript@>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta":
+  version "6.0.3"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-6.0.3.tgz"
+  integrity sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==
+
 ua-parser-js@^0.7.18:
   version "0.7.20"
   resolved "https://registry.npmjs.org/ua-parser-js/-/ua-parser-js-0.7.20.tgz"
@@ -11321,6 +11326,7 @@ ws@^6.1.2:
 "xlsx@git+https://github.com/securedeveloper/js-xlsx.git":
   version "0.8.20"
   resolved "git+ssh://git@github.com/securedeveloper/js-xlsx.git#c2fc94068b0139cb74eee193a5d896dafa067ec2"
+  integrity sha512-LK0gMzUH+Yoh9ubvUco6OQIV2Zh9w+0pHrrq4K1kC8nkRjCGjue/D1qkBbFULXS01W2y/HR9AibptAYT1VffzQ==
   dependencies:
     adler-32 ""
     cfb ">=0.10.0"
