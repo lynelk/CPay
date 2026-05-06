@@ -5,8 +5,6 @@
  */
 package net.citotech.cito;
 
-import java.security.NoSuchAlgorithmException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -68,20 +66,17 @@ public class AuthenticationController {
     @Autowired
     LoginRateLimiter rateLimiter;
 
-    private HttpSession session;
-    
     @PostMapping(path="/authenticate")
-    public String authenticatedUser (@RequestBody Map<String, String> requestBody, 
+    public String authenticatedUser (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
 
             if (session.getAttribute("user") != null) {
                 sessionUser = (User) session.getAttribute("user");
-                
+
                 JSONObject resJson = new JSONObject();
                 resJson.put("code", "000");
                 resJson.put("message", "Already logged in as "+sessionUser.getName());
@@ -116,15 +111,15 @@ public class AuthenticationController {
 
             // Session fixation protection: invalidate old session, create a fresh one
             session.invalidate();
-            session = request.getSession(true);
+            HttpSession newSession = request.getSession(true);
 
             //Now set session values
-            session.setAttribute("email", u.getEmail());
-            session.setAttribute("phone", u.getPhone());
-            session.setAttribute("user", u);
+            newSession.setAttribute("email", u.getEmail());
+            newSession.setAttribute("phone", u.getPhone());
+            newSession.setAttribute("user", u);
 
             rateLimiter.recordSuccess(clientIp);
-            
+
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "SUCCESS");
@@ -133,7 +128,7 @@ public class AuthenticationController {
             u_.put("email", u.getEmail());
             u_.put("phone", u.getPhone());
             u_.put("status", u.getStatus());
-            
+
             JSONArray privileges_array = new JSONArray();
             for (UserPrivilege p : u.getPrivileges()) {
                 JSONObject u_p = new JSONObject();
@@ -142,36 +137,35 @@ public class AuthenticationController {
                 privileges_array.put(u_p);
             }
             u_.put("privileges", privileges_array);
-            
+
             resJson.put("user", u_);
-            
+
             //Send mail on login
             Thread thread = new Thread(){
                 public void run(){
                     SendMail mail = new SendMail();
-                    mail.sendSimpleMessage(u.getEmail(), 
-                    "You have logged into Cito Account", 
+                    mail.sendSimpleMessage(u.getEmail(),
+                    "You have logged into Cito Account",
                     "This is to let you know that you have logged into your account Cito Account.");
                 }
             };
             thread.start();
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/authenticateMerchantUser")
-    public String authenticateMerchantUser (@RequestBody Map<String, String> requestBody, 
+    public String authenticateMerchantUser (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -214,12 +208,12 @@ public class AuthenticationController {
 
             // Session fixation protection: invalidate old session, create a fresh one
             session.invalidate();
-            session = request.getSession(true);
+            HttpSession newSession = request.getSession(true);
 
             //Now set session values
-            session.setAttribute("email", u.getEmail());
-            session.setAttribute("phone", u.getPhone());
-            session.setAttribute("merchantUser", u);
+            newSession.setAttribute("email", u.getEmail());
+            newSession.setAttribute("phone", u.getPhone());
+            newSession.setAttribute("merchantUser", u);
 
             rateLimiter.recordSuccess(clientIp);
             
@@ -269,104 +263,6 @@ public class AuthenticationController {
         }
     }
     
-    
-    private MerchantUser getMerchantUserByEmailAndPassword(String merchant_number, 
-            String email, String password) throws NoSuchAlgorithmException {
-        MerchantUser u  = new MerchantUser();
-        
-        u.setEmail(email);
-        u.setPassword(password);
-        u.setMerchant_number(merchant_number);
-
-        String sqlSelect = "SELECT m.status as merchant_status, m.name as merchant_name,"
-                + " m.account_number, m.account_type, a.*, "
-            + " IF((DATE_ADD(email_verification_sent_on, INTERVAL 5 MINUTE) < NOW())"
-            + ", 'TRUE', 'FALSE' ) AS is_verification_timedout "
-            + " FROM "+Common.DB_TABLE_MERCHANTS+" as m "
-            + " LEFT JOIN "+Common.DB_TABLE_MERCHANT_USERS+" as a ON m.id = a.merchant_id "
-            + " WHERE ";
-            sqlSelect += " a.email=:email && a.password=:password "
-                    + " && m.account_number=:account_number ";
-
-        MapSqlParameterSource parameters = new MapSqlParameterSource();
-        parameters.addValue("email", u.getEmail());
-        parameters.addValue("password", Common.getSha256EncodedString(u.getPassword()));
-        parameters.addValue("account_number", u.getMerchant_number());
-
-        RowMapper rm = new RowMapper<MerchantUser>() {
-            public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
-                MerchantUser user = new MerchantUser();
-                user.setMerchant_account_type(rs.getString("account_type"));
-                user.setMerchant_id(rs.getLong("merchant_id"));
-                user.setMerchant_name(rs.getString("merchant_name"));
-                user.setMerchant_status(rs.getString("merchant_status"));
-                user.setMerchant_number(rs.getString("account_number"));
-                user.setName(rs.getString("name"));
-                user.setEmail(rs.getString("email"));
-                user.setPhone(rs.getString("phone"));
-                user.setId(rs.getLong("id"));
-                user.setStatus(rs.getString("status"));
-                user.setCreated_on(rs.getString("created_on"));
-                user.setUpdated_on(rs.getString("updated_on"));
-                user.setIs_verification_timedout(rs.getString("is_verification_timedout"));
-                user.setEmail_verification_code(rs.getString("email_verification_code"));
-                user.setPrivileges(getMerchantUserPrivileges(user));
-                return user;
-            }
-        };
-
-        //ResultSet rs; 
-        List<MerchantUser> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
-
-        if (listUsers.size() < 1) {
-            return null;
-        }
-
-        return listUsers.get(0);
-    }
-    
-    private User getUserByEmailAndPassword(String email, String password) throws NoSuchAlgorithmException {
-        User u  = new User();
-        
-        u.setEmail(email);
-        u.setPassword(password);
-
-        String sqlSelect = "SELECT *, "
-            + " IF((DATE_ADD(email_verification_sent_on, INTERVAL 5 MINUTE) < NOW())"
-            + ", 'TRUE', 'FALSE' ) AS is_verification_timedout "
-            + " FROM admins WHERE ";
-            sqlSelect += " email=:email && password=:password";
-
-        MapSqlParameterSource parameters = new MapSqlParameterSource();
-        parameters.addValue("email", u.getEmail());
-        parameters.addValue("password", Common.getSha256EncodedString(u.getPassword()));
-
-        RowMapper rm = new RowMapper<User>() {
-            public User mapRow(ResultSet rs, int rowNum) throws SQLException {
-                User user = new User();
-                user.setName(rs.getString("name"));
-                user.setEmail(rs.getString("email"));
-                user.setPhone(rs.getString("phone"));
-                user.setId(rs.getLong("id"));
-                user.setStatus(rs.getString("status"));
-                user.setCreated_on(rs.getString("created_on"));
-                user.setUpdated_on(rs.getString("updated_on"));
-                user.setIs_verification_timedout(rs.getString("is_verification_timedout"));
-                user.setEmail_verification_code(rs.getString("email_verification_code"));
-                user.setPrivileges(getUserPrivileges(user));
-                return user;
-            }
-        };
-
-        //ResultSet rs; 
-        List<User> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
-
-        if (listUsers.size() < 1) {
-            return null;
-        }
-
-        return listUsers.get(0);
-    }
     
     /*
     * Gets a user by email address
@@ -493,13 +389,10 @@ public class AuthenticationController {
     }
 
     
-    public String isMerchantUserLoggedIn (@RequestBody String requestBody, 
+    @PostMapping(path="/isMerchantLoggedIn")
+    public String isMerchantUserLoggedIn (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        //response.setHeader("Access-Control-Allow-Origin", "*");
-        
-        //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -552,13 +445,9 @@ public class AuthenticationController {
     */
     @PostMapping(path="/isLoggedIn")
     
-    public String isLoggedIn (@RequestBody String requestBody, 
+    public String isLoggedIn (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        //response.setHeader("Access-Control-Allow-Origin", "*");
-        
-        //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -606,15 +495,17 @@ public class AuthenticationController {
     */
     @PostMapping(path="/requestMerchantUserResetPassword")
     
-    public String requestMerchantUserResetPassword(@RequestBody Map<String, String> requestBody, 
+    public String requestMerchantUserResetPassword(@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        
         try {
-            
+            String clientIp = Common.getIpAddress(request);
+            if (!rateLimiter.tryConsume(clientIp)) {
+                return GeneralException.getError("138", "Too many requests. Please try again later.");
+            }
+
             String userEmail = requestBody.get("email");
             String account_number = requestBody.get("merchant_number");
-            
+
             MerchantUser u  = getMerchantUserByEmail(account_number, userEmail);
             
             if (u == null) {
@@ -675,13 +566,14 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/requestResetPassword")
-    
-    public String requestResetPassword (@RequestBody Map<String, String> requestBody, 
+    public String requestResetPassword (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        
         try {
-            
+            String clientIp = Common.getIpAddress(request);
+            if (!rateLimiter.tryConsume(clientIp)) {
+                return GeneralException.getError("138", "Too many requests. Please try again later.");
+            }
+
             String userEmail = requestBody.get("email");
             User u  = getUserByEmail(userEmail);
             
@@ -744,103 +636,94 @@ public class AuthenticationController {
     */
     @PostMapping(path="/requestResetPasswordMerchant")
     
-    public String requestResetPasswordMerchant (@RequestBody Map<String, String> requestBody, 
+    public String requestResetPasswordMerchant (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        
         try {
-            
             String userEmail = requestBody.get("email");
-            String merchantNumber =  requestBody.get("merchant_number");
-            User u  = getUserByEmail(userEmail);
-            
+            String merchantNumber = requestBody.get("merchant_number");
+
+            MerchantUser u = getMerchantUserByEmail(merchantNumber, userEmail);
+
             if (u == null) {
                 return GeneralException
                     .getError("104", String.format(GeneralException.ERRORS_104, userEmail));
             }
-            
-            //Now set the time when the the email verification has to be sent.
-            String sql = "UPDATE "+Common.DB_TABLE_ADMIN+" "
-                +" SET `email_verification_code`=:email_verification_code,"
-                +" `email_verification_sent_on`=now() "
-                + "WHERE id = :id";
-            
+
+            String sql = "UPDATE " + Common.DB_TABLE_MERCHANT_USERS
+                + " SET `email_verification_code`=:email_verification_code,"
+                + " `email_verification_sent_on`=now()"
+                + " WHERE id = :id";
+
             Map<String, Object> parameters = new HashMap<String, Object>();
             String verification_code = Common.randomNumericString(6);
             parameters.put("email_verification_code", verification_code);
             parameters.put("id", u.getId());
-            
+
             long retVal = jdbcTemplate.update(sql, parameters);
-            
+
             if (retVal > 0) {
-                //Now send verification email
                 Setting emailContentManage = Common.getSettings("email_tmp_pw_reset", jdbcTemplate);
                 String emailContent_ = emailContentManage.getSetting_value()
                         .replace("{name}", u.getName());
                 final String emailContent = emailContent_.replace("{verification_code}", verification_code);
-                
+
                 final String subject = "Password Reset Request";
                 final String to = u.getEmail();
-                
+
                 Thread thread = new Thread(){
                     public void run(){
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
-                        subject, 
-                        emailContent);
+                        mail.sendSimpleMessage(to, subject, emailContent);
                     }
                 };
                 thread.start();
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
             }
-        }  catch (Exception ex) {
-            
+        } catch (Exception ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
         }
-    }    
+    }
     
     
     /*
     * Checks if user is still logged in
     */
     @PostMapping(path="/resetPassword")
-    
-    public String resetPassword (@RequestBody Map<String, String> requestBody, 
+    public String resetPassword (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        
         try {
-            
+            String clientIp = Common.getIpAddress(request);
+            if (!rateLimiter.tryConsume(clientIp)) {
+                return GeneralException.getError("138", "Too many requests. Please try again later.");
+            }
+
             String userEmail = requestBody.get("email");
             String verificationCode = requestBody.get("verification_code");
             String newPassword = requestBody.get("new_password");
-            
+
             User u  = getUserByEmail(userEmail);
             if (u == null) {
                 return GeneralException
                     .getError("104", String.format(GeneralException.ERRORS_104, userEmail));
             }
-            //Check if it didn't timeout
             if (u.getIs_verification_timedout().equals("TRUE")) {
                 return GeneralException
-                    .getError("104", String.format(GeneralException.ERRORS_104, userEmail));
+                    .getError("105", GeneralException.ERRORS_105);
             }
-            
-            //Check if the verification code matches
+
             if (!u.getEmail_verification_code().equals(verificationCode)) {
                 return GeneralException
                     .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
             }
-            
-            //Now set the time when the email verification has to be sent.
+
             String sql = "UPDATE "+Common.DB_TABLE_ADMIN+" "
                 +" SET `password`=:password "
                 +" WHERE id = :id";
@@ -893,12 +776,13 @@ public class AuthenticationController {
     * Checks if user is still logged in
     */
     @PostMapping(path="/resetPasswordMerchant")
-    
-    public String resetPasswordMerchant (@RequestBody Map<String, String> requestBody, 
+    public String resetPasswordMerchant (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        
         try {
+            String clientIp = Common.getIpAddress(request);
+            if (!rateLimiter.tryConsume(clientIp)) {
+                return GeneralException.getError("138", "Too many requests. Please try again later.");
+            }
             
             String userEmail = requestBody.get("email");
             String verificationCode = requestBody.get("verification_code");
@@ -911,13 +795,11 @@ public class AuthenticationController {
                     .getError("104", String.format(GeneralException.ERRORS_104, userEmail));
             }
             
-            //Check if it didn't timeout
             if (u.getIs_verification_timedout().equals("TRUE")) {
                 return GeneralException
-                    .getError("104", String.format(GeneralException.ERRORS_104, userEmail));
+                    .getError("105", GeneralException.ERRORS_105);
             }
-            
-            //Check if the verification code matches
+
             if (!u.getEmail_verification_code().equals(verificationCode)) {
                 return GeneralException
                     .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));

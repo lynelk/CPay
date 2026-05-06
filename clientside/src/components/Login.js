@@ -52,16 +52,14 @@ class LoginWithOutRouter extends React.Component {
       history.push("/dashboard");
     }
     ReactDOM.findDOMNode(this).addEventListener("keyup", this.eventHandler);
-    ReactDOM.findDOMNode(this).addEventListener("keyup", this.eventHandler);
   }
 
   componentWillUnmount() {
     ReactDOM.findDOMNode(this).removeEventListener("keyup", this.eventHandler);
-    ReactDOM.findDOMNode(this).removeEventListener("keyup", this.eventHandler);
   }
 
   eventHandler = (event) => {
-    if (event.keyCode == 13) {
+    if (event.keyCode === 13) {
       this.handleSubmit();
     }
   }
@@ -100,7 +98,7 @@ class LoginWithOutRouter extends React.Component {
             try {
               res = JSON.parse(response_);
               this.setState({loader: false}, ()=> {
-                if (res.code == "000") {
+                if (res.code === "000") {
                   try {
                     localStorage.setItem("user", JSON.stringify(res.user));
                     history.push("/dashboard");
@@ -159,8 +157,8 @@ class LoginWithOutRouter extends React.Component {
       });
       //console.log(await response.json());
         let res = await response.json();
-        if (res.code == "000") {
-            if (res.message == "true") {
+        if (res.code === "000") {
+            if (res.message === "true") {
                 return true;
             } else {
                 return false;
@@ -219,10 +217,9 @@ class LoginWithOutRouter extends React.Component {
               </FormField>
 
               <FormField name="password" label="Password:">
-                <PasswordBox 
-                  ref={ref => this.passwordRef = ref} 
-                  value={this.state.user.password}  
-                  onKeyUp={(e)=>{alert("This is called")}}
+                <PasswordBox
+                  ref={ref => this.passwordRef = ref}
+                  value={this.state.user.password}
                   placeholder="Password" iconCls="icon-lock"></PasswordBox>
               </FormField>
 

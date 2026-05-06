@@ -22,8 +22,8 @@ public class GeneralException {
     public static String ERRORS_102 = "Internal application error.";
     public static String ERRORS_103 = "Authentication failed. Check your username and password.";
     public static String ERRORS_104 = "Account with email address (%s) does not exists.";
-    public static String ERRORS_105 = "Email verification %s code does not match. Pleasae try again.";
-    public static String ERRORS_106 = "Email verification (with code %s) request timed out. Try again please.";
+    public static String ERRORS_105 = "Email verification request timed out. Please try again.";
+    public static String ERRORS_106 = "Email verification code (%s) does not match. Please try again.";
     public static String ERRORS_107 = "You are not logged in. Login first.";
     public static String ERRORS_108 = "%s (%s) already exists.";
     public static String ERRORS_109 = "%s (%s) does not exist.";

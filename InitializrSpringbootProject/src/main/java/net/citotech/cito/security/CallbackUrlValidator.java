@@ -74,7 +74,7 @@ public class CallbackUrlValidator {
         } catch (UnknownHostException e) {
             Logger.getLogger(CallbackUrlValidator.class.getName())
                 .log(Level.WARNING, "Could not resolve callback_url host: " + host, e);
-            // Allow through if DNS resolution fails - host may not be resolvable from this server
+            return "callback_url host could not be resolved. Please use a publicly resolvable hostname.";
         }
 
         return null; // valid

@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.security.SecureRandom;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -72,36 +73,35 @@ import org.springframework.web.bind.annotation.RequestBody;
  * @author josephtabajjwa
  */
 public class Common {
-    public static String DB_TABLE_ADMIN = "admins";
-    public static String DB_TABLE_ADMIN_PRIVILEGES = "admin_privileges";
-    public static String DB_TABLE_AUDIT_TRAIL = "audit_trail";
-    public static String DB_TABLE_AUDIT_TRAIL_MERCHANT = "merchants_audit_trail";
-    public static String DB_TABLE_SETTINGS = "settings";
-    public static String DB_TABLE_MERCHANTS = "merchants";
-    public static String DB_TABLE_MERCHANT_USERS = "merchant_admins";
-    public static String DB_TABLE_MERCHANT_TRANSACTION_LOG = "merchant_transactions_log";
-    public static String DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG = "merchant_batch_transactions_log";
-    public static String DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES = "beneficiaries";
-    public static String DB_TABLE_MERCHANT_STATEMENT = "merchant_statement";
-    public static String DB_TABLE_CHARGING_DETAILS = "charging_details";
-    public static String DB_TABLE_MERCHANT_ADMIN_PRIVILEGES = "merchant_admin_privileges";
-    public static String DB_TABLE_DB_CHANGES = "db_changes";
-    public static String DB_TABLE_MERCHANT_SMS = "merchant_sms";
-    public static String DB_MERCHANTS_SETTINGS = "merchant_settings";
-    
-    
-    //Settings
-    public static String CLASS_PATH_DEFAULT_SETTINGS = "settings/default_settings.json";
-    public static String CLASS_PATH_DEFAULT_MERCHANT_SETTINGS = "settings/default_merchant_settings.json";
-    public static String CLASS_PATH_GENERAL_SETTINGS = "settings/general_settings.json";
-    public static String CLASS_PATH_GENERAL_DBCHANGES_DIR = "dbchanges";
-    public static String CLASS_PATH_MTN_TOKEN_FILE = "default_mtn_token.json";
-    public static String CLASS_PATH_SAFARICOM_TOKEN_FILE = "default_safaricom_token.json";
-    public static String CLASS_PATH_AIRTELOAPI_TOKEN_FILE = "default_airteloapi_token.json";
-    public static String CLASS_PATH_CHECK_TX_LOCK = "check_tx.lock";
-    public static String CLASS_PATH_SEND_SMS_SERVICE_TX_LOCK = "send_sms_service_tx.lock";
-    public static String CLASS_PATH_UPLOAD_DIRECTORY = "uploadDir";
-    public static String CLASS_PATH_PAYMENTS_CRON_TX_LOCK = "payments_cron_tx.lock";
+    public static final String DB_TABLE_ADMIN = "admins";
+    public static final String DB_TABLE_ADMIN_PRIVILEGES = "admin_privileges";
+    public static final String DB_TABLE_AUDIT_TRAIL = "audit_trail";
+    public static final String DB_TABLE_AUDIT_TRAIL_MERCHANT = "merchants_audit_trail";
+    public static final String DB_TABLE_SETTINGS = "settings";
+    public static final String DB_TABLE_MERCHANTS = "merchants";
+    public static final String DB_TABLE_MERCHANT_USERS = "merchant_admins";
+    public static final String DB_TABLE_MERCHANT_TRANSACTION_LOG = "merchant_transactions_log";
+    public static final String DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG = "merchant_batch_transactions_log";
+    public static final String DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES = "beneficiaries";
+    public static final String DB_TABLE_MERCHANT_STATEMENT = "merchant_statement";
+    public static final String DB_TABLE_CHARGING_DETAILS = "charging_details";
+    public static final String DB_TABLE_MERCHANT_ADMIN_PRIVILEGES = "merchant_admin_privileges";
+    public static final String DB_TABLE_DB_CHANGES = "db_changes";
+    public static final String DB_TABLE_MERCHANT_SMS = "merchant_sms";
+    public static final String DB_MERCHANTS_SETTINGS = "merchant_settings";
+
+    // Settings classpath keys
+    public static final String CLASS_PATH_DEFAULT_SETTINGS = "settings/default_settings.json";
+    public static final String CLASS_PATH_DEFAULT_MERCHANT_SETTINGS = "settings/default_merchant_settings.json";
+    public static final String CLASS_PATH_GENERAL_SETTINGS = "settings/general_settings.json";
+    public static final String CLASS_PATH_GENERAL_DBCHANGES_DIR = "dbchanges";
+    public static final String CLASS_PATH_MTN_TOKEN_FILE = "default_mtn_token.json";
+    public static final String CLASS_PATH_SAFARICOM_TOKEN_FILE = "default_safaricom_token.json";
+    public static final String CLASS_PATH_AIRTELOAPI_TOKEN_FILE = "default_airteloapi_token.json";
+    public static final String CLASS_PATH_CHECK_TX_LOCK = "check_tx.lock";
+    public static final String CLASS_PATH_SEND_SMS_SERVICE_TX_LOCK = "send_sms_service_tx.lock";
+    public static final String CLASS_PATH_UPLOAD_DIRECTORY = "uploadDir";
+    public static final String CLASS_PATH_PAYMENTS_CRON_TX_LOCK = "payments_cron_tx.lock";
     
     /** Set to {@code true} only in local development (via {@code custom.ssl.skip-verify=true}). */
     private static volatile boolean skipSslVerify = false;
@@ -130,18 +130,19 @@ public class Common {
 
     private static final String NUMERIC_STRING = "0123456789";
     private static final String ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    
-    public static int HTTP_REQUEST_TIMEOUT_MILLISECONDS = 30000;
-    public static int HTTP_REQUEST_READTIMEOUT_MILLISECONDS = 60000;
-    
-    public static String API_MOBILE_MONEY_PAYIN = "MOBILE_MONEY_PAYIN";
-    public static String API_MOBILE_MONEY_PAYOUT = "MOBILE_MONEY_PAYOUT";
-    public static String API_MULTIPLE_PAYOUT = "MULTIPLE_PAYOUT";
-    public static String API_MULTIPLE_CHECKSTATUS = "MULTIPLE_CHECKSTATUS";
-    public static String API_TRANSACTION_CHECKSTATUS = "TRANSACTION_CHECKSTATUS";
-    public static String API_BALANCE_CHECK = "BALANCE_CHECK";
-    public static String API_ACCOUNT_VALIDATION = "ACCOUNT_VALIDATION";
-    public static String API_SEND_SMS = "API_SEND_SMS";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    public static final int HTTP_REQUEST_TIMEOUT_MILLISECONDS = 30000;
+    public static final int HTTP_REQUEST_READTIMEOUT_MILLISECONDS = 60000;
+
+    public static final String API_MOBILE_MONEY_PAYIN = "MOBILE_MONEY_PAYIN";
+    public static final String API_MOBILE_MONEY_PAYOUT = "MOBILE_MONEY_PAYOUT";
+    public static final String API_MULTIPLE_PAYOUT = "MULTIPLE_PAYOUT";
+    public static final String API_MULTIPLE_CHECKSTATUS = "MULTIPLE_CHECKSTATUS";
+    public static final String API_TRANSACTION_CHECKSTATUS = "TRANSACTION_CHECKSTATUS";
+    public static final String API_BALANCE_CHECK = "BALANCE_CHECK";
+    public static final String API_ACCOUNT_VALIDATION = "ACCOUNT_VALIDATION";
+    public static final String API_SEND_SMS = "API_SEND_SMS";
     
     /*
     * Returns random numeric string
@@ -150,8 +151,7 @@ public class Common {
     public static String randomNumericString(int count) {
         StringBuilder builder = new StringBuilder();
         while (count-- != 0) {
-            int character = (int)(Math.random()*NUMERIC_STRING.length());
-            builder.append(NUMERIC_STRING.charAt(character));
+            builder.append(NUMERIC_STRING.charAt(SECURE_RANDOM.nextInt(NUMERIC_STRING.length())));
         }
         return builder.toString();
     }
@@ -213,8 +213,7 @@ public class Common {
     public static String randomAlphaNumericString(int count) {
         StringBuilder builder = new StringBuilder();
         while (count-- != 0) {
-            int character = (int)(Math.random()*ALPHA_NUMERIC_STRING.length());
-            builder.append(ALPHA_NUMERIC_STRING.charAt(character));
+            builder.append(ALPHA_NUMERIC_STRING.charAt(SECURE_RANDOM.nextInt(ALPHA_NUMERIC_STRING.length())));
         }
         return builder.toString();
     }
