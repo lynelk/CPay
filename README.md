@@ -1,3 +1,14 @@
+## CPay — Core Payments Service Engine
+
+CPay is the core payments orchestration service for the CitoTech stack.
+[CitoConnect](https://github.com/lynelk/citoconnect) integrates CPay as
+its **Core Payments Service Engine**, which means every payment
+integration and channel inside CitoConnect — MTN MoMo, Airtel Money,
+Safaricom M-Pesa, Yo! Payments, Stripe, Flutterwave, Pesapal — is
+dispatched through CPay's `/api/v1` REST surface or through CPay-owned
+adapter modules. See `docs/citoconnect-integration.md` for the
+integration contract and the canonical request/response shapes.
+
 ## Available Scripts
 Prerequisite
 ============================
