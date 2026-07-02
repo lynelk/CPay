@@ -56,7 +56,6 @@ public class SettingsController {
     @Autowired
     private PlatformTransactionManager transactionManager;
     
-    private HttpSession session;
     
     @PostMapping(path="/getSettings")
 
@@ -65,7 +64,7 @@ public class SettingsController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -127,7 +126,7 @@ public class SettingsController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -223,7 +222,7 @@ public class SettingsController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -263,7 +262,7 @@ public class SettingsController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;

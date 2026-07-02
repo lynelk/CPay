@@ -104,7 +104,6 @@ public class TransactionsLogController {
     private PlatformTransactionManager transactionManager;
     
     
-    private HttpSession session;
     
     
     @PostMapping(path="/getTransactions")
@@ -114,7 +113,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -240,7 +239,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -464,7 +463,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -627,7 +626,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -791,7 +790,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -920,7 +919,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -1050,7 +1049,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -1180,7 +1179,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -1266,7 +1265,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -1395,7 +1394,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -1539,7 +1538,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -1683,7 +1682,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -1827,7 +1826,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -2556,6 +2555,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
@@ -2720,6 +2720,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -3045,7 +3046,7 @@ public class TransactionsLogController {
     public Boolean isLoggedIn (HttpServletRequest request ) {
        
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
        
         //Check if still logged in
         User sessionUser;
@@ -3063,7 +3064,7 @@ public class TransactionsLogController {
     public Boolean isMerchantUserLoggedIn (HttpServletRequest request ) {
        
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
        
         //Check if still logged in
         MerchantUser sessionUser;
@@ -3084,7 +3085,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -3240,7 +3241,7 @@ public class TransactionsLogController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -3562,6 +3563,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -3688,6 +3690,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -3901,6 +3904,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -4098,6 +4102,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -4184,6 +4189,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -4394,6 +4400,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -4507,6 +4514,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -4962,6 +4970,7 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
@@ -5362,7 +5371,7 @@ public class TransactionsLogController {
     public String uploadBeneficiariesFile(@RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
         // Require an authenticated session
-        session = request.getSession();
+        HttpSession session = request.getSession();
         if (session.getAttribute("merchantUser") == null && session.getAttribute("user") == null) {
             return GeneralException.getError("107", GeneralException.ERRORS_107);
         }
@@ -5466,7 +5475,7 @@ public class TransactionsLogController {
     public String uploadSmsRecipientsFile(@RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
         // Require an authenticated session
-        session = request.getSession();
+        HttpSession session = request.getSession();
         if (session.getAttribute("merchantUser") == null && session.getAttribute("user") == null) {
             return GeneralException.getError("107", GeneralException.ERRORS_107);
         }

@@ -63,7 +63,7 @@ class ModuleSettingsC extends React.Component {
             let res;
             try {
                 res = JSON.parse(response_);
-                if (res.code == "000") {
+                if (res.code === "000") {
                     try {
                         console.log(res.data);
                         //return;
@@ -79,7 +79,7 @@ class ModuleSettingsC extends React.Component {
                     }
                 } else {
                     //If session timed out
-                    if (res.code == "107") {
+                    if (res.code === "107") {
                         this.props.sessionExpired();
                         return;
                     }
@@ -128,7 +128,7 @@ class ModuleSettingsC extends React.Component {
             let res;
             try {
                 res = JSON.parse(response_);
-                if (res.code == "000") {
+                if (res.code === "000") {
                     try {
                         this.messager.alert({
                             title: "Success!",
@@ -149,7 +149,7 @@ class ModuleSettingsC extends React.Component {
                     }
                 } else {
                     //If session timed out
-                    if (res.code == "107") {
+                    if (res.code === "107") {
                         this.props.sessionExpired();
                         return;
                     }

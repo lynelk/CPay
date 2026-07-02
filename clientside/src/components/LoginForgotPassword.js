@@ -50,7 +50,7 @@ class ForgotPassword extends React.Component{
                     try {
                         res = JSON.parse(response_);
                         this.setState({loader: false}, ()=> {
-                            if (res.code == "000") {
+                            if (res.code === "000") {
                                 try {
                                     //history.push("/dashboard");
                                     this.messager.alert({
@@ -258,7 +258,7 @@ class ResetPassword extends React.Component{
                     try {
                         res = JSON.parse(response_);
                         this.setState({loader: false}, ()=> {
-                            if (res.code == "000") {
+                            if (res.code === "000") {
                                 try {
                                     this.messager.alert({
                                         title: "Success!",

@@ -141,7 +141,7 @@ class MerchantModuleMerchantAccouunt extends React.Component{
             let res;
             try {
                 res = JSON.parse(response_);
-                if (res.code == "000") {
+                if (res.code === "000") {
                     try {
                         this.setState({
                             data: res.data,
@@ -157,10 +157,10 @@ class MerchantModuleMerchantAccouunt extends React.Component{
                     }
                 } else {
                     //If session timed out
-                    if (res.code == "107") {
+                    if (res.code === "107") {
                         this.props.sessionExpired();
                         return;
-                    } else if (res.code == "110") {
+                    } else if (res.code === "110") {
                         this.props.accessNotAllowed(res.message);
                         return;
                     }
@@ -213,7 +213,7 @@ class MerchantModuleMerchantAccouunt extends React.Component{
             let res;
             try {
                 res = JSON.parse(response_);
-                if (res.code == "000") {
+                if (res.code === "000") {
                     try {
                         this.resetRecordTxForm(()=> {
                             this.dlgRecordTx.close();
@@ -237,10 +237,10 @@ class MerchantModuleMerchantAccouunt extends React.Component{
                     }
                 } else {
                     //If session timed out
-                    if (res.code == "107") {
+                    if (res.code === "107") {
                         this.props.sessionExpired();
                         return;
-                    } else if (res.code == "110") {
+                    } else if (res.code === "110") {
                         this.props.accessNotAllowed(res.message);
                         return;
                     }

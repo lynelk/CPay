@@ -55,7 +55,6 @@ public class AdminsController {
     private PlatformTransactionManager transactionManager;
     
     
-    private HttpSession session;
     
     @PostMapping(path="/getAdmins")
 
@@ -64,7 +63,7 @@ public class AdminsController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -198,7 +197,7 @@ public class AdminsController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
@@ -500,7 +499,7 @@ public class AdminsController {
     public Boolean isLoggedIn (HttpServletRequest request ) {
        
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
        
         //Check if still logged in
         User sessionUser;
@@ -518,7 +517,7 @@ public class AdminsController {
     public Boolean isMerchantUserLoggedIn (HttpServletRequest request ) {
        
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
        
         //Check if still logged in
         MerchantUser sessionUser;
@@ -546,6 +545,7 @@ public class AdminsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
@@ -674,6 +674,7 @@ public class AdminsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -817,6 +818,7 @@ public class AdminsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
@@ -957,6 +959,7 @@ public class AdminsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             
@@ -1097,6 +1100,7 @@ public class AdminsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
@@ -1197,6 +1201,7 @@ public class AdminsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             

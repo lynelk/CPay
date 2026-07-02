@@ -58,25 +58,25 @@ public class DoPayGateway {
             return SafariComPaymentGateway.gateway_id;
         }
         
-        String use_open_api = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate)
-                    .getSetting_value();
-        use_open_api.trim();
-        
+        Setting airtelApiSetting = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate);
+        String use_open_api = (airtelApiSetting != null) ? airtelApiSetting.getSetting_value().trim() : "";
+
         //Do another gateway.
         if (use_open_api.equals("yes")) {
             if (AirtelMoneyOpenApiPaymentGateway.isValidMisdn(msisdn)) {
                 return AirtelMoneyOpenApiPaymentGateway.gateway_id;
             }
-        } else {       
+        } else {
             if (AirtelMoneyPaymentGateway.isValidMisdn(msisdn)) {
                 return AirtelMoneyPaymentGateway.gateway_id;
             }
         }
-        
+
         //Check other supported gateways like Airtel
         return null;
     }
-    
+
+
     
     
     static GatewayChargeDetails getGatewayChargeDetailsById(

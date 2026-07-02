@@ -11,12 +11,10 @@ integration contract and the canonical request/response shapes.
 
 ## Available Scripts
 Prerequisite
-============================
 1. Java JDK Version >= 8
 3. MySQL
 
 Installation
-============================
 1. cd to clientside
 2. Create and import the data at clientside/db/structure.sql
 3. Import currently applied db changes: clientside/db/db_changes.sql
@@ -25,91 +23,100 @@ Installation
 6. cd to the setup directory
 7. run ./install.sh
 
-Starting the servers
-=============================
-1. Run: /etc/init.d/cpayadmin/start.sh | /home/centos/cpay/setup/start.sh
+| Network | Country | Capabilities |
+|---|---|---|
+| MTN MoMo | Uganda | Collections, Disbursements, Balance |
+| Airtel Money | Uganda / Kenya | Collections, Disbursements (Legacy + OpenAPI) |
+| Safaricom M-Pesa | Kenya | STK Push, B2C, Balance |
 
-Restart the server
-==============================
-1. Run: /etc/init.d/cpayadmin/restart.sh | /home/centos/cpay/setup/restart.sh
+---
 
 Stop the servers
-================================
 1. Run: /etc/init.d/cpayadmin/shutdown.sh | /home/centos/cpay/setup/shutdown.sh
 
 Ports
-===================
 1. Java: 443
 
-Logs
-=========================
-1. React: /tmp/cpayadmin.log
-2. Cpay-Java: /var/log/cpayadmin/log.txt
+## Prerequisites
 
 Compiling React App and Java 
-=============================
 1. cd into ../clientside directory.
 2. Run the command: npm run build.
 2.1. Copy the following to the head section of the ../clientside/build/index.html
 
-<style>.loader:empty {position: absolute;top: calc(50% - 4em);left: calc(50% - 4em);width: 6em;height: 6em;border: 1.1em solid rgba(0, 0, 0, 0.2);border-left: 1.1em solid #000000;border-radius: 50%;animation: load8 1.1s infinite linear;}@keyframes load8 {0% {transform: rotate(0deg);}100% {transform: rotate(360deg);}}</style><script>function onLoad() {var loader = document.getElementById("cpay_loader");loader.className = "";}</script>
+## Environment Variables
 
-2.2. Copy the following content to the body section of the ../clientside/build/index.html
+Copy `.env.example` to `.env` and fill in all values before starting the application. **Never commit `.env` to version control.**
 
-<div id="cpay_loader" class="loader"></div>
+### Required
 
 2.3. Include the following content in the body tag of ../clientside/build/index.html
 onload="onLoad();"
 
-2.4 Change <link rel="icon" href="/favicon.ico"/> to <link rel="icon" href="/favicon.png"/>
+> The application **will not start** if `ACTUATOR_USERNAME` or `ACTUATOR_PASSWORD` are missing. There are no built-in defaults.
 
-2.5 Change title to: CPay 
+### Recommended
 
-3. Copy all contents of .../build/ to ../InitializrSpringbootProject/src/main/resources/static/
+| Variable | Description | Default |
+|---|---|---|
+| `GATEWAY_STATE` | `SANDBOX` or `PRODUCTION` | `SANDBOX` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins for the admin/merchant portals | `http://localhost:3000` |
+| `APP_BASE_URL` | Base URL used in password-reset emails (no trailing slash) | `http://localhost:9000` |
+| `HTTP_PORT` | Port the application listens on | `9000` |
+| `LOCK_FILE_DIR` | Directory for scheduler lock files | `/tmp/cpay/locks/` |
 
 Use the Following Link to the general PKCS12 version of the SSL CERTIFICATE
 https://dzone.com/articles/spring-boot-secured-by-lets-encrypt
 
+| Variable | Description |
+|---|---|
+| `MAIL_HOST` | SMTP host |
+| `MAIL_PORT` | SMTP port |
+| `MAIL_USERNAME` | SMTP username |
+| `MAIL_PASSWORD` | SMTP password |
 
 INSTALLING AND RENEWING CERTIFICATES
-============================================
 1. Log in to the Lightsail server.
 2. Stop any service running on Port 80.
 3. RUN: sudo certbot renew | sudo certbot certonly -a standalone -d cpaytest.citotech.net
 4. Convert the updated certificate to PKCS12: 
 
-openssl pkcs12 -export -in fullchain.pem -inkey privkey.pem -out springboot_letsencrypt.p12 -name bootalias -CAfile chain.pem  -caname centos
-Password: cpayadmin
+To enable HTTPS, uncomment the four SSL lines in `application.properties` and set:
 
-Then for Kwiff:
-/home/centos/kwiff/setup/springboot_letsencrypt.p12
+| Variable | Description |
+|---|---|
+| `SSL_KEY_STORE` | Path to PKCS12 keystore |
+| `SSL_KEY_STORE_PASSWORD` | Keystore password |
+| `SSL_KEY_ALIAS` | Certificate alias |
 
-Then for CpayTest:
-openssl pkcs12 -export -in fullchain.pem -inkey privkey.pem -out springboot_letsencrypt.p12 -name bootalias -CAfile chain.pem  -caname cpayadmin
-Password: cpayadmin
+See [Spring Boot SSL docs](https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html#appendix.application-properties.server) and the Let's Encrypt section below.
 
-Then Restart the server: /etc/init.d/cpayadmin/restart.sh | supervisorctl restart cpaytest
+---
 
-5. Download the certificate and save it under: /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/cpay/InitializrSpringbootProject/src/main/resources/keystore
+## Database Setup
 
-scp -i Keys/Lightsail/LightsailDefaultKey-eu-central-1.pem centos@18.190.63.205:/home/centos/springboot_letsencrypt.p12 /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/cpay/InitializrSpringbootProject/src/main/resources/keystore/.
+```bash
+# 1. Create the schema and tables
+mysql -u root -p < clientside/db/structure.sql
 
 Copy the new version to Cpay Server
-====================================
 scp -i /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/newcpay/new_cpay.pem /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/cpay/InitializrSpringbootProject/target/cito-0.0.1-SNAPSHOT.jar centos@18.190.63.205:/home/centos/cpay/setup/
 
 scp -i /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/newcpay/new_cpay.pem /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/cpay/InitializrSpringbootProject/target/cito-0.0.1-SNAPSHOT.jar centos@18.190.63.205:/home/centos/kwiff/setup/
 
-scp -i /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/newcpay/new_cpay.pem /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/cpay/InitializrSpringbootProject/target/cito-0.0.1-SNAPSHOT.jar centos@18.190.63.205:/home/centos/peaky/setup/
+```bash
+# Clone and enter the repo
+git clone <repo-url>
+cd CPay
 
 Compiling with Maven
-=========================================
 Run the command: maven package
 It will package a JAR file for you.
 
-Remote Port Forwarding
-=========================================
-- Use the following link to process:
-https://www.ssh.com/academy/ssh/tunneling/example
+```bash
+cd clientside
+npm install
+npm run build
+```
 
 - ssh -i LightsailDefaultPrivateKey-eu-central-1.pem ubuntu@18.196.18.46 -R 8080:localhost:9000

@@ -55,7 +55,6 @@ public class MerchantsController {
     private PlatformTransactionManager transactionManager;
     
     
-    private HttpSession session;
     
     @PostMapping(path="/getMerchants")
 
@@ -64,7 +63,7 @@ public class MerchantsController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -367,7 +366,7 @@ public class MerchantsController {
     public Boolean isLoggedIn (HttpServletRequest request ) {
        
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
        
         //Check if still logged in
         User sessionUser;
@@ -601,6 +600,7 @@ public class MerchantsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
@@ -804,9 +804,12 @@ public class MerchantsController {
     
     
     private MerchantUser getMerchantUserByEmail(String merchant_id, String email) {
-        
-        String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_USERS+" ";
-        sqlSelect += " WHERE merchant_id='"+merchant_id+"' AND email = '"+email+"' ";
+
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("merchant_id", merchant_id);
+        params.addValue("email", email);
+        String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
+                + " WHERE merchant_id=:merchant_id AND email=:email";
         RowMapper rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
@@ -818,12 +821,11 @@ public class MerchantsController {
                 u.setPassword(rs.getString("password"));
                 u.setCreated_on(rs.getString("created_on"));
                 u.setUpdated_on(rs.getString("updated_on"));
-                
                 return u;
             }
         };
-        
-        List<MerchantUser> uList = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
+
+        List<MerchantUser> uList = jdbcTemplate.query(sqlSelect, params, rm);
         
         if (uList.size() > 0) {
             return uList.get(0);
@@ -833,10 +835,13 @@ public class MerchantsController {
     }
     
     private MerchantUser getMerchantUserByEmail(String merchant_id, String email, String id) {
-        
-        String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_USERS+" ";
-        sqlSelect += " WHERE merchant_id='"+merchant_id+"' AND email = '"+email+"' "
-                + " AND id <> '"+id+"'";
+
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("merchant_id", merchant_id);
+        params.addValue("email", email);
+        params.addValue("id", id);
+        String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
+                + " WHERE merchant_id=:merchant_id AND email=:email AND id <> :id";
         RowMapper rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
@@ -848,12 +853,11 @@ public class MerchantsController {
                 u.setPassword(rs.getString("password"));
                 u.setCreated_on(rs.getString("created_on"));
                 u.setUpdated_on(rs.getString("updated_on"));
-                
                 return u;
             }
         };
-        
-        List<MerchantUser> uList = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
+
+        List<MerchantUser> uList = jdbcTemplate.query(sqlSelect, params, rm);
         
         if (uList.size() > 0) {
             return uList.get(0);
@@ -877,6 +881,7 @@ public class MerchantsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
@@ -1055,9 +1060,11 @@ public class MerchantsController {
                                 String password = "";
                                 if (generate_pw) {
                                     password = Common.randomAlphaNumericString(10);
-                                    sqlUpdateMerchantUser_ += ", password = '"+Common.getSha256EncodedString(password)+"'";
+                                    sqlUpdateMerchantUser_ += ", password=:password";
+                                    privParams.addValue("password", Common.getSha256EncodedString(password));
                                 }
-                                sqlUpdateMerchantUser_ += " WHERE id='"+row_id+"' ";
+                                sqlUpdateMerchantUser_ += " WHERE id=:row_id";
+                                privParams.addValue("row_id", row_id);
                                 MerchantUser mU = getMerchantUserByEmail(id, email, row_id);
                                
                                 if (mU != null) {
@@ -1170,6 +1177,7 @@ public class MerchantsController {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
+            HttpSession session = request.getSession();
             
             User sessionUser = (User) session.getAttribute("user");
             
