@@ -13,23 +13,28 @@ class ModuleDashboardC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            chartData: null, 
-            chartDataTxTypes:null,
-            chartDataTxVolumes:null,
+            chartData: null,
+            chartDataTxTypes: null,
+            chartDataTxVolumes: null,
             chartDataTxNetworkBalances: null
         };
+        this._balanceInterval = null;
     }
 
     componentDidMount() {
         this.getData("chartData", "getDashboardDetailsPayinsVsPayouts");
         this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypes");
         this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumes");
-        this.getData("chartDataTxNetworkBalances","getDashboardDetailsNetworkBalances");
-        //console.log(JSON.stringify(this.props));
-        setInterval(() => {
-            this.getData("chartDataTxNetworkBalances","getDashboardDetailsNetworkBalances");
-            console.log('Interval triggered');
-          }, 240000);
+        this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
+        this._balanceInterval = setInterval(() => {
+            this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
+        }, 240000);
+    }
+
+    componentWillUnmount() {
+        if (this._balanceInterval) {
+            clearInterval(this._balanceInterval);
+        }
     }
 
     getData(chartType, api) {
@@ -57,7 +62,7 @@ class ModuleDashboardC extends React.Component {
             let res;
             try {
                 res = JSON.parse(response_);
-                if (res.code == "000") {
+                if (res.code === "000") {
                     try {
                         switch(chartType) {
                             case "chartData":
@@ -84,10 +89,10 @@ class ModuleDashboardC extends React.Component {
                     }
                 } else {
                     //If session timed out
-                    if (res.code == "107") {
+                    if (res.code === "107") {
                         this.sessionExpired();
                         return;
-                    } else if (res.code == "110") {
+                    } else if (res.code === "110") {
                         this.accessNotAllowed(res.message);
                         return;
                     }

@@ -624,9 +624,10 @@ public class Api {
             }
             
             String sql = "SELECT * FROM `"+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+"`"
-                    + " WHERE tx_merchant_ref=:tx_merchant_ref ";
+                    + " WHERE tx_merchant_ref=:tx_merchant_ref AND merchant_id=:merchant_id";
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("tx_merchant_ref", reference);
+            parameters.addValue("merchant_id", merchant.getId());
             
             RowMapper rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {

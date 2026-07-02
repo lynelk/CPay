@@ -72,7 +72,7 @@ class LoginMerchantWithOutRouter extends React.Component {
   }
 
   eventHandler = (event) => {
-    if (event.keyCode == 13) {
+    if (event.keyCode === 13) {
       this.handleSubmit();
     }
   }
@@ -112,7 +112,7 @@ class LoginMerchantWithOutRouter extends React.Component {
             try {
                 res = JSON.parse(response_);
                 this.setState({loader: false}, ()=> {
-                    if (res.code == "000") {
+                    if (res.code === "000") {
                         try {
                             localStorage.setItem("merchantUser", JSON.stringify(res.user));
                             history.push("/dashboardMerchant");
@@ -171,8 +171,8 @@ async isLoggedIn() {
         });
         //console.log(await response.json());
         let res = await response.json();
-        if (res.code == "000") {
-            if (res.message == "true") {
+        if (res.code === "000") {
+            if (res.message === "true") {
                 return true;
             } else {
                 return false;

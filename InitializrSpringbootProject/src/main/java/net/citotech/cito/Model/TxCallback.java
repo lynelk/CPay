@@ -77,9 +77,10 @@ public class TxCallback {
 
                     HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                     if (rs != null) {
-                        String sql_update_final =  sql_update+", callback_trace=:callback_trace "
-                                + " WHERE id='"+tx.getId()+"'";
+                        String sql_update_final = sql_update + ", callback_trace=:callback_trace"
+                                + " WHERE id=:id";
                         MapSqlParameterSource parameters_ = new MapSqlParameterSource();
+                        parameters_.addValue("id", tx.getId());
                         parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
                         parameters_.addValue("status", tx.getStatus());
                         parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());

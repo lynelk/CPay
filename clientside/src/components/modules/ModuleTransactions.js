@@ -172,7 +172,7 @@ class ModuleTransactionsC extends React.Component {
             let res;
             try {
                 res = JSON.parse(response_);
-                if (res.code == "000") {
+                if (res.code === "000") {
                     try {
                         this.setState({
                             data: res.data,
@@ -187,10 +187,10 @@ class ModuleTransactionsC extends React.Component {
                     }
                 } else {
                     //If session timed out
-                    if (res.code == "107") {
+                    if (res.code === "107") {
                         this.sessionExpired();
                         return;
-                    } else if (res.code == "110") {
+                    } else if (res.code === "110") {
                         this.accessNotAllowed(res.message);
                         return;
                     }
@@ -278,7 +278,7 @@ class ModuleTransactionsC extends React.Component {
                         let res;
                         try {
                             res = JSON.parse(response_);
-                            if (res.code == "000") {
+                            if (res.code === "000") {
                                 try {
                                     this.resetForm(()=> {
                                         this.messager.alert({
@@ -301,7 +301,7 @@ class ModuleTransactionsC extends React.Component {
                                 }
                             } else {
                                 //If session timed out
-                                if (res.code == "107") {
+                                if (res.code === "107") {
                                     this.sessionExpired();
                                     return;
                                 }
@@ -366,7 +366,7 @@ class ModuleTransactionsC extends React.Component {
                         let res;
                         try {
                             res = JSON.parse(response_);
-                            if (res.code == "000") {
+                            if (res.code === "000") {
                                 try {
                                     this.resetForm(()=> {
                                         this.messager.alert({
@@ -389,7 +389,7 @@ class ModuleTransactionsC extends React.Component {
                                 }
                             } else {
                                 //If session timed out
-                                if (res.code == "107") {
+                                if (res.code === "107") {
                                     this.sessionExpired();
                                     return;
                                 }

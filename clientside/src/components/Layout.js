@@ -149,8 +149,8 @@ class LayoutWithOutRouter extends React.Component {
       await this.setState({loader:false, progressValue:0},() =>{});
       //console.log(await response.json());
       let res = await response.json();
-      if (res.code == "000") {
-        if (res.message == "true") {
+      if (res.code === "000") {
+        if (res.message === "true") {
           return true;
         } else {
           return false;
@@ -276,7 +276,7 @@ class LayoutWithOutRouter extends React.Component {
           try {
             res = JSON.parse(response_);
             this.setState({loader: false, progressValue:0}, ()=> {
-              if (res.code == "000") {
+              if (res.code === "000") {
                 try {
                   history.push("/portal");
                 } catch (ex) {

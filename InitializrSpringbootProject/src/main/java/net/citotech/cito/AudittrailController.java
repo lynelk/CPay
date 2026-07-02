@@ -47,7 +47,6 @@ public class AudittrailController {
     private PlatformTransactionManager transactionManager;
     
     
-    private HttpSession session;
     
     @PostMapping(path="/getAudittrails")
 
@@ -56,7 +55,7 @@ public class AudittrailController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
@@ -167,7 +166,7 @@ public class AudittrailController {
         //Set the response header
         
         //First set session variable
-        session = request.getSession();
+        HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
