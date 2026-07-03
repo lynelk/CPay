@@ -227,10 +227,18 @@ public class Api {
             String gateway_id = DoPayGateway.getGatewayIdByMsisdn(payer_number, jdbcTemplate);
             if (gateway_id == null) {
                 return GeneralException
-                    .getError("118", String.format(GeneralException.ERRORS_118, 
+                    .getError("118", String.format(GeneralException.ERRORS_118,
                             payer_number));
             }
-            
+
+            // Enforce gateway-level min/max amount limits
+            String amountLimitError = checkGatewayAmountLimits(gateway_id, amount);
+            if (amountLimitError != null) return amountLimitError;
+
+            // Enforce per-merchant daily/monthly volume limits
+            String volumeLimitError = checkMerchantVolumeLimit(merchant, amount);
+            if (volumeLimitError != null) return volumeLimitError;
+
             //Get this merchant by id.
             Transaction newTx = new Transaction();
             newTx.setGateway_id(gateway_id);
@@ -1752,5 +1760,95 @@ public class Api {
         }
         
         
+    }
+
+    /**
+     * Checks whether {@code amount} falls within the gateway's configured
+     * min/max transaction limits.  Returns null if OK, or an error JSON string.
+     * Settings keys: gw_<name>_api_min_amount / gw_<name>_api_max_amount.
+     */
+    private String checkGatewayAmountLimits(String gateway_id, Double amount) {
+        String prefix = gatewaySettingPrefix(gateway_id);
+        if (prefix == null) return null;
+
+        Setting minSetting = Common.getSettings(prefix + "_min_amount", jdbcTemplate);
+        Setting maxSetting = Common.getSettings(prefix + "_max_amount", jdbcTemplate);
+
+        double min = 0;
+        double max = Double.MAX_VALUE;
+        try { if (minSetting != null && !minSetting.getSetting_value().isEmpty())
+            min = Double.parseDouble(minSetting.getSetting_value().trim()); } catch (NumberFormatException ignored) {}
+        try { if (maxSetting != null && !maxSetting.getSetting_value().isEmpty())
+            max = Double.parseDouble(maxSetting.getSetting_value().trim()); } catch (NumberFormatException ignored) {}
+
+        if (amount < min || amount > max) {
+            return GeneralException.getError("146",
+                    String.format(GeneralException.ERRORS_146, amount, min, max));
+        }
+        return null;
+    }
+
+    private String gatewaySettingPrefix(String gateway_id) {
+        if (gateway_id == null) return null;
+        switch (gateway_id) {
+            case "MTNMoMoPaymentGateway":            return "gw_mtn_api";
+            case "AirtelMoneyPaymentGateway":        return "gw_airtelmoney_api";
+            case "AirtelMoneyOpenApiPaymentGateway": return "gw_airtelmoney_api";
+            case "SafariComPaymentGateway":          return "gw_safaricom_api";
+            default:                                 return null;
+        }
+    }
+
+    /**
+     * Checks whether the merchant has exceeded their daily or monthly transaction
+     * volume limit.  Returns null if OK, or an error JSON string.
+     * Merchant settings keys: daily_volume_limit, monthly_volume_limit.
+     */
+    private String checkMerchantVolumeLimit(Merchant merchant, Double amount) {
+        try {
+            Setting dailyLimitSetting  = Common.getMerchantSettings("daily_volume_limit",   merchant.getId(), jdbcTemplate);
+            Setting monthlyLimitSetting = Common.getMerchantSettings("monthly_volume_limit", merchant.getId(), jdbcTemplate);
+
+            if (dailyLimitSetting != null && !dailyLimitSetting.getSetting_value().isEmpty()) {
+                double dailyLimit = Double.parseDouble(dailyLimitSetting.getSetting_value().trim());
+                String sql = "SELECT COALESCE(SUM(original_amount),0) FROM "
+                        + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                        + " WHERE merchant_id=:mid AND tx_type=:type"
+                        + " AND status IN ('SUCCESSFUL','PENDING')"
+                        + " AND DATE(created_on)=CURDATE()";
+                MapSqlParameterSource p = new MapSqlParameterSource();
+                p.addValue("mid",  merchant.getId());
+                p.addValue("type", Transaction.TX_TYPE_PAYIN);
+                Double dailyTotal = jdbcTemplate.queryForObject(sql, p, Double.class);
+                if (dailyTotal == null) dailyTotal = 0.0;
+                if ((dailyTotal + amount) > dailyLimit) {
+                    return GeneralException.getError("146",
+                            String.format(GeneralException.ERRORS_146, amount,
+                                    0, dailyLimit - dailyTotal));
+                }
+            }
+
+            if (monthlyLimitSetting != null && !monthlyLimitSetting.getSetting_value().isEmpty()) {
+                double monthlyLimit = Double.parseDouble(monthlyLimitSetting.getSetting_value().trim());
+                String sql = "SELECT COALESCE(SUM(original_amount),0) FROM "
+                        + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                        + " WHERE merchant_id=:mid AND tx_type=:type"
+                        + " AND status IN ('SUCCESSFUL','PENDING')"
+                        + " AND YEAR(created_on)=YEAR(NOW()) AND MONTH(created_on)=MONTH(NOW())";
+                MapSqlParameterSource p = new MapSqlParameterSource();
+                p.addValue("mid",  merchant.getId());
+                p.addValue("type", Transaction.TX_TYPE_PAYIN);
+                Double monthlyTotal = jdbcTemplate.queryForObject(sql, p, Double.class);
+                if (monthlyTotal == null) monthlyTotal = 0.0;
+                if ((monthlyTotal + amount) > monthlyLimit) {
+                    return GeneralException.getError("146",
+                            String.format(GeneralException.ERRORS_146, amount,
+                                    0, monthlyLimit - monthlyTotal));
+                }
+            }
+        } catch (Exception e) {
+            Logger.getLogger(Api.class.getName()).log(Level.WARNING, "Volume limit check failed: " + e.getMessage(), e);
+        }
+        return null;
     }
 }

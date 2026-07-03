@@ -15,6 +15,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.util.Base64;
@@ -47,7 +49,7 @@ public class CallbackRetryScheduler {
     @Scheduled(fixedDelay = 60000)
     public void retryCallbacks() {
         try {
-            String sql = "SELECT t.*, m.private_key, m.account_number "
+            String sql = "SELECT t.*, m.private_key, m.hmac_secret, m.account_number "
                     + "FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG + " t "
                     + "JOIN " + Common.DB_TABLE_MERCHANTS + " m ON t.merchant_id = m.id "
                     + "WHERE t.callback_url IS NOT NULL AND t.callback_url != '' "
@@ -72,7 +74,9 @@ public class CallbackRetryScheduler {
                 rs.getString("updated_on"),
                 rs.getString("callback_url"),
                 rs.getString("private_key"),
-                rs.getInt("callback_retry_count")
+                rs.getInt("callback_retry_count"),
+                rs.getString("hmac_secret"),
+                rs.getString("currency")
             };
 
             List<Object[]> rows = jdbcTemplate.query(sql, params, rm);
@@ -95,38 +99,51 @@ public class CallbackRetryScheduler {
         String networkRef = (String) row[7];
         String updatedOn = (String) row[8];
         String callbackUrl = (String) row[9];
-        String privateKey = (String) row[10];
-        int retryCount = (int) row[11];
+        String privateKey  = (String) row[10];
+        int    retryCount  = (int)    row[11];
+        String hmacSecret  = (String) row[12];
+        String currency    = row[13] != null ? (String) row[13] : "";
 
         try {
             String amountToSign = amount + "";
+            String maskedPayer  = payerNumber != null && payerNumber.length() >= 6
+                    ? payerNumber.substring(0, 3) + "****" + payerNumber.substring(payerNumber.length() - 3)
+                    : payerNumber;
             String signedData = payerNumber + amountToSign + createdOn + txMerchantRef + status + description + networkRef;
 
-            if (privateKey == null || privateKey.isEmpty()) {
+            JSONObject jObject = new JSONObject();
+            jObject.put("amount",       amountToSign);
+            jObject.put("payer_number", maskedPayer);
+            jObject.put("reference",    txMerchantRef);
+            jObject.put("network_ref",  networkRef);
+            jObject.put("status",       status);
+            jObject.put("description",  description);
+            jObject.put("completed_on", updatedOn);
+            jObject.put("created_on",   createdOn);
+            jObject.put("currency",     currency);
+            jObject.put("SignedData",   signedData);
+
+            if (hmacSecret != null && !hmacSecret.isEmpty()) {
+                Mac mac = Mac.getInstance("HmacSHA256");
+                mac.init(new SecretKeySpec(hmacSecret.getBytes("UTF-8"), "HmacSHA256"));
+                byte[] hmacBytes = mac.doFinal(signedData.getBytes("UTF-8"));
+                jObject.put("signature",           Base64.getEncoder().encodeToString(hmacBytes));
+                jObject.put("signature_algorithm", "HMAC-SHA256");
+            } else if (privateKey != null && !privateKey.isEmpty()) {
+                Signature sign = Signature.getInstance("SHA256withRSA");
+                String base64_private_key = privateKey
+                        .replace("-----BEGIN PRIVATE KEY-----\n", "")
+                        .replace("\n-----END PRIVATE KEY-----\n", "");
+                PrivateKey pk = Common.getPrivateKeyFromBase64String(base64_private_key);
+                sign.initSign(pk);
+                sign.update(signedData.getBytes());
+                byte[] digitalSignature = sign.sign();
+                jObject.put("signature",           Base64.getEncoder().encodeToString(digitalSignature));
+                jObject.put("signature_algorithm", "RSA-SHA256");
+            } else {
                 markCallbackFailed(txId, retryCount);
                 return;
             }
-
-            Signature sign = Signature.getInstance("SHA256withRSA");
-            String base64_private_key = privateKey
-                    .replace("-----BEGIN PRIVATE KEY-----\n", "")
-                    .replace("\n-----END PRIVATE KEY-----\n", "");
-            PrivateKey pk = Common.getPrivateKeyFromBase64String(base64_private_key);
-            sign.initSign(pk);
-            sign.update(signedData.getBytes());
-            byte[] digitalSignature = sign.sign();
-
-            JSONObject jObject = new JSONObject();
-            jObject.put("amount", amountToSign);
-            jObject.put("payer_number", payerNumber);
-            jObject.put("reference", txMerchantRef);
-            jObject.put("network_ref", networkRef);
-            jObject.put("status", status);
-            jObject.put("description", description);
-            jObject.put("completed_on", updatedOn);
-            jObject.put("created_on", createdOn);
-            jObject.put("SignedData", signedData);
-            jObject.put("signature", Base64.getEncoder().encodeToString(digitalSignature));
 
             Map<String, String> headers = new HashMap<>();
             headers.put("Content-Type", "application/json");
