@@ -13,7 +13,7 @@ This document outlines the security best practices and guidelines for managing c
 - **Access Controls**: Limit access to secrets and credentials to only those who need it for their role.
 
 ## Reporting Security Issues
-If you find a security vulnerability, please report it to us at [security@cpay.example.com].
+If you find a security vulnerability, please report it to us at [admin"coresynergies.net].
 
 ## Compliance
 Ensure compliance with applicable regulations and standards (e.g., GDPR, PCI-DSS) relevant to your use case.
