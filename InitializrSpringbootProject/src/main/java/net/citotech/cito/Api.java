@@ -1366,7 +1366,7 @@ public class Api {
 
     public String getPayoutConversationIdToken(String ConversationID) throws IOException {
         String separator = File.separator;
-        String filePath = /*lockfiledirectory+*/ConversationID+".json";
+        String filePath = lockfiledirectory+ConversationID+".json";
         File resource = new File(filePath);
         if (!resource.exists()) {
             Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "ConversationID: "+resource.getAbsolutePath()+" DOES NOT EXISTS", "" );
@@ -1403,7 +1403,7 @@ public class Api {
 
     private void getPayoutConversationIdDeleteFile(String ConversationID) throws IOException {
         String separator = File.separator;
-        String filePath = /*lockfiledirectory +*/ ConversationID + ".json";
+        String filePath = lockfiledirectory + ConversationID + ".json";
         File resource = new File(filePath);
         if (resource.exists()) {
             if (resource.delete()) {

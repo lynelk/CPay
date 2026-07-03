@@ -1034,7 +1034,7 @@ public class DoPayGateway {
 
         //Select the gateway
         if (SafariComPaymentGateway.isValidMisdn(msisdn)) {
-            Setting env = Common.getSettings("gw_mtn_api_env", jdbcTemplate);
+            Setting env = Common.getSettings("gw_safaricom_api_env", jdbcTemplate);
             String global_url = "";
             String api_disbursements_user = "";
             String api_disbursements_key = "";
