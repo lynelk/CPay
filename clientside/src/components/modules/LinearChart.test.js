@@ -8,7 +8,7 @@ import { act } from 'react-dom/test-utils';
 import LinearChart from './LinearChart';
 
 // Mock Chart.js so tests don't require a canvas implementation
-jest.mock('chart.js', () => {
+jest.mock('chart.js/auto', () => {
   return jest.fn().mockImplementation(() => ({
     destroy: jest.fn(),
     update: jest.fn(),

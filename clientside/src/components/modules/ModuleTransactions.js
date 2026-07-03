@@ -10,8 +10,6 @@ import Progress from "../Progress";
 import LinearChart from './LinearChart';
 import styles from '../styles';
 import strings from '../locale';
-import { join } from 'path';
-
 class ModuleTransactionsC extends React.Component {
     constructor(props) {
         super(props);
