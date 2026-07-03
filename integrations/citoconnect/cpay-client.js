@@ -18,14 +18,25 @@
 
 import crypto from 'node:crypto';
 
-const FIELD_ORDER = ['amount', 'description', 'reference', 'merchant_number',
-    'payer_number', 'payee_number', 'callback_url'];
+// CPay's current Java API verifies signatures using legacy concatenated
+// field values rather than a key=value query-style canonical string.
+// Keep this in sync with Api.java until the backend is migrated to a
+// versioned canonical-signature contract.
+const SIGNING_FIELDS = {
+    collect: ['merchant_number', 'payer_number', 'amount', 'reference', 'description'],
+    payout: ['merchant_number', 'payee_number', 'amount', 'reference', 'description'],
+    status: ['merchant_number', 'reference'],
+    balances: ['merchant_number'],
+};
 
-function canonicalize(payload) {
-    return FIELD_ORDER
-        .filter((f) => payload[f] !== undefined && payload[f] !== null && payload[f] !== '')
-        .map((f) => `${f}=${payload[f]}`)
-        .join('&');
+function canonicalize(payload, operation) {
+    const fields = SIGNING_FIELDS[operation];
+    if (!fields) throw new Error(`Unsupported CPay signing operation: ${operation}`);
+    return fields
+        .map((field) => payload[field])
+        .filter((value) => value !== undefined && value !== null)
+        .map((value) => String(value))
+        .join('');
 }
 
 function sign(canonical, signingKeyPem) {
@@ -40,13 +51,17 @@ export function createCPayClient({ baseUrl, merchantNumber, signingKeyPem, defau
     if (!merchantNumber) throw new Error('merchantNumber is required');
     if (!signingKeyPem) throw new Error('signingKeyPem is required');
 
-    async function call(path, payload) {
+    async function call(path, operation, payload) {
         const body = {
             merchant_number: merchantNumber,
-            callback_url: defaultCallbackUrl,
             ...payload,
         };
-        body.signature = sign(canonicalize(body), signingKeyPem);
+
+        if (!body.callback_url && defaultCallbackUrl) {
+            body.callback_url = defaultCallbackUrl;
+        }
+
+        body.signature = sign(canonicalize(body, operation), signingKeyPem);
         const res = await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -65,25 +80,29 @@ export function createCPayClient({ baseUrl, merchantNumber, signingKeyPem, defau
     }
 
     return {
-        collect: ({ amount, payerNumber, reference, description, callbackUrl }) =>
-            call('/api/v1/doMobileMoneyPayIn', {
+        collect: ({ amount, payerNumber, reference, description, callbackUrl }) => {
+            const payload = {
                 amount,
                 payer_number: payerNumber,
                 reference,
                 description,
-                callback_url: callbackUrl,
-            }),
-        payout: ({ amount, payeeNumber, reference, description, callbackUrl }) =>
-            call('/api/v1/doMobileMoneyPayOut', {
+            };
+            if (callbackUrl) payload.callback_url = callbackUrl;
+            return call('/api/v1/doMobileMoneyPayIn', 'collect', payload);
+        },
+        payout: ({ amount, payeeNumber, reference, description, callbackUrl }) => {
+            const payload = {
                 amount,
                 payee_number: payeeNumber,
                 reference,
                 description,
-                callback_url: callbackUrl,
-            }),
+            };
+            if (callbackUrl) payload.callback_url = callbackUrl;
+            return call('/api/v1/doMobileMoneyPayOut', 'payout', payload);
+        },
         status: ({ reference }) =>
-            call('/api/v1/doTransactionCheckStatus', { reference }),
-        balances: () => call('/api/v1/doGetBalances', {}),
+            call('/api/v1/doTransactionCheckStatus', 'status', { reference }),
+        balances: () => call('/api/v1/doGetBalances', 'balances', {}),
     };
 }
 
