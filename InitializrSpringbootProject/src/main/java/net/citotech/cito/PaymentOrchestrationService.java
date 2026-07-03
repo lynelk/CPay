@@ -39,10 +39,7 @@ public class PaymentOrchestrationService {
         String accountIdentifier = request.getPayer().getValue();
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier);
         String gatewayId = resolveLegacyGatewayId(adapter, accountIdentifier);
-        GatewayChargeDetails chargeDetails = DoPayGateway.getGatewayChargeDetailsById(jdbcTemplate, gatewayId, merchant.getId());
-        if (chargeDetails == null) {
-            throw new PaymentGatewayException("Gateway charge details are not configured for " + gatewayId);
-        }
+        GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
 
         Double amount = parseAmount(request.getAmount());
         Transaction tx = baseTransaction(request, merchant, gatewayId, originateIp, amount);
@@ -62,17 +59,17 @@ public class PaymentOrchestrationService {
         String accountIdentifier = request.getPayee().getValue();
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier);
         String gatewayId = resolveLegacyGatewayId(adapter, accountIdentifier);
-        GatewayChargeDetails chargeDetails = DoPayGateway.getGatewayChargeDetailsById(jdbcTemplate, gatewayId, merchant.getId());
-        if (chargeDetails == null) {
-            throw new PaymentGatewayException("Gateway charge details are not configured for " + gatewayId);
-        }
+        GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
 
         Double amount = parseAmount(request.getAmount());
+        Double charges = DoPayGateway.getCustomerOutboundCharges(amount, chargeDetails);
+        ensureMerchantHasAvailableBalance(merchant, gatewayId, amount + charges);
+
         Transaction tx = baseTransaction(request, merchant, gatewayId, originateIp, amount);
         tx.setPayer_number(accountIdentifier);
         tx.setTx_type(Transaction.TX_TYPE_PAYOUT);
         tx.setCharging_method(chargeDetails.getCustomerOutboundChargeMethod());
-        tx.setCharges(DoPayGateway.getCustomerOutboundCharges(amount, chargeDetails));
+        tx.setCharges(charges);
         tx.setTx_cost(DoPayGateway.getCostOfOutboundCharges(amount, chargeDetails));
 
         String legacyResult = Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager);
@@ -100,7 +97,7 @@ public class PaymentOrchestrationService {
     }
 
     public List<Balance> balances(String merchantNumber, Merchant verifiedMerchant) {
-        Merchant merchant = validateMerchant(merchantNumber, verifiedMerchant, Common.API_GET_BALANCES);
+        Merchant merchant = validateMerchant(merchantNumber, verifiedMerchant, Common.API_BALANCE_CHECK);
         return Common.getMerchantBalances(String.valueOf(merchant.getId()), jdbcTemplate);
     }
 
@@ -176,6 +173,23 @@ public class PaymentOrchestrationService {
         }
     }
 
+    private GatewayChargeDetails getChargeDetails(String gatewayId, Merchant merchant) {
+        GatewayChargeDetails chargeDetails = DoPayGateway.getGatewayChargeDetailsById(jdbcTemplate, gatewayId, merchant.getId());
+        if (chargeDetails == null) {
+            throw new PaymentGatewayException("Gateway charge details are not configured for " + gatewayId);
+        }
+        return chargeDetails;
+    }
+
+    private void ensureMerchantHasAvailableBalance(Merchant merchant, String gatewayId, Double requiredAmount) {
+        List<Balance> balances = Common.getMerchantBalances(String.valueOf(merchant.getId()), jdbcTemplate);
+        for (Balance balance : balances) {
+            if (gatewayId.equals(balance.getGateway_id()) && requiredAmount > balance.getAmount()) {
+                throw new PaymentGatewayException("Insufficient balance for gateway " + gatewayId);
+            }
+        }
+    }
+
     private PaymentChannelAdapter resolveAdapter(PaymentRequest request, String accountIdentifier) {
         if (request.getChannel() != null && !request.getChannel().trim().isEmpty()) {
             return paymentChannelRegistry.findByChannelCode(request.getChannel())
@@ -220,13 +234,9 @@ public class PaymentOrchestrationService {
 
     private Double parseAmount(String amount) {
         try {
-            Double parsed = Double.parseDouble(amount);
-            if (parsed <= 0) {
-                throw new PaymentGatewayException("Amount must be greater than zero");
-            }
-            return parsed;
-        } catch (NumberFormatException e) {
-            throw new PaymentGatewayException("Invalid amount");
+            return Amount.parse(amount).asLegacyDouble();
+        } catch (IllegalArgumentException e) {
+            throw new PaymentGatewayException(e.getMessage());
         }
     }
 
