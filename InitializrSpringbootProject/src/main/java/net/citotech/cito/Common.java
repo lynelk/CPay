@@ -2516,14 +2516,14 @@ public class Common {
         }
 
         Setting getRevenueAccount = Common.getSettings("revenue_account", jdbcTemplate);
-        if (getRevenueAccount == null || getStockAccount.getSetting_value().isEmpty()) {
+        if (getRevenueAccount == null || getRevenueAccount.getSetting_value().isEmpty()) {
             // release lock
             return GeneralException
                     .getError("117", GeneralException.ERRORS_117);
         }
 
         Setting getSuspenseAccount = Common.getSettings("suspense_account", jdbcTemplate);
-        if (getSuspenseAccount == null || getStockAccount.getSetting_value().isEmpty()) {
+        if (getSuspenseAccount == null || getSuspenseAccount.getSetting_value().isEmpty()) {
             // release lock
             return GeneralException
                     .getError("127", GeneralException.ERRORS_127);
@@ -2646,6 +2646,7 @@ public class Common {
                                     String base64_cleaned = base64_private_key.replace("\n-----END PRIVATE KEY-----\n", "");
 
                                     PrivateKey privateKey = Common.getPrivateKeyFromBase64String(base64_cleaned);
+                                    if (privateKey == null) return;
                                     sign.initSign(privateKey);
                                     sign.update(signedData.getBytes());
                                     byte[] digitalSignature = sign.sign();
@@ -2869,7 +2870,7 @@ public class Common {
                                         + tx.getCreated_on() + tx.getTx_merchant_ref() + tx.getStatus()
                                         + tx.getTx_merchant_description() + tx.getTx_gateway_ref();
 
-                                if (merchant.getPublic_key() == null || merchant.getPublic_key().isEmpty()) {
+                                if (merchant.getPrivate_key() == null || merchant.getPrivate_key().isEmpty()) {
                                     return;
                                 }
                                 try {
@@ -2880,6 +2881,7 @@ public class Common {
                                     String base64_cleaned = base64_private_key.replace("\n-----END PRIVATE KEY-----\n", "");
 
                                     PrivateKey privateKey = Common.getPrivateKeyFromBase64String(base64_cleaned);
+                                    if (privateKey == null) return;
                                     sign.initSign(privateKey);
                                     sign.update(signedData.getBytes());
                                     byte[] digitalSignature = sign.sign();

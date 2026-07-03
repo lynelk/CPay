@@ -3765,7 +3765,7 @@ public class TransactionsLogController {
                 
                 GatewayChargeDetails gwChargingDetails = DoPayGateway
                     .getGatewayChargeDetailsById(jdbcTemplate, gateway_id, sessionUser.getMerchant_id());
-                Double charges = DoPayGateway.getCustomerInboundCharges(total_amount, gwChargingDetails);
+                Double charges = DoPayGateway.getCustomerInboundCharges(amount, gwChargingDetails);
                 total_charges += charges;
                 Beneficiary b = new Beneficiary();
                 b.setAccount(account);
@@ -4284,7 +4284,7 @@ public class TransactionsLogController {
                 
                 GatewayChargeDetails gwChargingDetails = DoPayGateway
                     .getGatewayChargeDetailsById(jdbcTemplate, gateway_id, sessionUser.getMerchant_id());
-                Double charges = DoPayGateway.getCustomerInboundCharges(total_amount, gwChargingDetails);
+                Double charges = DoPayGateway.getCustomerInboundCharges(amount, gwChargingDetails);
                 total_charges += charges;
                 Beneficiary b = new Beneficiary();
                 b.setAccount(account);
@@ -4433,7 +4433,7 @@ public class TransactionsLogController {
             
             if (pStatus.equals(Transaction.BATCH_PAYMENTS_PROCESSING)) {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PAUSED);
-            } else if (pStatus.equals(Transaction.BATCH_PAYMENTS_PROCESSING)) {
+            } else if (pStatus.equals(Transaction.BATCH_PAYMENTS_PAUSED)) {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PROCESSING);
             } else {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PROCESSING);

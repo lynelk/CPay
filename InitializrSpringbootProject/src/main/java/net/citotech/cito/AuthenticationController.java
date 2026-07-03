@@ -639,6 +639,10 @@ public class AuthenticationController {
     public String requestResetPasswordMerchant (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         try {
+            String clientIp = Common.getIpAddress(request);
+            if (!rateLimiter.tryConsume(clientIp)) {
+                return GeneralException.getError("138", "Too many requests. Please try again later.");
+            }
             String userEmail = requestBody.get("email");
             String merchantNumber = requestBody.get("merchant_number");
 

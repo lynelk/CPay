@@ -67,6 +67,33 @@ INSERT IGNORE INTO `db_changes` (`query_id`, `sql_text`, `roll_back`) VALUES (
     'ALTER TABLE merchant_statement DROP COLUMN safaricom_balance'
 );
 
+-- 17: Indexes on hot query paths
+-- callback_status is scanned by CallbackRetryScheduler every minute
+CREATE INDEX IF NOT EXISTS `idx_mtl_callback_status`
+    ON `merchant_transactions_log` (`callback_status`);
+
+-- merchant_id + status is the most common filter on dashboard / admin queries
+CREATE INDEX IF NOT EXISTS `idx_mtl_merchant_status`
+    ON `merchant_transactions_log` (`merchant_id`, `status`);
+
+-- network_reference is looked up on every gateway callback
+CREATE INDEX IF NOT EXISTS `idx_mtl_network_ref`
+    ON `merchant_transactions_log` (`network_reference`);
+
+-- tx_merchant_ref is the primary correlation key for refunds / idempotency checks
+CREATE INDEX IF NOT EXISTS `idx_mtl_merchant_ref`
+    ON `merchant_transactions_log` (`tx_merchant_ref`);
+
+-- merchant_id on statement is the main read path for balance lookups
+CREATE INDEX IF NOT EXISTS `idx_ms_merchant_id`
+    ON `merchant_statement` (`merchant_id`);
+
+INSERT IGNORE INTO `db_changes` (`query_id`, `sql_text`, `roll_back`) VALUES (
+    '2024-01-01-07',
+    'CREATE INDEX idx_mtl_callback_status ON merchant_transactions_log (callback_status); CREATE INDEX idx_mtl_merchant_status ON merchant_transactions_log (merchant_id, status); CREATE INDEX idx_mtl_network_ref ON merchant_transactions_log (network_reference); CREATE INDEX idx_mtl_merchant_ref ON merchant_transactions_log (tx_merchant_ref); CREATE INDEX idx_ms_merchant_id ON merchant_statement (merchant_id)',
+    'DROP INDEX idx_mtl_callback_status ON merchant_transactions_log; DROP INDEX idx_mtl_merchant_status ON merchant_transactions_log; DROP INDEX idx_mtl_network_ref ON merchant_transactions_log; DROP INDEX idx_mtl_merchant_ref ON merchant_transactions_log; DROP INDEX idx_ms_merchant_id ON merchant_statement'
+);
+
 -- Recommended: change DOUBLE monetary columns to DECIMAL(20,4) for exactness
 -- (Run manually after verifying application behaviour with BigDecimal types)
 -- ALTER TABLE merchant_transactions_log
