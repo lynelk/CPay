@@ -13,7 +13,7 @@ import net.citotech.cito.Model.Merchant;
  * Versioned request-signature verifier for /api/v2.
  *
  * Canonical format:
- * METHOD\nPATH\nTIMESTAMP\nNONCE\nBODY_SHA256_HEX
+ * METHOD\nPATH\nCANONICAL_QUERY\nTIMESTAMP\nNONCE\nBODY_SHA256_HEX
  */
 public class CanonicalRequestSigner {
     public static final String SIGNATURE_VERSION = "v2";
@@ -23,8 +23,18 @@ public class CanonicalRequestSigner {
                                       String timestamp,
                                       String nonce,
                                       String body) {
+        return canonicalize(method, path, "", timestamp, nonce, body);
+    }
+
+    public static String canonicalize(String method,
+                                      String path,
+                                      String canonicalQuery,
+                                      String timestamp,
+                                      String nonce,
+                                      String body) {
         return safeUpper(method) + "\n"
                 + safe(path) + "\n"
+                + safe(canonicalQuery) + "\n"
                 + safe(timestamp) + "\n"
                 + safe(nonce) + "\n"
                 + sha256Hex(safe(body));
