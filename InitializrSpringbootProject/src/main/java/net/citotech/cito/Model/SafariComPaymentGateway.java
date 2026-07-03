@@ -779,7 +779,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             newTokenO.put("txRef", txRef);
             newTokenO.put("ConversationID", ConversationID);
             String separator = File.separator;
-            String filePath = /*lockfiledirectory+*/ConversationID+".json";
+            String filePath = lockfiledirectory+ConversationID+".json";
 
             File resource = new File(filePath);
             if (resource.createNewFile()) {
@@ -835,7 +835,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
             //First check if the token is still valid
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(1);//3599
+            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(55);
             if (now.isAfter(lastCreatedPlus)) {
                 return this.requestToken();
             }

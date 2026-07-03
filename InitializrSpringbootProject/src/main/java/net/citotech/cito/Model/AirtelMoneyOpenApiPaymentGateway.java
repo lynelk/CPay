@@ -802,7 +802,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway{
             
             //Compare with when it was created
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(1);
+            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(55);
             if (lastCreatedPlus.isAfter(now)) {
                 return true;
             } else {
@@ -852,7 +852,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway{
             
             //First check if the token is still valid
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(1);
+            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(55);
             if (now.isAfter(lastCreatedPlus)) {
                 return this.requestToken();
             }
