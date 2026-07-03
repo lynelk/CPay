@@ -25,22 +25,12 @@ public abstract class LegacyGatewayAdapter implements PaymentChannelAdapter {
         this.supportedPrefixes = supportedPrefixes == null ? new String[0] : supportedPrefixes;
     }
 
-    @Override
-    public String channelCode() { return channelCode; }
-
-    @Override
-    public String displayName() { return displayName; }
-
-    @Override
-    public String countryCode() { return countryCode; }
-
-    @Override
-    public String currencyCode() { return currencyCode; }
-
+    @Override public String channelCode() { return channelCode; }
+    @Override public String displayName() { return displayName; }
+    @Override public String countryCode() { return countryCode; }
+    @Override public String currencyCode() { return currencyCode; }
     public String legacyGatewayId() { return legacyGatewayId; }
-
-    @Override
-    public GatewayCapabilities capabilities() { return GatewayCapabilities.mobileMoneyDefaults(); }
+    @Override public GatewayCapabilities capabilities() { return GatewayCapabilities.mobileMoneyDefaults(); }
 
     @Override
     public boolean supportsAccount(String accountIdentifier) {
@@ -52,15 +42,8 @@ public abstract class LegacyGatewayAdapter implements PaymentChannelAdapter {
         return false;
     }
 
-    @Override
-    public GateWayResponse collect(PaymentGatewayRequest request) {
-        return accepted("COLLECT", request);
-    }
-
-    @Override
-    public GateWayResponse payout(PaymentGatewayRequest request) {
-        return accepted("PAYOUT", request);
-    }
+    @Override public GateWayResponse collect(PaymentGatewayRequest request) { return accepted("COLLECT", request); }
+    @Override public GateWayResponse payout(PaymentGatewayRequest request) { return accepted("PAYOUT", request); }
 
     @Override
     public GateWayResponse checkStatus(PaymentStatusRequest request) {
@@ -69,7 +52,7 @@ public abstract class LegacyGatewayAdapter implements PaymentChannelAdapter {
         response.setTransactionStatus("PENDING");
         response.setMessage(displayName + " status accepted by adapter");
         response.setHttpStatus("200");
-        response.setNetworkId(request == null ? "" : request.getTransactionReference());
+        response.setNetworkId(request == null ? "" : request.getProviderReference());
         return response;
     }
 
