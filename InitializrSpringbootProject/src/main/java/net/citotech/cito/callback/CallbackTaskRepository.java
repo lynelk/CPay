@@ -16,6 +16,9 @@ public class CallbackTaskRepository {
     }
 
     public void enqueue(long merchantId, String transactionId, String referenceValue, String targetUrl, String requestBody) {
+        if (exists(merchantId, transactionId, referenceValue)) {
+            return;
+        }
         String sql = "INSERT INTO callback_tasks (merchant_id, transaction_id, reference_value, target_url, request_body, task_status, attempt_count, attempt_limit, next_run_at) VALUES (:merchant_id, :transaction_id, :reference_value, :target_url, :request_body, 'PENDING', 0, 5, CURRENT_TIMESTAMP)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchant_id", merchantId);
@@ -24,6 +27,16 @@ public class CallbackTaskRepository {
         p.addValue("target_url", targetUrl);
         p.addValue("request_body", requestBody);
         jdbcTemplate.update(sql, p);
+    }
+
+    private boolean exists(long merchantId, String transactionId, String referenceValue) {
+        String sql = "SELECT COUNT(*) FROM callback_tasks WHERE merchant_id=:merchant_id AND transaction_id=:transaction_id AND reference_value=:reference_value";
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("merchant_id", merchantId);
+        p.addValue("transaction_id", transactionId);
+        p.addValue("reference_value", referenceValue);
+        Integer count = jdbcTemplate.queryForObject(sql, p, Integer.class);
+        return count != null && count > 0;
     }
 
     public List<CallbackTask> findDue(int limit) {
