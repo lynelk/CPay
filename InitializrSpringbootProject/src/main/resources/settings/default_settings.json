@@ -721,5 +721,50 @@
         "description":"Internal App Access via API IPs",
         "setting_value":"",
         "setting_group":"Applicaiton Settings"
+    },
+
+    {
+        "id":"",
+        "label":"Float Stock Account Number",
+        "name":"float_stock_account",
+        "description":"Account number of the float/stock merchant used to track gateway balances",
+        "setting_value":"",
+        "setting_group":"Float Alerts"
+    },
+
+    {
+        "id":"",
+        "label":"Float Alert Email",
+        "name":"float_alert_email",
+        "description":"Email address to receive float balance alerts",
+        "setting_value":"",
+        "setting_group":"Float Alerts"
+    },
+
+    {
+        "id":"",
+        "label":"MTN Float Minimum Balance",
+        "name":"float_alert_mtn_min",
+        "description":"Minimum MTN float balance before an alert email is sent",
+        "setting_value":"",
+        "setting_group":"Float Alerts"
+    },
+
+    {
+        "id":"",
+        "label":"Airtel Float Minimum Balance",
+        "name":"float_alert_airtel_min",
+        "description":"Minimum Airtel float balance before an alert email is sent",
+        "setting_value":"",
+        "setting_group":"Float Alerts"
+    },
+
+    {
+        "id":"",
+        "label":"Safaricom Float Minimum Balance",
+        "name":"float_alert_safaricom_min",
+        "description":"Minimum Safaricom float balance before an alert email is sent",
+        "setting_value":"",
+        "setting_group":"Float Alerts"
     }
 ]

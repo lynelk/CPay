@@ -756,6 +756,43 @@ public class Api {
 
             transactionRef = stkCallback.getString("MerchantRequestID");
             ResultCode = stkCallback.getInt("ResultCode");
+            final int resultCodeFinal = ResultCode;
+
+            if (resultCodeFinal != 0) {
+                TransactionTemplate failTemplate = new TransactionTemplate(transactionManager);
+                String failResult = failTemplate.execute(new TransactionCallback<String>() {
+                    @Override
+                    public String doInTransaction(TransactionStatus status) {
+                        try {
+                            Transaction tx = Common.getTxByNetworkRef(networkRef, jdbcTemplate);
+                            if (tx == null) {
+                                Logger.getLogger(AuthenticationController.class.getName())
+                                        .log(Level.INFO, "SAFARICOM API CALLBACK FAILED - Transaction "+networkRef+" not found: "+requestBody, requestBody);
+                                return GeneralException
+                                        .getError("109", String.format(GeneralException.ERRORS_109, "Transaction", networkRef));
+                            }
+                            tx.setStatus("FAILED");
+                            tx.setTx_update_trace(requestBody);
+                            tx.setResolved_by("SYSTEM");
+                            Logger.getLogger(AuthenticationController.class.getName())
+                                    .log(Level.INFO, "SAFARICOM API CALLBACK - ResultCode="+resultCodeFinal+", marking FAILED: "+requestBody, requestBody);
+                            String results = Common.updateTx(tx, jdbcTemplate, transactionManager);
+                            if (results.equals("success")) {
+                                return GeneralSuccessResponse.getMessage("000", "Request processed successfully");
+                            } else {
+                                return GeneralException.getError("109", GeneralException.ERRORS_142);
+                            }
+                        } catch (Exception e) {
+                            status.setRollbackOnly();
+                            Logger.getLogger(AuthenticationController.class.getName())
+                                    .log(Level.SEVERE, "INTERNAL ERROR: " + e.getMessage(), "");
+                            return GeneralException.getError("102", GeneralException.ERRORS_102);
+                        }
+                    }
+                });
+                return failResult;
+            }
+
             JSONObject CallbackMetadata = stkCallback.getJSONObject("CallbackMetadata");
             JSONArray Item =  CallbackMetadata.getJSONArray("Item");
             for (int i=0; i < Item.length(); i++) {
@@ -1187,9 +1224,6 @@ public class Api {
         //Set the response header
         Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: "+requestBody, requestBody);
-       if (true) {
-           return "Callback received";
-       }
         try {
             //Ensure that we have valid JSON data.
             JSONObject sObject;
@@ -1564,40 +1598,9 @@ public class Api {
             
             //Verify signature
             String signedData = merchant_number+content+recipients;
-            //Logger.getLogger(Common.class.getName()).log(Level.SEVERE, "SignedData: "+signedData, "");
-            //Get Merchant public key
-            if (merchant.getPublic_key() == null || merchant.getPublic_key().isEmpty()) {
-                //Now keys configured then
-                return GeneralException
-                    .getError("115", GeneralException.ERRORS_115);
-            }
-            
-            //Now verify signature.
-            Signature sign = Signature.getInstance("SHA256withRSA");
-            String base64_public_key = merchant.getPublic_key();
-            base64_public_key = base64_public_key.replace("-----BEGIN PUBLIC KEY-----\n", "");
-            String base64_cleaned = base64_public_key.replace("\n-----END PUBLIC KEY-----\n", "");
-            PublicKey publicKey = Common.getPublicKeyFromBase64String(base64_cleaned);
-            sign.initVerify(publicKey);
-            sign.update(signedData.getBytes());
-            
-            //Try to decode base64 to byte array
-            byte[] signature_content;
-            try{
-                signature_content = Base64.getDecoder().decode(signatureBase64);
-            } catch (Exception e) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (signature_content.length < 256) {
-                return GeneralException
-                    .getError("122", GeneralException.ERRORS_122);
-            }
-            
-            if (!sign.verify(signature_content)) {
-                return GeneralException
-                    .getError("116", GeneralException.ERRORS_116);
+            String sigError = SignatureVerificationService.verify(merchant, signedData, signatureBase64);
+            if (sigError != null) {
+                return sigError;
             }
             
             //Now check if the merchant is not suspended

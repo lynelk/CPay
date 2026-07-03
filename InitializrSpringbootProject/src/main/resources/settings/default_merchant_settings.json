@@ -129,5 +129,32 @@
         "description":"SMS Rate to Customer",
         "setting_value":"",
         "setting_group":"SMS Gateway Details"
+    },
+
+    {
+        "id":"",
+        "label":"API Allowed IPs",
+        "name":"api_allowed_ips",
+        "description":"Comma-separated list of IP addresses allowed to call this merchant's API. Leave blank to allow all.",
+        "setting_value":"",
+        "setting_group":"Security"
+    },
+
+    {
+        "id":"",
+        "label":"Daily Transaction Volume Limit",
+        "name":"daily_volume_limit",
+        "description":"Maximum total PAYIN amount allowed per day. Leave blank or 0 to disable.",
+        "setting_value":"",
+        "setting_group":"Limits"
+    },
+
+    {
+        "id":"",
+        "label":"Monthly Transaction Volume Limit",
+        "name":"monthly_volume_limit",
+        "description":"Maximum total PAYIN amount allowed per calendar month. Leave blank or 0 to disable.",
+        "setting_value":"",
+        "setting_group":"Limits"
     }
 ]
