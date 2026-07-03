@@ -555,9 +555,10 @@ public class Common {
                 m.setAccount_type(rs.getString("account_type"));
                 m.setPublic_key(rs.getString("public_key"));
                 m.setPrivate_key(rs.getString("private_key"));
-                String allowed_apis_string = rs.getString("allowed_apis")!= null ? 
+                m.setHmac_secret(rs.getString("hmac_secret"));
+                String allowed_apis_string = rs.getString("allowed_apis")!= null ?
                         rs.getString("allowed_apis"): "";
-                
+
                 String[] allowed_apis;
                 if (allowed_apis_string.isEmpty()) {
                     allowed_apis = new String[0];
@@ -565,7 +566,7 @@ public class Common {
                     allowed_apis = allowed_apis_string.split(",");
                 }
                 m.setAllowed_apis(allowed_apis);
-                
+
                 m.setUsers(getMerchantUsers(m, jdbcTemplate));
                 return m;
             }
@@ -577,10 +578,10 @@ public class Common {
             return null;
         }
     }
-    
-    
+
+
     /*
-    * Queries the database to get the Merchant 
+    * Queries the database to get the Merchant
     * by their id.
     * @Param reference: The customer's reference as submitted in the API request.
     * @Param merchant_id: This is the customer's long id
@@ -837,11 +838,12 @@ public class Common {
                 m.setAccount_type(rs.getString("account_type"));
                 m.setPublic_key(rs.getString("public_key"));
                 m.setPrivate_key(rs.getString("private_key"));
+                m.setHmac_secret(rs.getString("hmac_secret"));
                 m.setShort_name(rs.getString("short_name"));
                 //Get allowed APIs
-                String allowed_apis_string = rs.getString("allowed_apis")!= null ? 
+                String allowed_apis_string = rs.getString("allowed_apis")!= null ?
                         rs.getString("allowed_apis"): "";
-                
+
                 String[] allowed_apis;
                 if (allowed_apis_string.isEmpty()) {
                     allowed_apis = new String[0];
@@ -849,7 +851,7 @@ public class Common {
                     allowed_apis = allowed_apis_string.split(",");
                 }
                 m.setAllowed_apis(allowed_apis);
-                
+
                 m.setUsers(getMerchantUsers(m, jdbcTemplate));
                 return m;
             }
@@ -861,11 +863,11 @@ public class Common {
             return null;
         }
     }
-    
+
     /*
-    * Queries the database to get the user 
+    * Queries the database to get the user
     * by their email address.
-    * 
+    *
     * Returns User object or null.
     *
     static public Merchant getMerchantByAccountNumber(String account,
@@ -1666,7 +1668,9 @@ public class Common {
             +" `status`=:status,"
             +" `callback_url`=:callback_url,"
             +" `originate_ip`=:originate_ip,"
-                +"`safaricom_request_reference`=:safaricom_request_reference,"
+            +"`safaricom_request_reference`=:safaricom_request_reference,"
+            +" `currency`=:currency,"
+            +" `callback_status`='PENDING',"
             +" `tx_cost`=:tx_cost";
 
         final String sql_insert = sql+sql_set;
@@ -1699,6 +1703,7 @@ public class Common {
         parameters.addValue("callback_url", newTx.getCallback_url());
         parameters.addValue("originate_ip", newTx.getOriginate_ip());
         parameters.addValue("safaricom_request_reference", "");
+        parameters.addValue("currency", newTx.getCurrency() != null ? newTx.getCurrency() : "");
 
         TransactionTemplate template = new TransactionTemplate(transactionManager);
         String result = template.execute(new TransactionCallback<String>() {
@@ -1943,15 +1948,17 @@ public class Common {
             +" `status`=:status,"
             +" `callback_url`=:callback_url,"
             +" `originate_ip`=:originate_ip,"
-                +" `safaricom_request_reference`=:safaricom_request_reference,"
+            +" `safaricom_request_reference`=:safaricom_request_reference,"
+            +" `currency`=:currency,"
+            +" `callback_status`='PENDING',"
             +" `tx_cost`=:tx_cost";
-        
-        if (newTx.getMerchant_batch_transactions_log_id() != null 
+
+        if (newTx.getMerchant_batch_transactions_log_id() != null
                 && newTx.getMerchant_batch_transactions_log_id() > 0) {
             sql_set += ", merchant_batch_transactions_log_id=:batch_id ";
         }
-        
-        if (newTx.getBeneficiary_id() != null 
+
+        if (newTx.getBeneficiary_id() != null
                 && newTx.getBeneficiary_id() > 0) {
             sql_set += ", beneficiary_id=:beneficiary_id ";
         }
@@ -1981,14 +1988,15 @@ public class Common {
         parameters.addValue("charges", newTx.getCharges());
         parameters.addValue("callback_url", newTx.getCallback_url());
         parameters.addValue("safaricom_request_reference", newTx.getSafaricomRequestReference());
+        parameters.addValue("currency", newTx.getCurrency() != null ? newTx.getCurrency() : "");
 
         parameters.addValue("tx_request_trace", newTx.getTx_request_trace());
         parameters.addValue("tx_update_trace", newTx.getTx_update_trace());
         parameters.addValue("charges", newTx.getCharges());
         parameters.addValue("callback_url", newTx.getCallback_url());
         parameters.addValue("originate_ip", newTx.getOriginate_ip());
-        
-        if (newTx.getMerchant_batch_transactions_log_id() != null 
+
+        if (newTx.getMerchant_batch_transactions_log_id() != null
                 && newTx.getMerchant_batch_transactions_log_id() > 0) {
             parameters.addValue("batch_id", newTx.getMerchant_batch_transactions_log_id());
         }

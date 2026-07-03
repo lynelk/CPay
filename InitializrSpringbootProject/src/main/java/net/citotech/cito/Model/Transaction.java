@@ -79,8 +79,10 @@ public class Transaction {
     String originate_ip = "";
     String safaricomRequestReference = "";
     boolean isFinalStatusSet = false;
-    
-    
+    String currency = "";
+    String callback_status = "PENDING";
+
+
     static public ArrayList getCreditTxTypes() {
         ArrayList<String> r = new ArrayList<>();
         r.add(TX_TYPE_FLOAT_STOCK_CREDIT);
@@ -327,6 +329,22 @@ public class Transaction {
     public void setResolved_by(String resolved_by) {
         this.resolved_by = resolved_by;
     }
-    
-    
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency != null ? currency : "";
+    }
+
+    public String getCallback_status() {
+        return callback_status;
+    }
+
+    public void setCallback_status(String callback_status) {
+        this.callback_status = callback_status != null ? callback_status : "PENDING";
+    }
+
+
 }

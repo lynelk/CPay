@@ -25,6 +25,7 @@ public class Merchant {
     List<MerchantUser> users;
     String[] allowed_apis;
     String short_name;
+    String hmac_secret;
 
     public String getShort_name() {
         return short_name;
@@ -135,6 +136,14 @@ public class Merchant {
         this.created_by = created_by;
     }
     
+    public String getHmac_secret() {
+        return hmac_secret;
+    }
+
+    public void setHmac_secret(String hmac_secret) {
+        this.hmac_secret = hmac_secret;
+    }
+
     public String toString() {
         return "Name: "+name+", Account Number: "+account_number+", account_type: "+account_type;
     }
