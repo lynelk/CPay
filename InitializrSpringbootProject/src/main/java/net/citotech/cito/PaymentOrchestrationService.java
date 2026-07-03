@@ -15,6 +15,7 @@ import net.citotech.cito.gateway.LegacyGatewayAdapter;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.money.MoneyAmount;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -37,8 +38,8 @@ public class PaymentOrchestrationService {
         validatePaymentRequest(request, true);
         Merchant merchant = validateMerchant(request.getMerchantNumber(), verifiedMerchant, Common.API_MOBILE_MONEY_PAYIN);
         String accountIdentifier = request.getPayer().getValue();
-        PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier);
-        String gatewayId = resolveLegacyGatewayId(adapter, accountIdentifier);
+        String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
+        PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
         GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
 
         Double amount = parseAmount(request.getAmount());
@@ -57,8 +58,8 @@ public class PaymentOrchestrationService {
         validatePaymentRequest(request, false);
         Merchant merchant = validateMerchant(request.getMerchantNumber(), verifiedMerchant, Common.API_MOBILE_MONEY_PAYOUT);
         String accountIdentifier = request.getPayee().getValue();
-        PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier);
-        String gatewayId = resolveLegacyGatewayId(adapter, accountIdentifier);
+        String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
+        PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
         GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
 
         Double amount = parseAmount(request.getAmount());
@@ -101,11 +102,7 @@ public class PaymentOrchestrationService {
         return Common.getMerchantBalances(String.valueOf(merchant.getId()), jdbcTemplate);
     }
 
-    private Transaction baseTransaction(PaymentRequest request,
-                                        Merchant merchant,
-                                        String gatewayId,
-                                        String originateIp,
-                                        Double amount) {
+    private Transaction baseTransaction(PaymentRequest request, Merchant merchant, String gatewayId, String originateIp, Double amount) {
         Transaction tx = new Transaction();
         tx.setGateway_id(gatewayId);
         tx.setOriginal_amount(amount);
@@ -123,17 +120,14 @@ public class PaymentOrchestrationService {
         return tx;
     }
 
-    private PaymentResult resultFromLegacy(PaymentRequest request,
-                                           Transaction tx,
-                                           PaymentChannelAdapter adapter,
-                                           String legacyResult) {
+    private PaymentResult resultFromLegacy(PaymentRequest request, Transaction tx, PaymentChannelAdapter adapter, String legacyResult) {
         PaymentResult result = new PaymentResult();
         result.setReference(request.getReference());
         result.setTransactionId(tx.getTx_unique_id());
         result.setStatus("SUBMITTED");
         result.setChannel(adapter.channelCode());
         result.setCurrency(request.getCurrency());
-        result.setMessage("Transaction submitted to legacy payment engine");
+        result.setMessage("Transaction submitted through compatibility payment engine");
         result.setProviderResponse(legacyResult);
         return result;
     }
@@ -190,20 +184,22 @@ public class PaymentOrchestrationService {
         }
     }
 
-    private PaymentChannelAdapter resolveAdapter(PaymentRequest request, String accountIdentifier) {
+    private PaymentChannelAdapter resolveAdapter(PaymentRequest request, String accountIdentifier, String gatewayId) {
         if (request.getChannel() != null && !request.getChannel().trim().isEmpty()) {
             return paymentChannelRegistry.findByChannelCode(request.getChannel())
                     .orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + request.getChannel()));
         }
-        return paymentChannelRegistry.findByAccountIdentifier(accountIdentifier)
-                .orElseThrow(() -> new PaymentGatewayException("Unable to resolve channel for account"));
+        return paymentChannelRegistry.findByLegacyGatewayId(gatewayId)
+                .orElseGet(() -> paymentChannelRegistry.findByAccountIdentifier(accountIdentifier)
+                        .orElseThrow(() -> new PaymentGatewayException("Unable to resolve channel for account")));
     }
 
-    private String resolveLegacyGatewayId(PaymentChannelAdapter adapter, String accountIdentifier) {
-        if (adapter instanceof LegacyGatewayAdapter) {
-            String legacyGatewayId = ((LegacyGatewayAdapter) adapter).legacyGatewayId();
-            if (legacyGatewayId != null && !legacyGatewayId.trim().isEmpty()) {
-                return legacyGatewayId;
+    private String resolveLegacyGatewayId(PaymentRequest request, String accountIdentifier) {
+        if (request.getChannel() != null && !request.getChannel().trim().isEmpty()) {
+            PaymentChannelAdapter adapter = paymentChannelRegistry.findByChannelCode(request.getChannel())
+                    .orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + request.getChannel()));
+            if (adapter instanceof LegacyGatewayAdapter) {
+                return ((LegacyGatewayAdapter) adapter).legacyGatewayId();
             }
         }
         String gatewayId = DoPayGateway.getGatewayIdByMsisdn(accountIdentifier, jdbcTemplate);
@@ -234,7 +230,7 @@ public class PaymentOrchestrationService {
 
     private Double parseAmount(String amount) {
         try {
-            return Amount.parse(amount).asLegacyDouble();
+            return MoneyAmount.of(amount).asLegacyDouble();
         } catch (IllegalArgumentException e) {
             throw new PaymentGatewayException(e.getMessage());
         }
