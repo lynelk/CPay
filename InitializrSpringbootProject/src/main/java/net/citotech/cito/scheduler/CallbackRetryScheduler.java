@@ -1,230 +1,67 @@
 package net.citotech.cito.scheduler;
 
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.citotech.cito.Common;
-import net.citotech.cito.Model.HttpRequestResponse;
-import net.citotech.cito.Model.Merchant;
-import org.springframework.beans.factory.annotation.Autowired;
+import net.citotech.cito.callback.CallbackTaskService;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.security.PrivateKey;
-import java.security.Signature;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-/**
- * Scheduler that retries failed merchant callbacks with exponential backoff.
- * Retry schedule: 1 min, 5 min, 30 min (up to 3 retries).
- */
 @Component
 @EnableScheduling
 public class CallbackRetryScheduler {
-
     private static final Logger logger = Logger.getLogger(CallbackRetryScheduler.class.getName());
-    private static final int MAX_RETRIES = 3;
+    private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final CallbackTaskService taskService;
 
-    @Autowired
-    private NamedParameterJdbcTemplate jdbcTemplate;
+    public CallbackRetryScheduler(NamedParameterJdbcTemplate jdbcTemplate, CallbackTaskService taskService) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.taskService = taskService;
+    }
 
-    @Autowired
-    private PlatformTransactionManager transactionManager;
-
-    /**
-     * Runs every minute to retry pending callbacks.
-     */
     @Scheduled(fixedDelay = 60000)
-    public void retryCallbacks() {
+    public void run() {
         try {
-            String sql = "SELECT t.*, m.private_key, m.hmac_secret, m.account_number "
-                    + "FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG + " t "
-                    + "JOIN " + Common.DB_TABLE_MERCHANTS + " m ON t.merchant_id = m.id "
-                    + "WHERE t.callback_url IS NOT NULL AND t.callback_url != '' "
-                    + "AND (t.status = 'SUCCESSFUL' OR t.status = 'FAILED') "
-                    + "AND (t.callback_status = 'PENDING' OR t.callback_status = 'RETRY') "
-                    + "AND (t.callback_next_retry IS NULL OR t.callback_next_retry <= NOW()) "
-                    + "AND t.callback_retry_count < :max_retries "
-                    + "LIMIT 50";
-
-            MapSqlParameterSource params = new MapSqlParameterSource();
-            params.addValue("max_retries", MAX_RETRIES);
-
-            RowMapper<Object[]> rm = (rs, rowNum) -> new Object[]{
-                rs.getLong("id"),
-                rs.getString("payer_number"),
-                rs.getDouble("original_amount"),
-                rs.getString("created_on"),
-                rs.getString("tx_merchant_ref"),
-                rs.getString("status"),
-                rs.getString("tx_merchant_description"),
-                rs.getString("tx_gateway_ref"),
-                rs.getString("updated_on"),
-                rs.getString("callback_url"),
-                rs.getString("private_key"),
-                rs.getInt("callback_retry_count"),
-                rs.getString("hmac_secret"),
-                rs.getString("currency")
-            };
-
-            List<Object[]> rows = jdbcTemplate.query(sql, params, rm);
-            for (Object[] row : rows) {
-                retryCallback(row);
-            }
+            enqueueFinalRows();
+            taskService.processDue(50);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "CallbackRetryScheduler error: " + e.getMessage(), e);
+            logger.log(Level.SEVERE, "Callback scheduler error: " + e.getMessage(), e);
         }
     }
 
-    private void retryCallback(Object[] row) {
-        long txId = (long) row[0];
-        String payerNumber = (String) row[1];
-        double amount = (double) row[2];
-        String createdOn = (String) row[3];
-        String txMerchantRef = (String) row[4];
-        String status = (String) row[5];
-        String description = (String) row[6];
-        String networkRef = (String) row[7];
-        String updatedOn = (String) row[8];
-        String callbackUrl = (String) row[9];
-        String privateKey  = (String) row[10];
-        int    retryCount  = (int)    row[11];
-        String hmacSecret  = (String) row[12];
-        String currency    = row[13] != null ? (String) row[13] : "";
+    private void enqueueFinalRows() {
+        String sql = "SELECT id, merchant_id, original_amount, tx_merchant_ref, status, tx_merchant_description, tx_gateway_ref, updated_on, created_on, callback_url, currency FROM "
+                + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                + " WHERE callback_url IS NOT NULL AND callback_url != '' AND status IN ('SUCCESSFUL','FAILED') AND (callback_status IS NULL OR callback_status='PENDING' OR callback_status='RETRY') LIMIT 50";
+        List<Object[]> rows = jdbcTemplate.query(sql, new MapSqlParameterSource(), (rs, rowNum) -> new Object[]{
+                rs.getLong("id"), rs.getLong("merchant_id"), rs.getBigDecimal("original_amount"), rs.getString("tx_merchant_ref"),
+                rs.getString("status"), rs.getString("tx_merchant_description"), rs.getString("tx_gateway_ref"), rs.getString("updated_on"),
+                rs.getString("created_on"), rs.getString("callback_url"), rs.getString("currency")
+        });
+        for (Object[] row : rows) enqueue(row);
+    }
 
+    private void enqueue(Object[] row) {
         try {
-            String amountToSign = amount + "";
-            String maskedPayer  = payerNumber != null && payerNumber.length() >= 6
-                    ? payerNumber.substring(0, 3) + "****" + payerNumber.substring(payerNumber.length() - 3)
-                    : payerNumber;
-            String signedData = payerNumber + amountToSign + createdOn + txMerchantRef + status + description + networkRef;
-
-            JSONObject jObject = new JSONObject();
-            jObject.put("amount",       amountToSign);
-            jObject.put("payer_number", maskedPayer);
-            jObject.put("reference",    txMerchantRef);
-            jObject.put("network_ref",  networkRef);
-            jObject.put("status",       status);
-            jObject.put("description",  description);
-            jObject.put("completed_on", updatedOn);
-            jObject.put("created_on",   createdOn);
-            jObject.put("currency",     currency);
-            jObject.put("SignedData",   signedData);
-
-            if (hmacSecret != null && !hmacSecret.isEmpty()) {
-                Mac mac = Mac.getInstance("HmacSHA256");
-                mac.init(new SecretKeySpec(hmacSecret.getBytes("UTF-8"), "HmacSHA256"));
-                byte[] hmacBytes = mac.doFinal(signedData.getBytes("UTF-8"));
-                jObject.put("signature",           Base64.getEncoder().encodeToString(hmacBytes));
-                jObject.put("signature_algorithm", "HMAC-SHA256");
-            } else if (privateKey != null && !privateKey.isEmpty()) {
-                Signature sign = Signature.getInstance("SHA256withRSA");
-                String base64_private_key = privateKey
-                        .replace("-----BEGIN PRIVATE KEY-----\n", "")
-                        .replace("\n-----END PRIVATE KEY-----\n", "");
-                PrivateKey pk = Common.getPrivateKeyFromBase64String(base64_private_key);
-                sign.initSign(pk);
-                sign.update(signedData.getBytes());
-                byte[] digitalSignature = sign.sign();
-                jObject.put("signature",           Base64.getEncoder().encodeToString(digitalSignature));
-                jObject.put("signature_algorithm", "RSA-SHA256");
-            } else {
-                markCallbackFailed(txId, retryCount);
-                return;
-            }
-
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Content-Type", "application/json");
-
-            HttpRequestResponse rs = Common.doHttpRequest("POST", callbackUrl, jObject.toString(), headers);
-
-            if (rs != null && rs.getStatusCode() >= 200 && rs.getStatusCode() < 300) {
-                markCallbackSuccess(txId, rs.toString());
-            } else {
-                markCallbackRetry(txId, retryCount);
-            }
+            long txId = (long) row[0];
+            JSONObject body = new JSONObject();
+            body.put("amount", row[2] == null ? "0.00" : row[2].toString());
+            body.put("reference", row[3]);
+            body.put("status", row[4]);
+            body.put("description", row[5]);
+            body.put("network_ref", row[6]);
+            body.put("completed_on", row[7]);
+            body.put("created_on", row[8]);
+            body.put("currency", row[10] == null ? "" : row[10]);
+            taskService.enqueue((long) row[1], String.valueOf(txId), String.valueOf(row[3]), String.valueOf(row[9]), body.toString());
+            jdbcTemplate.update("UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG + " SET callback_status='QUEUED' WHERE id=:id", new MapSqlParameterSource("id", txId));
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Callback retry failed for tx " + txId + ": " + e.getMessage(), e);
-            markCallbackRetry(txId, retryCount);
+            logger.log(Level.WARNING, "Queue enqueue failed: " + e.getMessage(), e);
         }
-    }
-
-    private void markCallbackSuccess(long txId, String trace) {
-        TransactionTemplate template = new TransactionTemplate(transactionManager);
-        template.execute((TransactionStatus status) -> {
-            try {
-                String sql = "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                        + " SET callback_status='SUCCESS', callback_trace=:trace"
-                        + " WHERE id=:id";
-                MapSqlParameterSource p = new MapSqlParameterSource();
-                p.addValue("id", txId);
-                p.addValue("trace", trace);
-                jdbcTemplate.update(sql, p);
-            } catch (Exception e) {
-                status.setRollbackOnly();
-            }
-            return null;
-        });
-    }
-
-    private void markCallbackRetry(long txId, int currentCount) {
-        int newCount = currentCount + 1;
-        String nextRetryExpression;
-        if (newCount == 1) nextRetryExpression = "DATE_ADD(NOW(), INTERVAL 5 MINUTE)";
-        else if (newCount == 2) nextRetryExpression = "DATE_ADD(NOW(), INTERVAL 30 MINUTE)";
-        else nextRetryExpression = null;
-
-        TransactionTemplate template = new TransactionTemplate(transactionManager);
-        template.execute((TransactionStatus status) -> {
-            try {
-                String sql;
-                if (nextRetryExpression != null) {
-                    sql = "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                            + " SET callback_status='RETRY', callback_retry_count=:count,"
-                            + " callback_next_retry=" + nextRetryExpression
-                            + " WHERE id=:id";
-                } else {
-                    sql = "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                            + " SET callback_status='FAILED', callback_retry_count=:count"
-                            + " WHERE id=:id";
-                }
-                MapSqlParameterSource p = new MapSqlParameterSource();
-                p.addValue("id", txId);
-                p.addValue("count", newCount);
-                jdbcTemplate.update(sql, p);
-            } catch (Exception e) {
-                status.setRollbackOnly();
-            }
-            return null;
-        });
-    }
-
-    private void markCallbackFailed(long txId, int currentCount) {
-        TransactionTemplate template = new TransactionTemplate(transactionManager);
-        template.execute((TransactionStatus status) -> {
-            try {
-                String sql = "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                        + " SET callback_status='FAILED', callback_retry_count=:count WHERE id=:id";
-                MapSqlParameterSource p = new MapSqlParameterSource();
-                p.addValue("id", txId);
-                p.addValue("count", currentCount + 1);
-                jdbcTemplate.update(sql, p);
-            } catch (Exception e) {
-                status.setRollbackOnly();
-            }
-            return null;
-        });
     }
 }
