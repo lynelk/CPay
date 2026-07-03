@@ -7,13 +7,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/**
- * Registry for payment channel adapters.
- *
- * This gives the codebase a Spring-managed extension point for adding channels
- * without modifying the legacy DoPayGateway routing class every time a provider
- * is added. Existing integrations can be moved behind adapters incrementally.
- */
 @Component
 public class PaymentChannelRegistry {
     private final List<PaymentChannelAdapter> adapters;
@@ -32,6 +25,18 @@ public class PaymentChannelRegistry {
         }
         return adapters.stream()
                 .filter(adapter -> adapter.channelCode().equalsIgnoreCase(channelCode.trim()))
+                .findFirst();
+    }
+
+    public Optional<PaymentChannelAdapter> findByLegacyGatewayId(String gatewayId) {
+        if (gatewayId == null || gatewayId.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        return adapters.stream()
+                .filter(adapter -> adapter instanceof LegacyGatewayAdapter)
+                .map(adapter -> (LegacyGatewayAdapter) adapter)
+                .filter(adapter -> gatewayId.equals(adapter.legacyGatewayId()))
+                .map(adapter -> (PaymentChannelAdapter) adapter)
                 .findFirst();
     }
 
