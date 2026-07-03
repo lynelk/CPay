@@ -1,117 +1,47 @@
-## CPay — Core Payments Service Engine
+# CPay — Core Payments Service Engine
 
-CPay is the core payments orchestration service.
-[CitoConnect](https://github.com/lynelk/citoconnect) integrates CPay as
-its **Core Payments Service Engine**, which means every payment
-integration and channel inside CitoConnect — MTN MoMo, Airtel Money,
-Safaricom M-Pesa, Yo! Payments, Stripe, Flutterwave, Pesapal — is
-dispatched through CPay's `/api/v1` REST surface or through CPay-owned
-Adapter modules. See `docs/citoconnect-integration.md` for the
-integration contract and the canonical request/response shapes.
+CPay is a Spring Boot orchestration service with admin and merchant portals. It supports collections, payouts, status checks, balance checks, and provider callback handling across configured channels.
 
-## Available Scripts
-Prerequisite
-1. Java JDK Version >= 8
-3. MySQL
-
-Installation
-1. cd to clientside
-2. Create and import the data at clientside/db/structure.sql
-3. Import currently applied db changes: clientside/db/db_changes.sql
-4. Import initial admin user at clientside/db/initialize.sql
-5. Initial Username & Password are joseph.tabajjwa@gmail.com : @cpayadmin@domain
-6. cd to the setup directory
-7. run ./install.sh
+## Current native channels
 
 | Network | Country | Capabilities |
 |---|---|---|
-| MTN MoMo | Uganda | Collections, Disbursements, Balance |
-| Airtel Money | Uganda / Kenya | Collections, Disbursements (Legacy + OpenAPI) |
-| Safaricom M-Pesa | Kenya | STK Push, B2C, Balance |
+| MTN MoMo | Uganda | Collections, disbursements, balance |
+| Airtel Money | Uganda / Kenya | Collections, disbursements, legacy API + OpenAPI |
+| Safaricom M-Pesa | Kenya | STK Push, B2C, balance |
 
----
+Additional channels should be added through the gateway adapter pattern described in `docs/gateway-adapter-guide.md`.
 
-Stop the servers
-1. Run: /etc/init.d/cpayadmin/shutdown.sh | /home/centos/cpay/setup/shutdown.sh
+## Repository layout
 
-Ports
-1. Java: 443
+```text
+InitializrSpringbootProject/   Spring Boot backend
+clientside/                    React admin and merchant portal
+integrations/citoconnect/      Node/JS reference client and integration bundle
+docs/                          Architecture and integration documentation
+```
 
 ## Prerequisites
 
-Compiling React App and Java 
-1. cd into ../clientside directory.
-2. Run the command: npm run build.
-2.1. Copy the following to the head section of the ../clientside/build/index.html
+- Java 11+
+- Maven
+- MySQL 8+
+- Node.js 18+ for frontend development
+- npm
 
-## Environment Variables
+## Local setup
 
-Copy `.env.example` to `.env` and fill in all values before starting the application. **Never commit `.env` to version control.**
-
-### Required
-
-2.3. Include the following content in the body tag of ../clientside/build/index.html
-onload="onLoad();"
-
-> The application **will not start** if `ACTUATOR_USERNAME` or `ACTUATOR_PASSWORD` are missing. There are no built-in defaults.
-
-### Recommended
-
-| Variable | Description | Default |
-|---|---|---|
-| `GATEWAY_STATE` | `SANDBOX` or `PRODUCTION` | `SANDBOX` |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins for the admin/merchant portals | `http://localhost:3000` |
-| `APP_BASE_URL` | Base URL used in password-reset emails (no trailing slash) | `http://localhost:9000` |
-| `HTTP_PORT` | Port the application listens on | `9000` |
-| `LOCK_FILE_DIR` | Directory for scheduler lock files | `/tmp/cpay/locks/` |
-
-Use the Following Link to the general PKCS12 version of the SSL CERTIFICATE
-https://dzone.com/articles/spring-boot-secured-by-lets-encrypt
-
-| Variable | Description |
-|---|---|
-| `MAIL_HOST` | SMTP host |
-| `MAIL_PORT` | SMTP port |
-| `MAIL_USERNAME` | SMTP username |
-| `MAIL_PASSWORD` | SMTP password |
-
-INSTALLING AND RENEWING CERTIFICATES
-1. Log in to the Lightsail server.
-2. Stop any service running on Port 80.
-3. RUN: sudo certbot renew | sudo certbot certonly -a standalone -d cpaytest.citotech.net
-4. Convert the updated certificate to PKCS12: 
-
-To enable HTTPS, uncomment the four SSL lines in `application.properties` and set:
-
-| Variable | Description |
-|---|---|
-| `SSL_KEY_STORE` | Path to PKCS12 keystore |
-| `SSL_KEY_STORE_PASSWORD` | Keystore password |
-| `SSL_KEY_ALIAS` | Certificate alias |
-
-See [Spring Boot SSL docs](https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html#appendix.application-properties.server) and the Let's Encrypt section below.
-
----
-
-## Database Setup
+1. Create a database, for example `cpayadmin`.
+2. Copy `.env.example` to `.env` and provide local values.
+3. Import the baseline SQL files under `clientside/db/` until the schema is fully migrated to Flyway.
+4. Start the backend from `InitializrSpringbootProject`.
+5. Start or build the frontend from `clientside`.
 
 ```bash
-# 1. Create the schema and tables
-mysql -u root -p < clientside/db/structure.sql
-
-Copy the new version to Cpay Server
-scp -i /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/newcpay/new_cpay.pem /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/cpay/InitializrSpringbootProject/target/cito-0.0.1-SNAPSHOT.jar centos@18.190.63.205:/home/centos/cpay/setup/
-
-scp -i /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/newcpay/new_cpay.pem /Users/josephtabajjwa/Desktop/Joe/projects/CitoTech/paymentgw/cpay/InitializrSpringbootProject/target/cito-0.0.1-SNAPSHOT.jar centos@18.190.63.205:/home/centos/kwiff/setup/
-
-```bash
-# Clone and enter the repo
-git clone <repo-url>
-cd CPay
-
-Compiling with Maven
-Run the command: maven package
-It will package a JAR file for you.
+cd InitializrSpringbootProject
+mvn clean package
+java -jar target/cito-0.0.1-SNAPSHOT.jar
+```
 
 ```bash
 cd clientside
@@ -119,4 +49,52 @@ npm install
 npm run build
 ```
 
-- ssh -i LightsailDefaultPrivateKey-eu-central-1.pem ubuntu@18.196.18.46 -R 8080:localhost:9000
+## Environment variables
+
+Never commit `.env`, provider credentials, production URLs, or merchant secrets.
+
+| Variable | Description |
+|---|---|
+| `DB_URL` | JDBC URL for MySQL |
+| `DB_USERNAME` | Database username |
+| `DB_PASSWORD` | Database password |
+| `MAIL_HOST` | SMTP host |
+| `MAIL_PORT` | SMTP port |
+| `MAIL_USERNAME` | SMTP username |
+| `MAIL_PASSWORD` | SMTP password |
+| `GATEWAY_STATE` | `SANDBOX` or `PRODUCTION` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated admin/merchant portal origins |
+| `APP_BASE_URL` | Public app URL used in email links |
+| `HTTP_PORT` | Backend HTTP port |
+| `LOCK_FILE_DIR` | Scheduler lock-file directory |
+| `ACTUATOR_USERNAME` | Monitoring username |
+| `ACTUATOR_PASSWORD` | Monitoring password |
+
+## Merchant API surface
+
+Current versioned endpoints are exposed under `/api/v1`:
+
+| Operation | Endpoint |
+|---|---|
+| Collect | `POST /api/v1/doMobileMoneyPayIn` |
+| Payout | `POST /api/v1/doMobileMoneyPayOut` |
+| Status | `POST /api/v1/doTransactionCheckStatus` |
+| Balance | `POST /api/v1/doGetBalances` |
+
+See `docs/citoconnect-integration.md` for request shapes, signing rules, and CitoConnect integration details.
+
+## Security notes
+
+- Merchant API requests are RSA-signed.
+- Merchant callback URLs are validated to reduce SSRF risk.
+- Actuator endpoints must use explicit credentials.
+- Do not document real deployment commands or production host details in the repository.
+
+## Development roadmap
+
+1. Formalise the gateway adapter registry and route all providers through it.
+2. Add explicit `channel`, `country`, and `currency` request fields.
+3. Introduce `/api/v2/payments/*` endpoints with a safer canonical signing contract.
+4. Move database setup fully into Flyway migrations.
+5. Add gateway health checks, callback retries, and reconciliation dashboards.
+6. Modernise the React portal and expose structured gateway management.

@@ -11,9 +11,6 @@ permissions:
   security-events: write  # Required for CodeQL
 
 jobs:
-  # ─────────────────────────────────────────────────────────────────────────
-  # Build, test, and security scan the Spring Boot backend
-  # ─────────────────────────────────────────────────────────────────────────
   backend:
     name: Backend – Build, Test & Scan
     runs-on: ubuntu-latest
@@ -35,13 +32,14 @@ jobs:
       - name: Build and run unit tests
         run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
         env:
-          # Provide placeholder env vars so application context loads in test
           DB_URL: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
           DB_USERNAME: sa
           DB_PASSWORD: ""
           MAIL_USERNAME: noreply@example.com
           MAIL_PASSWORD: ""
           LOCK_FILE_DIR: /tmp/cpay/locks
+          ACTUATOR_USERNAME: ci-actuator
+          ACTUATOR_PASSWORD: ci-actuator-password
 
       - name: Upload test reports
         if: always()
@@ -50,9 +48,6 @@ jobs:
           name: backend-surefire-reports
           path: InitializrSpringbootProject/target/surefire-reports/
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # OWASP Dependency-Check for known CVEs in Maven dependencies
-  # ─────────────────────────────────────────────────────────────────────────
   owasp:
     name: OWASP Dependency-Check
     runs-on: ubuntu-latest
@@ -86,9 +81,6 @@ jobs:
           name: owasp-dependency-check-report
           path: InitializrSpringbootProject/target/dependency-check-report.html
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # CodeQL SAST (Java)
-  # ─────────────────────────────────────────────────────────────────────────
   codeql:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
@@ -120,15 +112,14 @@ jobs:
           MAIL_USERNAME: noreply@example.com
           MAIL_PASSWORD: ""
           LOCK_FILE_DIR: /tmp/cpay/locks
+          ACTUATOR_USERNAME: ci-actuator
+          ACTUATOR_PASSWORD: ci-actuator-password
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:java"
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Frontend – lint and build the React app
-  # ─────────────────────────────────────────────────────────────────────────
   frontend:
     name: Frontend – Lint & Build
     runs-on: ubuntu-latest
@@ -156,4 +147,4 @@ jobs:
       - name: Build React app
         run: npm run build
         env:
-          CI: "false"   # Treat warnings as non-fatal during build
+          CI: "false"
