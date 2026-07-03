@@ -2,25 +2,27 @@ package net.citotech.cito.security;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 
 /**
- * Lightweight in-memory replay protection for /api/v2 signed requests.
+ * Replay protection for /api/v2 signed requests.
  *
- * This is suitable for a single-node deployment. For clustered production, move
- * the nonce store to Redis or the database with a short TTL.
+ * Default local mode uses an in-memory nonce store. Production can switch to
+ * JDBC storage with cpay.security.nonce-store=jdbc so multiple app instances
+ * share replay state.
  */
 @Service
 public class ReplayProtectionService {
     private static final Duration MAX_CLOCK_SKEW = Duration.ofMinutes(5);
     private static final Duration NONCE_TTL = Duration.ofMinutes(10);
 
-    private final Map<String, Instant> seenNonces = new ConcurrentHashMap<>();
+    private final NonceStore nonceStore;
+
+    public ReplayProtectionService(NonceStore nonceStore) {
+        this.nonceStore = nonceStore;
+    }
 
     public boolean accept(String merchantNumber, String timestamp, String nonce) {
-        cleanupExpiredNonces();
         if (isBlank(merchantNumber) || isBlank(timestamp) || isBlank(nonce)) {
             return false;
         }
@@ -34,13 +36,7 @@ public class ReplayProtectionService {
         if (requestTime.isBefore(now.minus(MAX_CLOCK_SKEW)) || requestTime.isAfter(now.plus(MAX_CLOCK_SKEW))) {
             return false;
         }
-        String key = merchantNumber.trim() + ":" + nonce.trim();
-        return seenNonces.putIfAbsent(key, now.plus(NONCE_TTL)) == null;
-    }
-
-    private void cleanupExpiredNonces() {
-        Instant now = Instant.now();
-        seenNonces.entrySet().removeIf(entry -> entry.getValue().isBefore(now));
+        return nonceStore.remember(merchantNumber, nonce, now.plus(NONCE_TTL));
     }
 
     private boolean isBlank(String value) {
