@@ -10,7 +10,6 @@ import Progress from "../../Progress";
 import LinearChart from './LinearChart';
 import styles from '../../styles';
 import strings from '../../locale';
-import { join } from 'path';
 import MerchantModuleMerchantsAccount from './MerchantModuleMerchantsAccount';
 
 class MerchantModulePaymentsC extends React.Component {

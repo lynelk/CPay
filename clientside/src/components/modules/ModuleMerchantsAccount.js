@@ -11,7 +11,7 @@ import LinearChart from './LinearChart';
 import styles from '../styles';
 import strings from '../locale';
 
-import ReactExport from "react-export-excel";
+import ReactExport from "../../shared/export/ExcelExport";
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
 const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
