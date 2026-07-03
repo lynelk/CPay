@@ -3,6 +3,7 @@ package net.citotech.cito.reconciliation;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +15,14 @@ public class ReconController {
 
     public ReconController(ReconService service) {
         this.service = service;
+    }
+
+    @PostMapping(path = "/import")
+    public long importStatement(@RequestParam("provider") String provider,
+                                @RequestParam(value = "fileName", defaultValue = "statement.csv") String fileName,
+                                @RequestParam(value = "importedBy", defaultValue = "system") String importedBy,
+                                @RequestBody String csvText) {
+        return service.importStatement(provider, fileName, importedBy, csvText);
     }
 
     @PostMapping(path = "/auto-match")
