@@ -3,6 +3,8 @@ package net.citotech.cito.reconciliation;
 import java.util.List;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -11,6 +13,32 @@ public class ReconciliationRepository {
 
     public ReconciliationRepository(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public long createImport(String providerCode, String channelCode, String fileName, String importedBy, int totalRecords) {
+        String sql = "INSERT INTO reconciliation_imports (provider_code, channel_code, source_file_name, imported_by, total_records) VALUES (:provider_code, :channel_code, :source_file_name, :imported_by, :total_records)";
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("provider_code", providerCode);
+        p.addValue("channel_code", channelCode);
+        p.addValue("source_file_name", fileName);
+        p.addValue("imported_by", importedBy);
+        p.addValue("total_records", totalRecords);
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(sql, p, keyHolder);
+        return keyHolder.getKey().longValue();
+    }
+
+    public void insertStatementRow(long importId, StatementRow row) {
+        String sql = "INSERT INTO reconciliation_records (import_id, provider_code, channel_code, provider_reference, merchant_reference, amount, currency, match_status) VALUES (:import_id, :provider_code, :channel_code, :provider_reference, :merchant_reference, :amount, :currency, 'UNMATCHED')";
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("import_id", importId);
+        p.addValue("provider_code", row.providerCode);
+        p.addValue("channel_code", row.channelCode);
+        p.addValue("provider_reference", row.providerReference);
+        p.addValue("merchant_reference", row.merchantReference);
+        p.addValue("amount", row.amount);
+        p.addValue("currency", row.currency);
+        jdbcTemplate.update(sql, p);
     }
 
     public List<ReconciliationRecord> findUnmatched(int limit) {
