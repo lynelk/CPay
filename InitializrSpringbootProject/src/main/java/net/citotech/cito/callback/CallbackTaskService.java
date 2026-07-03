@@ -12,9 +12,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class CallbackTaskService {
     private final CallbackTaskRepository repository;
+    private final CallbackSigningService signingService;
 
-    public CallbackTaskService(CallbackTaskRepository repository) {
+    public CallbackTaskService(CallbackTaskRepository repository, CallbackSigningService signingService) {
         this.repository = repository;
+        this.signingService = signingService;
     }
 
     public void enqueue(long merchantId, String transactionId, String referenceValue, String targetUrl, String requestBody) {
@@ -33,8 +35,12 @@ public class CallbackTaskService {
 
     private void deliver(CallbackTask task) {
         try {
+            CallbackSigningService.SignedCallback signed = signingService.sign(task);
             Map<String, String> headers = new HashMap<>();
             headers.put("Content-Type", "application/json");
+            headers.put("X-CPay-Signature", signed.signature);
+            headers.put("X-CPay-Nonce", signed.nonce);
+            headers.put("X-CPay-Timestamp", signed.timestamp);
             HttpRequestResponse response = Common.doHttpRequest("POST", task.targetUrl, task.requestBody, headers);
             if (response != null && response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
                 repository.markDone(task.id);
