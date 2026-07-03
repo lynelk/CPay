@@ -1,9 +1,13 @@
 package net.citotech.cito.api.v2;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
-import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.security.CanonicalRequestSigner;
 import net.citotech.cito.security.ReplayProtectionService;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -28,19 +32,42 @@ public class V2RequestSecurityService {
         String requestSignature = request.getHeader("X-CPay-Signature");
 
         if (!CanonicalRequestSigner.SIGNATURE_VERSION.equalsIgnoreCase(version)) {
-            throw new PaymentGatewayException("Unsupported or missing signature version");
+            throw new V2RequestSecurityException("Unsupported or missing signature version");
         }
         if (!replayProtectionService.accept(merchantNumber, timestamp, nonce)) {
-            throw new PaymentGatewayException("Timestamp or nonce was rejected");
+            throw new V2RequestSecurityException("Timestamp or nonce was rejected");
         }
         Merchant merchant = Common.getMerchantByAccountNumber(merchantNumber, jdbcTemplate);
         if (merchant == null) {
-            throw new PaymentGatewayException("Merchant was not found");
+            throw new V2RequestSecurityException("Merchant was not found");
         }
-        String canonical = CanonicalRequestSigner.canonicalize(request.getMethod(), request.getRequestURI(), timestamp, nonce, body);
+        String canonical = CanonicalRequestSigner.canonicalize(
+                request.getMethod(),
+                request.getRequestURI(),
+                canonicalQuery(request),
+                timestamp,
+                nonce,
+                body);
         if (!CanonicalRequestSigner.verify(merchant, canonical, requestSignature)) {
-            throw new PaymentGatewayException("Invalid request signature");
+            throw new V2RequestSecurityException("Invalid request signature");
         }
         return merchant;
+    }
+
+    private String canonicalQuery(HttpServletRequest request) {
+        Map<String, String[]> parameters = request.getParameterMap();
+        if (parameters == null || parameters.isEmpty()) {
+            return "";
+        }
+        return parameters.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .flatMap(entry -> Arrays.stream(entry.getValue())
+                        .sorted()
+                        .map(value -> encode(entry.getKey()) + "=" + encode(value)))
+                .collect(Collectors.joining("&"));
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 }
