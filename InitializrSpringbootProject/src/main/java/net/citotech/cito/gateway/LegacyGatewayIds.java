@@ -5,8 +5,8 @@ public final class LegacyGatewayIds {
     private LegacyGatewayIds() {
     }
 
-    public static final String MTN_MOMO = "mtnmomo";
-    public static final String AIRTEL_MONEY = "airtelmoney";
-    public static final String AIRTEL_OPEN_API = "airtelmoneyopenapi";
-    public static final String SAFARICOM_MPESA = "safaricom";
+    public static final String MTN_MOMO = "MTNMoMoPaymentGateway";
+    public static final String AIRTEL_MONEY = "AirtelMoneyPaymentGateway";
+    public static final String AIRTEL_OPEN_API = "AirtelMoneyOpenApiPaymentGateway";
+    public static final String SAFARICOM_MPESA = "SafariComPaymentGateway";
 }
