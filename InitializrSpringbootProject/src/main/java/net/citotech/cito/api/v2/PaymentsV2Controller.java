@@ -3,7 +3,6 @@ package net.citotech.cito.api.v2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
-import net.citotech.cito.Common;
 import net.citotech.cito.Model.Balance;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.PaymentOrchestrationService;
@@ -42,7 +41,7 @@ public class PaymentsV2Controller {
         try {
             PaymentRequest request = objectMapper.readValue(body, PaymentRequest.class);
             Merchant merchant = securityService.verify(servletRequest, body, request.getMerchantNumber());
-            PaymentResult result = paymentOrchestrationService.collect(request, merchant, Common.getIpAddress(servletRequest));
+            PaymentResult result = paymentOrchestrationService.collect(request, merchant, servletRequest.getRemoteAddr());
             return ResponseEntity.accepted().body(result);
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.BAD_REQUEST, "PAYMENT_REJECTED", e.getMessage());
@@ -56,7 +55,7 @@ public class PaymentsV2Controller {
         try {
             PaymentRequest request = objectMapper.readValue(body, PaymentRequest.class);
             Merchant merchant = securityService.verify(servletRequest, body, request.getMerchantNumber());
-            PaymentResult result = paymentOrchestrationService.payout(request, merchant, Common.getIpAddress(servletRequest));
+            PaymentResult result = paymentOrchestrationService.payout(request, merchant, servletRequest.getRemoteAddr());
             return ResponseEntity.accepted().body(result);
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.BAD_REQUEST, "PAYMENT_REJECTED", e.getMessage());
@@ -72,11 +71,9 @@ public class PaymentsV2Controller {
 
     @GetMapping(path = "/balances")
     public ResponseEntity<?> balances(@RequestParam("merchantNumber") String merchantNumber,
-                                      @RequestBody(required = false) String body,
                                       HttpServletRequest servletRequest) {
         try {
-            String canonicalBody = body == null ? "" : body;
-            Merchant merchant = securityService.verify(servletRequest, canonicalBody, merchantNumber);
+            Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
             List<Balance> balances = paymentOrchestrationService.balances(merchantNumber, merchant);
             return ResponseEntity.ok(balances);
         } catch (PaymentGatewayException e) {
