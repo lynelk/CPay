@@ -148,3 +148,4 @@ jobs:
         run: npm run build
         env:
           CI: "false"
+          NODE_OPTIONS: "--openssl-legacy-provider"
