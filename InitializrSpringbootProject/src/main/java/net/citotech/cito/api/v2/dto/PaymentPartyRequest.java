@@ -1,12 +1,7 @@
 package net.citotech.cito.api.v2.dto;
 
-import javax.validation.constraints.NotBlank;
-
 public class PaymentPartyRequest {
-    @NotBlank
     private String type;
-
-    @NotBlank
     private String value;
 
     public String getType() {
