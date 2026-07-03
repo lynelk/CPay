@@ -81,7 +81,16 @@ Current versioned endpoints are exposed under `/api/v1`:
 | Status | `POST /api/v1/doTransactionCheckStatus` |
 | Balance | `POST /api/v1/doGetBalances` |
 
-See `docs/citoconnect-integration.md` for request shapes, signing rules, and CitoConnect integration details.
+The new `/api/v2` surface introduces explicit channel/country/currency fields and versioned request signing:
+
+| Operation | Endpoint |
+|---|---|
+| Collect | `POST /api/v2/payments/collect` |
+| Payout | `POST /api/v2/payments/payout` |
+| Channels | `GET /api/v2/channels` |
+| Balances | `GET /api/v2/balances?merchantNumber=...` |
+
+See `docs/citoconnect-integration.md`, `docs/api-v2-signing.md`, and `docs/api-v2-examples.md` for request shapes and signing rules.
 
 ## Security notes
 
@@ -92,9 +101,8 @@ See `docs/citoconnect-integration.md` for request shapes, signing rules, and Cit
 
 ## Development roadmap
 
-1. Formalise the gateway adapter registry and route all providers through it.
-2. Add explicit `channel`, `country`, and `currency` request fields.
-3. Introduce `/api/v2/payments/*` endpoints with a safer canonical signing contract.
-4. Move database setup fully into Flyway migrations.
-5. Add gateway health checks, callback retries, and reconciliation dashboards.
-6. Modernise the React portal and expose structured gateway management.
+1. Complete provider-specific adapter migration for all legacy gateway calls.
+2. Move database setup fully into Flyway migrations.
+3. Add gateway health checks, callback retries, and reconciliation dashboards.
+4. Replace fixed balance columns with normalized merchant-channel balances.
+5. Modernise the React portal and expose structured gateway management.
