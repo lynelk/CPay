@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    rate_key VARCHAR(160) NOT NULL,
+    window_start TIMESTAMP NOT NULL,
+    request_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_api_rate_window (rate_key, window_start)
+);
