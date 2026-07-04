@@ -1,57 +1,58 @@
 # Production Code Controls
 
-This document records code controls added for production operation and regulated payment readiness.
+This document records the code controls added to support production operation, scaling, and regulated readiness.
 
-The controls focus on:
+## Scope
 
-- provider endpoint execution
-- provider execution evidence records
-- callback processing at scale
-- merchant onboarding controls
-- operational event records
-- rate limiting
-- restricted CORS configuration
-- formal compliance reporting endpoints
+These controls improve the software posture of CPay. They do not replace legal review, provider certification, finance signoff, external security review, or formal production approval.
+
+## Implemented controls
+
+| Area | Code support |
+|---|---|
+| Provider connection | Adapter-backed channels can call configured provider endpoint URLs through `ProviderEndpointClient`. |
+| Merchant channel setup | Channel setup now requires endpoint URLs and channel-specific setup values before readiness can be marked. |
+| Native v2 processing | Native v2 requests load merchant channel setup values into adapter metadata. |
+| Callback scaling | Callback delivery uses `callback_task_claims` so workers claim tasks before processing. |
+| Signup protection | Merchant signup uses database-backed request-window tracking through `api_rate_limits`. |
+| Origin control | API routes use configured trusted origins. |
+| Operating oversight | Admin users can review open operating-control counts through `/api/v2/admin/operating-controls/summary`. |
 
 ## Provider endpoint execution
 
-Native provider adapters now call the configured provider endpoint path when a merchant channel setup includes endpoint values such as:
+Provider adapters for MTN, Airtel, Airtel OpenAPI, and Safaricom now call `ProviderEndpointClient`. The endpoint client:
+
+- reads endpoint URLs from merchant channel setup
+- applies connection and read timeouts
+- sends a structured JSON request
+- records the HTTP status in the gateway response
+- rejects missing endpoint URLs in production mode
+
+Real provider sandbox and production certification are still required before live traffic.
+
+## Merchant channel setup
+
+Each merchant channel setup must include:
 
 - `collectUrl`
 - `payoutUrl`
-- optional `authHeaderName`
-- optional `authHeaderValue`
+- channel-specific setup values
+- optional request header name and value where a sandbox requires one
 
-In production mode, provider endpoint values are required. In sandbox mode, the adapter can still accept the request for controlled testing when an endpoint has not yet been configured.
+Stored setup values are encrypted server-side and returned to the portal only as masked values.
 
-## Callback scaling
+## Callback processing at scale
 
-Callback processing now uses `callback_task_claims` so multiple workers can claim callback tasks without intentionally processing the same task at the same time. Claims are released after processing.
+Callback workers now claim due callback tasks before delivery. The claim flow reduces duplicate processing when more than one application worker is running.
 
-## Rate limiting
+## Signup protection
 
-Merchant self-service signup uses database-backed rate limiting through `api_rate_limits`.
+Merchant signup is protected by database-backed request counting. The current signup limit is five attempts per minute per client source.
 
-## Compliance reporting endpoints
+## Operating-control visibility
 
-Admin users can access reporting under:
+The admin operating-control summary endpoint reports open high, medium, low, and total operating-control events.
 
-```text
-GET  /api/v2/admin/compliance/summary
-GET  /api/v2/admin/compliance/report?from=YYYY-MM-DD&to=YYYY-MM-DD
-POST /api/v2/admin/compliance/events/{id}/review?reviewedBy=name
-```
+## Production note
 
-These endpoints summarize and expose:
-
-- open operating control events
-- high-severity events
-- provider endpoint runs
-- failed provider endpoint runs
-- parked callbacks
-- merchant channel approval status
-- reconciliation daily-close status
-
-## Compliance note
-
-These code controls support operational evidence and regulator-facing reporting, but legal and regulator approval still require human review, formal documentation, and regulator signoff.
+The codebase now supports stronger production controls, but final launch still requires provider, security, compliance, finance, and regulator signoff. Code can support evidence. It cannot issue approvals.
