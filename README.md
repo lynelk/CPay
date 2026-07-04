@@ -1,12 +1,10 @@
 # CPay — Core Payments Gateway
 
-CPay is a payments gateway platform for managing mobile money collections, payouts, transaction status checks, balances, callbacks, reconciliation, and operational monitoring from one central system.
+CPay is a payments gateway platform for managing mobile money collections, payouts, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, and operational monitoring from one central system.
 
-In simple terms, CPay helps a business connect to payment providers such as MTN MoMo, Airtel Money, and Safaricom M-Pesa through a single gateway instead of building and managing every provider integration separately. It is designed to support both merchant-facing payment APIs and internal operations teams that need visibility over transactions, callbacks, balances, provider activity, and reconciliation.
+In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, and Safaricom M-Pesa through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, and readiness controls.
 
 ## What CPay does
-
-CPay provides the core services needed to operate a mobile money payment gateway:
 
 | Capability | What it means |
 |---|---|
@@ -14,39 +12,39 @@ CPay provides the core services needed to operate a mobile money payment gateway
 | Payouts | Send money from a merchant or platform account to a customer or beneficiary. |
 | Transaction status checks | Confirm whether a payment is pending, successful, failed, or unresolved. |
 | Balance checks | Review available balances by merchant, channel, and currency. |
+| Merchant self-service | Allow merchants to register and configure their own supported channels. |
 | Provider callbacks | Receive and process updates from payment providers. |
 | Merchant callbacks | Notify merchants when a transaction changes status. |
 | Reconciliation | Match provider statements against internal transaction records. |
 | Finance operations | Support review, adjustment, reporting, and daily close workflows. |
-| Operations monitoring | Track alerts, callback queues, provider checks, and readiness evidence. |
+| Operations monitoring | Track alerts, callback queues, operating controls, and readiness evidence. |
 
 ## Supported payment channels
 
-The current gateway design supports the following channels through adapter-based integration:
+The current gateway design supports the following adapter-backed channels:
 
 | Provider | Country | Supported use cases |
 |---|---|---|
 | MTN MoMo | Uganda | Collections, payouts, balance checks, callbacks |
 | Airtel Money | Uganda / Kenya | Collections, payouts, legacy API and OpenAPI support |
+| Airtel OpenAPI | Uganda | Collections, payouts, sandbox and certification preparation |
 | Safaricom M-Pesa | Kenya | STK Push, B2C payouts, balance checks |
+
+Provider adapters can execute through merchant-configured endpoint URLs. In production mode, missing endpoint URLs should block execution.
 
 New providers should be added through the gateway adapter pattern described in `docs/gateway-adapter-guide.md`.
 
 ## Who uses CPay
 
-CPay is designed for several user groups:
-
 | User group | Main need |
 |---|---|
-| Merchants | Accept customer payments, make payouts, and check transaction status. |
-| Operations teams | Monitor transactions, provider activity, callbacks, alerts, and failed tasks. |
+| Merchants | Accept customer payments, make payouts, configure channels, and check transaction status. |
+| Operations teams | Monitor transactions, provider activity, callbacks, alerts, failed tasks, and operating controls. |
 | Finance teams | Reconcile provider statements, review exceptions, and complete daily close. |
 | Developers | Integrate merchant systems using the v1 or v2 API. |
-| Administrators | Manage system readiness, callbacks, provider testing, and operational controls. |
+| Administrators | Manage readiness, callbacks, provider testing, channel approvals, and operational controls. |
 
 ## Main components
-
-The repository contains both backend and frontend components:
 
 ```text
 InitializrSpringbootProject/   Spring Boot backend and payment gateway services
@@ -90,28 +88,61 @@ For developer details, see:
 - `docs/api-v2-examples.md`
 - `docs/citoconnect-integration.md`
 
+## Merchant self-service
+
+Merchants can register through the merchant portal at:
+
+```text
+/signup
+```
+
+After registration, the merchant account is created in a pending approval state. Logged-in merchants can configure supported payment channels under:
+
+```text
+Merchant Dashboard -> Payment Channels
+```
+
+Channel setup includes endpoint URLs and channel-specific setup values. Stored values are encrypted server-side and shown back to the merchant only in masked form.
+
+See:
+
+```text
+docs/merchant-self-service.md
+```
+
 ## Admin and operations APIs
 
-CPay also includes internal administrative APIs for controlled operations. These are not public merchant APIs.
+CPay includes internal administrative APIs for controlled operations. These are not public merchant APIs.
 
 | Area | Purpose |
 |---|---|
 | Balance sync | Backfill normalized balances from legacy balances. |
-| Callback administration | Rotate callback secrets and requeue parked callbacks. |
+| Callback administration | Rotate callback signing values and requeue parked callbacks. |
 | Provider sandbox testing | Record provider sandbox validation runs. |
 | Statement validation | Validate provider statement files before import. |
 | Reconciliation finance | Review summaries and close reconciliation days. |
 | Operations dashboard | Track alerts, parked callbacks, and reconciliation exceptions. |
+| Operating controls | Review open operating-control event counts. |
 | Readiness dashboard | View non-manual market-readiness evidence counters. |
 
 Admin routes are under `/api/v2/admin/**` and must be protected using admin credentials and operational controls.
 
-## Market-readiness status
+## Production and market-readiness status
 
-CPay is structured for controlled pilot use and provider certification preparation. Broad commercial rollout should only happen after the readiness gates are completed.
+The codebase now includes software controls for:
+
+- merchant self-registration
+- merchant-managed channel setup
+- adapter-backed provider endpoint execution
+- database-backed signup rate limiting
+- claim-based callback processing for multiple workers
+- restricted trusted origins for API access
+- operating-control summary reporting
+- reconciliation and finance workflow foundations
 
 Readiness documentation is available in:
 
+- `docs/production-code-controls.md`
 - `docs/readiness/market-readiness-gates.md`
 - `docs/runbooks/production-incident-response.md`
 - `docs/runbooks/provider-certification-checklist.md`
@@ -120,22 +151,23 @@ Readiness documentation is available in:
 - `docs/runbooks/reconciliation-finance-daily-close.md`
 - `docs/runbooks/provider-sandbox-and-statement-validation.md`
 
-Manual signoff is still required for items that cannot be completed through code alone, including real provider sandbox certification, staging migration validation, merchant callback verification, finance signoff, security review, production monitoring setup, and regulatory or compliance approval.
+Manual signoff is still required for real provider sandbox certification, staging migration validation, merchant callback verification, finance signoff, security review, production monitoring setup, and regulatory or compliance approval. Code can support evidence. It cannot issue approvals, because apparently institutions remain stubbornly human.
 
 ## Security model
-
-CPay uses several layers of protection:
 
 | Control | Purpose |
 |---|---|
 | Merchant request signing | Confirms that a merchant API request came from the expected merchant system. |
 | Timestamp and nonce checks | Helps prevent replay of old API requests. |
 | Idempotency keys | Helps merchants safely retry payment submissions without creating duplicates. |
+| Signup rate limiting | Reduces repeated automated merchant registration attempts. |
 | Admin route protection | Restricts internal operations to authorized administrators. |
+| Trusted-origin API access | Limits browser access to configured origins. |
 | Signed callbacks | Allows merchants to verify that callback messages came from CPay. |
+| Callback task claims | Reduces duplicate callback delivery when multiple workers are running. |
 | Audit and readiness records | Supports operational tracking and post-incident review. |
 
-Never commit `.env` files, provider credentials, production URLs, private keys, merchant secrets, or callback secrets to the repository. Humans have many hobbies; leaking payment secrets should not be one of them.
+Never commit `.env` files, provider access values, production URLs, private keys, merchant signing material, or callback signing values to the repository.
 
 ## Local development prerequisites
 
@@ -183,7 +215,7 @@ npm run build
 | `MAIL_USERNAME` | SMTP username. |
 | `MAIL_PASSWORD` | SMTP password. |
 | `GATEWAY_STATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
-| `CORS_ALLOWED_ORIGINS` | Allowed admin and merchant portal origins. |
+| `CORS_ALLOWED_ORIGINS` | Trusted merchant and admin portal origins. |
 | `APP_BASE_URL` | Public application URL used in generated links. |
 | `HTTP_PORT` | Backend HTTP port. |
 | `LOCK_FILE_DIR` | Scheduler lock-file directory. |
@@ -191,11 +223,9 @@ npm run build
 | `ACTUATOR_PASSWORD` | Monitoring password. |
 | `ADMIN_API_USERNAME` | Admin API username. |
 | `ADMIN_API_PASSWORD` | Admin API password. |
-| `CALLBACK_SIGNING_SECRET` | Fallback secret used for callback signing where merchant-specific secrets are not configured. |
+| `CALLBACK_SIGNING_SECRET` | Fallback value used for callback signing where merchant-specific values are not configured. |
 
 ## Testing and quality checks
-
-The repository includes CI checks for backend, frontend, security, and readiness assets.
 
 Typical local checks:
 
@@ -229,6 +259,8 @@ The CI pipeline is expected to cover:
 | `docs/api/cpay-v2-postman-collection.json` | Starter Postman collection for v2. |
 | `docs/api-v2-signing.md` | v2 request-signing rules. |
 | `docs/api-v2-examples.md` | Example v2 API requests. |
+| `docs/merchant-self-service.md` | Merchant signup and payment-channel setup guide. |
+| `docs/production-code-controls.md` | Production-control code summary. |
 | `docs/gateway-adapter-guide.md` | How to add or maintain provider adapters. |
 | `docs/readiness/market-readiness-gates.md` | Launch-readiness checklist. |
 | `docs/runbooks/` | Operational procedures for production support. |
@@ -238,12 +270,11 @@ The CI pipeline is expected to cover:
 The main focus areas are:
 
 1. Complete real provider sandbox certification for MTN, Airtel, Airtel OpenAPI, and Safaricom.
-2. Replace any remaining legacy payment-routing paths with fully provider-native adapters.
-3. Complete staging migration validation and balance reconciliation signoff.
-4. Expand frontend admin screens for operations, finance, callbacks, readiness, and provider testing.
-5. Complete production monitoring, alerting, and support escalation setup.
-6. Complete security, compliance, and regulatory signoff before broad commercial launch.
+2. Complete staging migration validation and balance reconciliation signoff.
+3. Expand frontend admin screens for operations, finance, callbacks, readiness, operating controls, and provider testing.
+4. Complete production monitoring, alerting, and support escalation setup.
+5. Complete security, compliance, and regulatory signoff before broad commercial launch.
 
 ## Final note
 
-CPay is a payment gateway foundation with growing operational, finance, and developer-readiness controls. It should be treated as a controlled pilot and certification-ready platform until all provider, finance, security, and compliance gates are completed.
+CPay now has a stronger production-oriented software foundation: merchant self-service, channel setup, provider endpoint execution, rate limiting, callback task claims, operating-control visibility, and readiness documentation. It should still be treated as certification-ready until all provider, finance, security, and compliance gates are completed.
