@@ -168,6 +168,15 @@ paths:
       responses:
         '200':
           description: Operations dashboard metrics
+  /api/v2/admin/readiness/summary:
+    get:
+      summary: Get non-manual readiness evidence summary
+      operationId: readinessSummary
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Readiness evidence counters
 components:
   securitySchemes:
     CPayV2Signature:
