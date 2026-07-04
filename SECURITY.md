@@ -1,14 +1,14 @@
 # CPay Security Policy
 
-CPay handles payment gateway functions, so access control and safe operations are important. This document explains the basic security expectations for the project in clear language.
+CPay handles payment gateway functions, so access control and safe operations are important. This document explains the security expectations for the project in clear language.
 
 ## What must be protected
 
 | Area | Why it matters |
 |---|---|
 | Merchant API access | Only approved merchant systems should submit payment requests. |
-| Provider configuration | Provider connection details must be handled carefully. |
-| Admin operations | Internal actions such as callback retry, balance sync, and daily close should be limited to approved users. |
+| Provider channel setup | Provider connection details and endpoint setup values must be handled carefully. |
+| Admin operations | Internal actions such as callback retry, balance sync, operating-control review, and daily close should be limited to approved users. |
 | Callback messages | Merchants should be able to confirm that callback messages came from CPay. |
 | Finance records | Reconciliation and daily close actions should be traceable. |
 
@@ -19,9 +19,14 @@ CPay uses several controls to support safe operation:
 - signed merchant API requests
 - timestamp and nonce checks for v2 requests
 - idempotency keys for safer retries
+- merchant signup rate limiting
 - protected admin routes under `/api/v2/admin/**`
 - protected monitoring routes under `/actuator/**`
+- restricted trusted origins for API access
 - signed callback messages
+- claim-based callback processing for scaled workers
+- encrypted merchant channel setup values
+- masked display values in the merchant portal
 - operational and readiness records
 
 ## Reporting concerns
@@ -59,6 +64,12 @@ Merchant API requests should follow the documented signing process. For v2 reque
 
 Requests should be rejected when they are stale, repeated, unsigned, incorrectly signed, or submitted by a merchant that is not allowed to use the requested API.
 
+## Merchant channel setup expectations
+
+Merchant channel setup values are stored server-side and returned only in masked form. Production channel setup should require approval before live use.
+
+Each configured channel should include endpoint URLs and the required channel-specific setup values. Missing endpoint URLs should block production execution.
+
 ## Admin API expectations
 
 Admin APIs are internal operational APIs. Production admin access should use strong access controls, restricted network access where possible, and audit records for important actions.
@@ -69,6 +80,7 @@ High-risk admin actions include:
 - callback retry
 - balance synchronization
 - provider statement validation
+- operating-control review
 - finance review posting
 - reconciliation daily close
 - provider configuration changes
@@ -76,6 +88,8 @@ High-risk admin actions include:
 ## Callback expectations
 
 Merchant callbacks should be signed and include timestamp and nonce headers. Merchant systems should verify callback messages before acting on them.
+
+Callback processing uses task claims to reduce duplicate delivery when multiple workers are running.
 
 ## Release checklist
 
@@ -88,6 +102,7 @@ Before production launch, confirm that:
 - database access is restricted
 - CORS settings are limited to approved origins
 - dependency and code checks pass or have documented exceptions
+- operating-control review is available to administrators
 - security, finance, compliance, and business owners have approved launch readiness
 
 ## Related documents
@@ -95,6 +110,7 @@ Before production launch, confirm that:
 - `README.md`
 - `INSTALLATION.md`
 - `CONTRIBUTING.md`
+- `docs/production-code-controls.md`
 - `docs/readiness/market-readiness-gates.md`
 - `docs/runbooks/security-and-access-control.md`
 - `docs/runbooks/production-incident-response.md`
