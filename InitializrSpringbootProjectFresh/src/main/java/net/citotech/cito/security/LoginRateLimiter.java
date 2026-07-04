@@ -1,7 +1,6 @@
 package net.citotech.cito.security;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.stereotype.Component;
 
 /**

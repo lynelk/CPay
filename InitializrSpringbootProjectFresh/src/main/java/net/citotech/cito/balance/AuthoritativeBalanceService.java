@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.Balance;
-import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
@@ -75,7 +74,8 @@ public class AuthoritativeBalanceService {
         String sql = "INSERT INTO normalized_balance_backfill_runs (started_by) VALUES (:started_by)";
         MapSqlParameterSource p = new MapSqlParameterSource("started_by", startedBy == null ? "system" : startedBy);
         jdbcTemplate.update(sql, p);
-        return jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
+        Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
+        return id != null ? id : 0L;
     }
 
     private void finishRun(long runId, int merchants, int balances, String message) {
@@ -131,7 +131,7 @@ public class AuthoritativeBalanceService {
     }
 
     private String channelForGateway(String gatewayId) {
-        return channelRegistry.findByLegacyGatewayId(gatewayId).map(PaymentChannelAdapter::channelCode).orElse(gatewayId == null ? "unknown" : gatewayId);
+        return channelRegistry.findByLegacyGatewayId(gatewayId).map(adapter -> adapter.channelCode()).orElse(gatewayId == null ? "unknown" : gatewayId);
     }
 
     private String inferCurrency(String channelCode) {

@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.security.PublicKey;
 import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
 import java.sql.ResultSet;
@@ -39,7 +38,6 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,6 +60,7 @@ public class Api {
     @Autowired
     TransactionTemplate transactionTemplate;
     @Autowired
+    @org.springframework.lang.NonNull
     private PlatformTransactionManager transactionManager;
     @Autowired
     RateLimiterService rateLimiterService;
@@ -760,9 +759,7 @@ public class Api {
 
             if (resultCodeFinal != 0) {
                 TransactionTemplate failTemplate = new TransactionTemplate(transactionManager);
-                String failResult = failTemplate.execute(new TransactionCallback<String>() {
-                    @Override
-                    public String doInTransaction(TransactionStatus status) {
+                String failResult = failTemplate.execute(status -> {
                         try {
                             Transaction tx = Common.getTxByNetworkRef(networkRef, jdbcTemplate);
                             if (tx == null) {
@@ -812,9 +809,7 @@ public class Api {
             }
 
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                    @Override
-                    public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                         try {
 
                             Transaction tx = Common.getTxByNetworkRef(networkRef, jdbcTemplate);
@@ -907,12 +902,10 @@ public class Api {
                                 String.format(GeneralException.ERRORS_114, "stkCallback"));
             }
             stkCallback = sObject.getJSONObject("Body").getJSONObject("stkCallback");
-            String transactionRef = "";
             int ResultCode = 0;
             String ResultDesc = "";
             String CheckoutRequestID = "";
             String networkRef = "";
-            String msisdn = "";
 
 
             if (stkCallback.isNull("CheckoutRequestID")) {
@@ -959,7 +952,6 @@ public class Api {
             final String CheckoutRequestIDFinal = CheckoutRequestID;
 
             final int ResultCodeFinal = ResultCode;
-            final String ResultDescFinal = ResultDesc;
             /*
             if (ResultCode != 0) {
                 return GeneralException
@@ -980,9 +972,7 @@ public class Api {
             }
             */
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
                         Transaction tx = Common.getTxBySafaricomRef(CheckoutRequestIDFinal, jdbcTemplate);
                         if (tx == null) {
@@ -1085,11 +1075,9 @@ public class Api {
             }
 
             JSONObject stkCallback = sObject.getJSONObject("Result");
-            String transactionRef = "";
             int ResultCode = 0;
-            int ResultType = 0;
+            int ResultType;
             String ConversationID = "";
-            String OriginatorConversationID = "";
 
 
 
@@ -1142,9 +1130,7 @@ public class Api {
             }
             */
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
                         Transaction tx = Common.getTxBySafaricomRef(Conversation_ID, jdbcTemplate);
                         if (tx == null) {
@@ -1242,11 +1228,8 @@ public class Api {
             }
 
             JSONObject stkCallback = sObject.getJSONObject("Result");
-            String transactionRef = "";
             int ResultCode = 0;
-            int ResultType = 0;
             String ConversationID = "";
-            String OriginatorConversationID = "";
 
 
 
@@ -1272,7 +1255,6 @@ public class Api {
             }
 
             ResultCode = stkCallback.getInt("ResultCode");
-            ResultType = stkCallback.getInt("ResultType");
             ConversationID = stkCallback.getString("ConversationID");
             final String networkRef = ConversationID;
             final String Conversation_ID = ConversationID;
@@ -1297,9 +1279,7 @@ public class Api {
             }
 
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
 
                         Transaction tx = Common.getTxBySafaricomRef(reference, jdbcTemplate);
@@ -1363,7 +1343,6 @@ public class Api {
     }
 
     public String getPayoutConversationIdToken(String ConversationID) throws IOException {
-        String separator = File.separator;
         String filePath = lockfiledirectory+ConversationID+".json";
         File resource = new File(filePath);
         if (!resource.exists()) {
@@ -1400,7 +1379,6 @@ public class Api {
     }
 
     private void getPayoutConversationIdDeleteFile(String ConversationID) throws IOException {
-        String separator = File.separator;
         String filePath = lockfiledirectory + ConversationID + ".json";
         File resource = new File(filePath);
         if (resource.exists()) {
@@ -1440,9 +1418,7 @@ public class Api {
             final String airtelMoneyId = transaction.isNull("airtel_money_id") ? "" : transaction.getString("airtel_money_id");
 
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
                         Transaction tx = Common.getTxByNetworkRef(txId, jdbcTemplate);
                         if (tx == null) {
@@ -1912,9 +1888,7 @@ public class Api {
             }
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
                         //Now add the user to database
                         String sql = "INSERT INTO "+Common.DB_TABLE_MERCHANT_SMS+" "
@@ -1954,8 +1928,6 @@ public class Api {
                         KeyHolder keyHolder = new GeneratedKeyHolder();
                         //long userId;
                         jdbcTemplate.update(sql, parameters, keyHolder);
-                        //Now insert privileges
-                        BigInteger smsId = (BigInteger)keyHolder.getKey();
                         
                         //TransactionManager.commit(status);
                         return "success";
@@ -1968,7 +1940,7 @@ public class Api {
                 }
             });
             
-            if (result.equals("success")) {
+            if ("success".equals(result)) {
                 return GeneralSuccessResponse
                         .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
@@ -1995,15 +1967,7 @@ public class Api {
         
         try {
             JSONObject sObject = new JSONObject(requestBody);
-            Double amount = sObject.getDouble("amount");
-            String description = sObject.getString("description");
             String reference = sObject.getString("reference");
-            String payee_number = sObject.getString("payer_number");
-            String signatureBase64 = sObject.getString("signature");
-            String status = sObject.getString("status");
-            String completed_on = sObject.getString("completed_on");
-            String created_on = sObject.getString("created_on");
-            String network_ref = sObject.getString("network_ref");
             
             return GeneralSuccessResponse
                 .getMessage("000", GeneralSuccessResponse.SUCCESS_000+". Ref: "+reference);

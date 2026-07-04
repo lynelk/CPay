@@ -21,11 +21,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
-import java.net.MalformedURLException;
 import net.citotech.cito.AuthenticationController;
-import static org.springframework.http.converter.json.Jackson2ObjectMapperBuilder.xml;
 import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
 /**
  *
@@ -79,7 +76,6 @@ public class AirtelMoneyPaymentGateway extends PaymentGateway{
         this.global_url = global_url;
         this.api_username = api_username;
         this.api_password = api_password;
-        this.base_currency = base_currency;
         
     }
     
@@ -143,9 +139,7 @@ public class AirtelMoneyPaymentGateway extends PaymentGateway{
                 gwResponse.setHttpStatus(rs.getStatusCode()+"");
                 gwResponse.setMessage(yo.StatusMessage);
                 gwResponse.setStatus(yo.Status);
-                String tx_status = "";
                 if (yo.TransactionStatus.equals("SUCCEEDED")) {
-                    tx_status = "SUCCESSFUL";
                     AccountInfo mInfo = new AccountInfo(
                             yo.FirstName,
                             yo.LastName,

@@ -31,7 +31,8 @@ public class SandboxRunService {
         p.addValue("request_summary", requestSummary);
         p.addValue("response_summary", responseSummary);
         jdbcTemplate.update(sql, p);
-        return jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
+        Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
+        return id != null ? id : 0L;
     }
 }
 
