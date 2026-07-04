@@ -1,15 +1,15 @@
 # CPay Installation Guide
 
-This guide explains how to set up CPay for local development, testing, and controlled staging preparation.
+This guide explains how to set up CPay for local development, testing, staging, and production preparation.
 
 CPay has two main parts:
 
 | Component | Purpose |
 |---|---|
-| Backend | Spring Boot service that handles APIs, payment routing, callbacks, reconciliation, finance operations, and admin services. |
+| Backend | Spring Boot service that handles APIs, payment routing, callbacks, reconciliation, finance operations, operating controls, and admin services. |
 | Frontend | React-based admin and merchant portal. |
 
-This guide is written to be understandable for non-technical project owners as well as developers. Some steps still require a developer or system administrator, because unfortunately payment gateways do not install themselves out of politeness.
+Some steps require a developer or system administrator, because payment gateways do not install themselves out of politeness.
 
 ## 1. Before you begin
 
@@ -31,7 +31,7 @@ Install the following tools:
 |---|---|---|
 | Java | 11 or later | Runs the Spring Boot backend. |
 | Maven | Latest stable | Builds and tests the backend. |
-| MySQL | 8 or compatible | Stores transactions, merchants, callbacks, balances, reconciliation, and operations records. |
+| MySQL | 8 or compatible | Stores transactions, merchants, callbacks, balances, reconciliation, channel setup, rate limits, and operations records. |
 | Node.js | 18 or later | Builds the React frontend. |
 | npm | Comes with Node.js | Installs frontend dependencies. |
 | Git | Latest stable | Clones and manages the repository. |
@@ -63,11 +63,19 @@ For local development, you may need to import baseline SQL files under:
 clientside/db/
 ```
 
-The long-term direction is to keep database changes under Flyway migrations in:
+Database changes are kept under Flyway migrations in:
 
 ```text
 InitializrSpringbootProject/src/main/resources/db/migration
 ```
+
+Recent production-control migrations include:
+
+- callback task claim records
+- provider endpoint run records
+- operating-control event records
+- API rate-limit windows
+- merchant channel setup records
 
 For staging or production, always test migrations on a copy of the database before applying them to a live environment.
 
@@ -75,7 +83,7 @@ For staging or production, always test migrations on a copy of the database befo
 
 Create a `.env` file for local development or configure these variables in your deployment environment.
 
-Never commit `.env` files or real secrets to the repository.
+Never commit `.env` files or real access values to the repository.
 
 | Variable | Description |
 |---|---|
@@ -87,7 +95,7 @@ Never commit `.env` files or real secrets to the repository.
 | `MAIL_USERNAME` | SMTP username. |
 | `MAIL_PASSWORD` | SMTP password. |
 | `GATEWAY_STATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
-| `CORS_ALLOWED_ORIGINS` | Allowed web portal origins. |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated trusted browser origins for the merchant and admin portals. |
 | `APP_BASE_URL` | Public application URL used in generated links. |
 | `HTTP_PORT` | Backend HTTP port. |
 | `LOCK_FILE_DIR` | Directory used by schedulers for lock files. |
@@ -95,7 +103,7 @@ Never commit `.env` files or real secrets to the repository.
 | `ACTUATOR_PASSWORD` | Password for monitoring endpoints. |
 | `ADMIN_API_USERNAME` | Username for admin API access. |
 | `ADMIN_API_PASSWORD` | Password for admin API access. |
-| `CALLBACK_SIGNING_SECRET` | Fallback secret for signing merchant callbacks. |
+| `CALLBACK_SIGNING_SECRET` | Fallback value for signing merchant callbacks where merchant-specific values are not configured. |
 
 Example local-only values:
 
@@ -115,7 +123,7 @@ ADMIN_API_PASSWORD=change_me
 CALLBACK_SIGNING_SECRET=change_me
 ```
 
-Use stronger secrets outside local development. `change_me` is not a strategy, it is a future incident report.
+Use stronger values outside local development. `change_me` is not a strategy, it is a future incident report.
 
 ## 6. Backend setup
 
@@ -142,6 +150,7 @@ If the backend fails to start, check:
 - port conflicts
 - pending database migrations
 - invalid admin or actuator credentials
+- CORS origin settings
 
 ## 7. Frontend setup
 
@@ -193,9 +202,28 @@ Monitoring routes are under:
 
 Use separate credentials for admin and monitoring access. Production access should be restricted to approved users and trusted network locations.
 
-## 10. Provider setup
+The operating-control summary is available at:
 
-Provider credentials are required for real payment-provider activity. These should be configured outside the repository using approved secret storage.
+```text
+/api/v2/admin/operating-controls/summary
+```
+
+## 10. Provider and merchant channel setup
+
+Provider channel setup is managed per merchant through the merchant portal:
+
+```text
+Merchant Dashboard -> Payment Channels
+```
+
+Each configured channel should include:
+
+- collect endpoint URL
+- payout endpoint URL
+- channel-specific setup values
+- optional request header name and value where required for sandbox testing
+
+In production mode, missing endpoint URLs should block execution.
 
 Before enabling a provider for live traffic:
 
@@ -224,6 +252,8 @@ Required checks:
 - nonce and timestamp replay protection are handled by the merchant
 - failed callbacks can be requeued if needed
 
+Callback processing uses task-claim records to reduce duplicate delivery when multiple backend workers are running.
+
 See:
 
 ```text
@@ -241,6 +271,7 @@ Before a release is considered ready for production:
 - callback verification is completed
 - statement validation is completed
 - reconciliation daily close is dry-run
+- operating-control summary is reviewed
 - monitoring and alerts are configured
 - security and compliance reviews are completed
 
@@ -249,9 +280,10 @@ Before a release is considered ready for production:
 | Problem | What to check |
 |---|---|
 | Backend does not start | Database URL, missing environment variables, port conflicts, migration errors. |
-| Login/admin access fails | Admin username/password, CORS settings, browser origin. |
+| Login/admin access fails | Admin username/password, trusted origins, browser origin. |
 | API request is rejected | Signature headers, timestamp, nonce, merchant number, request body. |
-| Callback does not deliver | Callback URL, queue status, parked callbacks, merchant receiver logs. |
+| Provider call is rejected | Merchant channel setup, endpoint URLs, gateway mode, provider sandbox status. |
+| Callback does not deliver | Callback URL, queue status, claim records, parked callbacks, merchant receiver logs. |
 | Balance looks wrong | Legacy balance sync, normalized balances, transaction history, reconciliation records. |
 | Statement validation fails | Provider format, required columns, duplicate references, file type. |
 
