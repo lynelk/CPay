@@ -768,6 +768,13 @@ public class DoPayGateway {
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
                 Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
                 if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
+                if (airteloapimm_mmpgw.getPublicKey().isEmpty()) {
+                    GateWayResponse err = new GateWayResponse();
+                    err.setHttpStatus("0"); err.setStatus("ERROR");
+                    err.setTransactionStatus("FAILED");
+                    err.setMessage("Airtel Open API public key not configured (gw_airtelmoney_api_public_key).");
+                    return err;
+                }
 
                 GateWayResponse pResponse = airteloapimm_mmpgw.doPayIn(amount, msisdn, ref, narrative);
                 return pResponse;
@@ -1094,6 +1101,13 @@ public class DoPayGateway {
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
                 Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
                 if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
+                if (airteloapimm_mmpgw.getPublicKey().isEmpty()) {
+                    GateWayResponse err = new GateWayResponse();
+                    err.setHttpStatus("0"); err.setStatus("ERROR");
+                    err.setTransactionStatus("FAILED");
+                    err.setMessage("Airtel Open API public key not configured (gw_airtelmoney_api_public_key).");
+                    return err;
+                }
 
                 GateWayResponse pResponse = airteloapimm_mmpgw.doPayOut(amount, msisdn, ref, narrative);
                 return pResponse;

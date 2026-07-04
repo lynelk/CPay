@@ -93,6 +93,10 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway{
             this.publicKey = publicKey;
         }
     }
+
+    public String getPublicKey() {
+        return publicKey;
+    }
     
     static public String getGatewayCurrencyCode() {
         return gateway_currency_code;

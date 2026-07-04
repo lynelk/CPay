@@ -835,12 +835,6 @@ public class Api {
                                     jdbcTemplate,
                                     transactionManager);
 
-                            if (tx.getStatus().equals("SUCCESSFUL") || tx.getStatus().equals("FAILED")) {
-                                Merchant merchant = Common.getMerchantById(tx.getMerchant_id(), jdbcTemplate);
-                                TxCallback txCallback = new TxCallback(tx, merchant);
-                                txCallback.start(jdbcTemplate, transactionManager);
-                            }
-
                             if (results.equals("success")) {
                                 Logger.getLogger(AuthenticationController.class.getName())
                                         .log(Level.INFO, "SAFARICOM API CALLBACK - Transaction UPDATED: ", requestBody);
@@ -1330,12 +1324,6 @@ public class Api {
                         String results = Common.updateTx(tx,
                                 jdbcTemplate,
                                 transactionManager);
-
-                        if (tx.getStatus().equals("SUCCESSFUL") || tx.getStatus().equals("FAILED")) {
-                            Merchant merchant = Common.getMerchantById(tx.getMerchant_id(), jdbcTemplate);
-                            TxCallback txCallback = new TxCallback(tx, merchant);
-                            txCallback.start(jdbcTemplate, transactionManager);
-                        }
 
                         if (results.equals("success")) {
                             getPayoutConversationIdDeleteFile(Conversation_ID);

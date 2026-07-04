@@ -437,7 +437,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             jdata.put("PhoneNumber", payer);
             jdata.put("CallBackURL", app_setting_app_ur+"api/doSafaricomPayInCallbackResults");
             //jdata.put("CallBackURL", app_setting_app_ur+"api/doSafaricomPayCallback");
-            jdata.put("AccountReference", ref);
+            jdata.put("AccountReference", ref.length() > 12 ? ref.substring(0, 12) : ref);
             jdata.put("TransactionDesc", narrative);
             //callbackBaseUrl
             String data = jdata.toString();
