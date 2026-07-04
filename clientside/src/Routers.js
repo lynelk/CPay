@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import Login from './components/Login';
 import LoginMerchant from './components/LoginMerchant';
+import MerchantSignup from './components/MerchantSignup';
 import Layout from './components/Layout';
 import LayoutMerchant from './components/LayoutMerchant';
 import OperationsConsole from './features/OperationsConsole';
@@ -12,6 +13,9 @@ function Routers() {
       <Switch>
         <Route exact path="/">
           <LoginMerchant />
+        </Route>
+        <Route path="/signup">
+          <MerchantSignup />
         </Route>
         <Route path="/portal">
           <Login />
