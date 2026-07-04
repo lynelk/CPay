@@ -1035,7 +1035,7 @@ public class Common {
         return formattedNumber;
     }
     
-    static KeyPairStrings generateKeyPair() {
+    public static KeyPairStrings generateKeyPair() {
         try {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(2048);

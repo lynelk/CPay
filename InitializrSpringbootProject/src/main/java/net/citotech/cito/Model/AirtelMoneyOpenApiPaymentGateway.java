@@ -48,16 +48,6 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     String api_disbursements_subscription = "";
     
     String publicKey = "";
-    
-    public static String[] prefix = {"25675", "25670", "25676"};
-    
-    public static String gateway_id = "AirtelMoneyOpenApiPaymentGateway";
-    
-    public static String gateway_currency_code = "AIRTELMM";//AIRTELOAPIMM";
-    
-    @Value( "${custom.lockfiledirectory}" )
-
-    String publicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCkq3XbDI1s8Lu7SpUBP+bqOs/MC6PKWz6n/0UkqTiOZqKqaoZClI3BUDTrSIJsrN1Qx7ivBzsaAYfsB0CygSSWay4iyUcnMVEDrNVOJwtWvHxpyWJC5RfKBrweW9b8klFa/CfKRtkK730apy0Kxjg+7fF0tB4O3Ic9Gxuv4pFkbQIDAQAB";
 
     @Value("${custom.lockfiledirectory}")
     private String lockfiledirectory;
@@ -71,9 +61,6 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         }
         return false;
     }
-    
-    public void setApiDetails(String global_url, String api_username,
-            String api_password, String api_pin) {
 
 
     public void setApiDetails(String global_url, String api_username, String api_password, String api_pin) {
@@ -221,8 +208,6 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
         }
         return info;
-    public PaymentGateway.AccountInfo getAccountInfo(String msisdn) {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     Boolean isTokenAboutToExpire() throws IOException {
@@ -233,7 +218,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         return LocalDateTime.now().isAfter(token.created_on.plusMinutes(TOKEN_TTL_MINUTES));
     }
 
-    public Token getToken() throws IOException {
+    public Token getToken() throws IOException, JSONException {
         Token token = readToken();
         if (token == null || LocalDateTime.now().isAfter(token.created_on.plusMinutes(TOKEN_TTL_MINUTES))) {
             return requestToken();
