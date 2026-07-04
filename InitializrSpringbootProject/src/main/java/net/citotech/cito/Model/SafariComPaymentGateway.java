@@ -168,23 +168,20 @@ public class SafariComPaymentGateway extends PaymentGateway {
             headers.put("Authorization", "Bearer "+token.getToken());
 
             JSONObject jdata = new JSONObject();
-            String timestamp = getTimeStamp();
-            String password = Common.base64Encode(this.shortcode+this.passKey+timestamp);
-            jdata.put("SecurityCredential", password);
             jdata.put("CommandID", "AccountBalance");
-            jdata.put("Remarks", "Get Account Balance ");
+            jdata.put("Remarks", "Get Account Balance");
             jdata.put("PartyA", this.shortcode);
-            jdata.put("IdentifierType", "2");
-            jdata.put("Initiator", "Cpay");
-            jdata.put("QueueTimeOutURL", this.callbackBaseUrl+"safariCom");
-            jdata.put("ResultURL", this.callbackBaseUrl+"safariCom");
-            //callbackBaseUrl
+            jdata.put("IdentifierType", "4");
+            jdata.put("Initiator", this.initiatorUsername.isEmpty() ? "Cpay" : this.initiatorUsername);
+            jdata.put("SecurityCredential", getEncyptedPassword(this.initiatorPassword));
+            jdata.put("QueueTimeOutURL", this.app_setting_app_ur+"api/doSafaricomAccountBalanceCallback");
+            jdata.put("ResultURL", this.app_setting_app_ur+"api/doSafaricomAccountBalanceCallback");
             String data = jdata.toString();
 
             //Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
 
-            HttpRequestResponse rs = Common.doHttpRequest("GET", url_string, data, headers);
+            HttpRequestResponse rs = Common.doHttpRequest("POST", url_string, data, headers);
             if (rs == null) {
                 gwResponse.setHttpStatus(rs.getStatusCode()+"");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
@@ -257,7 +254,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setTransactionStatus("UNDETERMINED");
             gwResponse.setRequestTrace("");
             return 0.0;
-        } catch (IOException ex) {
+        } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException ex) {
             Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
@@ -398,6 +395,118 @@ public class SafariComPaymentGateway extends PaymentGateway {
             return gwResponse;
         } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException ex) {
             ex.printStackTrace();
+            GateWayResponse gwResponse = new GateWayResponse();
+            gwResponse.setHttpStatus("0");
+            gwResponse.setMessage(ex.getMessage());
+            gwResponse.setStatus("ERROR");
+            gwResponse.setTransactionStatus("UNDETERMINED");
+            gwResponse.setRequestTrace(ex.getMessage());
+            return gwResponse;
+        }
+    }
+
+    public GateWayResponse doReversal(String originalTransactionId, Double amount, String narrative)
+            throws NoSuchAlgorithmException, NoSuchProviderException {
+        try {
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Content-Type", "application/json");
+            this.segment = "disbursement";
+
+            SafariComPaymentGateway.Token token = this.getToken();
+            if (token == null) {
+                GateWayResponse gwResponse = new GateWayResponse();
+                gwResponse.setHttpStatus("0");
+                gwResponse.setMessage("Failed to obtain token for reversal");
+                gwResponse.setStatus("ERROR");
+                gwResponse.setTransactionStatus("FAILED");
+                gwResponse.setRequestTrace("");
+                return gwResponse;
+            }
+            headers.put("Authorization", "Bearer "+token.getToken());
+
+            JSONObject jdata = new JSONObject();
+            jdata.put("Initiator", this.initiatorUsername);
+            String encryptedPassword = getEncyptedPassword(this.initiatorPassword);
+            jdata.put("SecurityCredential", encryptedPassword);
+            jdata.put("CommandID", "TransactionReversal");
+            jdata.put("TransactionID", originalTransactionId);
+            jdata.put("Amount", amount);
+            jdata.put("ReceiverParty", this.shortcode);
+            jdata.put("ReceiverIdentifierType", "11");
+            jdata.put("ResultURL", app_setting_app_ur+"api/doSafaricomReversalCallback");
+            jdata.put("QueueTimeOutURL", app_setting_app_ur+"api/doSafaricomReversalCallback");
+            jdata.put("Remarks", narrative);
+            jdata.put("Occasion", narrative);
+
+            String data = jdata.toString();
+            String url_string = this.global_url+"/mpesa/reversal/v1/request";
+
+            GateWayResponse gwResponse = new GateWayResponse();
+            HttpRequestResponse rs = Common.doHttpRequest("POST", url_string, data, headers);
+            if (rs == null) {
+                gwResponse.setHttpStatus("0");
+                gwResponse.setMessage("HttpRequestResponse object is null.");
+                gwResponse.setStatus("ERROR");
+                gwResponse.setTransactionStatus("FAILED");
+                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                return gwResponse;
+            }
+
+            if (rs.getStatusCode() != 200) {
+                String error = rs.toString();
+                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                String res = "";
+                if (!rs.getResponse().isEmpty()) {
+                    JSONObject rJson = new JSONObject(rs.getResponse());
+                    if (!rJson.isNull("requestId")) res += "requestId: "+rJson.getString("requestId");
+                    if (!rJson.isNull("errorCode")) res += " Code: "+rJson.getString("errorCode");
+                    if (!rJson.isNull("errorMessage")) res += " Message: "+rJson.getString("errorMessage");
+                }
+                gwResponse.setMessage(res);
+                gwResponse.setStatus("ERROR");
+                gwResponse.setTransactionStatus("FAILED");
+                gwResponse.setRequestTrace(rs.toString());
+                return gwResponse;
+            } else {
+                if (!rs.getResponse().isEmpty()) {
+                    JSONObject rJson = new JSONObject(rs.getResponse());
+                    String ResponseCode = rJson.isNull("ResponseCode") ? "" : rJson.getString("ResponseCode");
+                    String ResponseDescription = rJson.isNull("ResponseDescription") ? "" : rJson.getString("ResponseDescription");
+                    String ConversationID = rJson.isNull("ConversationID") ? "" : rJson.getString("ConversationID");
+                    if (ResponseCode.equals("0")) {
+                        gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                        gwResponse.setMessage("Reversal request submitted successfully.");
+                        gwResponse.setStatus("OK");
+                        gwResponse.setTransactionStatus("PENDING");
+                        gwResponse.setNetworkId(ConversationID);
+                        gwResponse.setRequestTrace(rs.toString());
+                        return gwResponse;
+                    } else {
+                        gwResponse.setMessage(ResponseDescription);
+                        gwResponse.setStatus("ERROR");
+                        gwResponse.setTransactionStatus("FAILED");
+                        gwResponse.setRequestTrace(rs.toString());
+                        return gwResponse;
+                    }
+                }
+                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setMessage("Reversal request submitted.");
+                gwResponse.setStatus("OK");
+                gwResponse.setTransactionStatus("PENDING");
+                gwResponse.setRequestTrace(rs.toString());
+                return gwResponse;
+            }
+        } catch (JSONException ex) {
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            GateWayResponse gwResponse = new GateWayResponse();
+            gwResponse.setHttpStatus("0");
+            gwResponse.setMessage(ex.getMessage());
+            gwResponse.setStatus("ERROR");
+            gwResponse.setTransactionStatus("UNDETERMINED");
+            gwResponse.setRequestTrace(ex.getMessage());
+            return gwResponse;
+        } catch (IOException ex) {
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
