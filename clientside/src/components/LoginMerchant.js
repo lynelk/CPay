@@ -12,11 +12,6 @@ import strings from './locale';
 
 class LoginMerchantWithOutRouter extends React.Component {
   forms = null;
-  /*static propTypes = {
-    match: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    history: PropTypes.object.isRequired
-  };*/
   constructor() {
     super();
     this.state = {
@@ -34,7 +29,6 @@ class LoginMerchantWithOutRouter extends React.Component {
   }  
 
   footer () {
-    //alert("This is called.");
     return (
       <div align="center" style={{ padding: 5, fontSize:13 }}>Copyright Text here</div>
     );
@@ -50,7 +44,6 @@ class LoginMerchantWithOutRouter extends React.Component {
     const { match, location, history } = this.props;
     var url = new URL(window.location.href);
     var uiportal = url.searchParams.get("uiportal");
-    //alert(uiportal);
     if (uiportal == "portal") {
       history.push("/portal");
       return;
@@ -82,8 +75,7 @@ class LoginMerchantWithOutRouter extends React.Component {
       if (errors !== null) {
         return;
       }
-      console.log(this.props);
-      const { match, location, history } = this.props;
+      const { history } = this.props;
 
       let body = {
         username: this.state.user.username, 
@@ -91,20 +83,18 @@ class LoginMerchantWithOutRouter extends React.Component {
         account_number: this.state.user.account_number
       };
 
-      //this.startLoader();
-
       this.startLoader( () => {
           fetch(common.base_url+"/auth/authenticateMerchantUser", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(body) // body data type must match "Content-Type" header
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            body: JSON.stringify(body)
           }).then ((response)=>{
             return response.text();
           }).then((response_) => {
@@ -117,101 +107,64 @@ class LoginMerchantWithOutRouter extends React.Component {
                             localStorage.setItem("merchantUser", JSON.stringify(res.user));
                             history.push("/dashboardMerchant");
                         } catch (ex) {
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: ex.message
-                            });
+                            this.messager.alert({ title: "Error", icon: "error", msg: ex.message });
                         }
                     } else {
-                        this.messager.alert({
-                            title: "Error "+res.code,
-                            icon: "error",
-                            msg: res.message
-                        });
+                        this.messager.alert({ title: "Error "+res.code, icon: "error", msg: res.message });
                     }
                 });
             } catch(Error) {
-                //alert(Error.message);
-                this.messager.alert({
-                  title: "Error",
-                  icon: "error",
-                  msg: Error.message
-                });
+                this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
                 return;
             }
           }).catch((error) => {
-            //alert(error.message);
-            this.messager.alert({
-              title: "Error",
-              icon: "error",
-              msg: error.message
-            });
+            this.messager.alert({ title: "Error", icon: "error", msg: error.message });
           });
         });
 
     });
   }
 
-
-async isLoggedIn() {
+  async isLoggedIn() {
     try {
         let response = await fetch(common.base_url+"/auth/isMerchantUserLoggedIn", 
         {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-            'Content-Type': 'application/json'
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify({}) // body data type must match "Content-Type" header
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'include',
+            headers: {'Content-Type': 'application/json'},
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            body: JSON.stringify({})
         });
-        //console.log(await response.json());
         let res = await response.json();
         if (res.code === "000") {
-            if (res.message === "true") {
-                return true;
-            } else {
-                return false;
-            }
+            return res.message === "true";
         } else {
           return false;
         }
     } catch(Error) {
         return false;
     }
-}
+  }
 
   startLoader(afterStart) {
-    this.setState({
-      progressValue: 0,
-      loader: true
-    }, ()=> {
-      afterStart();
-    });
+    this.setState({ progressValue: 0, loader: true }, ()=> { afterStart(); });
   }
 
-  showForgotPassword() {
-    this.setState({showforgotPassword:true});
-  }
-
-  closeForgotPassword() {
-    this.setState({showforgotPassword:false});
-  }
+  showForgotPassword() { this.setState({showforgotPassword:true}); }
+  closeForgotPassword() { this.setState({showforgotPassword:false}); }
 
   render() {
     const { user } = this.state;
-    const { match, location, history } = this.props;
-    
+    const { history } = this.props;
     return (
       <div align="center" valign="center">
         <Panel 
             title={strings.merchant_title}
             bodyStyle={{ padding: 10 }} 
-            style={{ height: 500, width: 600, marginTop: 60 }}
+            style={{ height: 560, width: 600, marginTop: 60 }}
             footer={this.footer}>
             <Form
               ref={ref => this.form = ref}
@@ -219,17 +172,10 @@ async isLoggedIn() {
               model={user}
               labelWidth={120}
               labelAlign="right"
-              rules={{
-                  username: ["required"],
-                  password: ["required"],
-                  account_number: ['required']
-                }
-              }
+              rules={{ username: ["required"], password: ["required"], account_number: ['required'] }}
               onChange={this.handleChange.bind(this)}>
 
-              <div align="center">
-                <img src={Logo} style={{width:200}} />
-              </div>
+              <div align="center"><img src={Logo} style={{width:200}} /></div>
 
               <FormField name="account_number" label="Merchant Account Number:">
                   <TextBox ref={ref => this.accountNumberRef = ref} value={this.state.user.account_number}></TextBox>
@@ -240,11 +186,7 @@ async isLoggedIn() {
               </FormField>
 
               <FormField name="password" label="Password:">
-                <PasswordBox 
-                  ref={ref => this.passwordRef = ref} 
-                  value={this.state.user.password}  
-                  onKeyUp={(e)=>{alert("This is called")}}
-                  placeholder="Password" iconCls="icon-lock"></PasswordBox>
+                <PasswordBox ref={ref => this.passwordRef = ref} value={this.state.user.password} placeholder="Password" iconCls="icon-lock"></PasswordBox>
               </FormField>
 
               <FormField style={{ marginLeft: 120 }}>
@@ -252,25 +194,21 @@ async isLoggedIn() {
               </FormField>
 
               <FormField style={{ marginLeft: 120 }}>
-                <LinkButton 
-                  onClick={()=>{
-                    this.showForgotPassword()
-                  }} 
-                  iconCls="icon-help" plain>Forgot my password?</LinkButton>
+                <LinkButton onClick={() => { history.push('/signup') }} iconCls="icon-add" plain>Create merchant account</LinkButton>
+              </FormField>
+
+              <FormField style={{ marginLeft: 120 }}>
+                <LinkButton onClick={()=>{ this.showForgotPassword() }} iconCls="icon-help" plain>Forgot my password?</LinkButton>
               </FormField>
               <Messager ref={ref => this.messager = ref}></Messager>
           </Form>
         </Panel>
         <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
-        <ForgotPasswordMerchant 
-          merchantNumber={this.state.user.account_number}
-          onCloseDialog={this.closeForgotPassword} 
-          showForgotPassword={this.state.showforgotPassword} />
+        <ForgotPasswordMerchant merchantNumber={this.state.user.account_number} onCloseDialog={this.closeForgotPassword} showForgotPassword={this.state.showforgotPassword} />
     </div>
     );
   }
 }
 
 const LoginMerchant = withRouter(LoginMerchantWithOutRouter);
-
 export default LoginMerchant;

@@ -23,6 +23,7 @@ import MerchantModulePayments from './modules/merchant/MerchantModulePayments';
 import MerchantModuleTransactions from './modules/merchant/MerchantModuleTransactions';
 import MerchantModuleMerchantAccouunt from './modules/merchant/MerchantModuleMerchantsAccount';
 import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
+import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
 
 import Logo from "../media/images/gwlogo.png";
 
@@ -75,7 +76,6 @@ class LayoutMerchantWithOutRouter extends React.Component {
     }
 
     getRandomDateArray(numItems) {
-        // Create random array of objects (with date)
         let data = [];
         let baseTime = new Date('2018-05-01T00:00:00').getTime();
         let dayMs = 24 * 60 * 60 * 1000;
@@ -89,7 +89,6 @@ class LayoutMerchantWithOutRouter extends React.Component {
     }
 
     getRandomArray(numItems) {
-        // Create random array of objects
         let names = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         let data = [];
         for(var i = 0; i < numItems; i++) {
@@ -139,20 +138,19 @@ class LayoutMerchantWithOutRouter extends React.Component {
             await this.setState({loader:true, progressValue:0},() =>{});
             let response = await fetch(common.base_url+"/auth/isMerchantUserLoggedIn", 
             {
-                method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                mode: 'cors', // no-cors, *cors, same-origin
-                cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                credentials: 'include', // include, *same-origin, omit
+                method: 'POST',
+                mode: 'cors',
+                cache: 'no-cache',
+                credentials: 'include',
                 headers: {
                 'Content-Type': 'application/json'
                 },
-                redirect: 'follow', // manual, *follow, error
-                referrer: 'no-referrer', // no-referrer, *client
-                body: JSON.stringify({}) // body data type must match "Content-Type" header
+                redirect: 'follow',
+                referrer: 'no-referrer',
+                body: JSON.stringify({})
             });
 
             await this.setState({loader:false, progressValue:0},() =>{});
-            //console.log(await response.json());
             let res = await response.json();
             if (res.code === "000") {
                 if (res.message === "true") {
@@ -168,19 +166,12 @@ class LayoutMerchantWithOutRouter extends React.Component {
         }
     }
 
-
     handleChange(name, value) {
         let user = Object.assign({}, this.state.user);
         user[name] = value;
         this.setState({ user: user })
     }
 
-    /*
-    * Called whenever a menu item is clicked.
-    * so we can change the content / load a module.
-    * 
-    * @Param String item: This the menu items clicked.
-    */
     menuChanged(item) {
         this.goToScreen(item);
     }
@@ -194,6 +185,14 @@ class LayoutMerchantWithOutRouter extends React.Component {
             case "dashboard":
             this.setState({
                 currentMenuItem: <MerchantModuleDashboard 
+                sessionExpired={this.sessionExpired.bind(this)}
+                logOut={this.logoutUser.bind(this)}
+                loader={this.startOrStopLoader.bind(this)} />
+            });
+            break;
+            case "channels":
+            this.setState({
+                currentMenuItem: <MerchantModulePaymentChannels
                 sessionExpired={this.sessionExpired.bind(this)}
                 logOut={this.logoutUser.bind(this)}
                 loader={this.startOrStopLoader.bind(this)} />
@@ -222,7 +221,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
                     logOut={this.logoutUser.bind(this)}
                     loader={this.startOrStopLoader.bind(this)} />
                 });
-                break;//MerchantModuleSms
+                break;
             case "sms":
                 this.setState({
                   currentMenuItem: <MerchantModuleSms 
@@ -230,7 +229,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
                   logOut={this.logoutUser.bind(this)}
                   loader={this.startOrStopLoader.bind(this)} />
                 });
-                break;//
+                break;
             case "transactions":
                 this.setState({
                 currentMenuItem: <MerchantModuleTransactions 
@@ -256,150 +255,55 @@ class LayoutMerchantWithOutRouter extends React.Component {
             });
             break;
             default:
-            //alert("No values identified");
         }
     }
 
-  logoutUser() {
-    const { match, location, history } = this.props;
-    this.messager.confirm({
-        title: "Confirm to Logout",
-        msg: "Are you sure you want to logout?",
-        result: r => {
-          if (r) {
-            this.logoutSendRequest();
-            //history.push("/");
-          }
+    startOrStopLoader(action) {
+        if (action === "START") {
+            this.setState({loader:true, progressValue:0});
+        } else {
+            this.setState({loader:false, progressValue:0});
         }
-    });
-  }
+    }
 
-    logoutSendRequest() {
-        let body = {};
-        const { match, location, history } = this.props;
-        this.setState({
-        loader: true
-        }, () => {
-        fetch(common.base_url+"/auth/logout", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(body) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
-            let res;
-            try {
-                res = JSON.parse(response_);
-                this.setState({loader: false, progressValue:0}, ()=> {
-                if (res.code === "000") {
-                    try {
-                        history.push("/");
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
-                } else {
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
-                }
+    logoutUser() {
+        const { history } = this.props;
+        fetch(common.base_url+"/auth/logoutMerchantUser", {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'include',
+            headers: {'Content-Type': 'application/json'},
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            body: JSON.stringify({})
+        }).then(()=>{
+            localStorage.removeItem("merchantUser");
+            history.push("/");
+        }).catch(()=>{
+            localStorage.removeItem("merchantUser");
+            history.push("/");
         });
-          } catch(Error) {
-              //alert(Error.message);
-              this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: Error.message
-              });
-              return;
-          }
-        }).catch((error) => {
-          //alert(error.message);
-          this.messager.alert({
-            title: "Error",
-            icon: "error",
-            msg: error.message
-          });
-        });
-    });
-  }
-
-  startOrStopLoader(operation) {
-    if (operation == "START") {
-      this.setState({loader:true});
-    } else {
-      this.setState({loader:false});
-    }
-  }
-
-  render() {
-    const titleStyle = {
-      textAlign: 'center',
-      marginTop: '10px'
-    }
-    if (!this.state.isLogged) {
-      return (
-        <div>
-          <canvas ref={this.chartRef} />
-          <Messager ref={ref => this.messager = ref}></Messager>
-          <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
-        </div>
-      );
-    }
-    var u_profile;
-    if (this.state.user != null) {
-      u_profile = (<h3>{this.state.user.name}</h3>);
-    } else {
-      u_profile = <h3>No User Info</h3>
     }
 
-    return (
-      <div style={{height: window.innerHeight, wdith: window.innerWidth}}>
-        <Layout style={{ width: '100%', height: '100%', border: '0' }}>
-            <LayoutPanel title="Main Menu" 
-              region="west" 
-              collapsible={true} collapsed={this.state.collapsed} 
-              expander={true} style={{ width: 205 }}>
-            <MainMenuMerchant onChangeMenu={this.menuChanged} />
-          </LayoutPanel>
-          <LayoutPanel region="north" style={{ height: 50, border: '0' }}>
-            <div style={titleStyle}>
-                <Progress loaderState={this.state.loader} />
-                
-                <img src={Logo} style={{height:50, marginTop:-10, float:"left"}} />
-                
-                <div className="mystyle-title-user-profile" align="right">
-                  Logged in as:  <span className="mystyle-title-user-profile-data ">{this.state.user.name}</span> | Email: <span className="mystyle-title-user-profile-data">{this.state.user.email}</span><br/>
-                  Merchant: <span className="mystyle-title-user-profile-data">{this.state.user.merchant_name+"("+this.state.user.account_number+")"}</span> | Type: <span className="mystyle-title-user-profile-data">{this.state.user.merchant_type}</span>
-                </div>
+    render() {
+        return (
+            <div>
+                <Layout style={{width:'100%',height:window.innerHeight}}>
+                    <LayoutPanel region="west" split style={{width:220}}>
+                        <div align="center"><img src={Logo} style={{width:150}} /></div>
+                        <MainMenuMerchant onChangeMenu={this.menuChanged} />
+                    </LayoutPanel>
+                    <LayoutPanel region="center" style={{padding:5}}>
+                        {this.state.currentMenuItem}
+                    </LayoutPanel>
+                </Layout>
+                <Messager ref={ref => this.messager = ref}></Messager>
+                <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
             </div>
-          </LayoutPanel>
-          <LayoutPanel region="center" style={{ height: '100%', border: "0" }}>
-            {this.state.currentMenuItem}
-          </LayoutPanel>
-          <LayoutPanel region="south" style={{ height: 50, border: '0' }}>
-            <div style={titleStyle}>Copyright &copy; 2019</div>
-          </LayoutPanel>
-        </Layout>
-        <Messager ref={ref => this.messager = ref}></Messager>
-        <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
-      </div>
-    );
-  }
+        );
+    }
 }
 
-const LayoutMerchantWithR = withRouter(LayoutMerchantWithOutRouter);
-
-export default LayoutMerchantWithR;
+const LayoutMerchant = withRouter(LayoutMerchantWithOutRouter);
+export default LayoutMerchant;
