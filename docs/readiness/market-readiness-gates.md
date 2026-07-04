@@ -1,6 +1,6 @@
 # CPay Market Readiness Gates
 
-This checklist defines the software gates required before broad merchant launch.
+This checklist defines the software and manual gates required before broad merchant launch.
 
 ## 1. Build gate
 
@@ -32,11 +32,12 @@ Required evidence:
 - Public merchant signup API exists.
 - Signup creates a merchant account, first merchant administrator, and merchant API keys.
 - New self-service merchants are created in a pending approval state.
-- Merchant login routes to the merchant dashboard after registration.
+- Merchant signup is rate limited by client source.
 - Merchant dashboard includes a payment-channel setup page.
 - Supported channels are listed for the merchant.
 - Merchant channel setup values are stored server-side and returned only as masked values.
-- Native v2 payments require the merchant channel to be configured and tested before use.
+- Merchant channel setup requires endpoint URLs and channel-specific setup values.
+- Native v2 requests require the merchant channel to be configured and tested before use.
 
 Manual evidence still required:
 
@@ -51,14 +52,15 @@ Required evidence:
 - Replay protection is enabled.
 - Admin routes require admin credentials.
 - Actuator routes are separated from admin routes.
-- Callback signing supports merchant-level secrets.
+- Callback signing supports merchant-level values.
 - Merchant channel setup values are stored in encrypted form.
+- API origins are restricted to configured trusted origins.
 - Dependency and CodeQL checks are in CI.
 
 Manual evidence still required:
 
 - External security review.
-- Production secret storage review.
+- Production configuration review.
 
 ## 5. Provider gate
 
@@ -69,6 +71,8 @@ Required evidence:
 - Provider statement validation endpoint exists.
 - Parser tests exist.
 - Merchant channel setup supports MTN, Airtel, Airtel OpenAPI, and Safaricom.
+- Provider adapters call configured endpoint URLs for collect and payout flows.
+- Missing endpoint URLs are rejected in production mode.
 
 Manual evidence still required:
 
@@ -77,6 +81,7 @@ Manual evidence still required:
 - Real Airtel OpenAPI sandbox run.
 - Real Safaricom sandbox run.
 - Real provider statement files.
+- Provider production approval.
 
 ## 6. Callback gate
 
@@ -87,6 +92,7 @@ Required evidence:
 - Callback nonce and timestamp headers are sent.
 - Parked callbacks can be requeued by task or merchant.
 - Callback secret rotation exists.
+- Callback workers claim tasks before processing.
 - Callback runbook exists.
 
 Manual evidence still required:
@@ -116,9 +122,12 @@ Required evidence:
 
 - Operations alerts table exists.
 - Operations dashboard summary endpoint exists.
+- Operating-control event table exists.
+- Operating-control summary endpoint exists.
 - Incident response runbook exists.
 - Provider certification checklist exists.
 - Callback and reconciliation runbooks exist.
+- Production code controls document exists.
 
 Manual evidence still required:
 
