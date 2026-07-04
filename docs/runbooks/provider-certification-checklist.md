@@ -11,6 +11,19 @@ This checklist defines the evidence required before enabling production traffic 
 - Airtel OpenAPI
 - Safaricom M-Pesa
 
+## Required channel setup evidence
+
+For each merchant and provider channel, confirm that:
+
+1. The merchant channel setup exists.
+2. The channel has a collect endpoint URL.
+3. The channel has a payout endpoint URL.
+4. Required channel-specific setup values are present.
+5. Stored values are masked in the merchant portal.
+6. The channel has passed sandbox readiness checks.
+7. The channel has been submitted for approval.
+8. Production approval is recorded before live use.
+
 ## Required provider evidence
 
 For each channel, record evidence for:
@@ -33,6 +46,7 @@ For each channel, record evidence for:
 ## Required artifacts
 
 - Sandbox run ids.
+- Endpoint setup evidence.
 - Request and response summaries.
 - Provider statement sample files.
 - Reconciliation validation report.
@@ -43,4 +57,4 @@ For each channel, record evidence for:
 
 ## Production enablement rule
 
-A provider channel should not be enabled for live merchant traffic until every required scenario has a pass result or an approved exception.
+A provider channel should not be enabled for live merchant traffic until every required scenario has a pass result or an approved exception. In production mode, missing endpoint URLs should block live execution.
