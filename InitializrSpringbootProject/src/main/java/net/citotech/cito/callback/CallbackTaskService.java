@@ -12,10 +12,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class CallbackTaskService {
     private final CallbackTaskRepository repository;
+    private final CallbackClaimRepository claimRepository;
     private final CallbackSigningService signingService;
 
-    public CallbackTaskService(CallbackTaskRepository repository, CallbackSigningService signingService) {
+    public CallbackTaskService(CallbackTaskRepository repository, CallbackClaimRepository claimRepository, CallbackSigningService signingService) {
         this.repository = repository;
+        this.claimRepository = claimRepository;
         this.signingService = signingService;
     }
 
@@ -24,11 +26,15 @@ public class CallbackTaskService {
     }
 
     public int processDue(int limit) {
-        List<CallbackTask> due = repository.findDue(limit);
+        List<Long> ids = claimRepository.claimDueIds(limit);
         int count = 0;
-        for (CallbackTask task : due) {
-            deliver(task);
-            count++;
+        for (Long id : ids) {
+            CallbackTask task = repository.findById(id);
+            if (task != null) {
+                deliver(task);
+                count++;
+            }
+            claimRepository.release(id);
         }
         return count;
     }
