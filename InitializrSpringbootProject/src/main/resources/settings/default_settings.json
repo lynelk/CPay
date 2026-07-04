@@ -410,6 +410,14 @@
         "setting_value":"",
         "setting_group":"Airtel Money Gateways"
     },
+    {
+        "id":"",
+        "label":"Gateway Airtel Open API RSA Public Key",
+        "name":"gw_airtelmoney_api_public_key",
+        "description":"RSA public key used to encrypt the Airtel API PIN (Base64 DER, no headers).",
+        "setting_value":"",
+        "setting_group":"Airtel Money Gateways"
+    },
 
 
 

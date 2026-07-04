@@ -766,9 +766,11 @@ public class DoPayGateway {
 
                 airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
+                if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
 
-                GateWayResponse pResponse = airteloapimm_mmpgw.doPayIn(amount, msisdn, ref, narrative); 
-                return pResponse;    
+                GateWayResponse pResponse = airteloapimm_mmpgw.doPayIn(amount, msisdn, ref, narrative);
+                return pResponse;
             }
         } else {
             if (AirtelMoneyPaymentGateway.isValidMisdn(msisdn)) {
@@ -884,6 +886,8 @@ public class DoPayGateway {
 
             airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
             airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+            Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
+            if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
 
             rData[2] = Common.round(airteloapimm_mmpgw.getBalance(collections_acc), 2);
             rData[3] = Common.round(airteloapimm_mmpgw.getBalance(disbursement_acc),2);
@@ -1088,8 +1092,10 @@ public class DoPayGateway {
 
                 airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
+                if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
 
-                GateWayResponse pResponse = airteloapimm_mmpgw.doPayOut(amount, msisdn, ref, narrative); 
+                GateWayResponse pResponse = airteloapimm_mmpgw.doPayOut(amount, msisdn, ref, narrative);
                 return pResponse;
             }
         } else {
@@ -1265,9 +1271,11 @@ public class DoPayGateway {
 
                 airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
+                if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
                 airteloapimm_mmpgw.setSegment(tx_type);
 
-                GateWayResponse pResponse = airteloapimm_mmpgw.checkStatus(ref); 
+                GateWayResponse pResponse = airteloapimm_mmpgw.checkStatus(ref);
                 return pResponse;
             }
         } else {

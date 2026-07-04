@@ -54,12 +54,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway{
     String api_disbursements_key = "";
     String api_disbursements_subscription = "";
     
-    /*String publicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCkq3XbDI1s8Lu7SpUBP+bqOs/MC6PKWz\n" +
-        "6n/0UkqTiOZqKqaoZClI3BUDTrSIJsrN1Qx7ivBzsaAYfsB0CygSSWay4iyUcnMVEDrNVO\n" +
-        "JwtWvHxpyWJC5RfKBrweW9b8klFa/CfKRtkK730apy0Kxjg+7fF0tB4O3Ic9Gxuv4pFkbQ\n" +
-        "IDAQAB"; // public key provided to encrypt data
-    */
-    String publicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCkq3XbDI1s8Lu7SpUBP+bqOs/MC6PKWz6n/0UkqTiOZqKqaoZClI3BUDTrSIJsrN1Qx7ivBzsaAYfsB0CygSSWay4iyUcnMVEDrNVOJwtWvHxpyWJC5RfKBrweW9b8klFa/CfKRtkK730apy0Kxjg+7fF0tB4O3Ic9Gxuv4pFkbQIDAQAB";
+    String publicKey = "";
     
     public static String[] prefix = {"25675", "25670", "25676"};
     
@@ -83,14 +78,20 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway{
         return false;
     }
     
-    public void setApiDetails(String global_url, String api_username, 
+    public void setApiDetails(String global_url, String api_username,
             String api_password, String api_pin) {
-        
+
         this.global_url = global_url;
         this.api_username = api_username;
         this.api_password = api_password;
         this.api_pin = api_pin;
-        
+
+    }
+
+    public void setPublicKey(String publicKey) {
+        if (publicKey != null && !publicKey.isEmpty()) {
+            this.publicKey = publicKey;
+        }
     }
     
     static public String getGatewayCurrencyCode() {
