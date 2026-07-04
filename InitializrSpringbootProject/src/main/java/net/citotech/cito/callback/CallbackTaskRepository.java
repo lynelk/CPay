@@ -16,9 +16,7 @@ public class CallbackTaskRepository {
     }
 
     public void enqueue(long merchantId, String transactionId, String referenceValue, String targetUrl, String requestBody) {
-        if (exists(merchantId, transactionId, referenceValue)) {
-            return;
-        }
+        if (exists(merchantId, transactionId, referenceValue)) return;
         String sql = "INSERT INTO callback_tasks (merchant_id, transaction_id, reference_value, target_url, request_body, task_status, attempt_count, attempt_limit, next_run_at) VALUES (:merchant_id, :transaction_id, :reference_value, :target_url, :request_body, 'PENDING', 0, 5, CURRENT_TIMESTAMP)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchant_id", merchantId);
@@ -41,20 +39,12 @@ public class CallbackTaskRepository {
 
     public List<CallbackTask> findDue(int limit) {
         String sql = "SELECT * FROM callback_tasks WHERE task_status IN ('PENDING','RETRY') AND (next_run_at IS NULL OR next_run_at <= CURRENT_TIMESTAMP) ORDER BY id ASC LIMIT :limit";
-        return jdbcTemplate.query(sql, new MapSqlParameterSource("limit", limit), (rs, rowNum) -> {
-            CallbackTask t = new CallbackTask();
-            t.id = rs.getLong("id");
-            t.merchantId = rs.getLong("merchant_id");
-            t.transactionId = rs.getString("transaction_id");
-            t.referenceValue = rs.getString("reference_value");
-            t.targetUrl = rs.getString("target_url");
-            t.requestBody = rs.getString("request_body");
-            t.taskStatus = rs.getString("task_status");
-            t.attemptCount = rs.getInt("attempt_count");
-            t.attemptLimit = rs.getInt("attempt_limit");
-            t.message = rs.getString("message");
-            return t;
-        });
+        return jdbcTemplate.query(sql, new MapSqlParameterSource("limit", limit), (rs, rowNum) -> map(rs));
+    }
+
+    public CallbackTask findById(long id) {
+        List<CallbackTask> rows = jdbcTemplate.query("SELECT * FROM callback_tasks WHERE id=:id", new MapSqlParameterSource("id", id), (rs, rowNum) -> map(rs));
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     public void markDone(long id) {
@@ -70,5 +60,20 @@ public class CallbackTaskRepository {
         p.addValue("next_run_at", Timestamp.from(nextRunAt));
         p.addValue("message", message);
         jdbcTemplate.update(sql, p);
+    }
+
+    private CallbackTask map(java.sql.ResultSet rs) throws java.sql.SQLException {
+        CallbackTask t = new CallbackTask();
+        t.id = rs.getLong("id");
+        t.merchantId = rs.getLong("merchant_id");
+        t.transactionId = rs.getString("transaction_id");
+        t.referenceValue = rs.getString("reference_value");
+        t.targetUrl = rs.getString("target_url");
+        t.requestBody = rs.getString("request_body");
+        t.taskStatus = rs.getString("task_status");
+        t.attemptCount = rs.getInt("attempt_count");
+        t.attemptLimit = rs.getInt("attempt_limit");
+        t.message = rs.getString("message");
+        return t;
     }
 }
