@@ -10,11 +10,10 @@ import Progress from "../../Progress";
 import LinearChart from './LinearChart';
 import styles from '../../styles';
 import strings from '../../locale';
-import { join } from 'path';
 import MerchantModuleMerchantsAccount from './MerchantModuleMerchantsAccount';
 import DatetimePicker from '../../DatetimePicker';
 
-import ReactExport from "react-export-excel";
+import ReactExport from "../../../shared/export/ExcelExport";
 
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;

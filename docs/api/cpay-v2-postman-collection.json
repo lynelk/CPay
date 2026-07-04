@@ -1,0 +1,50 @@
+{
+  "info": {
+    "name": "CPay v2 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://cpaytest.citotech.net:8443" },
+    { "key": "merchantNumber", "value": "1000000" }
+  ],
+  "item": [
+    {
+      "name": "Native Collect",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-CPay-Signature-Version", "value": "v2" },
+          { "key": "X-CPay-Timestamp", "value": "{{timestamp}}" },
+          { "key": "X-CPay-Nonce", "value": "{{nonce}}" },
+          { "key": "X-CPay-Signature", "value": "{{signature}}" },
+          { "key": "X-CPay-Idempotency-Key", "value": "{{idempotencyKey}}" }
+        ],
+        "url": "{{baseUrl}}/api/v2/native/payments/collect",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"merchantNumber\": \"{{merchantNumber}}\",\n  \"channel\": \"mtn_momo\",\n  \"country\": \"UG\",\n  \"currency\": \"UGX\",\n  \"amount\": \"5000.00\",\n  \"reference\": \"ORD-10001\",\n  \"description\": \"Order payment\",\n  \"callbackUrl\": \"https://merchant.example/cpay/callback\",\n  \"payer\": {\"type\": \"MSISDN\", \"value\": \"256770000000\"}\n}"
+        }
+      }
+    },
+    {
+      "name": "Native Payout",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-CPay-Signature-Version", "value": "v2" },
+          { "key": "X-CPay-Timestamp", "value": "{{timestamp}}" },
+          { "key": "X-CPay-Nonce", "value": "{{nonce}}" },
+          { "key": "X-CPay-Signature", "value": "{{signature}}" },
+          { "key": "X-CPay-Idempotency-Key", "value": "{{idempotencyKey}}" }
+        ],
+        "url": "{{baseUrl}}/api/v2/native/payments/payout",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"merchantNumber\": \"{{merchantNumber}}\",\n  \"channel\": \"airtel_money\",\n  \"country\": \"UG\",\n  \"currency\": \"UGX\",\n  \"amount\": \"5000.00\",\n  \"reference\": \"PAYOUT-10001\",\n  \"description\": \"Customer payout\",\n  \"callbackUrl\": \"https://merchant.example/cpay/callback\",\n  \"payee\": {\"type\": \"MSISDN\", \"value\": \"256750000000\"}\n}"
+        }
+      }
+    }
+  ]
+}

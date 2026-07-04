@@ -19,65 +19,53 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-/**
- * Spring Security configuration.
- *
- * <ul>
- *   <li>CORS: {@code /api/**} allows all origins (merchant clients, RSA-authenticated).
- *       All other paths allow only the origins listed in {@code cors.allowed-origins}.</li>
- *   <li>CSRF: Disabled globally for now (the external {@code /api/**} endpoints use
- *       RSA-signature authentication; the session-based admin portal would need
- *       a frontend update to send the XSRF-TOKEN cookie as a header).</li>
- *   <li>Actuator endpoints require HTTP Basic authentication with the
- *       {@code ACTUATOR} role.  Set {@code actuator.username} and
- *       {@code actuator.password} in your environment variables.</li>
- *   <li>All other requests are permitted; application-level session checks remain
- *       in the individual controllers.</li>
- * </ul>
- *
- * <p>TODO: Enable CSRF protection once the React frontend is updated to read the
- * {@code XSRF-TOKEN} cookie and send the token in the {@code X-XSRF-TOKEN}
- * request header.
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:2019}")
     private String[] allowedOrigins;
 
-    @Value("${actuator.username:actuator}")
+    @Value("${actuator.username}")
     private String actuatorUsername;
 
-    @Value("${actuator.password:changeme_in_production}")
+    @Value("${actuator.password}")
     private String actuatorPassword;
+
+    @Value("${admin.api.username:${actuator.username}}")
+    private String adminUsername;
+
+    @Value("${admin.api.password:${actuator.password}}")
+    private String adminPassword;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors()
-            .and()
-            // TODO: Enable CSRF after updating the React frontend to send the
-            // XSRF-TOKEN cookie value in the X-XSRF-TOKEN header.
+            .cors().and()
             .csrf().disable()
             .authorizeHttpRequests(auth -> auth
+                .antMatchers("/api/v2/admin/**").hasRole("ADMIN")
                 .antMatchers("/actuator/**").hasRole("ACTUATOR")
                 .anyRequest().permitAll()
             )
-            .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
             .and()
-            .httpBasic(); // Used only for /actuator/** endpoints
+            .httpBasic();
         return http.build();
     }
 
     @Bean
     public UserDetailsService userDetailsService(PasswordEncoder encoder) {
+        validateCredentials(actuatorUsername, actuatorPassword, "ACTUATOR_USERNAME and ACTUATOR_PASSWORD must be set");
+        validateCredentials(adminUsername, adminPassword, "ADMIN_API_USERNAME and ADMIN_API_PASSWORD must be set");
         UserDetails actuatorUser = User.withUsername(actuatorUsername)
                 .password(encoder.encode(actuatorPassword))
                 .roles("ACTUATOR")
                 .build();
-        return new InMemoryUserDetailsManager(actuatorUser);
+        UserDetails adminUser = User.withUsername(adminUsername)
+                .password(encoder.encode(adminPassword))
+                .roles("ADMIN")
+                .build();
+        return new InMemoryUserDetailsManager(actuatorUser, adminUser);
     }
 
     @Bean
@@ -85,16 +73,8 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * CORS rules:
-     * <ul>
-     *   <li>{@code /api/**}: all origins, no credentials (RSA-signed merchant API)</li>
-     *   <li>{@code /**}: configured origins only, with credentials (session-based portals)</li>
-     * </ul>
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        // Public merchant API – any origin, no session cookies needed
         CorsConfiguration apiConfig = new CorsConfiguration();
         apiConfig.setAllowedOriginPatterns(List.of("*"));
         apiConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -102,7 +82,6 @@ public class SecurityConfig {
         apiConfig.setAllowCredentials(false);
         apiConfig.setMaxAge(3600L);
 
-        // Admin / merchant portals – restricted origins, credentials allowed
         CorsConfiguration adminConfig = new CorsConfiguration();
         adminConfig.setAllowedOrigins(Arrays.asList(allowedOrigins));
         adminConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -111,8 +90,19 @@ public class SecurityConfig {
         adminConfig.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/v2/admin/**", adminConfig);
         source.registerCorsConfiguration("/api/**", apiConfig);
         source.registerCorsConfiguration("/**", adminConfig);
         return source;
+    }
+
+    private void validateCredentials(String username, String password, String message) {
+        if (isBlank(username) || isBlank(password)) {
+            throw new IllegalStateException(message);
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

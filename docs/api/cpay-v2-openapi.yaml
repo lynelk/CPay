@@ -1,0 +1,260 @@
+openapi: 3.0.3
+info:
+  title: CPay Gateway API
+  version: 1.4.0
+  description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay.
+security:
+  - CPayV2Signature: []
+paths:
+  /api/v2/native/payments/collect:
+    post:
+      summary: Submit an adapter-native mobile money collection request
+      operationId: nativeCollect
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '202':
+          description: Payment accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/native/payments/payout:
+    post:
+      summary: Submit an adapter-native mobile money payout request
+      operationId: nativePayout
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '202':
+          description: Payout accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/channels:
+    get:
+      summary: List supported payment channels
+      operationId: listChannels
+      responses:
+        '200':
+          description: Supported channels
+  /api/v2/payments/{reference}:
+    get:
+      summary: Check transaction status
+      operationId: transactionStatus
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: merchantNumber
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction status
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/admin/balances/sync-legacy:
+    post:
+      summary: Backfill normalized balances from legacy balances
+      operationId: syncLegacyBalances
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Backfill result
+  /api/v2/admin/callback-admin/retry-task:
+    post:
+      summary: Requeue one parked callback task
+      operationId: retryCallbackTask
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: taskId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Updated count
+  /api/v2/admin/provider-sandbox/run:
+    post:
+      summary: Record and run a provider sandbox scenario
+      operationId: providerSandboxRun
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: channel
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sandbox run id
+  /api/v2/admin/statements/check:
+    post:
+      summary: Validate a provider statement file before import
+      operationId: validateProviderStatement
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Statement validation run id
+  /api/v2/admin/recon-finance/summary:
+    get:
+      summary: Get reconciliation finance summary
+      operationId: reconciliationFinanceSummary
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Finance summary
+  /api/v2/admin/recon-finance/close:
+    post:
+      summary: Close reconciliation for a date and currency
+      operationId: reconciliationDailyClose
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Daily close id
+  /api/v2/admin/ops-dashboard/summary:
+    get:
+      summary: Get operations dashboard summary
+      operationId: opsDashboardSummary
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Operations dashboard metrics
+  /api/v2/admin/readiness/summary:
+    get:
+      summary: Get non-manual readiness evidence summary
+      operationId: readinessSummary
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Readiness evidence counters
+components:
+  securitySchemes:
+    CPayV2Signature:
+      type: apiKey
+      in: header
+      name: X-CPay-Signature
+    AdminBasicAuth:
+      type: http
+      scheme: basic
+  parameters:
+    IdempotencyKey:
+      name: X-CPay-Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+  schemas:
+    PaymentParty:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+    PaymentRequest:
+      type: object
+      required: [merchantNumber, country, currency, amount, reference, description, callbackUrl]
+      properties:
+        merchantNumber:
+          type: string
+        channel:
+          type: string
+        country:
+          type: string
+        currency:
+          type: string
+        amount:
+          type: string
+        reference:
+          type: string
+        description:
+          type: string
+        callbackUrl:
+          type: string
+        payer:
+          $ref: '#/components/schemas/PaymentParty'
+        payee:
+          $ref: '#/components/schemas/PaymentParty'
+    PaymentResult:
+      type: object
+      properties:
+        reference:
+          type: string
+        transactionId:
+          type: string
+        status:
+          type: string
+        channel:
+          type: string
+        currency:
+          type: string
+        message:
+          type: string
+        providerResponse:
+          type: string
+    ApiErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
+        timestamp:
+          type: string
+  responses:
+    BadRequest:
+      description: Request was rejected
+    Unauthorized:
+      description: Request signature or credentials were rejected
