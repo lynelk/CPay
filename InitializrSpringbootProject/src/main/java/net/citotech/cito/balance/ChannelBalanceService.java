@@ -34,9 +34,10 @@ public class ChannelBalanceService {
         for (Balance balance : legacy) {
             ChannelBalance channelBalance = new ChannelBalance();
             channelBalance.setMerchantId(merchant.getId());
-            channelBalance.setChannelCode(balance.getBalance_type());
+            String[] balanceTypes = balance.getBalance_type();
+            channelBalance.setChannelCode(balanceTypes != null && balanceTypes.length > 0 ? balanceTypes[0] : null);
             channelBalance.setGatewayId(balance.getGateway_id());
-            channelBalance.setCurrency(balance.getCurrencyCode());
+            channelBalance.setCurrency(balance.getBaseCurrency());
             channelBalance.setAvailableBalance(BigDecimal.valueOf(balance.getAmount()));
             channelBalance.setLedgerBalance(BigDecimal.valueOf(balance.getAmount()));
             channelBalance.setPendingBalance(BigDecimal.ZERO);
