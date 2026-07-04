@@ -56,8 +56,7 @@ public class MerchantChannelCredentialService {
         String channelCode = text(body.get("channelCode"));
         String environment = normalizedEnvironment(text(body.get("environment")));
         Map<String, Object> credentials = asMap(body.get("credentials"));
-        PaymentChannelAdapter adapter = registry.findByChannelCode(channelCode)
-                .orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
+        PaymentChannelAdapter adapter = registry.findByChannelCode(channelCode).orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
         validateRequiredCredentials(adapter.channelCode(), credentials);
         String payload = toJson(credentials);
         String encrypted = cryptoService.encrypt(payload);
@@ -87,7 +86,7 @@ public class MerchantChannelCredentialService {
         MapSqlParameterSource p = params(user.getMerchant_id(), channelCode, environment);
         p.addValue("status", "SANDBOX_TESTED");
         p.addValue("test_status", "PASSED");
-        p.addValue("message", "Credential structure is complete and the channel is ready for provider sandbox testing");
+        p.addValue("message", "Credential structure and endpoint configuration are complete");
         jdbcTemplate.update("UPDATE merchant_channel_credentials SET status=:status, last_test_status=:test_status, last_test_message=:message, last_tested_at=CURRENT_TIMESTAMP WHERE merchant_id=:merchant_id AND channel_code=:channel_code AND environment=:environment", p);
         audit(user.getMerchant_id(), channelCode, environment, "SANDBOX_TEST", user.getEmail(), "Merchant ran channel readiness test");
         return find(user.getMerchant_id(), channelCode, environment);
@@ -111,9 +110,7 @@ public class MerchantChannelCredentialService {
         p.addValue("merchant_id", merchant.getId());
         p.addValue("channel_code", channelCode);
         Integer count = jdbcTemplate.queryForObject(sql, p, Integer.class);
-        if (count == null || count < 1) {
-            throw new PaymentGatewayException("Merchant has not configured and tested channel " + channelCode);
-        }
+        if (count == null || count < 1) throw new PaymentGatewayException("Merchant has not configured and tested channel " + channelCode);
     }
 
     public Map<String, Object> loadDecrypted(Merchant merchant, String channelCode, String environment) {
@@ -148,26 +145,32 @@ public class MerchantChannelCredentialService {
     }
 
     private void validateRequiredCredentials(String channelCode, Map<String, Object> credentials) {
-        String[] required;
+        List<String> required = new ArrayList<>();
+        required.add("collectUrl");
+        required.add("payoutUrl");
         if ("safaricom_mpesa".equalsIgnoreCase(channelCode)) {
-            required = new String[]{"shortCode", "consumerKey", "consumerSecret", "passKey"};
+            required.add("shortCode");
+            required.add("consumerKey");
+            required.add("consumerSecret");
+            required.add("passKey");
         } else if ("airtel_open_api".equalsIgnoreCase(channelCode)) {
-            required = new String[]{"clientId", "clientSecret", "subscriberMsisdn"};
+            required.add("clientId");
+            required.add("clientSecret");
+            required.add("subscriberMsisdn");
         } else {
-            required = new String[]{"apiUser", "apiKey", "collectionAccount"};
+            required.add("apiUser");
+            required.add("apiKey");
+            required.add("collectionAccount");
         }
-        for (String key : required) {
-            if (!credentials.containsKey(key) || text(credentials.get(key)).isEmpty()) {
-                throw new PaymentGatewayException("Missing required credential field: " + key);
-            }
-        }
+        for (String key : required) if (!credentials.containsKey(key) || text(credentials.get(key)).isEmpty()) throw new PaymentGatewayException("Missing required credential field: " + key);
     }
 
     private Map<String, Object> mask(Map<String, Object> credentials) {
         Map<String, Object> masked = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : credentials.entrySet()) {
             String value = text(entry.getValue());
-            if (value.length() <= 4) masked.put(entry.getKey(), "****");
+            if (entry.getKey().toLowerCase().contains("url")) masked.put(entry.getKey(), value);
+            else if (value.length() <= 4) masked.put(entry.getKey(), "****");
             else masked.put(entry.getKey(), value.substring(0, 2) + "****" + value.substring(value.length() - 2));
         }
         return masked;
@@ -189,13 +192,8 @@ public class MerchantChannelCredentialService {
         return p;
     }
 
-    private void requireUser(MerchantUser user) {
-        if (user == null || user.getMerchant_id() == null) throw new PaymentGatewayException("Merchant session is required");
-    }
-
-    private String normalizedEnvironment(String environment) {
-        return environment == null || environment.trim().isEmpty() ? "SANDBOX" : environment.trim().toUpperCase();
-    }
+    private void requireUser(MerchantUser user) { if (user == null || user.getMerchant_id() == null) throw new PaymentGatewayException("Merchant session is required"); }
+    private String normalizedEnvironment(String environment) { return environment == null || environment.trim().isEmpty() ? "SANDBOX" : environment.trim().toUpperCase(); }
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> asMap(Object value) {
@@ -204,15 +202,7 @@ public class MerchantChannelCredentialService {
     }
 
     private String text(Object value) { return value == null ? "" : String.valueOf(value).trim(); }
-
-    private String toJson(Object value) {
-        try { return objectMapper.writeValueAsString(value); }
-        catch (Exception e) { throw new PaymentGatewayException("Invalid credential payload"); }
-    }
-
+    private String toJson(Object value) { try { return objectMapper.writeValueAsString(value); } catch (Exception e) { throw new PaymentGatewayException("Invalid credential payload"); } }
     @SuppressWarnings("unchecked")
-    private Map<String, Object> parseJson(String json) {
-        try { return objectMapper.readValue(json, Map.class); }
-        catch (Exception e) { return new LinkedHashMap<>(); }
-    }
+    private Map<String, Object> parseJson(String json) { try { return objectMapper.readValue(json, Map.class); } catch (Exception e) { return new LinkedHashMap<>(); } }
 }
