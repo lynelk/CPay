@@ -1314,5 +1314,63 @@ public class DoPayGateway {
         //Another gateway
         return null;
     }
-    
+
+    public static net.citotech.cito.Model.AccountInfo getAccountInfo(String msisdn, NamedParameterJdbcTemplate jdbcTemplate) {
+        String gateway_id = DoPayGateway.getGatewayIdByMsisdn(msisdn, jdbcTemplate);
+        if (gateway_id == null) return null;
+
+        Setting env = Common.getSettings("gw_mtn_api_env", jdbcTemplate);
+        PaymentGateway.AccountInfo raw = null;
+
+        if (MTNMoMoPaymentGateway.gateway_id.equals(gateway_id)) {
+            String global_url;
+            String api_collections_user, api_collections_key, api_collections_subscription;
+            String api_disbursements_user, api_disbursements_key, api_disbursements_subscription, base_currency;
+            if (env != null && env.getSetting_value().equals("mtnuganda")) {
+                global_url = Common.getSettings("gw_mtn_api_url", jdbcTemplate).getSetting_value();
+                api_collections_user = Common.getSettings("gw_mtn_api_collections_user_id", jdbcTemplate).getSetting_value();
+                api_collections_key = Common.getSettings("gw_mtn_api_collections_user_key", jdbcTemplate).getSetting_value();
+                api_collections_subscription = Common.getSettings("gw_mtn_api_collections_subscription_key", jdbcTemplate).getSetting_value();
+                api_disbursements_user = Common.getSettings("gw_mtn_api_disbursements_user_id", jdbcTemplate).getSetting_value();
+                api_disbursements_key = Common.getSettings("gw_mtn_api_disbursements_user_key", jdbcTemplate).getSetting_value();
+                api_disbursements_subscription = Common.getSettings("gw_mtn_api_disbursements_subscription_key", jdbcTemplate).getSetting_value();
+                base_currency = Common.getSettings("gw_mtn_api_base_currency", jdbcTemplate).getSetting_value();
+            } else {
+                global_url = Common.getSettings("gw_mtn_api_url_sandbox", jdbcTemplate).getSetting_value();
+                api_collections_user = Common.getSettings("gw_mtn_api_collections_user_id_sandbox", jdbcTemplate).getSetting_value();
+                api_collections_key = Common.getSettings("gw_mtn_api_collections_user_key_sandbox", jdbcTemplate).getSetting_value();
+                api_collections_subscription = Common.getSettings("gw_mtn_api_collections_subscription_key_sandbox", jdbcTemplate).getSetting_value();
+                api_disbursements_user = Common.getSettings("gw_mtn_api_disbursements_user_id_sandbox", jdbcTemplate).getSetting_value();
+                api_disbursements_key = Common.getSettings("gw_mtn_api_disbursements_user_key_sandbox", jdbcTemplate).getSetting_value();
+                api_disbursements_subscription = Common.getSettings("gw_mtn_api_disbursements_subscription_key_sandbox", jdbcTemplate).getSetting_value();
+                base_currency = Common.getSettings("gw_mtn_api_base_currency_sandbox", jdbcTemplate).getSetting_value();
+            }
+            MTNMoMoPaymentGateway mtn = new MTNMoMoPaymentGateway();
+            mtn.setSegment("collection");
+            mtn.setApiDetails(global_url, api_collections_user, api_collections_key, api_collections_subscription,
+                    api_disbursements_user, api_disbursements_key, api_disbursements_subscription,
+                    env != null ? env.getSetting_value() : "sandbox", base_currency);
+            raw = mtn.getAccountInfo(msisdn);
+        } else if (AirtelMoneyOpenApiPaymentGateway.gateway_id.equals(gateway_id)) {
+            String global_url = Common.getSettings("gw_airtelmoney_api_url", jdbcTemplate).getSetting_value();
+            String api_username = Common.getSettings("gw_airtelmoney_api_username", jdbcTemplate).getSetting_value();
+            String api_password = Common.getSettings("gw_airtelmoney_api_password", jdbcTemplate).getSetting_value();
+            String api_pin = Common.getSettings("gw_airtelmoney_api_pin", jdbcTemplate).getSetting_value();
+            AirtelMoneyOpenApiPaymentGateway airtel = new AirtelMoneyOpenApiPaymentGateway();
+            airtel.setApiDetails(global_url, api_username, api_password, api_pin);
+            Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
+            if (airtelPublicKey != null) airtel.setPublicKey(airtelPublicKey.getSetting_value());
+            raw = airtel.getAccountInfo(msisdn);
+        }
+
+        if (raw == null) return null;
+        net.citotech.cito.Model.AccountInfo result = new net.citotech.cito.Model.AccountInfo();
+        result.setMsisdn(raw.getMsisdn());
+        result.setFirstName(raw.getFirstName());
+        result.setLastName(raw.getLastName());
+        result.setStatus(raw.getStatus());
+        result.setProvided_name(raw.getProvided_name());
+        return result;
+    }
+
 }

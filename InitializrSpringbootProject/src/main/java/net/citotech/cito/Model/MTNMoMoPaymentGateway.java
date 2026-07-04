@@ -551,7 +551,28 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
 
     @Override
     public AccountInfo getAccountInfo(String msisdn) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        AccountInfo info = new AccountInfo();
+        info.setMsisdn(msisdn);
+        try {
+            this.segment = "collection";
+            Token token = this.getToken();
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", "Bearer " + token.getToken());
+            headers.put("Ocp-Apim-Subscription-Key", this.api_collections_subscription);
+            headers.put("X-Target-Environment", this.env);
+
+            String url = this.global_url + "/collection/v1_0/accountholder/msisdn/" + msisdn + "/basicuserinfo";
+            HttpRequestResponse rs = Common.doHttpRequest("GET", url, "", headers);
+            if (rs == null || rs.getStatusCode() != 200) return info;
+            JSONObject r = new JSONObject(rs.getResponse());
+            if (!r.isNull("name")) info.setProvided_name(r.getString("name"));
+            if (!r.isNull("given_name")) info.setFirstName(r.getString("given_name"));
+            if (!r.isNull("family_name")) info.setLastName(r.getString("family_name"));
+            if (!r.isNull("status")) info.setStatus(r.getString("status"));
+        } catch (Exception ex) {
+            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+        }
+        return info;
     }
     
     Boolean isTokenAboutToExpire() throws IOException {

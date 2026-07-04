@@ -74,9 +74,34 @@ public class StartupApplicationListener {
         
         
         updateDb();
-        
+        validateGatewayConfig();
+
     }
     
+    private void validateGatewayConfig() {
+        try {
+            net.citotech.cito.Model.Setting state = Common.getSettings("application_settings_state", jdbcTemplate);
+            if (state == null || !"production".equalsIgnoreCase(state.getSetting_value().trim())) {
+                return;
+            }
+            String[] requiredKeys = {
+                "gw_mtn_api_url",
+                "gw_airtelmoney_api_url",
+                "gw_safaricom_api_url"
+            };
+            for (String key : requiredKeys) {
+                net.citotech.cito.Model.Setting s = Common.getSettings(key, jdbcTemplate);
+                if (s == null || s.getSetting_value().trim().isEmpty()) {
+                    java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
+                        .log(Level.SEVERE, "STARTUP CONFIG ERROR: setting '"+key+"' is required in production but is blank or missing.", "");
+                }
+            }
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
+                .log(Level.WARNING, "Could not validate gateway config at startup: "+ex.getMessage(), ex);
+        }
+    }
+
     @Value("classpath:dbchanges/*.xml")
     private Resource[] resources;
     

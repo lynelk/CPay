@@ -769,8 +769,33 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway{
     }
 
     @Override
-    public PaymentGateway.AccountInfo getAccountInfo(String msisdn) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public AccountInfo getAccountInfo(String msisdn) {
+        AccountInfo info = new AccountInfo();
+        info.setMsisdn(msisdn);
+        try {
+            this.segment = "collection";
+            Token token = this.getToken();
+            if (token == null) return info;
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", "Bearer " + token.getToken());
+            headers.put("X-Country", this.country);
+            headers.put("X-Currency", this.base_currency);
+
+            String url = this.global_url + "/standard/v1/users/" + msisdn;
+            HttpRequestResponse rs = Common.doHttpRequest("GET", url, "", headers);
+            if (rs == null || rs.getStatusCode() != 200) return info;
+            JSONObject r = new JSONObject(rs.getResponse());
+            if (!r.isNull("data")) {
+                JSONObject data = r.getJSONObject("data");
+                if (!data.isNull("first_name")) info.setFirstName(data.getString("first_name"));
+                if (!data.isNull("last_name")) info.setLastName(data.getString("last_name"));
+                if (!data.isNull("is_barred")) info.setStatus(data.getBoolean("is_barred") ? "BARRED" : "ACTIVE");
+                if (!data.isNull("msisdn")) info.setMsisdn(data.getString("msisdn"));
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+        }
+        return info;
     }
     
     Boolean isTokenAboutToExpire() throws IOException {

@@ -1595,6 +1595,77 @@ public class Api {
     }
 
     /*
+    * API to retrieve account KYC info (name lookup) for a given MSISDN
+    */
+    @PostMapping(path="/doGetAccountInfo")
+    public String doGetAccountInfo(@RequestBody String requestBody,
+            HttpServletRequest request, HttpServletResponse response) {
+        try {
+            JSONObject sObject;
+            try {
+                sObject = new JSONObject(requestBody);
+            } catch (JSONException e) {
+                return GeneralException.getError("124", String.format(GeneralException.ERRORS_124, ""));
+            }
+
+            List<String> fields = new ArrayList<>();
+            fields.add("merchant_number");
+            fields.add("signature");
+            fields.add("msisdn");
+            List<String> missingFields = missingJsonFields(fields, sObject);
+            if (missingFields.size() > 0) {
+                String missing_f = "";
+                for (String s : missingFields) missing_f += s + ", ";
+                missing_f = missing_f.substring(0, missing_f.length() - 2);
+                return GeneralException.getError("114", String.format(GeneralException.ERRORS_114, missing_f));
+            }
+
+            String merchant_number = sObject.getString("merchant_number");
+            String signatureBase64 = sObject.getString("signature");
+            String msisdn = sObject.getString("msisdn");
+
+            Merchant merchant = Common.getMerchantByAccountNumber(merchant_number, jdbcTemplate);
+            if (merchant == null) {
+                return GeneralException.getError("109", String.format(GeneralException.ERRORS_109, "Merchant", merchant_number));
+            }
+            if (merchant.getStatus().equals("SUSPENDED")) {
+                return GeneralException.getError("137", GeneralException.ERRORS_137);
+            }
+            String sigError = SignatureVerificationService.verify(merchant, merchant_number, signatureBase64);
+            if (sigError != null) return sigError;
+            if (!merchant.getStatus().equals("ACTIVE")) {
+                return GeneralException.getError("119", GeneralException.ERRORS_119);
+            }
+
+            boolean allowed = false;
+            for (String api : merchant.getAllowed_apis()) {
+                if (api.equals(Common.API_ACCOUNT_VALIDATION)) { allowed = true; break; }
+            }
+            if (!allowed) {
+                return GeneralException.getError("120", String.format(GeneralException.ERRORS_120, Common.API_ACCOUNT_VALIDATION));
+            }
+
+            net.citotech.cito.Model.AccountInfo info = DoPayGateway.getAccountInfo(msisdn, jdbcTemplate);
+            if (info == null) {
+                return GeneralException.getError("102", GeneralException.ERRORS_102);
+            }
+
+            JSONObject result = new JSONObject();
+            result.put("msisdn", msisdn);
+            result.put("first_name", info.getFirstName() != null ? info.getFirstName() : "");
+            result.put("last_name", info.getLastName() != null ? info.getLastName() : "");
+            result.put("name", info.getProvided_name() != null ? info.getProvided_name() : "");
+            result.put("status", info.getStatus() != null ? info.getStatus() : "");
+            return GeneralSuccessResponse.getMessage("000", result.toString());
+
+        } catch (Exception ex) {
+            Logger.getLogger(AuthenticationController.class.getName())
+                    .log(Level.SEVERE, "GENERAL INTERNAL ERROR: "+ex.getMessage(), ex);
+            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        }
+    }
+
+    /*
     * API to retrieve merchant balances
     */
     @PostMapping(path="/doGetBalances")
