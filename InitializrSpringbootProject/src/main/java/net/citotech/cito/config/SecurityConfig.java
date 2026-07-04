@@ -57,52 +57,32 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService(PasswordEncoder encoder) {
         validateCredentials(actuatorUsername, actuatorPassword, "ACTUATOR_USERNAME and ACTUATOR_PASSWORD must be set");
         validateCredentials(adminUsername, adminPassword, "ADMIN_API_USERNAME and ADMIN_API_PASSWORD must be set");
-        UserDetails actuatorUser = User.withUsername(actuatorUsername)
-                .password(encoder.encode(actuatorPassword))
-                .roles("ACTUATOR")
-                .build();
-        UserDetails adminUser = User.withUsername(adminUsername)
-                .password(encoder.encode(adminPassword))
-                .roles("ADMIN")
-                .build();
+        UserDetails actuatorUser = User.withUsername(actuatorUsername).password(encoder.encode(actuatorPassword)).roles("ACTUATOR").build();
+        UserDetails adminUser = User.withUsername(adminUsername).password(encoder.encode(adminPassword)).roles("ADMIN").build();
         return new InMemoryUserDetailsManager(actuatorUser, adminUser);
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration apiConfig = new CorsConfiguration();
-        apiConfig.setAllowedOriginPatterns(List.of("*"));
-        apiConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        apiConfig.setAllowedHeaders(List.of("*"));
-        apiConfig.setAllowCredentials(false);
-        apiConfig.setMaxAge(3600L);
-
-        CorsConfiguration adminConfig = new CorsConfiguration();
-        adminConfig.setAllowedOrigins(Arrays.asList(allowedOrigins));
-        adminConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        adminConfig.setAllowedHeaders(List.of("*"));
-        adminConfig.setAllowCredentials(true);
-        adminConfig.setMaxAge(3600L);
+        CorsConfiguration trustedConfig = new CorsConfiguration();
+        trustedConfig.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        trustedConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        trustedConfig.setAllowedHeaders(List.of("*"));
+        trustedConfig.setAllowCredentials(true);
+        trustedConfig.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/v2/admin/**", adminConfig);
-        source.registerCorsConfiguration("/api/**", apiConfig);
-        source.registerCorsConfiguration("/**", adminConfig);
+        source.registerCorsConfiguration("/api/**", trustedConfig);
+        source.registerCorsConfiguration("/**", trustedConfig);
         return source;
     }
 
     private void validateCredentials(String username, String password, String message) {
-        if (isBlank(username) || isBlank(password)) {
-            throw new IllegalStateException(message);
-        }
+        if (isBlank(username) || isBlank(password)) throw new IllegalStateException(message);
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
+    private boolean isBlank(String value) { return value == null || value.trim().isEmpty(); }
 }
