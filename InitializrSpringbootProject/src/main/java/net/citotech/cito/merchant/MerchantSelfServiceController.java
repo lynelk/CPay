@@ -6,6 +6,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.security.SimpleRateLimitService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,16 +20,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class MerchantSelfServiceController {
     private final MerchantSelfServiceSignupService signupService;
     private final MerchantChannelCredentialService channelService;
+    private final SimpleRateLimitService rateLimitService;
 
     public MerchantSelfServiceController(MerchantSelfServiceSignupService signupService,
-                                         MerchantChannelCredentialService channelService) {
+                                         MerchantChannelCredentialService channelService,
+                                         SimpleRateLimitService rateLimitService) {
         this.signupService = signupService;
         this.channelService = channelService;
+        this.rateLimitService = rateLimitService;
     }
 
     @PostMapping(path = "/signup")
-    public ResponseEntity<?> signup(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> signup(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         try {
+            if (!rateLimitService.allow("merchant-signup:" + clientIp(request), 5)) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error("RATE_LIMITED", "Too many registration attempts. Please try again later."));
+            }
             return ResponseEntity.status(HttpStatus.CREATED).body(signupService.signup(body));
         } catch (PaymentGatewayException e) {
             return ResponseEntity.badRequest().body(error("SIGNUP_REJECTED", e.getMessage()));
@@ -77,6 +84,12 @@ public class MerchantSelfServiceController {
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("merchantUser") == null) throw new PaymentGatewayException("Merchant login is required");
         return (MerchantUser) session.getAttribute("merchantUser");
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.trim().isEmpty()) return forwarded.split(",")[0].trim();
+        return request.getRemoteAddr();
     }
 
     private Map<String, Object> error(String code, String message) {
