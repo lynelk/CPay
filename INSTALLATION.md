@@ -1,37 +1,266 @@
-# Installation Instructions for CPay
+# CPay Installation Guide
 
-Welcome to the CPay installation guide. Follow the steps below to ensure a secure setup and proper configuration of your environment.
+This guide explains how to set up CPay for local development, testing, and controlled staging preparation.
 
-## Secure Setup Instructions
-1. **Update System Packages**: Ensure that your operating system and all installed packages are up to date to protect against vulnerabilities.
-2. **Install a Firewall**: Use a firewall to monitor incoming and outgoing connections.
-3. **Use Secure Protocols**: Ensure that any connections to the application are done over HTTPS.
-4. **Employ Encryption**: Store sensitive data such as passwords and API keys in an encrypted format.
+CPay has two main parts:
 
-## Environment Variable Setup
-Ensure the following environment variables are configured:
-- `DATABASE_URL`: URL for your database connection.
-- `SECRET_KEY`: A secret key for application security.
-- `API_KEY`: Keys for third-party APIs used by the application.
-- `NODE_ENV`: Set this to 'production' for running the application in production mode.
+| Component | Purpose |
+|---|---|
+| Backend | Spring Boot service that handles APIs, payment routing, callbacks, reconciliation, finance operations, and admin services. |
+| Frontend | React-based admin and merchant portal. |
 
-You can set these variables in your environment or use a `.env` file with the following format:
+This guide is written to be understandable for non-technical project owners as well as developers. Some steps still require a developer or system administrator, because unfortunately payment gateways do not install themselves out of politeness.
+
+## 1. Before you begin
+
+Confirm the purpose of the installation:
+
+| Environment | Use case |
+|---|---|
+| Local development | Used by developers to build and test changes on their own machines. |
+| Staging | Used to test migrations, provider sandbox activity, callbacks, reconciliation, and finance workflows before production. |
+| Production | Used for real merchant and customer activity. Production requires manual security, provider, finance, monitoring, and compliance signoff. |
+
+Do not use local development settings for production.
+
+## 2. System requirements
+
+Install the following tools:
+
+| Tool | Recommended version | Purpose |
+|---|---|---|
+| Java | 11 or later | Runs the Spring Boot backend. |
+| Maven | Latest stable | Builds and tests the backend. |
+| MySQL | 8 or compatible | Stores transactions, merchants, callbacks, balances, reconciliation, and operations records. |
+| Node.js | 18 or later | Builds the React frontend. |
+| npm | Comes with Node.js | Installs frontend dependencies. |
+| Git | Latest stable | Clones and manages the repository. |
+
+## 3. Repository structure
+
+```text
+InitializrSpringbootProject/   Backend service
+clientside/                    Frontend portal
+integrations/citoconnect/      JavaScript integration assets
+docs/                          API, readiness, security, and operations documentation
 ```
-DATABASE_URL=your_database_url
-SECRET_KEY=your_secret_key
-API_KEY=your_api_key
-NODE_ENV=production
+
+## 4. Database setup
+
+Create a MySQL database for CPay.
+
+Example database name:
+
+```text
+cpayadmin
 ```
 
-## Migration Procedures
-1. **Run Migrations**: After setting up your environment, run the migration scripts to set up your database schema.
-   ```bash
-   npm run migrate
-   ```
-2. **Seed Database**: If you have initial data to add to your database, run the seed command:
-   ```bash
-   npm run seed
-   ```
-3. **Verify Setup**: Check that your application is running correctly and that migrations and seeds have been executed successfully.
+The backend uses JDBC database configuration. The exact database user, password, and host should be provided through environment variables.
 
- For any issues, please refer to the troubleshooting section in the documentation.
+For local development, you may need to import baseline SQL files under:
+
+```text
+clientside/db/
+```
+
+The long-term direction is to keep database changes under Flyway migrations in:
+
+```text
+InitializrSpringbootProject/src/main/resources/db/migration
+```
+
+For staging or production, always test migrations on a copy of the database before applying them to a live environment.
+
+## 5. Environment variables
+
+Create a `.env` file for local development or configure these variables in your deployment environment.
+
+Never commit `.env` files or real secrets to the repository.
+
+| Variable | Description |
+|---|---|
+| `DB_URL` | JDBC database URL. |
+| `DB_USERNAME` | Database username. |
+| `DB_PASSWORD` | Database password. |
+| `MAIL_HOST` | SMTP server host. |
+| `MAIL_PORT` | SMTP server port. |
+| `MAIL_USERNAME` | SMTP username. |
+| `MAIL_PASSWORD` | SMTP password. |
+| `GATEWAY_STATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
+| `CORS_ALLOWED_ORIGINS` | Allowed web portal origins. |
+| `APP_BASE_URL` | Public application URL used in generated links. |
+| `HTTP_PORT` | Backend HTTP port. |
+| `LOCK_FILE_DIR` | Directory used by schedulers for lock files. |
+| `ACTUATOR_USERNAME` | Username for monitoring endpoints. |
+| `ACTUATOR_PASSWORD` | Password for monitoring endpoints. |
+| `ADMIN_API_USERNAME` | Username for admin API access. |
+| `ADMIN_API_PASSWORD` | Password for admin API access. |
+| `CALLBACK_SIGNING_SECRET` | Fallback secret for signing merchant callbacks. |
+
+Example local-only values:
+
+```bash
+DB_URL=jdbc:mysql://localhost:3306/cpayadmin
+DB_USERNAME=cpay_user
+DB_PASSWORD=change_me
+GATEWAY_STATE=SANDBOX
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:2019
+APP_BASE_URL=http://localhost:8080
+HTTP_PORT=8080
+LOCK_FILE_DIR=/tmp/cpay/locks
+ACTUATOR_USERNAME=local-actuator
+ACTUATOR_PASSWORD=change_me
+ADMIN_API_USERNAME=local-admin
+ADMIN_API_PASSWORD=change_me
+CALLBACK_SIGNING_SECRET=change_me
+```
+
+Use stronger secrets outside local development. `change_me` is not a strategy, it is a future incident report.
+
+## 6. Backend setup
+
+From the repository root:
+
+```bash
+cd InitializrSpringbootProject
+mvn clean package
+java -jar target/cito-0.0.1-SNAPSHOT.jar
+```
+
+For development testing:
+
+```bash
+cd InitializrSpringbootProject
+mvn test
+mvn verify
+```
+
+If the backend fails to start, check:
+
+- database connection settings
+- missing environment variables
+- port conflicts
+- pending database migrations
+- invalid admin or actuator credentials
+
+## 7. Frontend setup
+
+From the repository root:
+
+```bash
+cd clientside
+npm install
+npm run build
+```
+
+For local frontend development, use the start command defined in `clientside/package.json` if available.
+
+If the frontend build fails, check:
+
+- Node.js version
+- missing npm dependencies
+- outdated lock file
+- environment configuration
+- API base URL settings
+
+## 8. API documentation setup
+
+The main API references are:
+
+| Document | Purpose |
+|---|---|
+| `docs/api/cpay-v2-openapi.yaml` | Machine-readable v2 API contract. |
+| `docs/api/cpay-v2-postman-collection.json` | Starter Postman collection. |
+| `docs/api-v2-signing.md` | v2 request-signing rules. |
+| `docs/api-v2-examples.md` | Example v2 requests. |
+| `docs/citoconnect-integration.md` | Integration guide for merchant developers. |
+
+The API documentation should be reviewed whenever payment endpoints, callback behavior, signing rules, or admin operations change.
+
+## 9. Admin and monitoring setup
+
+Admin routes are under:
+
+```text
+/api/v2/admin/**
+```
+
+Monitoring routes are under:
+
+```text
+/actuator/**
+```
+
+Use separate credentials for admin and monitoring access. Production access should be restricted to approved users and trusted network locations.
+
+## 10. Provider setup
+
+Provider credentials are required for real payment-provider activity. These should be configured outside the repository using approved secret storage.
+
+Before enabling a provider for live traffic:
+
+1. Run sandbox tests.
+2. Validate callback handling.
+3. Validate statement files.
+4. Complete reconciliation testing.
+5. Complete finance signoff.
+6. Record evidence in the provider certification checklist.
+
+See:
+
+```text
+docs/runbooks/provider-certification-checklist.md
+```
+
+## 11. Callback setup
+
+Merchant callbacks should be tested before launch.
+
+Required checks:
+
+- callback URL is reachable
+- callback payload is received
+- callback signature is verified
+- nonce and timestamp replay protection are handled by the merchant
+- failed callbacks can be requeued if needed
+
+See:
+
+```text
+docs/runbooks/callback-security-and-requeue.md
+```
+
+## 12. Staging checklist
+
+Before a release is considered ready for production:
+
+- backend build passes
+- frontend build passes
+- migrations are tested on staging data
+- provider sandbox checks are completed
+- callback verification is completed
+- statement validation is completed
+- reconciliation daily close is dry-run
+- monitoring and alerts are configured
+- security and compliance reviews are completed
+
+## 13. Troubleshooting
+
+| Problem | What to check |
+|---|---|
+| Backend does not start | Database URL, missing environment variables, port conflicts, migration errors. |
+| Login/admin access fails | Admin username/password, CORS settings, browser origin. |
+| API request is rejected | Signature headers, timestamp, nonce, merchant number, request body. |
+| Callback does not deliver | Callback URL, queue status, parked callbacks, merchant receiver logs. |
+| Balance looks wrong | Legacy balance sync, normalized balances, transaction history, reconciliation records. |
+| Statement validation fails | Provider format, required columns, duplicate references, file type. |
+
+## 14. Production warning
+
+Production deployment requires more than a successful installation. Before live merchant traffic is enabled, complete the readiness gates in:
+
+```text
+docs/readiness/market-readiness-gates.md
+```
+
+This includes provider certification, finance signoff, monitoring setup, security review, and compliance approval.
