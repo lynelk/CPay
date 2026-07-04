@@ -835,7 +835,6 @@ public class Api {
                                     jdbcTemplate,
                                     transactionManager);
 
-
                             if (results.equals("success")) {
                                 Logger.getLogger(AuthenticationController.class.getName())
                                         .log(Level.INFO, "SAFARICOM API CALLBACK - Transaction UPDATED: ", requestBody);
@@ -1326,7 +1325,6 @@ public class Api {
                                 jdbcTemplate,
                                 transactionManager);
 
-
                         if (results.equals("success")) {
                             getPayoutConversationIdDeleteFile(Conversation_ID);
                             Logger.getLogger(AuthenticationController.class.getName())
@@ -1413,6 +1411,260 @@ public class Api {
         }
     }
     
+    @PostMapping(path="/doAirtelMoneyPayInCallback")
+    public String doAirtelMoneyPayInCallback(@RequestBody String requestBody,
+            HttpServletRequest request, HttpServletResponse response) {
+        Logger.getLogger(AuthenticationController.class.getName())
+                .log(Level.INFO, "AIRTEL MONEY CALLBACK: "+requestBody, requestBody);
+        try {
+            JSONObject sObject;
+            try {
+                sObject = new JSONObject(requestBody);
+            } catch (JSONException e) {
+                return GeneralException.getError("124", String.format(GeneralException.ERRORS_124, ""));
+            }
+
+            if (sObject.isNull("transaction")) {
+                return GeneralException.getError("114", String.format(GeneralException.ERRORS_114, "transaction"));
+            }
+            JSONObject transaction = sObject.getJSONObject("transaction");
+            if (transaction.isNull("id")) {
+                return GeneralException.getError("114", String.format(GeneralException.ERRORS_114, "transaction.id"));
+            }
+            if (transaction.isNull("status")) {
+                return GeneralException.getError("114", String.format(GeneralException.ERRORS_114, "transaction.status"));
+            }
+
+            final String txId = transaction.getString("id");
+            final String airtelStatus = transaction.getString("status");
+            final String airtelMoneyId = transaction.isNull("airtel_money_id") ? "" : transaction.getString("airtel_money_id");
+
+            TransactionTemplate template = new TransactionTemplate(transactionManager);
+            String result = template.execute(new TransactionCallback<String>() {
+                @Override
+                public String doInTransaction(TransactionStatus status) {
+                    try {
+                        Transaction tx = Common.getTxByNetworkRef(txId, jdbcTemplate);
+                        if (tx == null) {
+                            Logger.getLogger(AuthenticationController.class.getName())
+                                    .log(Level.WARNING, "AIRTEL CALLBACK - Transaction "+txId+" not found", requestBody);
+                            return GeneralException.getError("109", String.format(GeneralException.ERRORS_109, "Transaction", txId));
+                        }
+                        if ("TS".equalsIgnoreCase(airtelStatus)) {
+                            tx.setStatus("SUCCESSFUL");
+                        } else if ("TF".equalsIgnoreCase(airtelStatus) || "TA".equalsIgnoreCase(airtelStatus)) {
+                            tx.setStatus("FAILED");
+                        } else {
+                            return GeneralSuccessResponse.getMessage("000", "Status pending, no update required");
+                        }
+                        tx.setFinalStatusSet(true);
+                        tx.setTx_update_trace(requestBody);
+                        tx.setResolved_by("SYSTEM");
+                        if (!airtelMoneyId.isEmpty()) {
+                            tx.setTx_gateway_ref(airtelMoneyId);
+                        }
+                        String results = Common.updateTx(tx, jdbcTemplate, transactionManager);
+                        if (results.equals("success")) {
+                            return GeneralSuccessResponse.getMessage("000", "Request processed successfully");
+                        } else {
+                            return GeneralException.getError("109", GeneralException.ERRORS_142);
+                        }
+                    } catch (Exception e) {
+                        status.setRollbackOnly();
+                        Logger.getLogger(AuthenticationController.class.getName())
+                                .log(Level.SEVERE, "INTERNAL ERROR: "+e.getMessage(), "");
+                        return GeneralException.getError("102", GeneralException.ERRORS_102);
+                    }
+                }
+            });
+            return result;
+        } catch (Exception ex) {
+            Logger.getLogger(AuthenticationController.class.getName())
+                    .log(Level.SEVERE, "GENERAL INTERNAL ERROR: "+ex.getMessage(), ex);
+            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        }
+    }
+
+    @PostMapping(path="/doSafaricomAccountBalanceCallback")
+    public String doSafaricomAccountBalanceCallback(@RequestBody String requestBody,
+            HttpServletRequest request, HttpServletResponse response) {
+        Logger.getLogger(AuthenticationController.class.getName())
+                .log(Level.INFO, "SAFARICOM BALANCE CALLBACK: "+requestBody, requestBody);
+        try {
+            JSONObject sObject;
+            try {
+                sObject = new JSONObject(requestBody);
+            } catch (JSONException e) {
+                return GeneralException.getError("124", String.format(GeneralException.ERRORS_124, ""));
+            }
+
+            if (sObject.isNull("Result")) {
+                return GeneralException.getError("114", String.format(GeneralException.ERRORS_114, "Result"));
+            }
+            JSONObject result = sObject.getJSONObject("Result");
+            int resultCode = result.isNull("ResultCode") ? -1 : result.getInt("ResultCode");
+            if (resultCode != 0) {
+                Logger.getLogger(AuthenticationController.class.getName())
+                        .log(Level.WARNING, "SAFARICOM BALANCE CALLBACK - non-zero ResultCode: "+resultCode, "");
+                return GeneralSuccessResponse.getMessage("000", "Balance result received with non-zero code");
+            }
+
+            double balance = 0.0;
+            if (!result.isNull("ResultParameters")) {
+                JSONObject resultParameters = result.getJSONObject("ResultParameters");
+                if (!resultParameters.isNull("ResultParameter")) {
+                    JSONArray params = resultParameters.getJSONArray("ResultParameter");
+                    for (int i = 0; i < params.length(); i++) {
+                        JSONObject param = params.getJSONObject(i);
+                        if (!param.isNull("Key") && param.getString("Key").equals("AccountBalance")) {
+                            String rawBalance = param.isNull("Value") ? "" : param.getString("Value");
+                            // Format: "Working Account|KES|Available Balance|<amount>|..."
+                            String[] parts = rawBalance.split("\\|");
+                            if (parts.length >= 4) {
+                                try { balance = Double.parseDouble(parts[3].trim()); } catch (NumberFormatException ignored) {}
+                            }
+                        }
+                    }
+                }
+            }
+
+            final double finalBalance = balance;
+            Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
+            if (getStockAccount == null || getStockAccount.getSetting_value().isEmpty()) {
+                return GeneralException.getError("112", GeneralException.ERRORS_112);
+            }
+            Merchant stockMerchant = Common.getMerchantByAccountNumber(getStockAccount.getSetting_value().trim(), jdbcTemplate);
+            if (stockMerchant == null) {
+                return GeneralException.getError("109", String.format(GeneralException.ERRORS_109, "Stock account merchant", getStockAccount.getSetting_value()));
+            }
+
+            String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_STATEMENT
+                    +" SET safaricom_balance=:balance WHERE merchant_id=:merchant_id";
+            MapSqlParameterSource params = new MapSqlParameterSource();
+            params.addValue("balance", finalBalance);
+            params.addValue("merchant_id", stockMerchant.getId());
+            jdbcTemplate.update(sql, params);
+
+            Logger.getLogger(AuthenticationController.class.getName())
+                    .log(Level.INFO, "SAFARICOM BALANCE CALLBACK - balance updated: "+finalBalance, "");
+            return GeneralSuccessResponse.getMessage("000", "Balance updated successfully");
+
+        } catch (Exception ex) {
+            Logger.getLogger(AuthenticationController.class.getName())
+                    .log(Level.SEVERE, "GENERAL INTERNAL ERROR: "+ex.getMessage(), ex);
+            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        }
+    }
+
+    @PostMapping(path="/doSafaricomReversalCallback")
+    public String doSafaricomReversalCallback(@RequestBody String requestBody,
+            HttpServletRequest request, HttpServletResponse response) {
+        Logger.getLogger(AuthenticationController.class.getName())
+                .log(Level.INFO, "SAFARICOM REVERSAL CALLBACK: "+requestBody, requestBody);
+        try {
+            JSONObject sObject;
+            try {
+                sObject = new JSONObject(requestBody);
+            } catch (JSONException e) {
+                return GeneralException.getError("124", String.format(GeneralException.ERRORS_124, ""));
+            }
+            if (sObject.isNull("Result")) {
+                return GeneralException.getError("114", String.format(GeneralException.ERRORS_114, "Result"));
+            }
+            JSONObject result = sObject.getJSONObject("Result");
+            int resultCode = result.isNull("ResultCode") ? -1 : result.getInt("ResultCode");
+            String transactionId = result.isNull("TransactionID") ? "" : result.getString("TransactionID");
+            String conversationId = result.isNull("ConversationID") ? "" : result.getString("ConversationID");
+            String resultDesc = result.isNull("ResultDesc") ? "" : result.getString("ResultDesc");
+
+            if (resultCode == 0) {
+                Logger.getLogger(AuthenticationController.class.getName())
+                        .log(Level.INFO, "SAFARICOM REVERSAL SUCCESS - TransactionID: "+transactionId
+                                +" ConversationID: "+conversationId, "");
+            } else {
+                Logger.getLogger(AuthenticationController.class.getName())
+                        .log(Level.WARNING, "SAFARICOM REVERSAL FAILED - ResultCode: "+resultCode
+                                +" Desc: "+resultDesc, "");
+            }
+            return GeneralSuccessResponse.getMessage("000", "Reversal callback received");
+        } catch (Exception ex) {
+            Logger.getLogger(AuthenticationController.class.getName())
+                    .log(Level.SEVERE, "GENERAL INTERNAL ERROR: "+ex.getMessage(), ex);
+            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        }
+    }
+
+    /*
+    * API to retrieve account KYC info (name lookup) for a given MSISDN
+    */
+    @PostMapping(path="/doGetAccountInfo")
+    public String doGetAccountInfo(@RequestBody String requestBody,
+            HttpServletRequest request, HttpServletResponse response) {
+        try {
+            JSONObject sObject;
+            try {
+                sObject = new JSONObject(requestBody);
+            } catch (JSONException e) {
+                return GeneralException.getError("124", String.format(GeneralException.ERRORS_124, ""));
+            }
+
+            List<String> fields = new ArrayList<>();
+            fields.add("merchant_number");
+            fields.add("signature");
+            fields.add("msisdn");
+            List<String> missingFields = missingJsonFields(fields, sObject);
+            if (missingFields.size() > 0) {
+                String missing_f = "";
+                for (String s : missingFields) missing_f += s + ", ";
+                missing_f = missing_f.substring(0, missing_f.length() - 2);
+                return GeneralException.getError("114", String.format(GeneralException.ERRORS_114, missing_f));
+            }
+
+            String merchant_number = sObject.getString("merchant_number");
+            String signatureBase64 = sObject.getString("signature");
+            String msisdn = sObject.getString("msisdn");
+
+            Merchant merchant = Common.getMerchantByAccountNumber(merchant_number, jdbcTemplate);
+            if (merchant == null) {
+                return GeneralException.getError("109", String.format(GeneralException.ERRORS_109, "Merchant", merchant_number));
+            }
+            if (merchant.getStatus().equals("SUSPENDED")) {
+                return GeneralException.getError("137", GeneralException.ERRORS_137);
+            }
+            String sigError = SignatureVerificationService.verify(merchant, merchant_number, signatureBase64);
+            if (sigError != null) return sigError;
+            if (!merchant.getStatus().equals("ACTIVE")) {
+                return GeneralException.getError("119", GeneralException.ERRORS_119);
+            }
+
+            boolean allowed = false;
+            for (String api : merchant.getAllowed_apis()) {
+                if (api.equals(Common.API_ACCOUNT_VALIDATION)) { allowed = true; break; }
+            }
+            if (!allowed) {
+                return GeneralException.getError("120", String.format(GeneralException.ERRORS_120, Common.API_ACCOUNT_VALIDATION));
+            }
+
+            net.citotech.cito.Model.AccountInfo info = DoPayGateway.getAccountInfo(msisdn, jdbcTemplate);
+            if (info == null) {
+                return GeneralException.getError("102", GeneralException.ERRORS_102);
+            }
+
+            JSONObject result = new JSONObject();
+            result.put("msisdn", msisdn);
+            result.put("first_name", info.getFirstName() != null ? info.getFirstName() : "");
+            result.put("last_name", info.getLastName() != null ? info.getLastName() : "");
+            result.put("name", info.getProvided_name() != null ? info.getProvided_name() : "");
+            result.put("status", info.getStatus() != null ? info.getStatus() : "");
+            return GeneralSuccessResponse.getMessage("000", result.toString());
+
+        } catch (Exception ex) {
+            Logger.getLogger(AuthenticationController.class.getName())
+                    .log(Level.SEVERE, "GENERAL INTERNAL ERROR: "+ex.getMessage(), ex);
+            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        }
+    }
+
     /*
     * API to retrieve merchant balances
     */

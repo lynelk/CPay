@@ -16,6 +16,15 @@ public class AccountInfo {
     String msisdn;
     String nationality;
     String provided_name;
+    String status;
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
     public String getNationality() {
         return nationality;

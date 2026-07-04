@@ -410,6 +410,14 @@
         "setting_value":"",
         "setting_group":"Airtel Money Gateways"
     },
+    {
+        "id":"",
+        "label":"Gateway Airtel Open API RSA Public Key",
+        "name":"gw_airtelmoney_api_public_key",
+        "description":"RSA public key used to encrypt the Airtel API PIN (Base64 DER, no headers).",
+        "setting_value":"",
+        "setting_group":"Airtel Money Gateways"
+    },
 
 
 
@@ -578,7 +586,15 @@
         "setting_value":"",
         "setting_group":"Safaricom Gateways"
     },
-    
+    {
+        "id":"",
+        "label":"Gateway Safaricom API Version",
+        "name":"gw_safaricom_api_version",
+        "description":"Daraja API version (2 or 3). Default is 2. Set to 3 to use Daraja 3.0 OAuth2 endpoints when available.",
+        "setting_value":"2",
+        "setting_group":"Safaricom Gateways"
+    },
+
     {
         "id":"",
         "label":"Email on Requesting Password Reset",

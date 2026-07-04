@@ -46,6 +46,16 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     String api_disbursements_user = "";
     String api_disbursements_key = "";
     String api_disbursements_subscription = "";
+    
+    String publicKey = "";
+    
+    public static String[] prefix = {"25675", "25670", "25676"};
+    
+    public static String gateway_id = "AirtelMoneyOpenApiPaymentGateway";
+    
+    public static String gateway_currency_code = "AIRTELMM";//AIRTELOAPIMM";
+    
+    @Value( "${custom.lockfiledirectory}" )
 
     String publicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCkq3XbDI1s8Lu7SpUBP+bqOs/MC6PKWz6n/0UkqTiOZqKqaoZClI3BUDTrSIJsrN1Qx7ivBzsaAYfsB0CygSSWay4iyUcnMVEDrNVOJwtWvHxpyWJC5RfKBrweW9b8klFa/CfKRtkK730apy0Kxjg+7fF0tB4O3Ic9Gxuv4pFkbQIDAQAB";
 
@@ -61,12 +71,27 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         }
         return false;
     }
+    
+    public void setApiDetails(String global_url, String api_username,
+            String api_password, String api_pin) {
+
 
     public void setApiDetails(String global_url, String api_username, String api_password, String api_pin) {
         this.global_url = global_url;
         this.api_username = api_username;
         this.api_password = api_password;
         this.api_pin = api_pin;
+
+    }
+
+    public void setPublicKey(String publicKey) {
+        if (publicKey != null && !publicKey.isEmpty()) {
+            this.publicKey = publicKey;
+        }
+    }
+
+    public String getPublicKey() {
+        return publicKey;
     }
 
     static public String getGatewayCurrencyCode() {
@@ -169,6 +194,33 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     }
 
     @Override
+    public AccountInfo getAccountInfo(String msisdn) {
+        AccountInfo info = new AccountInfo();
+        info.setMsisdn(msisdn);
+        try {
+            this.segment = "collection";
+            Token token = this.getToken();
+            if (token == null) return info;
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", "Bearer " + token.getToken());
+            headers.put("X-Country", this.country);
+            headers.put("X-Currency", this.base_currency);
+
+            String url = this.global_url + "/standard/v1/users/" + msisdn;
+            HttpRequestResponse rs = Common.doHttpRequest("GET", url, "", headers);
+            if (rs == null || rs.getStatusCode() != 200) return info;
+            JSONObject r = new JSONObject(rs.getResponse());
+            if (!r.isNull("data")) {
+                JSONObject data = r.getJSONObject("data");
+                if (!data.isNull("first_name")) info.setFirstName(data.getString("first_name"));
+                if (!data.isNull("last_name")) info.setLastName(data.getString("last_name"));
+                if (!data.isNull("is_barred")) info.setStatus(data.getBoolean("is_barred") ? "BARRED" : "ACTIVE");
+                if (!data.isNull("msisdn")) info.setMsisdn(data.getString("msisdn"));
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+        }
+        return info;
     public PaymentGateway.AccountInfo getAccountInfo(String msisdn) {
         throw new UnsupportedOperationException("Not supported yet.");
     }

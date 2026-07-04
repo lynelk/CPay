@@ -44,18 +44,34 @@ public abstract class PaymentGateway {
     
     public abstract AccountInfo getAccountInfo(String msisdn);
     
-    class AccountInfo {
-        String firstName= "";
-        String lastName= "";
-        String address= "";
-        String account= "";
+    public class AccountInfo {
+        String firstName = "";
+        String lastName = "";
+        String address = "";
+        String account = "";
         String nationality = "";
+        String msisdn = "";
+        String status = "";
+        String provided_name = "";
+
+        public AccountInfo() {}
 
         public AccountInfo(String fName, String lName, String account) {
             this.firstName = fName;
             this.lastName = lName;
             this.account = account;
         }
+
+        public String getFirstName() { return firstName; }
+        public void setFirstName(String v) { this.firstName = v; }
+        public String getLastName() { return lastName; }
+        public void setLastName(String v) { this.lastName = v; }
+        public String getMsisdn() { return msisdn; }
+        public void setMsisdn(String v) { this.msisdn = v; }
+        public String getStatus() { return status; }
+        public void setStatus(String v) { this.status = v; }
+        public String getProvided_name() { return provided_name; }
+        public void setProvided_name(String v) { this.provided_name = v; }
     }
     
 }
