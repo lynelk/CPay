@@ -18,9 +18,7 @@ public class CallbackClaimRepository {
     public List<Long> claimDueIds(int limit) {
         String selectSql = "SELECT id FROM callback_tasks WHERE task_status IN ('PENDING','RETRY') AND (next_run_at IS NULL OR next_run_at <= CURRENT_TIMESTAMP) ORDER BY id ASC LIMIT :limit";
         List<Long> ids = jdbcTemplate.query(selectSql, new MapSqlParameterSource("limit", limit), (rs, rowNum) -> rs.getLong("id"));
-        for (Long id : ids) {
-            tryClaim(id);
-        }
+        for (Long id : ids) tryClaim(id);
         String claimedSql = "SELECT task_id FROM callback_task_claims WHERE worker_name=:worker_name AND claim_status='ACTIVE' ORDER BY id ASC LIMIT :limit";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("worker_name", workerName);
@@ -29,7 +27,7 @@ public class CallbackClaimRepository {
     }
 
     public void release(long taskId) {
-        String sql = "UPDATE callback_task_claims SET claim_status='DONE', released_at=CURRENT_TIMESTAMP WHERE task_id=:task_id AND worker_name=:worker_name AND claim_status='ACTIVE'";
+        String sql = "DELETE FROM callback_task_claims WHERE task_id=:task_id AND worker_name=:worker_name AND claim_status='ACTIVE'";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("task_id", taskId);
         p.addValue("worker_name", workerName);
