@@ -11,21 +11,26 @@ import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.gateway.PaymentGatewayRequest;
+import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.money.MoneyAmount;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AdapterNativePaymentService {
     private final PaymentChannelRegistry registry;
+    private final MerchantChannelCredentialService channelCredentialService;
 
-    public AdapterNativePaymentService(PaymentChannelRegistry registry) {
+    public AdapterNativePaymentService(PaymentChannelRegistry registry,
+                                       MerchantChannelCredentialService channelCredentialService) {
         this.registry = registry;
+        this.channelCredentialService = channelCredentialService;
     }
 
     public PaymentResult collect(PaymentRequest request, Merchant merchant) {
         validate(request, merchant, true, Common.API_MOBILE_MONEY_PAYIN);
         String account = request.getPayer().getValue();
         PaymentChannelAdapter adapter = adapterFor(request, account);
+        channelCredentialService.ensureChannelReady(merchant, adapter.channelCode());
         GateWayResponse response = adapter.collect(adapterRequest(request, account));
         return result(request, adapter, response);
     }
@@ -34,6 +39,7 @@ public class AdapterNativePaymentService {
         validate(request, merchant, false, Common.API_MOBILE_MONEY_PAYOUT);
         String account = request.getPayee().getValue();
         PaymentChannelAdapter adapter = adapterFor(request, account);
+        channelCredentialService.ensureChannelReady(merchant, adapter.channelCode());
         GateWayResponse response = adapter.payout(adapterRequest(request, account));
         return result(request, adapter, response);
     }
