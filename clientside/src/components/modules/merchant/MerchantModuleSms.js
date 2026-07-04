@@ -704,15 +704,8 @@ class MerchantModuleSmsC extends React.Component {
                             <td><span style={styles.titleText}>SMS Content</span></td>
                             <td style={{width: 500}}>
                                 <div    
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            tx_details_row.content ?
-                                            tx_details_row.content.replace(/\n/g, "<BR/>") : ""
-                                        )
-                                    }}
-                                    style={styles.commonBlockText}>
-                                
+                                    style={{...styles.commonBlockText, width: "100%", overflow: "auto", whiteSpace: "pre-wrap"}}>
+                                    {tx_details_row.content || ""}
                                 </div>
                             </td>
                         </tr>

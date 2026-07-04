@@ -701,6 +701,7 @@ class MerchantFormDialog extends React.Component{
         ];
         this.state.allowed_apis = common.allowed_apis;
         this.state.privileges = common.merchant_privileges;
+        this.state.showPrivateKey = false;
     }
 
     componentDidMount() {
@@ -891,12 +892,23 @@ class MerchantFormDialog extends React.Component{
                                     </FormField>
 
                                     <FormField name="private_key" label="Private key">
-                                        <TextBox 
-                                            multiline
-                                            inputId="private_key" 
-                                            name="private_key" 
-                                            value={row.private_key} 
-                                            style={{width:200, height: 300}}></TextBox>
+                                        <div>
+                                            <TextBox 
+                                                multiline
+                                                inputId="private_key" 
+                                                name="private_key" 
+                                                value={this.state.showPrivateKey ? row.private_key : (row.private_key ? "••••••••••••••••••••" : "")}
+                                                readOnly={!this.state.showPrivateKey}
+                                                style={{width:200, height: 300}}></TextBox>
+                                            <div style={{marginTop: 4}}>
+                                                <CheckBox 
+                                                    inputId="show_private_key"
+                                                    checked={this.state.showPrivateKey}
+                                                    onChange={(checked) => this.setState({showPrivateKey: checked})}
+                                                ></CheckBox>
+                                                <label htmlFor="show_private_key" style={{marginLeft: 4, fontSize: 12}}>Reveal private key</label>
+                                            </div>
+                                        </div>
                                     </FormField>
 
                                     <FormField name="public_key" label="Public key">

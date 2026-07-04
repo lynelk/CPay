@@ -97,8 +97,9 @@ public class MerchantsController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.toLowerCase().equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " WHERE "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist.validate("merchants", category);
+                    sqlSelect += " WHERE "+safeCategory+" LIKE :"+safeCategory+" ";
+                    parameters.addValue(safeCategory, "%"+value+"%");
                 }
             }
             
@@ -785,7 +786,9 @@ public class MerchantsController {
         
         List<Integer> accs = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
         int acc = (1000000 + accs.get(0));
-        String sqlSelect_  =  sqlSelect+" WHERE account_number = '"+acc+"' ";
+        String sqlSelect_  =  "SELECT COUNT(*) AS count_num FROM "+Common.DB_TABLE_MERCHANTS+" WHERE account_number = :account_number";
+        MapSqlParameterSource checkParams = new MapSqlParameterSource();
+        checkParams.addValue("account_number", String.valueOf(acc));
         
         rm = new RowMapper<Integer>() {
         public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -793,7 +796,7 @@ public class MerchantsController {
             }
         };
         
-        List<Integer> accs_2 = jdbcTemplate.query(sqlSelect_, new MapSqlParameterSource(), rm);
+        List<Integer> accs_2 = jdbcTemplate.query(sqlSelect_, checkParams, rm);
         
         if (accs_2.get(0) > 0) {
             return generateMerchantNumber();

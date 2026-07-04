@@ -640,15 +640,8 @@ class ModuleTransactionsC extends React.Component {
                             <td><span style={styles.titleText}>Merchant Description:</span></td>
                             <td>
                                 <div    
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            tx_details_row.tx_merchant_description ?
-                                            tx_details_row.tx_merchant_description.replace(/\n/g, "<BR/>") : ""
-                                        )
-                                    }}
-                                    style={styles.commonBlockText}>
-                                
+                                    style={{...styles.commonBlockText, width: "100%", overflow: "auto", whiteSpace: "pre-wrap"}}>
+                                    {tx_details_row.tx_merchant_description || ""}
                                 </div>
                             </td>
                         </tr>
@@ -656,15 +649,8 @@ class ModuleTransactionsC extends React.Component {
                             <td><span style={styles.titleText}>Our Description:</span></td>
                             <td>
                                 <div    
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            tx_details_row.tx_description ?
-                                            tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
-                                        )
-                                    }}
-                                    style={styles.commonBlockText}>
-                                
+                                    style={{...styles.commonBlockText, width: "100%", overflow: "auto", whiteSpace: "pre-wrap"}}>
+                                    {tx_details_row.tx_description || ""}
                                 </div>
                             </td>
                         </tr>

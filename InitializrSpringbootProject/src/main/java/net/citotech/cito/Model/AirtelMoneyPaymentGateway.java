@@ -471,6 +471,10 @@ public class AirtelMoneyPaymentGateway extends PaymentGateway{
         void parse() {
             try {
                 DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+                dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+                dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+                dbFactory.setExpandEntityReferences(false);
                 DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
                 Document doc = dBuilder.parse(new InputSource(new StringReader(this.xmlData)));
                 doc.getDocumentElement().normalize();
