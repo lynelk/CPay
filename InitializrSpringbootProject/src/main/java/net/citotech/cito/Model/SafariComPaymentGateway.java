@@ -55,6 +55,9 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
     public String app_setting_app_ur = "";
 
+    /** Daraja API version: "2" (default) or "3" */
+    public String api_version = "2";
+
     public static String[] prefix = {"25470","25471","25472", "25474", "25479", "25411"};
 
     public static String gateway_id = "SafariComPaymentGateway";
@@ -104,6 +107,10 @@ public class SafariComPaymentGateway extends PaymentGateway {
         this.initiatorUsername = initiatorUsername;
         this.initiatorPassword = initiatorPassword;
 
+    }
+
+    public void setApiVersion(String version) {
+        if (version != null && !version.isEmpty()) this.api_version = version;
     }
 
     static public String getGatewayCurrencyCode() {
@@ -965,7 +972,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
             headers.put("Authorization", "Basic "+Common.base64Encode(this.api_consumer_key+":"+this.api_consumer_secret));
         }
 
-        String url_string = this.global_url+"/oauth/v1/generate?grant_type=client_credentials";
+        String oauthVersion = "3".equals(this.api_version) ? "v2" : "v1";
+        String url_string = this.global_url+"/oauth/"+oauthVersion+"/generate?grant_type=client_credentials";
 
         HttpRequestResponse rs = Common.doHttpRequest("GET", url_string, "", headers);
         if (rs == null) {

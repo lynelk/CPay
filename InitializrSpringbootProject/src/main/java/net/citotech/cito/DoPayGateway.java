@@ -730,6 +730,8 @@ public class DoPayGateway {
                 gw_safaricom_api_consumer_secret = Common.getSettings("gw_safaricom_api_consumer_secret", jdbcTemplate).getSetting_value();
             }
             safaricom_mmpgw = new SafariComPaymentGateway();
+            Setting safVer = Common.getSettings("gw_safaricom_api_version", jdbcTemplate);
+            if (safVer != null) safaricom_mmpgw.setApiVersion(safVer.getSetting_value());
             safaricom_mmpgw.setSegment("collection");
             safaricom_mmpgw.setApiDetails(global_url, gw_safaricom_api_consumer_key,
                     gw_safaricom_api_consumer_secret,
@@ -1063,6 +1065,8 @@ public class DoPayGateway {
             String app_setting_app_url = Common.getSettings("app_setting_app_url", jdbcTemplate).getSetting_value();
 
             safaricom_mmpgw = new SafariComPaymentGateway();
+            Setting safVer2 = Common.getSettings("gw_safaricom_api_version", jdbcTemplate);
+            if (safVer2 != null) safaricom_mmpgw.setApiVersion(safVer2.getSetting_value());
             safaricom_mmpgw.setApiDetails(global_url,
                     api_disbursements_user,
                     api_disbursements_key,
@@ -1225,6 +1229,8 @@ public class DoPayGateway {
                 gw_safaricom_api_consumer_secret = Common.getSettings("gw_safaricom_api_consumer_secret", jdbcTemplate).getSetting_value();
             }
             safaricom_mmpgw = new SafariComPaymentGateway();
+            Setting safVer3 = Common.getSettings("gw_safaricom_api_version", jdbcTemplate);
+            if (safVer3 != null) safaricom_mmpgw.setApiVersion(safVer3.getSetting_value());
             if (tx_type.equals("collection")) {
                 safaricom_mmpgw.setSegment("collection");
                 safaricom_mmpgw.setApiDetails(global_url,
