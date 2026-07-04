@@ -2,7 +2,7 @@
 
 Thank you for contributing to CPay. This guide explains how to make useful, safe, and reviewable changes to the project.
 
-CPay is a payments gateway. That means changes can affect merchant payments, customer payouts, callbacks, balances, reconciliation, and finance operations. Please treat every change with care, especially anything related to money movement, provider integrations, security, or production operations.
+CPay is a payments gateway. Changes can affect merchant payments, customer payouts, callbacks, balances, reconciliation, channel setup, finance operations, and production controls. Please treat every change with care.
 
 ## Who this guide is for
 
@@ -15,16 +15,14 @@ This document is for:
 
 ## Contribution principles
 
-Please follow these principles when working on CPay:
-
 | Principle | What it means |
 |---|---|
 | Keep payment flows safe | Avoid changes that can duplicate transactions, skip checks, or hide failures. |
 | Preserve backward compatibility | Existing v1 merchant integrations must not be broken without a planned migration. |
 | Prefer clear, small changes | Smaller pull requests are easier to review and safer to merge. |
-| Document operational impact | If a change affects setup, security, callbacks, balances, reconciliation, or admin operations, update the relevant documentation. |
+| Document operational impact | Update relevant docs when a change affects setup, security, callbacks, balances, reconciliation, channel setup, or admin operations. |
 | Test what you change | Add or update tests for new behavior, bug fixes, and risky logic. |
-| Protect secrets | Never commit credentials, private keys, provider secrets, callback secrets, or production URLs. |
+| Protect access values | Never commit private keys, provider access values, callback signing values, admin access values, or production URLs. |
 
 ## Repository areas
 
@@ -33,7 +31,7 @@ Please follow these principles when working on CPay:
 | `InitializrSpringbootProject/` | Spring Boot backend, APIs, payment gateway services, migrations, and tests. |
 | `clientside/` | React admin and merchant portal. |
 | `integrations/citoconnect/` | JavaScript reference client and integration assets. |
-| `docs/` | API documentation, architecture notes, readiness gates, and runbooks. |
+| `docs/` | API documentation, architecture notes, readiness gates, production controls, and runbooks. |
 
 ## Before you start
 
@@ -42,9 +40,9 @@ Before making changes:
 1. Read the `README.md` for the project overview.
 2. Read `INSTALLATION.md` if you need to run the project locally.
 3. Check the relevant documents under `docs/`.
-4. Confirm whether your change affects merchant APIs, admin APIs, finance operations, provider integrations, or security.
+4. Confirm whether your change affects merchant APIs, admin APIs, finance operations, provider integrations, callback processing, scaling, or security.
 
-If the change affects payment behavior, reconciliation, callbacks, balances, or provider communication, plan the change carefully. Payment bugs have a talent for becoming finance meetings, which nobody deserves.
+If the change affects payment behavior, reconciliation, callbacks, balances, provider communication, or operating-control records, plan the change carefully. Payment bugs have a talent for becoming finance meetings, which nobody deserves.
 
 ## Branching and pull requests
 
@@ -74,9 +72,10 @@ For backend changes:
 - keep payment and finance calculations precise
 - avoid floating-point arithmetic for money where possible
 - keep provider-specific logic inside adapters or dedicated provider services
-- do not bypass request signing, nonce checks, idempotency, or merchant validation
+- do not bypass request signing, nonce checks, idempotency, merchant validation, channel readiness checks, or operating-control records
 - keep `/api/v1` behavior stable unless a migration plan exists
-- add tests for service logic, request signing, parsing, callbacks, reconciliation, or money calculations where relevant
+- use claim-based processing for callback workers where concurrency matters
+- add tests for service logic, request signing, parsing, callbacks, reconciliation, provider endpoint handling, or money calculations where relevant
 
 ### Frontend
 
@@ -84,9 +83,10 @@ For frontend changes:
 
 - keep screens simple and clear for operations users
 - show loading, error, empty, and success states
-- avoid exposing secrets in the browser
+- avoid exposing access values in the browser
 - confirm that admin-only actions are clearly labelled
-- use confirmation prompts for high-risk actions such as callback requeue, secret rotation, daily close, or manual finance posting
+- use confirmation prompts for high-risk actions such as callback requeue, channel approval, daily close, or manual finance posting
+- keep merchant channel setup clear enough for non-technical users
 
 ### Documentation
 
@@ -129,28 +129,31 @@ If your change requires a database update:
 - document any data backfill, cutover, or manual verification step
 - test the migration against a staging copy before production use
 
-## Security-sensitive changes
+## Sensitive changes
 
-Treat the following as security-sensitive:
+Treat the following as sensitive:
 
 - request signing
 - callback signing
 - merchant public/private key handling
 - admin authentication
-- provider credentials
-- callback secrets
-- database credentials
+- provider channel setup values
+- callback signing values
+- database access values
 - CORS configuration
 - actuator access
 - audit logs
+- operating-control records
 - finance approval or posting controls
+- callback worker claiming
 
-Security-sensitive changes should include a clear explanation of the risk, the control being added or changed, and how the change was tested.
+Sensitive changes should include a clear explanation of the risk, the control being added or changed, and how the change was tested.
 
 ## Market-readiness changes
 
 If your change affects launch readiness, update the relevant readiness or runbook documents:
 
+- `docs/production-code-controls.md`
 - `docs/readiness/market-readiness-gates.md`
 - `docs/runbooks/production-incident-response.md`
 - `docs/runbooks/provider-certification-checklist.md`
@@ -163,12 +166,13 @@ If your change affects launch readiness, update the relevant readiness or runboo
 Before requesting review, confirm that:
 
 - the change is focused and easy to understand
-- no secrets or production credentials are included
+- no private access values or production-only configuration values are included
 - affected documentation has been updated
 - tests have been added or updated where needed
 - migrations are safe and clearly named
 - API changes are reflected in OpenAPI and examples where applicable
 - manual testing requirements are clearly stated
+- provider, finance, security, or compliance signoff requirements are not hidden
 
 ## What should not be merged casually
 
@@ -179,7 +183,10 @@ Avoid merging changes casually if they affect:
 - transaction status mapping
 - balance updates
 - callback delivery
+- callback worker claiming
 - provider adapters
+- provider endpoint execution
+- merchant channel setup
 - reconciliation matching
 - finance posting
 - daily close
