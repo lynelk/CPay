@@ -97,6 +97,8 @@ public class MerchantsController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.toLowerCase().equals("all") && !category.isEmpty() && !value.isEmpty()) {
+                    // validate() throws IllegalArgumentException if category is not in the
+                    // merchants allowlist, preventing SQL injection via column name injection.
                     String safeCategory = ColumnAllowlist.validate("merchants", category);
                     sqlSelect += " WHERE "+safeCategory+" LIKE :"+safeCategory+" ";
                     parameters.addValue(safeCategory, "%"+value+"%");
