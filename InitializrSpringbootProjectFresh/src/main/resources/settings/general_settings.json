@@ -1,0 +1,9 @@
+{
+  "mail.smtp.host": "localhost",
+  "mail.smtp.port": "25",
+  "mail.smtp.username": "",
+  "mail.smtp.password": "",
+  "mail.smtp.auth": "false",
+  "mail.smtp.starttls.enable": "false",
+  "mail.smtp.from": "noreply@localhost"
+}
