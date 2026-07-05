@@ -18,7 +18,7 @@ public class CpayadminApplication {
     WebMvcConfigurer configurer () {
         return new WebMvcConfigurer() {
             @Override
-            public void addResourceHandlers(ResourceHandlerRegistry registry) {
+            public void addResourceHandlers(@org.springframework.lang.NonNull ResourceHandlerRegistry registry) {
                 registry.addResourceHandler("/portal")
                         .addResourceLocations("classpath:/static/portal.html");
             }
