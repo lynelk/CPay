@@ -8,6 +8,8 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.HashSet;
+import java.util.Set;
 import net.citotech.cito.Model.GateWayResponse;
 
 public final class ProviderEndpointClient {
@@ -21,8 +23,9 @@ public final class ProviderEndpointClient {
             return accepted(channelCode, displayName, operation, request, "Sandbox endpoint URL not configured");
         }
         try {
+            URI endpointUri = validateEndpoint(endpoint, request.getMetadata().get("allowedHosts"));
             String payload = jsonPayload(channelCode, operation, request);
-            HttpURLConnection connection = (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
+            HttpURLConnection connection = (HttpURLConnection) endpointUri.toURL().openConnection();
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
             connection.setConnectTimeout(10000);
@@ -85,6 +88,36 @@ public final class ProviderEndpointClient {
         StringBuilder builder = new StringBuilder();
         for (byte b : hash) builder.append(String.format("%02x", b));
         return builder.toString();
+    }
+
+    private static URI validateEndpoint(String endpoint, String allowedHostsCsv) {
+        URI uri = URI.create(endpoint);
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        if (isBlank(scheme) || (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme))) {
+            throw new PaymentGatewayException("Provider endpoint must use HTTP/HTTPS");
+        }
+        if (isBlank(host)) {
+            throw new PaymentGatewayException("Provider endpoint host is invalid");
+        }
+        if (!isBlank(uri.getUserInfo())) {
+            throw new PaymentGatewayException("Provider endpoint must not contain user info");
+        }
+        Set<String> allowedHosts = parseAllowedHosts(allowedHostsCsv);
+        if (!allowedHosts.isEmpty() && !allowedHosts.contains(host.toLowerCase())) {
+            throw new PaymentGatewayException("Provider endpoint host is not allowed");
+        }
+        return uri;
+    }
+
+    private static Set<String> parseAllowedHosts(String allowedHostsCsv) {
+        Set<String> allowed = new HashSet<>();
+        if (isBlank(allowedHostsCsv)) return allowed;
+        String[] parts = allowedHostsCsv.split(",");
+        for (String part : parts) {
+            if (!isBlank(part)) allowed.add(part.trim().toLowerCase());
+        }
+        return allowed;
     }
 
     private static String truncate(String value) { return value == null ? "" : (value.length() <= 1000 ? value : value.substring(0, 1000)); }
