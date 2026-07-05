@@ -357,9 +357,9 @@ class LayoutWithOutRouter extends React.Component {
           <LayoutPanel region="north" style={{ height: 50, border: '0' }}>
             <div style={titleStyle}>
               <Progress loaderState={this.state.loader} />
-              <div className="tw-relative tw-float-right tw-w-[500px] tw-mt-[2px] tw-text-xs" align="right">
-                Logged in as:  <span className="tw-font-bold tw-text-xs">{this.state.user.name}</span><br/>
-                Email: <span className="tw-font-bold tw-text-xs">{this.state.user.email}</span>
+              <div className="tw:relative tw:float-right tw:w-[500px] tw:mt-[2px] tw:text-xs" align="right">
+                Logged in as:  <span className="tw:font-bold tw:text-xs">{this.state.user.name}</span><br/>
+                Email: <span className="tw:font-bold tw:text-xs">{this.state.user.email}</span>
               </div>
             </div>
           </LayoutPanel>

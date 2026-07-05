@@ -4,13 +4,13 @@ import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem } from 'rc-easyui'
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../../MainMenu";
-import common from "../../Common";
-import Progress from "../../Progress";
+import MainMenu from "../MainMenu";
+import common from "../Common";
+import Progress from "../Progress";
 import LinearChart from './LinearChart';
-import styles from '../../styles';
+import styles from '../styles';
 
-class MerchantModuleAuditTrailC extends React.Component {
+class ModuleAuditTrailC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -62,7 +62,7 @@ class MerchantModuleAuditTrailC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         }
-        fetch(common.base_url+"/audittrail/getMerchantAudittrails", {
+        fetch(common.base_url+"/audittrail/getAudittrails", {
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             mode: 'cors', // no-cors, *cors, same-origin
             cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -136,7 +136,7 @@ class MerchantModuleAuditTrailC extends React.Component {
             icon: "info",
             msg: "Your are session expired",
             result: (r) => {
-                history.push("/portal");
+                history.push("/");
             }
         });
     }
@@ -224,7 +224,7 @@ class MerchantModuleAuditTrailC extends React.Component {
 
     renderDetail({ row }) {
         return (
-          <div className="tw-my-[5px] tw-mx-[10px]">
+          <div className="tw:my-[5px] tw:mx-[10px]">
                 <div className={styles.expanderRow}>
                     <div><span className={styles.expanderRowHighlight}>Created On:</span> {row.created_on}</div>
                     <div><span className={styles.expanderRowHighlight}>Action:</span> {row.action}</div>
@@ -246,7 +246,6 @@ class MerchantModuleAuditTrailC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
-                            <span className="tw-text-base tw-mx-[5px] tw-my-[2px] tw-font-bold">Audit Trail | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}
@@ -297,6 +296,6 @@ class MerchantModuleAuditTrailC extends React.Component {
     }
 }
 
-const MerchantModuleAuditTrail = withRouter(MerchantModuleAuditTrailC);
+const ModuleAuditTrail = withRouter(ModuleAuditTrailC);
 
-export default MerchantModuleAuditTrail;
+export default ModuleAuditTrail;

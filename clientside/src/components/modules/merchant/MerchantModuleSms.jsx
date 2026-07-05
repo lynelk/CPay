@@ -1059,7 +1059,7 @@ class MerchantModuleSmsC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
-                            <span className="tw-text-base tw-mx-[5px] tw-my-[2px] tw-font-bold">Merchant SMS | </span>
+                            <span className="tw:text-base tw:mx-[5px] tw:my-[2px] tw:font-bold">Merchant SMS | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}
@@ -1072,7 +1072,7 @@ class MerchantModuleSmsC extends React.Component {
                                 iconCls="icon-add">{strings.send_sms}</LinkButton>
 
                             <LinkButton 
-                                className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" 
+                                className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
                                 className={styles.moduleToolBarButtons}
                                 iconCls="icon-money" 
                                 onClick={() => {
@@ -1565,7 +1565,7 @@ class PaymentFormDialog extends React.Component{
                         </LayoutPanel>
                         <LayoutPanel region="south" style={{ height: 48 }}>
                             <div className="dialog-button">
-                                <LinkButton className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" 
+                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
                                             onClick={() => this.saveRow()}>{strings.submit}</LinkButton>
                                 <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 

@@ -1,16 +1,22 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton } from 'rc-easyui';
+import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton, DateBox } from 'rc-easyui';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../MainMenu";
-import common from "../Common";
-import Progress from "../Progress";
+import MainMenu from "../../MainMenu";
+import common from "../../Common";
+import Progress from "../../Progress";
 import LinearChart from './LinearChart';
-import styles from '../styles';
-import strings from '../locale';
-class ModuleTransactionsC extends React.Component {
+import styles from '../../styles';
+import strings from '../../locale';
+import ReactExport from "../../../shared/export/ExcelExport";
+
+const ExcelFile = ReactExport.ExcelFile;
+const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
+const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
+
+class MerchantModuleTransactionsC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -57,31 +63,24 @@ class ModuleTransactionsC extends React.Component {
                 value: "",
                 category: ""
             },
+            search_rules: {
+                start_date: common.formatDate(common.getDateMonthsBefore(new Date(), 6)),
+                end_date: common.formatDate(new Date()),
+                start_date_val : common.getDateMonthsBefore(new Date(), 6),
+                end_date_val :new Date(),
+                status: "",
+                tx_type: ""
+            },
+            formSearchDialogStateClosed: true,
             search_categories: [
                 {value:'all',text:'All Fields',iconCls:'icon-ok'},
                 {value:'tx_type',text:'Type', iconCls:'icon-settings'},
                 {value:'status',text:'Status', iconCls:'icon-settings'},
-                {value:'original_amount',text:'Amount', iconCls:'icon-man'},
-                {value:'merchant_id',text:'Merchant ID', iconCls:'icon-man'}
+                {value:'original_amount',text:'Amount', iconCls:'icon-man'}
             ],
             hasAccess: false,
             tx_details_row:{}, 
             detailedRecordTxDialogStateClosed: true,
-            title_resolve:"Resolve Transaction", 
-            row_resolve_form: {
-                tx_gateway_ref:"",
-                resolve_status:"",
-                id:"",
-            },
-            rules_resolve:{
-                'resolve_status': 'required',
-                'tx_gateway_ref': ['required'],
-            },
-            formResolveDialogState: true,
-            resolve_status: [
-                { value: 'SUCCESSFUL', text: "SUCCESSFUL" },
-                { value: 'FAILED', text: "FAILED" },
-            ],
             windowHeight: window.innerHeight
         };
     }
@@ -96,9 +95,9 @@ class ModuleTransactionsC extends React.Component {
     }
 
     componentDidMount() {
-        
-        window.addEventListener("resize", this.handleResize);
 
+        window.addEventListener("resize", this.handleResize);
+        
         if (this.isUserAllowedAccess()) {
             this.setState({
                 hasAccess:true,
@@ -116,8 +115,8 @@ class ModuleTransactionsC extends React.Component {
     }
 
     isUserAllowedAccess() {
-        let user = localStorage.getItem("user") != null ? 
-            JSON.parse(localStorage.getItem("user")) : {};
+        let user = localStorage.getItem("merchantUser") != null ? 
+            JSON.parse(localStorage.getItem("merchantUser")) : {};
 
         let isPrivilegeExists = false;
 
@@ -148,11 +147,12 @@ class ModuleTransactionsC extends React.Component {
     getData() {
         this.props.loader("START");
         let searchData = {
+            search_rules: this.state.search_rules,
             pageSize: this.state.pageSize,
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         }
-        fetch(common.base_url+"/transactions/getTransactions", {
+        fetch(common.base_url+"/transactions/getMerchantTransactions", {
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             mode: 'cors', // no-cors, *cors, same-origin
             cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -174,7 +174,7 @@ class ModuleTransactionsC extends React.Component {
                     try {
                         this.setState({
                             data: res.data,
-                            total: res.data.length
+                            total: res.total
                         });
                     } catch (ex) {
                         this.messager.alert({
@@ -249,16 +249,16 @@ class ModuleTransactionsC extends React.Component {
         });
     }
 
-    deleteRow(row) {
+    submitPayment(data) {
         this.messager.confirm({
-            title: "Delete this User",
+            title: "Confirm to Initiate inbound Payment",
             icon: "info",
-            msg: "Are you sure you want to delete this user?",
+            msg: "Are you sure you want to continue to initiate a mobile money payment on "+data.account+"?",
             result: (r) => {
                 //Continue to submit the form
                 if (r) {
                     this.props.loader("START");
-                    fetch(common.base_url+"/transactions/deleteMerchant", {
+                    fetch(common.base_url+"/transactions/addPayInTransaction", {
                         method: 'POST', // *GET, POST, PUT, DELETE, etc.
                         mode: 'cors', // no-cors, *cors, same-origin
                         cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -268,7 +268,7 @@ class ModuleTransactionsC extends React.Component {
                         },
                         redirect: 'follow', // manual, *follow, error
                         referrer: 'no-referrer', // no-referrer, *client
-                        body: JSON.stringify(row) // body data type must match "Content-Type" header
+                        body: JSON.stringify(data) // body data type must match "Content-Type" header
                     }).then ((response)=>{
                         return response.text();
                     }).then((response_) => {
@@ -279,15 +279,17 @@ class ModuleTransactionsC extends React.Component {
                             if (res.code === "000") {
                                 try {
                                     this.resetForm(()=> {
-                                        this.messager.alert({
-                                            title: "Success!",
-                                            icon: "info",
-                                            msg: res.message,
-                                            result: r => {
-                                                if (r) {
-                                                    this.getData();
+                                        this.setState({ formDialogStateOpened: true }, ()=> {
+                                            this.messager.alert({
+                                                title: "Success!",
+                                                icon: "info",
+                                                msg: res.message,
+                                                result: r => {
+                                                    if (r) {
+                                                        this.getData();
+                                                    }
                                                 }
-                                            }
+                                            });
                                         });
                                     });
                                 } catch (ex) {
@@ -307,95 +309,7 @@ class ModuleTransactionsC extends React.Component {
                                 this.messager.alert({
                                     title: "Error "+(res.code ? res.code : res.status+" "+res.error),
                                     icon: "error",
-                                    msg: res.message,
-                                    result: (r) => {
-                                        
-                                    }
-                                });
-                            }
-                        } catch(Error) {
-                            //alert(Error.message);
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
-                            });
-                            return;
-                        }
-                    }).catch((error) => {
-                        this.props.loader("STOP");
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: error.message
-                        });
-                    });
-                }
-            }
-        });
-    }
-
-
-    resolveTransaction(row) {
-        this.messager.confirm({
-            title: "Resolve Transaction",
-            icon: "info",
-            msg: "Are you sure you want to resolve this transaction to "+row.resolve_status+"?",
-            result: (r) => {
-                //Continue to submit the form
-                if (r) {
-                    this.resolveDialog.close();
-                    this.props.loader("START");
-                    fetch(common.base_url+"/transactions/resolveTransaction", {
-                        method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                        mode: 'cors', // no-cors, *cors, same-origin
-                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                        credentials: 'include', // include, *same-origin, omit
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        redirect: 'follow', // manual, *follow, error
-                        referrer: 'no-referrer', // no-referrer, *client
-                        body: JSON.stringify(row) // body data type must match "Content-Type" header
-                    }).then ((response)=>{
-                        return response.text();
-                    }).then((response_) => {
-                        this.props.loader("STOP");
-                        let res;
-                        try {
-                            res = JSON.parse(response_);
-                            if (res.code === "000") {
-                                try {
-                                    this.resetForm(()=> {
-                                        this.messager.alert({
-                                            title: "Success!",
-                                            icon: "info",
-                                            msg: res.message,
-                                            result: r => {
-                                                if (r) {
-                                                    this.getData();
-                                                }
-                                            }
-                                        });
-                                    });
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                //If session timed out
-                                if (res.code === "107") {
-                                    this.sessionExpired();
-                                    return;
-                                }
-
-                                this.messager.alert({
-                                    title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                                    icon: "error",
-                                    msg: res.message,
+                                    msg: res.message+". Error: "+res.error,
                                     result: (r) => {
                                         
                                     }
@@ -503,88 +417,6 @@ class ModuleTransactionsC extends React.Component {
         });
     }
 
-    handleFormChangeResolve(name, value) {
-        
-        let row_resolve_form = Object.assign({}, this.state.row_resolve_form);
-        row_resolve_form[name] = value;
-        this.setState({ row_resolve_form: row_resolve_form })
-        
-    }
-
-    renderResolveDialog() {
-        const row_resolve_form = this.state.row_resolve_form;
-        const { title_resolve, formResolveDialogState, rules_resolve } = this.state;
-        return (
-            <Dialog modal 
-                title={title_resolve} 
-                closed={formResolveDialogState} 
-                style={{width: 500, height: 250}}
-                ref={ref => this.resolveDialog = ref}
-                borderType="none"
-                onOpen={() => {
-                    
-                }}
-                onClose={() => this.setState({ formResolveDialogState: true })}>
-                    <Layout style={{ width: 500, height:'100%', border: '0px #FFFFFF' }}>
-                        <LayoutPanel 
-                            region="north" 
-                            split={false}
-                            style={{ height: 170, border: '0px #FFFFFF' }}>
-                            <div className={styles.formDialogContainer}>
-                                <Form
-                                    ref={ref => this.form_resolve = ref}
-                                    model={row_resolve_form}
-                                    rules={rules_resolve}
-                                    floatingLabel
-                                    labelWidth={120}
-                                    /*labelPosition="top"*/
-                                    onChange={this.handleFormChangeResolve.bind(this)}
-                                    onValidate={(errors) => this.setState({ errors: errors })}>
-                                    
-                                    <FormField name="tx_gateway_ref" label="Nework Ref">
-                                        <TextBox 
-                                            iconCls="icon-man"
-                                            inputId="tx_gateway_ref" 
-                                            name="tx_gateway_ref" 
-                                            value={row_resolve_form.tx_gateway_ref} 
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                                    </FormField>
-                                    
-                                    <FormField name="resolve_status" label="Resolve to Status" >
-                                        <ComboBox
-                                            inputId="resolve_status"
-                                            name="resolve_status"
-                                            data={this.state.resolve_status}
-                                            value={row_resolve_form.resolve_statuses}
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
-                                            onChange={(value) => {
-                                                this.setState({ 
-                                                    value: value 
-                                                })
-                                            }}
-                                            />
-                                    </FormField>
-                                </Form>
-                            </div>
-                        </LayoutPanel>
-                        <LayoutPanel region="south" style={{ height: 48 }}>
-                            <div className="dialog-button">
-                                <LinkButton className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" 
-                                    iconCls="icon-save" style={{ width: 80 }} 
-                                    onClick={() => {
-                                        this.resolveTransaction(this.state.row_resolve_form);
-                                    }}>Submit</LinkButton>
-                                <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
-                                    onClick={() => {
-                                        this.resolveDialog.close()
-                                    }}>Close</LinkButton>
-                            </div>
-                        </LayoutPanel>
-                    </Layout>
-            </Dialog>
-        );
-    }
-
     recordTxDetailsDialog() {
         const { tx_details_row, detailedRecordTxDialogStateClosed } = this.state;
         return (
@@ -676,38 +508,8 @@ class ModuleTransactionsC extends React.Component {
                             <td><span className={styles.titleText}>Created On</span></td>
                             <td>{tx_details_row.created_on}</td>
                         </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Request Trace</span></td>
-                            <td style={{width: 500}}>
-                                <div    
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: ("<PRE>"+
-                                            common.encodeHTML(tx_details_row.tx_request_trace ?
-                                            tx_details_row.tx_request_trace : "")
-                                           +"</PRE>"
-                                        )
-                                    }}
-                                    className={styles.commonBlockText}>
-                                
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Updated Trace</span></td>
-                            <td style={{width:500}}>
-                                <div style={{width: '100%', overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: ( "<PRE>"+
-                                            common.encodeHTML(tx_details_row.tx_update_trace ?
-                                            tx_details_row.tx_update_trace: "")
-                                            +"</PRE>"
-                                            )
-                                    }}
-                                    className={styles.commonBlockText}>
-                                </div>
-                            </td>
-                        </tr>
+                        
+                        
                         <tr>
                             <td><span className={styles.titleText}>Callback Trace</span></td>
                             <td style={{width:500}}>
@@ -727,9 +529,6 @@ class ModuleTransactionsC extends React.Component {
                     </table>
                 </div>
                 <div className="dialog-button">
-                    
-                    {this.displayResolve(tx_details_row)}
-
                     <LinkButton style={{ width: 80 }} onClick={() => {
                         this.dlgRowDetailsRecordTx.close();
                     }}>{strings.close}</LinkButton>
@@ -738,27 +537,119 @@ class ModuleTransactionsC extends React.Component {
         );
     }
 
-    displayResolve(tx_details_row) {
-        if (tx_details_row.status == "SUCCESSFUL" || tx_details_row.status == "FAILED") {
-            return (<di></di>);
+    addPayIn() {
+        this.setState({
+            title: strings.add_payin,
+            formdMode: 'new',
+            formDialogStateOpened: false,
+            formd: {
+                id:"",
+                account: "",
+                description: "",
+                amount: "",
+            }
+        });
+    }
+
+    clearSearch_() {
+        let search_rules = Object.assign({}, this.state.search_rules);
+        search_rules.start_date = common.formatDate(common.getDateMonthsBefore(new Date(), 6));
+        search_rules.end_date = common.formatDate(new Date());
+        search_rules.start_date_val = common.getDateMonthsBefore(new Date(), 6);
+        search_rules.end_date_val = new Date();
+        search_rules.status = "";
+        search_rules.tx_type = "";
+        this.setState({ search_rules: search_rules });
+    }
+
+    handleSearchFormChange(name, value) {
+        let formd = Object.assign({}, this.state.search_rules);
+        if (name=="start_date" || name=="end_date") {
+            formd[name] = common.formatDate(value);
+            if (name=="start_date") {
+                formd["start_date_val"] = value;
+            } else if (name=="end_date") {
+                formd["end_date_val"] = value;
+            }
         } else {
-            return (
-                <LinkButton style={{ width: 80 }} onClick={() => {
-                    let row_resolve_form = this.state.row_resolve_form;
-                    row_resolve_form.id = tx_details_row.id;
-                    this.setState({
-                        row_resolve_form: row_resolve_form
-                    }, () => {
-                        this.resolveDialog.open()
-                    })
-                }}>{strings.resolve}</LinkButton>
-            );
+            formd[name] = value;
         }
+        this.setState({ search_rules: formd });
+    }
+
+    searchDialog() {
+        const { search_rules, rules, formSearchDialogStateClosed } = this.state;
+        return (
+            <Dialog
+                title="Search"
+                closed={formSearchDialogStateClosed} 
+                style={{ width: 450, height: 320 }}
+                bodyCls="f-column"
+                modal
+                ref={ref => this.dlgSearch = ref}>
+                
+                <div className="f-full" style={{margin: "5px"}}>
+                    <Form
+                        ref={ref => this.form = ref}
+                        model={search_rules}
+                        floatingLabel
+                        labelWidth={120}
+                        /*labelPosition="top"*/
+                        onChange={this.handleSearchFormChange.bind(this)}
+                        onValidate={(errors) => this.setState({ errors: errors })}>
+                    
+                        <FormField name="start_date" label="Start Date">
+                            <DateBox 
+                                format="yyyy-MM-dd"
+                                inputId="start_date" 
+                                name="start_date" 
+                                value={search_rules.start_date_val} 
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
+                        </FormField>
+                        <FormField name="end_date" label="End Date">
+                            <DateBox 
+                                format="yyyy-MM-dd"
+                                inputId="end_date" 
+                                name="end_date" 
+                                value={search_rules.end_date_val} 
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
+                        </FormField>
+
+                        <FormField name="status" label="Status">
+                            <TextBox 
+                                inputId="status" 
+                                name="status" 
+                                value={search_rules.status} 
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
+                        </FormField>
+                        <FormField name="tx_type" label="Type">
+                            <TextBox 
+                                inputId="tx_type" 
+                                name="tx_type" 
+                                value={search_rules.tx_type} 
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
+                        </FormField>
+                    </Form>
+                </div>
+                <div className="dialog-button">
+                    <LinkButton style={{ width: 80 }} onClick={() => {
+                        this.getData();
+                    }}>{strings.go}</LinkButton>
+                    <LinkButton style={{ width: 80 }} onClick={() => {
+                        this.clearSearch_();
+                    }}>{strings.clear}</LinkButton>
+                    <LinkButton style={{ width: 80 }} onClick={() => {
+                        this.dlgSearch.close();
+                    }}>{strings.close}</LinkButton>
+                </div>
+            </Dialog>
+        );
     }
 
 
     render () {
         const {searchingValue, search_categories, windowHeight} = this.state;
+        
         if (!this.state.hasAccess) {
             return (<div>
                 <Messager ref={ref => this.messager = ref}></Messager>
@@ -770,34 +661,62 @@ class ModuleTransactionsC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
+                            <span className="tw:text-base tw:mx-[5px] tw:my-[2px] tw:font-bold">Transactions | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}
                                 value={this.state.gridActionsValue}
                                 onChange={(value) => this.bulkActions(value)}/>
+
+                            <LinkButton 
+                                onClick={() => this.addPayIn()}
+                                className={styles.moduleToolBarButtons}
+                                iconCls="icon-add">{strings.add_payin}</LinkButton>
+
                         </div>
-                        <SearchBox
-                            style={{ width: 300, float:'right' }}
-                            placeholder={strings.search_merchant}
-                            value={searchingValue.value}
-                            onSearch={this.handleSearch.bind(this)}
-                            category={searchingValue.category}
-                            categories={search_categories}
-                            addonRight={() => (
-                                <span 
-                                    className="textbox-icon icon-clear" 
-                                    title={strings.clear_value}
-                                    onClick={this.handleClear.bind(this)}></span>
-                            )}
-                            />
+                        
+                        <div  style={{float:'right'}}>
+                            <SearchBox
+                                style={{ width: 300, float:'right' }}
+                                placeholder={strings.search_merchant}
+                                value={searchingValue.value}
+                                onSearch={this.handleSearch.bind(this)}
+                                category={searchingValue.category}
+                                categories={search_categories}
+                                addonRight={() => (
+                                    <span 
+                                        className="textbox-icon icon-clear" 
+                                        title={strings.clear_value}
+                                        onClick={this.handleClear.bind(this)}></span>
+                                )}
+                                />
+                            <ButtonGroup>
+                                <LinkButton 
+                                    iconCls="icon-search" 
+                                    onClick={() => {
+                                        this.dlgSearch.open();
+                                    }}>{strings.search}</LinkButton>
+                                <Download data={this.state.data} />
+                                
+                            </ButtonGroup>
+                        </div>
                     </Panel>
                 </div>
                 <DataGrid
+                    onRowClick={(row)=> {
+                        console.log(this.dataGrid);
+                    }}
                     ref={ref => this.dataGrid = ref}
                     style={{ height: (windowHeight - common.toReduceGridHeight) }}
                     selectionMode={"multiple"}
-                    pagination
-                    {...this.state}>
+                    pagination={true}
+                    total={this.state.total}
+                    pageSize={this.state.pageSize}
+                    allChecked={this.state.allChecked}
+                    rowClicked={this.state.rowClicked}
+                    data={this.state.data}
+                    pageOptions={this.state.pageOptions}
+                    >
                     <GridColumn width={50} align="center"
                         field="ck"
                         render={({ row }) => (
@@ -808,17 +727,13 @@ class ModuleTransactionsC extends React.Component {
                         )}
                         />
                     <GridColumn field="created_on" title="Created on"></GridColumn>
-                    <GridColumn field="merchant_id" title="Merchant ID" 
+                    <GridColumn field="merchant_id" title="Network ID" 
                         render={({ row }) => (
                             <span>
-                                {row.merchant_name}
-                                {/*<Tooltip content={row.merchant_name+" "+row.merchant_number+")"}>
-                                    {row.merchant_name}    
-                                </Tooltip>*/}
+                                {row.tx_gateway_ref}
                             </span>
                         )}></GridColumn>
                     <GridColumn field="payer_number" title="Payer Number" ></GridColumn>
-                    <GridColumn field="tx_merchant_ref" title="Merchant Ref" ></GridColumn>
                     <GridColumn field="status" title="Status" ></GridColumn>
                     <GridColumn field="tx_type" title="Type" align="left"></GridColumn>
                     <GridColumn field="original_amount_formatted" title="Amount" align="right"></GridColumn>
@@ -840,14 +755,203 @@ class ModuleTransactionsC extends React.Component {
 
                     </GridColumn>
                 </DataGrid>
+                {this.searchDialog()}
                 {this.recordTxDetailsDialog()}
-                {this.renderResolveDialog()}
+                <PaymentFormDialog 
+                    openOrCloseFormDialog={(state)=> this.openOrCloseFormDialog(state)}
+                    parentState={this.state}
+                    formd={this.state.formd}
+                    title={this.state.title}
+                    formDialogStateOpened={this.state.formDialogStateOpened}
+                    formdMode={this.state.formdMode}
+                    rules={this.state.rules}
+                    submitPayment={(data) => {
+                        this.submitPayment(data);
+                    }}
+                    />
                 <Messager ref={ref => this.messager = ref}></Messager>
             </div>
         );
     }
 }
 
-const ModuleTransactions = withRouter(ModuleTransactionsC);
 
-export default ModuleTransactions;
+
+class PaymentFormDialog extends React.Component{
+
+    constructor(props) {
+        super(props);
+        this.state = Object.assign({}, this.props);
+        this.state.rules = {
+            'account': ['required'],
+            'tx_description': ['required'],
+            "amount": {"required":true,"numericValidation":common.numericValidation},
+        };
+
+        this.state.formd = {
+            account: "",
+            tx_description: "",
+            amount: "0",
+        };
+        this.state.errors = null;
+    }
+
+    componentDidMount() {
+        
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        if (this.props.formd != nextProps.formd) {
+            if (this.props.formdMode == "new") {
+                this.resetForm(() => {});
+            }
+            this.setState({
+                formd: nextProps.formd
+            }, ()=> {
+
+            });
+        }
+        return true;
+    }
+
+    
+
+    saveRow() {
+        let formd_ = Object.assign({}, this.state.formd);
+        this.form.validate(errors => {
+            if (errors != null) {
+                return;
+            }
+            this.props.submitPayment(formd_);
+        });
+    }
+
+    resetForm(whenDone) {
+        let formd_ = Object.assign({}, this.state.formd);
+        //data.push(new_row);
+        formd_ = {
+            account: "",
+            tx_description: "",
+            amount: "0",
+        };
+
+        this.setState({
+            formd: formd_
+        }, ()=> {
+            whenDone();
+        });
+        
+    }
+
+    handleFormChange(name, value) {
+        let formd = Object.assign({}, this.state.formd);
+        formd[name] = value;
+        this.setState({ formd: formd })
+    }
+
+    render() {
+        //console.log(this.state.formd);
+        //const row = this.state.formd;
+        const { title, formDialogStateOpened } = this.props;
+        const {rules, formd } = this.state;
+        
+        return (
+            <Dialog modal 
+                title={title} 
+                closed={formDialogStateOpened} 
+                style={styles.dim.formDialog} className={styles.formDialog}
+                borderType="none"
+                onClose={() => this.props.openOrCloseFormDialog(true)}>
+                    <Layout style={{ width: 500, height:'100%', border: '0px #FFFFFF' }}>
+                        <LayoutPanel 
+                            region="north" 
+                            split={false}
+                            style={{ height: 320, border: '0px #FFFFFF' }}>
+                            
+                            <div className={styles.formDialogContainer}>
+                                <Form
+                                    style={{ width: 400 }}
+                                    ref={ref => this.form = ref}
+                                    model={formd}
+                                    rules={rules}
+                                    floatingLabel
+                                    labelWidth={300}
+                                    labelPosition="top"
+                                    onChange={this.handleFormChange.bind(this)}
+                                    onValidate={(errors) => this.setState({ errors: errors })}>
+                                    
+                                    <FormField name="account" label="Account (e.g 256772123456)">
+                                        <TextBox 
+                                            inputId="account" 
+                                            name="account" 
+                                            value={formd.account} 
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
+                                    </FormField>
+                                    <FormField name="amount" label="Amount">
+                                        <TextBox 
+                                            inputId="amount" 
+                                            name="amount" 
+                                            value={formd.amount} 
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
+                                    </FormField>
+                                    <FormField name="tx_description" label="Description">
+                                        <TextBox 
+                                            multiline
+                                            inputId="tx_description" 
+                                            name="tx_description" 
+                                            value={formd.tx_description} 
+                                            style={{width:290, height: 60}}></TextBox>
+                                    </FormField>
+                                
+                                </Form>
+                            </div>
+                        </LayoutPanel>
+                        <LayoutPanel region="south" style={{ height: 48 }}>
+                            <div className="dialog-button">
+                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
+                                    iconCls="icon-save" style={{ width: 80 }} 
+                                            onClick={() => this.saveRow()}>{strings.submit}</LinkButton>
+                                <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
+                                    onClick={() => {
+                                        this.resetForm(() => {
+                                            this.props.openOrCloseFormDialog(true);
+                                        });
+                                    }}>Close</LinkButton>
+                            </div>
+                        </LayoutPanel>
+                    </Layout>
+            </Dialog>
+        );
+    }
+}
+
+class Download extends React.Component {
+    render() {
+        return (
+            <ExcelFile 
+                filename="Account_Transactions"
+                ref={ref => this.excelRef = ref}
+                element={<LinkButton 
+                    onClick={() => {
+                        this.excelRef.download();
+                    }}
+                    iconCls="icon-excel">{strings.download}</LinkButton>}>
+                <ExcelSheet data={this.props.data} name="Transactions">
+                    <ExcelColumn label="Date time" value="created_on"/>
+                    <ExcelColumn label="Network ID" value="tx_gateway_ref"/>
+                    <ExcelColumn label="Payer Number" value="payer_number"/>
+                    <ExcelColumn label="Status" value="status"/>
+                    <ExcelColumn label="Type" value={"tx_type"}/>
+                    <ExcelColumn label="Merchant Reference" value="tx_merchant_ref"/>
+                    <ExcelColumn label="Description" value="tx_merchant_description"/>
+                    <ExcelColumn label="Amount" value="original_amount"/>
+                    <ExcelColumn label="Charges" value="charges"/>
+                </ExcelSheet>
+            </ExcelFile>
+        );
+    }
+}
+
+const MerchantModuleTransactions = withRouter(MerchantModuleTransactionsC);
+
+export default MerchantModuleTransactions;
