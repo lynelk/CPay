@@ -5,7 +5,6 @@ import java.util.List;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.Balance;
 import net.citotech.cito.Model.Transaction;
-import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;

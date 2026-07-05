@@ -83,7 +83,7 @@ public class AudittrailController {
                     try {
                         String safeCategory = ColumnAllowlist.validate(category);
                         sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
-                        parameters.addValue(safeCategory, "%" + value + "%");
+                        parameters.addValue(safeCategory, "%" + String.valueOf(value) + "%");
                     } catch (IllegalArgumentException e) {
                         return GeneralException.getError("101", "Invalid search field.");
                     }
@@ -187,11 +187,11 @@ public class AudittrailController {
                 
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
-                if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
+                if (value != null && !value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
                     try {
                         String safeCategory = ColumnAllowlist.validate(category);
                         sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
-                        parameters.addValue(safeCategory, "%" + value + "%");
+                        parameters.addValue(safeCategory, "%" + String.valueOf(value) + "%");
                     } catch (IllegalArgumentException e) {
                         return GeneralException.getError("101", "Invalid search field.");
                     }
