@@ -626,11 +626,11 @@ class MerchantModulePaymentsC extends React.Component {
                         cellPadding={10} 
                         style={{width: 800}}>
                         <tr>
-                            <td><span style={styles.titleText}>Name</span></td>
+                            <td><span className={styles.titleText}>Name</span></td>
                             <td>{tx_details_row.name}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Description</span></td>
+                            <td><span className={styles.titleText}>Description</span></td>
                             <td style={{width: 500}}>
                                 <div    
                                     style={{width: "100%", overflow: "auto"}}
@@ -640,33 +640,33 @@ class MerchantModulePaymentsC extends React.Component {
                                             tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Payment ID</span></td>
+                            <td><span className={styles.titleText}>Payment ID</span></td>
                             <td>{tx_details_row.batch_id}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Status</span></td>
+                            <td><span className={styles.titleText}>Status</span></td>
                             <td>{tx_details_row.status}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Total Amount</span></td>
+                            <td><span className={styles.titleText}>Total Amount</span></td>
                             <td>{"UGX "+tx_details_row.total_amount}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Created By:</span></td>
+                            <td><span className={styles.titleText}>Created By:</span></td>
                             <td>{tx_details_row.created_by}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Created On:</span></td>
+                            <td><span className={styles.titleText}>Created On:</span></td>
                             <td>{tx_details_row.created_on}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Total Paid:</span></td>
+                            <td><span className={styles.titleText}>Total Paid:</span></td>
                             <td>{tx_details_row.total_paid+"/"+tx_details_row.total_beneficiaries}</td>
                         </tr>
                         
@@ -749,7 +749,7 @@ class MerchantModulePaymentsC extends React.Component {
                                 onChange={(value) => this.bulkActions(value)}/>
                             <LinkButton 
                                 onClick={() => this.addNew()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-add">{strings.add_payment}</LinkButton>
                         </div>
                         <SearchBox
@@ -1013,7 +1013,7 @@ class PaymentFormDialog extends React.Component{
             <Dialog modal 
                 title={title} 
                 closed={formDialogStateOpened} 
-                style={styles.formDialogLargeWidth}
+                style={styles.dim.formDialogLargeWidth} className={styles.formDialogLargeWidth}
                 borderType="none"
                 onClose={() => this.props.openOrCloseFormDialog(true)}>
                     <Layout style={{ width: 800, height:'100%', border: '0px #FFFFFF' }}>
@@ -1022,7 +1022,7 @@ class PaymentFormDialog extends React.Component{
                             split={false}
                             style={{ height: 320, border: '0px #FFFFFF' }}>
                             
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     style={{ width: 700 }}
                                     ref={ref => this.form = ref}
@@ -1039,7 +1039,7 @@ class PaymentFormDialog extends React.Component{
                                             inputId="name" 
                                             name="name" 
                                             value={row.name} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="tx_description" label="Description">
                                         <TextBox 
@@ -1051,7 +1051,7 @@ class PaymentFormDialog extends React.Component{
                                     </FormField>
                                     
                                     <h3>Beneficiaries</h3>
-                                    <div style={styles.formDialogLargeWidthAddButtons}>
+                                    <div className={styles.formDialogLargeWidthAddButtons}>
                                         <ButtonGroup>
                                             <LinkButton onClick={() => {
                                                 this.addFormAdminRow();
@@ -1196,7 +1196,7 @@ class PaymentFormDialog extends React.Component{
 
                                     </DataGrid>
 
-                                    <div style={styles.formDialogLargeWidthAddButtons}>
+                                    <div className={styles.formDialogLargeWidthAddButtons}>
                                         <ButtonGroup>
                                             <LinkButton onClick={() => {
                                                 this.addFormAdminRow();

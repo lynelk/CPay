@@ -191,7 +191,7 @@ class MerchantModuleSettingsC extends React.Component {
                             <span class='pg-subtitles'>Settings | </span>
                             <LinkButton 
                                 onClick={() => this.saveSettings()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-settings">Save Settings</LinkButton>
                         </div>
                     </Panel>

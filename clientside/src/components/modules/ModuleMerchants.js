@@ -589,7 +589,7 @@ class ModuleMerchantsC extends React.Component {
                                 onChange={(value) => this.bulkActions(value)}/>
                             <LinkButton 
                                 onClick={() => this.addNew()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-add">{strings.add_merchant}</LinkButton>
                         </div>
                         <SearchBox
@@ -821,7 +821,7 @@ class MerchantFormDialog extends React.Component{
             <Dialog modal 
                 title={title} 
                 closed={formDialogStateOpened} 
-                style={styles.formDialogLargeWidth}
+                style={styles.dim.formDialogLargeWidth} className={styles.formDialogLargeWidth}
                 borderType="none"
                 onClose={() => this.props.openOrCloseFormDialog(true)}>
                     <Layout style={{ width: 800, height:'100%', border: '0px #FFFFFF' }}>
@@ -829,7 +829,7 @@ class MerchantFormDialog extends React.Component{
                             region="north" 
                             split={false}
                             style={{ height: 320, border: '0px #FFFFFF' }}>
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     style={{ width: 700 }}
                                     ref={ref => this.form = ref}
@@ -847,7 +847,7 @@ class MerchantFormDialog extends React.Component{
                                             inputId="name" 
                                             name="name" 
                                             value={row.name} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="short_name" label="Short Name">
                                         <TextBox 
@@ -855,7 +855,7 @@ class MerchantFormDialog extends React.Component{
                                             inputId="short_name" 
                                             name="short_name" 
                                             value={row.short_name} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="status" label="Status">
                                         <ComboBox 
@@ -863,7 +863,7 @@ class MerchantFormDialog extends React.Component{
                                             name="status" 
                                             data={this.state.status}
                                             value={row.status} 
-                                            style={styles.formDialogFields}></ComboBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></ComboBox>
                                     </FormField>
                                     <FormField name="account_type" label="Account Type">
                                         <ComboBox 
@@ -871,7 +871,7 @@ class MerchantFormDialog extends React.Component{
                                             name="account_type" 
                                             data={this.state.account_types}
                                             value={row.account_type} 
-                                            style={styles.formDialogFields}></ComboBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></ComboBox>
                                     </FormField>
                                     <FormField name="allowed_apis" label="Allowed APIs Access" >
                                         <ComboBox 
@@ -880,7 +880,7 @@ class MerchantFormDialog extends React.Component{
                                             multiple
                                             data={common.allowed_apis}
                                             value={row.allowed_apis}
-                                            style={styles.formDialogFields}></ComboBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></ComboBox>
                                     </FormField>
                                     <FormField name="generate_new_keys" label="Generate New Keys">
                                         <CheckBox 
@@ -991,7 +991,7 @@ class MerchantFormDialog extends React.Component{
                                             )}
                                         />
                                     </DataGrid>
-                                    <div style={styles.formDialogLargeWidthAddButtons}>
+                                    <div className={styles.formDialogLargeWidthAddButtons}>
                                         <ButtonGroup>
                                             <LinkButton onClick={() => {
                                                 this.addFormAdminRow();

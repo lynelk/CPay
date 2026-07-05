@@ -461,7 +461,7 @@ class MerchantModuleAdminsC extends React.Component {
             <Dialog modal 
                 title={title} 
                 closed={formDialogState} 
-                style={styles.formDialog}
+                style={styles.dim.formDialog} className={styles.formDialog}
                 borderType="none"
                 onClose={() => this.setState({ formDialogState: true })}>
                     <Layout style={{ width: 500, height:'100%', border: '0px #FFFFFF' }}>
@@ -469,7 +469,7 @@ class MerchantModuleAdminsC extends React.Component {
                             region="north" 
                             split={false}
                             style={{ height: 320, border: '0px #FFFFFF' }}>
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     ref={ref => this.form = ref}
                                     model={row}
@@ -486,21 +486,21 @@ class MerchantModuleAdminsC extends React.Component {
                                             inputId="name" 
                                             name="name" 
                                             value={row.name} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="phone" label="Phone">
                                         <TextBox 
                                             inputId="phone" 
                                             name="phone" 
                                             value={row.phone} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="email" label="Email">
                                         <TextBox 
                                             inputId="email" 
                                             name="email" 
                                             value={row.email} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="password" label="User Password">
                                         <PasswordBox
@@ -508,7 +508,7 @@ class MerchantModuleAdminsC extends React.Component {
                                             name="password" 
                                             value={row.password} 
                                             iconCls="icon-lock"
-                                            style={styles.formDialogFields}></PasswordBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></PasswordBox>
                                     </FormField>
                                     <FormField name="status" label="Status:" >
                                         <ComboBox
@@ -516,7 +516,7 @@ class MerchantModuleAdminsC extends React.Component {
                                             name="status"
                                             data={this.state.status}
                                             value={this.state.formd.status}
-                                            style={styles.formDialogFields}
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                             onChange={(value) => this.setState({ value: value })}
                                             />
                                     </FormField>
@@ -527,7 +527,7 @@ class MerchantModuleAdminsC extends React.Component {
                                             multiple
                                             data={this.state.privileges}
                                             value={this.state.formd.privileges}
-                                            style={styles.formDialogFields}
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                             onChange={(value) => this.setState({ value: value })}
                                             />
                                     </FormField>
@@ -612,7 +612,7 @@ class MerchantModuleAdminsC extends React.Component {
                                 onChange={(value) => this.bulkActions(value)}/>
                             <LinkButton 
                                 onClick={() => this.addNew()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-add">{strings.add_admin}</LinkButton>
                         </div>
                         <SearchBox

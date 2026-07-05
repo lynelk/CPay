@@ -187,7 +187,7 @@ class ModuleSettingsC extends React.Component {
                         <div style={{float:'left'}}>
                             <LinkButton 
                                 onClick={() => this.saveSettings()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-settings">Save Settings</LinkButton>
                         </div>
                     </Panel>

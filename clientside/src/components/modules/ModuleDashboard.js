@@ -129,7 +129,7 @@ class ModuleDashboardC extends React.Component {
                 <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                     <LinearChart
                         data={this.state.chartData}
                         title="Payins vs Payouts"
@@ -139,7 +139,7 @@ class ModuleDashboardC extends React.Component {
                     <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                     <LinearChart
                         data={this.state.chartDataTxTypes}
                         title="Transaction Types"
@@ -151,7 +151,7 @@ class ModuleDashboardC extends React.Component {
                 <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                     <LinearChart
                         data={this.state.chartDataTxVolumes}
                         title="Amounts Volumes"
@@ -161,7 +161,7 @@ class ModuleDashboardC extends React.Component {
                     <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                         <LinearChart
                             data={this.state.chartDataTxNetworkBalances}
                             title="Network Balances"

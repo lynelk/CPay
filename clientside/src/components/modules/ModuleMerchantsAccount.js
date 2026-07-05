@@ -349,7 +349,7 @@ class ModuleMerchantAccouunt extends React.Component{
                                 inputId="start_date" 
                                 name="start_date" 
                                 value={search_rules.start_date} 
-                                style={styles.formDialogFields}></DateBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
                         </FormField>
                         <FormField name="end_date" label="End Date">
                             <DateBox 
@@ -357,7 +357,7 @@ class ModuleMerchantAccouunt extends React.Component{
                                 inputId="end_date" 
                                 name="end_date" 
                                 value={search_rules.end_date} 
-                                style={styles.formDialogFields}></DateBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
                         </FormField>
                     </Form>
                 </div>
@@ -419,7 +419,7 @@ class ModuleMerchantAccouunt extends React.Component{
                                 name="balance_type"
                                 data={this.state.balance_type}
                                 value={this.state.record_tx_data.balance_type}
-                                style={styles.formDialogFields}
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                 onChange={(value) => this.setState({ value: value })}
                                 />
                         </FormField>
@@ -429,7 +429,7 @@ class ModuleMerchantAccouunt extends React.Component{
                                 name="tx_type"
                                 data={this.state.tx_types}
                                 value={this.state.record_tx_data.tx_type}
-                                style={styles.formDialogFields}
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                 onChange={(value) => this.setState({ value: value })}
                                 />
                         </FormField>
@@ -438,7 +438,7 @@ class ModuleMerchantAccouunt extends React.Component{
                                 inputId="amount" 
                                 name="amount" 
                                 value={record_tx_data.amount} 
-                                style={styles.formDialogFields}></TextBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                         </FormField>
                         <FormField name="description" label="Description">
                             <TextBox
@@ -446,7 +446,7 @@ class ModuleMerchantAccouunt extends React.Component{
                                 inputId="description" 
                                 name="description" 
                                 value={record_tx_data.description} 
-                                style={styles.formDialogFieldsTexField}></TextBox>
+                                style={styles.dim.formDialogFieldsTexField} className={styles.formDialogFieldsTexField}></TextBox>
                         </FormField>
                     </Form>
                 </div>
@@ -511,7 +511,7 @@ class ModuleMerchantAccouunt extends React.Component{
                     ref={ref => this.generalDialog = ref}
                     title={title} 
                     closed={statementDialogStateOpened} 
-                    style={styles.moreTableContentDialogLargeWidth}
+                    style={styles.dim.moreTableContentDialogLargeWidth} className={styles.moreTableContentDialogLargeWidth}
                     borderType="none"
                     onOpen={() => {
                         this.getData();
@@ -522,8 +522,8 @@ class ModuleMerchantAccouunt extends React.Component{
                         <Layout style={{ width: 900, border: '0px #FFFFFF' }}>  
                             <div style={{ padding: '5px'}}>
                                 <div style={{margin: '5px', float:'left'}}> 
-                                    <span style={styles.titleText}>Available Balances: </span>
-                                    <span style={styles.numberPresentationGreenBold}>
+                                    <span className={styles.titleText}>Available Balances: </span>
+                                    <span className={styles.numberPresentationGreenBold}>
                                         {this.state.available_balances}
                                     </span>
                                 </div>

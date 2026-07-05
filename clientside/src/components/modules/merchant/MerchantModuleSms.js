@@ -701,7 +701,7 @@ class MerchantModuleSmsC extends React.Component {
                         style={{width: 800}}>
                         
                         <tr>
-                            <td><span style={styles.titleText}>SMS Content</span></td>
+                            <td><span className={styles.titleText}>SMS Content</span></td>
                             <td style={{width: 500}}>
                                 <div    
                                     style={{width: "100%", overflow: "auto"}}
@@ -711,33 +711,33 @@ class MerchantModuleSmsC extends React.Component {
                                             tx_details_row.content.replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Total Recipients</span></td>
+                            <td><span className={styles.titleText}>Total Recipients</span></td>
                             <td>{tx_details_row.total_recipients}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Status</span></td>
+                            <td><span className={styles.titleText}>Status</span></td>
                             <td>{tx_details_row.status}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Rate</span></td>
+                            <td><span className={styles.titleText}>Rate</span></td>
                             <td>{"UGX "+tx_details_row.charge}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Total</span></td>
+                            <td><span className={styles.titleText}>Total</span></td>
                             <td>{"UGX "+tx_details_row.total_amount}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Created By:</span></td>
+                            <td><span className={styles.titleText}>Created By:</span></td>
                             <td>{tx_details_row.created_on}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Sent On:</span></td>
+                            <td><span className={styles.titleText}>Sent On:</span></td>
                             <td>{tx_details_row.send_time}</td>
                         </tr>
                         
@@ -930,7 +930,7 @@ class MerchantModuleSmsC extends React.Component {
                                 name="balance_type"
                                 data={this.state.balance_type}
                                 value={this.state.record_tx_data.balance_type}
-                                style={styles.formDialogFields}
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                 onChange={(value) => this.setState({ value: value })}
                                 />
                         </FormField>
@@ -939,7 +939,7 @@ class MerchantModuleSmsC extends React.Component {
                                 inputId="amount" 
                                 name="amount" 
                                 value={record_tx_data.amount} 
-                                style={styles.formDialogFields}></TextBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                         </FormField>
                     </Form>
                 </div>
@@ -1009,7 +1009,7 @@ class MerchantModuleSmsC extends React.Component {
                                 inputId="start_date" 
                                 name="start_date" 
                                 value={search_rules.start_date_val} 
-                                style={styles.formDialogFields}></DateBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
                         </FormField>
                         <FormField name="end_date" label="End Date">
                             <DateBox 
@@ -1017,7 +1017,7 @@ class MerchantModuleSmsC extends React.Component {
                                 inputId="end_date" 
                                 name="end_date" 
                                 value={search_rules.end_date_val} 
-                                style={styles.formDialogFields}></DateBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
                         </FormField>
 
                         <FormField name="status" label="Status">
@@ -1025,7 +1025,7 @@ class MerchantModuleSmsC extends React.Component {
                                 inputId="status" 
                                 name="status" 
                                 value={search_rules.status} 
-                                style={styles.formDialogFields}></TextBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                         </FormField>
                     </Form>
                 </div>
@@ -1068,12 +1068,12 @@ class MerchantModuleSmsC extends React.Component {
 
                             <LinkButton 
                                 onClick={() => this.addNew()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-add">{strings.send_sms}</LinkButton>
 
                             <LinkButton 
                                 className="submit-button-red" 
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-money" 
                                 onClick={() => {
                                     console.log(this.dataGridMain);
@@ -1409,7 +1409,7 @@ class PaymentFormDialog extends React.Component{
             <Dialog modal 
                 title={title} 
                 closed={formDialogStateOpened} 
-                style={styles.formDialogLargeWidth}
+                style={styles.dim.formDialogLargeWidth} className={styles.formDialogLargeWidth}
                 borderType="none"
                 onClose={() => this.props.openOrCloseFormDialog(true)}>
                     <Layout style={{ width: 800, height:'100%', border: '0px #FFFFFF' }}>
@@ -1418,7 +1418,7 @@ class PaymentFormDialog extends React.Component{
                             split={false}
                             style={{ height: 320, border: '0px #FFFFFF' }}>
                             
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     style={{ width: 700 }}
                                     ref={ref => this.form = ref}
@@ -1482,7 +1482,7 @@ class PaymentFormDialog extends React.Component{
                                     </FormField>
                                     
                                     <h3>Phone Numbers</h3>
-                                    <div style={styles.formDialogLargeWidthAddButtons}>
+                                    <div className={styles.formDialogLargeWidthAddButtons}>
                                         <ButtonGroup>
                                             <LinkButton onClick={() => {
                                                 this.addFormAdminRow();
@@ -1550,7 +1550,7 @@ class PaymentFormDialog extends React.Component{
 
                                     </DataGrid>
 
-                                    <div style={styles.formDialogLargeWidthAddButtons}>
+                                    <div className={styles.formDialogLargeWidthAddButtons}>
                                         <ButtonGroup>
                                             <LinkButton onClick={() => {
                                                 this.addFormAdminRow();
