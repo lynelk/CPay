@@ -7,7 +7,6 @@ package net.citotech.cito;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -37,23 +36,17 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.security.SecureRandom;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import net.citotech.cito.Model.*;
-import net.citotech.cito.Model.HttpRequestResponse.Header;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.configurationprocessor.json.JSONArray;
 import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
@@ -66,7 +59,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  *
@@ -171,7 +163,7 @@ public class Common {
         parameters.put("action", action);
 
         try {
-            long userId = jdbcTemplate.update(sql, parameters);
+            jdbcTemplate.update(sql, parameters);
             //Now insert privileges
             return "success";
         } catch (Exception e) {
@@ -197,7 +189,7 @@ public class Common {
         parameters.put("action", action);
 
         try {
-            long userId = jdbcTemplate.update(sql, parameters);
+            jdbcTemplate.update(sql, parameters);
             //Now insert privileges
             return "success";
         } catch (Exception e) {
@@ -245,8 +237,7 @@ public class Common {
         parameters.addValue("name", settings_name);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_SETTINGS+" "
                 + " WHERE name=:name";
-        RowMapper rm = new RowMapper<Setting>() {
-        public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Setting> rm = (rs, rowNum) -> {
                 Setting setting = new Setting();
                 setting.setName(rs.getString("name"));
                 setting.setLabel(rs.getString("label"));
@@ -255,7 +246,6 @@ public class Common {
                 setting.setGroup(rs.getString("setting_group"));
                 setting.setDescription(rs.getString("description"));
                 return setting;
-            }
         };
         List<Setting> listSettings = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listSettings.size() > 0) {
@@ -279,8 +269,7 @@ public class Common {
         parameters.addValue("merchant_id", merchant_id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_MERCHANTS_SETTINGS+" "
                 + " WHERE name=:name AND merchant_id=:merchant_id ";
-        RowMapper rm = new RowMapper<Setting>() {
-        public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Setting> rm = (rs, rowNum) -> {
                 Setting setting = new Setting();
                 setting.setName(rs.getString("name"));
                 setting.setLabel(rs.getString("label"));
@@ -290,7 +279,6 @@ public class Common {
                 setting.setDescription(rs.getString("description"));
                 setting.setMerchant_id(rs.getLong("merchant_id"));
                 return setting;
-            }
         };
         List<Setting> listSettings = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listSettings.size() > 0) {

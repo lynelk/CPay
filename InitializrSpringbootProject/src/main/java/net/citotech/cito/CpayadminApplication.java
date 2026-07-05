@@ -5,7 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 @SpringBootApplication
 public class CpayadminApplication {
@@ -17,11 +16,11 @@ public class CpayadminApplication {
     
     @Bean
     WebMvcConfigurer configurer () {
-        return new WebMvcConfigurerAdapter() {
+        return new WebMvcConfigurer() {
             @Override
-            public void addResourceHandlers (ResourceHandlerRegistry registry) {
-                registry.addResourceHandler("/portal").
-                          addResourceLocations("classpath:/static/portal.html");
+            public void addResourceHandlers(ResourceHandlerRegistry registry) {
+                registry.addResourceHandler("/portal")
+                        .addResourceLocations("classpath:/static/portal.html");
             }
         };
     }

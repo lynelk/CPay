@@ -4,7 +4,6 @@
  * and open the template in the editor.
  */
 package net.citotech.cito.Model;
-import org.springframework.stereotype.Component;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;

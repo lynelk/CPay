@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import net.citotech.cito.Model.GateWayResponse;
@@ -35,7 +35,7 @@ public class ProviderEndpointExecutionService {
         }
         String body = body(channelCode, operation, request);
         try {
-            HttpURLConnection connection = (HttpURLConnection) new URL(endpointUrl).openConnection();
+            HttpURLConnection connection = (HttpURLConnection) URI.create(endpointUrl).toURL().openConnection();
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);

@@ -2,6 +2,7 @@ package net.citotech.cito.security;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -37,8 +38,8 @@ public class CallbackUrlValidator {
 
         URL url;
         try {
-            url = new URL(callbackUrl.trim());
-        } catch (MalformedURLException e) {
+            url = URI.create(callbackUrl.trim()).toURL();
+        } catch (MalformedURLException | IllegalArgumentException e) {
             return "callback_url is not a valid URL";
         }
 
