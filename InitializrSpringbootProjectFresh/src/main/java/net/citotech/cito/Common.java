@@ -7,7 +7,6 @@ package net.citotech.cito;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -17,6 +16,7 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -37,23 +37,17 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.security.SecureRandom;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 import net.citotech.cito.Model.*;
-import net.citotech.cito.Model.HttpRequestResponse.Header;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -66,7 +60,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  *
@@ -171,7 +164,7 @@ public class Common {
         parameters.put("action", action);
 
         try {
-            long userId = jdbcTemplate.update(sql, parameters);
+            jdbcTemplate.update(sql, parameters);
             //Now insert privileges
             return "success";
         } catch (Exception e) {
@@ -197,7 +190,7 @@ public class Common {
         parameters.put("action", action);
 
         try {
-            long userId = jdbcTemplate.update(sql, parameters);
+            jdbcTemplate.update(sql, parameters);
             //Now insert privileges
             return "success";
         } catch (Exception e) {
@@ -245,8 +238,7 @@ public class Common {
         parameters.addValue("name", settings_name);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_SETTINGS+" "
                 + " WHERE name=:name";
-        RowMapper rm = new RowMapper<Setting>() {
-        public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Setting> rm = (rs, rowNum) -> {
                 Setting setting = new Setting();
                 setting.setName(rs.getString("name"));
                 setting.setLabel(rs.getString("label"));
@@ -255,7 +247,6 @@ public class Common {
                 setting.setGroup(rs.getString("setting_group"));
                 setting.setDescription(rs.getString("description"));
                 return setting;
-            }
         };
         List<Setting> listSettings = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listSettings.size() > 0) {
@@ -279,8 +270,7 @@ public class Common {
         parameters.addValue("merchant_id", merchant_id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_MERCHANTS_SETTINGS+" "
                 + " WHERE name=:name AND merchant_id=:merchant_id ";
-        RowMapper rm = new RowMapper<Setting>() {
-        public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Setting> rm = (rs, rowNum) -> {
                 Setting setting = new Setting();
                 setting.setName(rs.getString("name"));
                 setting.setLabel(rs.getString("label"));
@@ -290,7 +280,6 @@ public class Common {
                 setting.setDescription(rs.getString("description"));
                 setting.setMerchant_id(rs.getLong("merchant_id"));
                 return setting;
-            }
         };
         List<Setting> listSettings = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listSettings.size() > 0) {
@@ -331,7 +320,7 @@ public class Common {
             r.setRequestData(data);
             r.setRequestHeaders(headers);
         try {
-            URL rquestUrl = new URL(url);
+            URL rquestUrl = URI.create(url).toURL();
             HttpURLConnection con;
 
             if ("https".equalsIgnoreCase(rquestUrl.getProtocol())) {
@@ -361,7 +350,7 @@ public class Common {
             
             
             //methods without the body.
-            List<String> methods = new ArrayList();
+            List<String> methods = new ArrayList<>();
             methods.add("DELETE");
             methods.add("PUT");
             methods.add("POST");
@@ -411,9 +400,9 @@ public class Common {
                 .filter(entry -> entry.getKey() != null)
                 .forEach(entry -> {
                 
-                    List headerValues = entry.getValue();
+                    List<String> headerValues = entry.getValue();
                     String sHeaderValue = "";
-                    Iterator it = headerValues.iterator();
+                    Iterator<String> it = headerValues.iterator();
                     if (it.hasNext()) {
                         sHeaderValue += it.next();
                         while (it.hasNext()) {
@@ -542,8 +531,7 @@ public class Common {
         parameters.addValue("account_id", id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE id=:account_id";
-        RowMapper rm = new RowMapper<Merchant>() {
-        public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Merchant> rm = (rs, rowNum) -> {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
                 m.setShort_name(rs.getString("short_name"));
@@ -569,7 +557,6 @@ public class Common {
 
                 m.setUsers(getMerchantUsers(m, jdbcTemplate));
                 return m;
-            }
         };
         List<Merchant> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listUsers.size() > 0) {
@@ -595,8 +582,7 @@ public class Common {
         parameters.addValue("tx_merchant_ref", reference);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE merchant_id=:merchant_id AND tx_merchant_ref=:tx_merchant_ref";
-        RowMapper rm = new RowMapper<Transaction>() {
-        public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Transaction> rm = (rs, rowNum) -> {
                  Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
                     t.setCharging_method(rs.getString("charging_method"));
@@ -616,7 +602,6 @@ public class Common {
                     t.setPayer_number(rs.getString("payer_number"));
                     t.setTx_type(rs.getString("tx_type"));
                 return t;
-            }
         };
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
@@ -642,8 +627,7 @@ public class Common {
         parameters.addValue("tx_unique_id", reference);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE tx_unique_id=:tx_unique_id";
-        RowMapper rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Transaction> rm = (rs, rowNum) -> {
                 Transaction t = new Transaction();
                 t.setId(rs.getLong("id"));
                 t.setCharging_method(rs.getString("charging_method"));
@@ -663,7 +647,6 @@ public class Common {
                 t.setPayer_number(rs.getString("payer_number"));
                 t.setTx_type(rs.getString("tx_type"));
                 return t;
-            }
         };
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
@@ -686,8 +669,7 @@ public class Common {
         parameters.addValue("tx_gateway_ref", networkRef);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE tx_gateway_ref=:tx_gateway_ref FOR UPDATE";
-        RowMapper rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Transaction> rm = (rs, rowNum) -> {
                 Transaction t = new Transaction();
                 t.setId(rs.getLong("id"));
                 t.setCharging_method(rs.getString("charging_method"));
@@ -707,7 +689,6 @@ public class Common {
                 t.setPayer_number(rs.getString("payer_number"));
                 t.setTx_type(rs.getString("tx_type"));
                 return t;
-            }
         };
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
@@ -730,8 +711,7 @@ public class Common {
         parameters.addValue("safaricom_request_reference", networkRef);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE safaricom_request_reference=:safaricom_request_reference FOR UPDATE";
-        RowMapper rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Transaction> rm = (rs, rowNum) -> {
                 Transaction t = new Transaction();
                 t.setId(rs.getLong("id"));
                 t.setCharging_method(rs.getString("charging_method"));
@@ -752,7 +732,6 @@ public class Common {
                 t.setTx_type(rs.getString("tx_type"));
                 t.setSafaricomRequestReference(rs.getString("safaricom_request_reference"));
                 return t;
-            }
         };
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
@@ -780,8 +759,7 @@ public class Common {
                 + " WHERE beneficiary_id=:beneficiary_id "
                 + " AND merchant_batch_transactions_log_id=:batch_id ";
         
-        RowMapper rm = new RowMapper<Transaction>() {
-        public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Transaction> rm = (rs, rowNum) -> {
                  Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
                     t.setCharging_method(rs.getString("charging_method"));
@@ -801,7 +779,6 @@ public class Common {
                     t.setPayer_number(rs.getString("payer_number"));
                     t.setTx_type(rs.getString("tx_type"));
                 return t;
-            }
         };
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
@@ -826,8 +803,7 @@ public class Common {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number";
         
-        RowMapper rm = new RowMapper<Merchant>() {
-        public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Merchant> rm = (rs, rowNum) -> {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
                 m.setAccount_number(rs.getString("account_number"));
@@ -854,7 +830,6 @@ public class Common {
 
                 m.setUsers(getMerchantUsers(m, jdbcTemplate));
                 return m;
-            }
         };
         List<Merchant> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listUsers.size() > 0) {
@@ -877,8 +852,7 @@ public class Common {
         parameters.addValue("account_number", account);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number";
-        RowMapper rm = new RowMapper<Merchant>() {
-        public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Merchant> rm = (rs, rowNum) -> {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
                 m.setAccount_number(rs.getString("account_number"));
@@ -889,7 +863,6 @@ public class Common {
                 m.setAccount_type(rs.getString("account_type"));
                 m.setUsers(getMerchantUsers(m, jdbcTemplate));
                 return m;
-            }
         };
         List<Merchant> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listUsers.size() > 0) {
@@ -911,8 +884,7 @@ public class Common {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("merchant_id", merchant.getId());
                 
-            RowMapper rm = new RowMapper<MerchantUser>() {
-                public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
+            RowMapper<MerchantUser> rm = (rs, rowNum) -> {
                     MerchantUser user = new MerchantUser();
                     user.setName(rs.getString("name"));
                     user.setId(rs.getLong("id"));
@@ -925,7 +897,6 @@ public class Common {
                     
                     user.setPrivileges(getUserPrivileges(user, jdbcTemplate));
                     return user;
-                }
             };
             
             List<MerchantUser> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -941,15 +912,13 @@ public class Common {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
-                public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
+            RowMapper<UserPrivilege> rm = (rs, rowNum) -> {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
                     user.setId(rs.getLong("id"));
                     user.setCreated_on(rs.getString("created_on"));
                     user.setUdpated_on(rs.getString("updated_on"));
                     return user;
-                }
             };
             
             List<UserPrivilege> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -970,8 +939,7 @@ public class Common {
                 + "WHERE merchant_id = :merchant_id"
                 + " ORDER BY id DESC LIMIT 1";
 
-        RowMapper rm = new RowMapper<Statement>() {
-        public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Statement> rm = (rs, rowNum) -> {
                 Statement t = new Statement();
                 t.setId(rs.getLong("id"));
                 t.setAmount(rs.getDouble("amount"));
@@ -986,7 +954,6 @@ public class Common {
                 t.setSms_balance(rs.getDouble("sms_balance"));
                 t.setSafaricom_balance(rs.getDouble(SafariComPaymentGateway.BALANCE_TYPE));
                 return t;
-            }
         };
 
         //ResultSet rs; 
@@ -1168,7 +1135,6 @@ public class Common {
                             t.setTx_type(rs.getString("tx_type"));
                             t.setSms_balance(rs.getDouble("sms_balance"));
                             return t;
-                        }
                     };
 
                     List<Statement> balanceList = jdbcTemplate.query(balanceSql, parametersBalanceSql, rm_b);
@@ -1410,7 +1376,6 @@ public class Common {
                     //safaricom_balance
 
                     return t;
-                }
             };
 
             List<Statement> balanceList = jdbcTemplate.query(balanceSql, parametersBalanceSql, rm_b);
@@ -2413,9 +2378,8 @@ public class Common {
     }
     
     
-    public static RowMapper getTransactionRowMapper() {
-        RowMapper rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public static RowMapper<Transaction> getTransactionRowMapper() {
+        RowMapper<Transaction> rm = (rs, rowNum) -> {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
                     t.setCharging_method(rs.getString("charging_method"));
@@ -2437,7 +2401,6 @@ public class Common {
                     t.setCallback_trace(rs.getString("callback_trace"));
                     t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
                     return t;
-                }
             };
         return rm;
     }
