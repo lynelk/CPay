@@ -218,4 +218,4 @@ let common = {
     }
 };
 
-module.exports = common;
+export default common;
