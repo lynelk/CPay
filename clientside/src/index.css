@@ -15,3 +15,13 @@ code {
 @import '~rc-easyui/dist/themes/bootstrap/easyui.css';
 @import '~rc-easyui/dist/themes/icon.css';
 @import '~rc-easyui/dist/themes/react.css';
+
+/* ─── Tailwind CSS ──────────────────────────────────────────────────────────
+ * All Tailwind classes are prefixed with tw- (e.g. tw-flex, tw-text-red-500)
+ * so they never collide with rc-easyui Bootstrap class names.
+ * Preflight (CSS reset) is disabled in tailwind.config.js to preserve
+ * rc-easyui component styles (DataGrid, Dialog, Form, etc.)
+ * ─────────────────────────────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
