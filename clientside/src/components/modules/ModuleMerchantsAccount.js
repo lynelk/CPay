@@ -584,7 +584,7 @@ class ModuleMerchantAccouunt extends React.Component{
                             </DataGrid>
                             <LayoutPanel region="south" style={{ height: 48 }}>
                                 <div className="dialog-button">
-                                    <LinkButton className="submit-button-red" 
+                                    <LinkButton className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" 
                                         iconCls="icon-money" style={{ width: 150 }} 
                                             onClick={() => {
                                                 this.dlgRecordTx.open();

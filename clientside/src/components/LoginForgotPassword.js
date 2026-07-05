@@ -175,7 +175,7 @@ class ForgotPassword extends React.Component{
                 </Form>
             </div>
             <div className="dialog-button">
-                <LinkButton className="submit-button-red" onClick={this.submit.bind(this)} style={{ width: 80}}>Submit</LinkButton>
+                <LinkButton className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" onClick={this.submit.bind(this)} style={{ width: 80}}>Submit</LinkButton>
                 <LinkButton onClick={() => {this.closeThisDialog()}} style={{ width: 80 }}>Cancel</LinkButton>
             </div>
           </Dialog>
@@ -357,7 +357,7 @@ class ResetPassword extends React.Component{
                     </Form>
                 </div>
                 <div className="dialog-button">
-                    <LinkButton className="submit-button-red" onClick={this.submit.bind(this)} style={{ width: 80 }}>Submit</LinkButton>
+                    <LinkButton className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" onClick={this.submit.bind(this)} style={{ width: 80 }}>Submit</LinkButton>
                     <LinkButton onClick={() => {this.dialog.close()}} style={{ width: 80 }}>Cancel</LinkButton>
                 </div>
             </Dialog>

@@ -224,7 +224,7 @@ class MerchantModuleAuditTrailC extends React.Component {
 
     renderDetail({ row }) {
         return (
-          <div className="expand-row">
+          <div className="tw-my-[5px] tw-mx-[10px]">
                 <div className={styles.expanderRow}>
                     <div><span className={styles.expanderRowHighlight}>Created On:</span> {row.created_on}</div>
                     <div><span className={styles.expanderRowHighlight}>Action:</span> {row.action}</div>
@@ -246,7 +246,7 @@ class MerchantModuleAuditTrailC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
-                            <span class='pg-subtitles'>Audit Trail | </span>
+                            <span className="tw-text-base tw-mx-[5px] tw-my-[2px] tw-font-bold">Audit Trail | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}

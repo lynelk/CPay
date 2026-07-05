@@ -661,7 +661,7 @@ class MerchantModuleTransactionsC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
-                            <span class='pg-subtitles'>Transactions | </span>
+                            <span className="tw-text-base tw-mx-[5px] tw-my-[2px] tw-font-bold">Transactions | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}
@@ -908,7 +908,7 @@ class PaymentFormDialog extends React.Component{
                         </LayoutPanel>
                         <LayoutPanel region="south" style={{ height: 48 }}>
                             <div className="dialog-button">
-                                <LinkButton className="submit-button-red" 
+                                <LinkButton className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
                                             onClick={() => this.saveRow()}>{strings.submit}</LinkButton>
                                 <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 

@@ -1006,7 +1006,7 @@ class MerchantFormDialog extends React.Component{
                         </LayoutPanel>
                         <LayoutPanel region="south" style={{ height: 48 }}>
                             <div className="dialog-button">
-                                <LinkButton className="submit-button-red" 
+                                <LinkButton className="tw-bg-[#d93e23] tw-border tw-border-[#d14c1f] tw-text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
                                     onClick={() => this.saveRow()}>Save</LinkButton>
                                 <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 

@@ -541,7 +541,7 @@ class MerchantModuleMerchantAccouunt extends React.Component{
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{margin: '5px', float:'left'}}> 
-                            <span class='pg-subtitles'>Payments | </span>
+                            <span className="tw-text-base tw-mx-[5px] tw-my-[2px] tw-font-bold">Payments | </span>
                             <span className={styles.titleText}>Available Balances: </span>
                             <span className={styles.numberPresentationGreenBold}>
                                 {this.state.available_balances}
