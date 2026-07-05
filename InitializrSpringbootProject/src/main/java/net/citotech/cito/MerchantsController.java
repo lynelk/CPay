@@ -107,8 +107,7 @@ public class MerchantsController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<Merchant>() {
-            public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
+            RowMapper<Merchant> rm = (rs, rowNum) -> {
                     Merchant m = new Merchant();
                     m.setName(rs.getString("name"));
                     m.setAccount_number(rs.getString("account_number"));
@@ -132,7 +131,6 @@ public class MerchantsController {
                     }
                     m.setAllowed_apis(allowed_apis);
                     return m;
-                }
             };
             
             //ResultSet rs; 
@@ -216,8 +214,7 @@ public class MerchantsController {
         parameters.addValue("account_number", account);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number";
-        RowMapper rm = new RowMapper<Merchant>() {
-        public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Merchant> rm = (rs, rowNum) -> {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
                 m.setAccount_number(rs.getString("account_number"));
@@ -239,7 +236,6 @@ public class MerchantsController {
                 }
                 m.setAllowed_apis(allowed_apis);
                 return m;
-            }
         };
         List<Merchant> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listUsers.size() > 0) {
@@ -257,15 +253,13 @@ public class MerchantsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
-                public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
+            RowMapper<UserPrivilege> rm = (rs, rowNum) -> {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
                     user.setId(rs.getLong("id"));
                     user.setCreated_on(rs.getString("created_on"));
                     user.setUdpated_on(rs.getString("updated_on"));
                     return user;
-                }
             };
             
             List<UserPrivilege> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -287,8 +281,7 @@ public class MerchantsController {
         parameters.addValue("id", id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number AND id <> :id";
-        RowMapper rm = new RowMapper<Merchant>() {
-        public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Merchant> rm = (rs, rowNum) -> {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
                 m.setAccount_number(rs.getString("account_number"));
@@ -311,7 +304,6 @@ public class MerchantsController {
                 m.setAllowed_apis(allowed_apis);
                 //user.setPrivileges(getUserPrivileges(user));Cla
                 return m;
-            }
         };
         List<Merchant> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listUsers.size() > 0) {
@@ -333,8 +325,7 @@ public class MerchantsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("merchant_id", merchant.getId());
                 
-            RowMapper rm = new RowMapper<MerchantUser>() {
-                public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
+            RowMapper<MerchantUser> rm = (rs, rowNum) -> {
                     MerchantUser user = new MerchantUser();
                     user.setName(rs.getString("name"));
                     user.setId(rs.getLong("id"));
@@ -346,7 +337,6 @@ public class MerchantsController {
                     user.setEmail_verification_code(rs.getString("email_verification_code"));
                     user.setPrivileges(getUserPrivileges(user));
                     return user;
-                }
             };
             
             List<MerchantUser> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -369,9 +359,6 @@ public class MerchantsController {
         HttpSession session = request.getSession();
        
         //Check if still logged in
-        User sessionUser;
-        //sessionUser = (User) session.getAttribute("user");
-
         if (session.getAttribute("user") == null) {
             return false;
         } else {
@@ -412,8 +399,7 @@ public class MerchantsController {
             String status = sObject.getString("status");
             String account_type = sObject.getString("account_type");
             String short_name = sObject.getString("short_name");
-            Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
-            JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
+                        JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
             String authorizationKey = sObject.getString("authorizationKey");
             
             String[] allowed_auths = internalAppAccessAuths.getSetting_value().split(",");
@@ -501,9 +487,7 @@ public class MerchantsController {
             final String sql_ = sql;
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
 
                         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -528,7 +512,7 @@ public class MerchantsController {
                             String password = Common.randomAlphaNumericString(10);
                             privParams.addValue("password", Common.getSha256EncodedString(password));
                             //privParams.addValue("name", privilege.getString("name"));
-                            long privId = jdbcTemplate.update(sqlAdmins, privParams, keyHolderUser);
+                            jdbcTemplate.update(sqlAdmins, privParams, keyHolderUser);
                             
                             BigInteger userId = (BigInteger)keyHolderUser.getKey();
                             
@@ -563,7 +547,7 @@ public class MerchantsController {
                 }
             });
             
-            if (result.equals("success")) {
+            if ("success".equals(result)) {
                 JSONObject accountInfo = new JSONObject();
                 accountInfo.put("account_number", account_number);
                 if (keys != null) {
@@ -618,8 +602,7 @@ public class MerchantsController {
             String status = sObject.getString("status");
             String account_type = sObject.getString("account_type");
             String short_name = sObject.getString("short_name");
-            Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
-            JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
+                        JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
             //String[] allowed_apis = new String[allowed_apis_array.length()];
             /*for (int i=0; i < allowed_apis_array.length(); i++) {
                 allowed_apis[i] = allowed_apis_array.getString(i);
@@ -649,7 +632,7 @@ public class MerchantsController {
                 +" `short_name`=:short_name,"
                 +" `allowed_apis`=:allowed_apis,"
                 +" `account_type`=:account_type";
-            if (generate_new_keys) {
+            if (sObject.getBoolean("generate_new_keys")) {
                 sql += ", `public_key`=:public_key, "
                     +"`private_key`=:private_key ";
             }
@@ -677,7 +660,7 @@ public class MerchantsController {
             parameters.addValue("name", name);
             parameters.addValue("short_name", short_name);
             parameters.addValue("allowed_apis", allowed_apis);
-            if (generate_new_keys) {
+            if (sObject.getBoolean("generate_new_keys")) {
                 KeyPairStrings keys = Common.generateKeyPair();
                 parameters.addValue("private_key", keys.getPrivate_key());
                 parameters.addValue("public_key", keys.getPublic_key());
@@ -685,9 +668,7 @@ public class MerchantsController {
             final String sql_ = sql;
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
 
                         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -712,7 +693,7 @@ public class MerchantsController {
                             String password = Common.randomAlphaNumericString(10);
                             privParams.addValue("password", Common.getSha256EncodedString(password));
                             //privParams.addValue("name", privilege.getString("name"));
-                            long privId = jdbcTemplate.update(sqlAdmins, privParams, keyHolderUser);
+                            jdbcTemplate.update(sqlAdmins, privParams, keyHolderUser);
                             
                             BigInteger userId = (BigInteger)keyHolderUser.getKey();
                             
@@ -757,7 +738,7 @@ public class MerchantsController {
                 }
             });
             
-            if (result.equals("success")) {
+            if ("success".equals(result)) {
                  
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
@@ -776,22 +757,16 @@ public class MerchantsController {
     private String generateMerchantNumber() {
         
         String sqlSelect = "SELECT COUNT(*) AS count_num  FROM "+Common.DB_TABLE_MERCHANTS+" ";
-        RowMapper rm = new RowMapper<Integer>() {
-        public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<Integer> rm = (rs, rowNum) -> {
                 
                 return rs.getInt("count_num");
-            }
         };
         
         List<Integer> accs = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
         int acc = (1000000 + accs.get(0));
         String sqlSelect_  =  sqlSelect+" WHERE account_number = '"+acc+"' ";
         
-        rm = new RowMapper<Integer>() {
-        public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
-                return rs.getInt("count_num");
-            }
-        };
+        rm = (rs, rowNum) -> rs.getInt("count_num");
         
         List<Integer> accs_2 = jdbcTemplate.query(sqlSelect_, new MapSqlParameterSource(), rm);
         
@@ -810,8 +785,7 @@ public class MerchantsController {
         params.addValue("email", email);
         String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
                 + " WHERE merchant_id=:merchant_id AND email=:email";
-        RowMapper rm = new RowMapper<MerchantUser>() {
-        public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<MerchantUser> rm = (rs, rowNum) -> {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));
                 u.setName(rs.getString("name"));
@@ -822,7 +796,6 @@ public class MerchantsController {
                 u.setCreated_on(rs.getString("created_on"));
                 u.setUpdated_on(rs.getString("updated_on"));
                 return u;
-            }
         };
 
         List<MerchantUser> uList = jdbcTemplate.query(sqlSelect, params, rm);
@@ -842,8 +815,7 @@ public class MerchantsController {
         params.addValue("id", id);
         String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
                 + " WHERE merchant_id=:merchant_id AND email=:email AND id <> :id";
-        RowMapper rm = new RowMapper<MerchantUser>() {
-        public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
+        RowMapper<MerchantUser> rm = (rs, rowNum) -> {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));
                 u.setName(rs.getString("name"));
@@ -854,7 +826,6 @@ public class MerchantsController {
                 u.setCreated_on(rs.getString("created_on"));
                 u.setUpdated_on(rs.getString("updated_on"));
                 return u;
-            }
         };
 
         List<MerchantUser> uList = jdbcTemplate.query(sqlSelect, params, rm);
@@ -900,8 +871,7 @@ public class MerchantsController {
             String account_type = sObject.getString("account_type");
             String short_name = sObject.getString("short_name");
             String id = sObject.getString("id");
-            Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
-            JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
+                        JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
             String allowed_apis = Common.imploadStringJsonArray(allowed_apis_array);
             
             Merchant newMerchant = new Merchant();
@@ -930,7 +900,7 @@ public class MerchantsController {
                 +" `allowed_apis`=:allowed_apis,"
                 +" `account_type`=:account_type";
             
-            if (generate_new_keys) {
+            if (sObject.getBoolean("generate_new_keys")) {
                 sql += ", `public_key`=:public_key, "
                     +" `private_key`=:private_key ";
             }
@@ -977,7 +947,7 @@ public class MerchantsController {
             parameters.addValue("short_name", short_name);
             parameters.addValue("id", id);
             parameters.addValue("allowed_apis", allowed_apis);
-            if (generate_new_keys) {
+            if (sObject.getBoolean("generate_new_keys")) {
                 KeyPairStrings keys = Common.generateKeyPair();
                 parameters.addValue("private_key", keys.getPrivate_key());
                 parameters.addValue("public_key", keys.getPublic_key());
@@ -985,9 +955,7 @@ public class MerchantsController {
             
             final String sql_ = sql;
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
 
                         //Update Merchants Table
@@ -1120,7 +1088,7 @@ public class MerchantsController {
                 }
             });
             
-            if (result.equals("success")) {
+            if ("success".equals(result)) {
                  
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
@@ -1214,9 +1182,7 @@ public class MerchantsController {
             
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(new TransactionCallback<String>() {
-                @Override
-                public String doInTransaction(TransactionStatus status) {
+            String result = template.execute(status -> {
                     try {
 
                         jdbcTemplate.update(sql, parameters);
@@ -1242,7 +1208,7 @@ public class MerchantsController {
                 }
             });
             
-            if (result.equals("success")) {
+            if ("success".equals(result)) {
                  
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);

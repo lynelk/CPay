@@ -77,7 +77,7 @@ public final class ColumnAllowlist {
     /**
      * Convenience overload that uses the {@code default} allowlist.
      */
-    public static String validate(String column) {
+    public static @org.springframework.lang.NonNull String validate(String column) {
         return validate("default", column);
     }
 
