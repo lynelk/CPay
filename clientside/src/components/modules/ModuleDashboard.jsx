@@ -90,7 +90,7 @@ class ModuleDashboardC extends React.Component {
                 } else {
                     //If session timed out
                     if (res.code === "107") {
-                        this.sessionExpired();
+                        this.props.sessionExpired();
                         return;
                     } else if (res.code === "110") {
                         this.accessNotAllowed(res.message);
