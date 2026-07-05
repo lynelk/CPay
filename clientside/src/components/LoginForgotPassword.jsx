@@ -9,14 +9,13 @@ import Progress from './Progress';
 /*
 * HANDLE FORGOT PASSWORD
 */
-class ForgotPasswordMerchant extends React.Component{
+class ForgotPassword extends React.Component{
     constructor(props) {
         super(props);
         this.state = {
           loader: false,
           progressValue: 0,
           user: {
-              merchant_number: "",
               email:"",
               account_found: false,
           },
@@ -30,11 +29,10 @@ class ForgotPasswordMerchant extends React.Component{
               return;
             }
             let body = {
-                email: this.state.user.email,
-                merchant_number: this.state.user.merchant_number
+                email: this.state.user.email
             }
             this.setState({loader: true}, () => {
-                fetch(common.base_url+"/auth/requestMerchantUserResetPassword", {
+                fetch(common.base_url+"/auth/requestResetPassword", {
                     method: 'POST', // *GET, POST, PUT, DELETE, etc.
                     mode: 'cors', // no-cors, *cors, same-origin
                     cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -115,34 +113,19 @@ class ForgotPasswordMerchant extends React.Component{
         this.setState({ user: user })
     }
 
-    componentDidMount() {
-        
-    }
-
-    shouldComponentUpdate(nextProps, nextState) {
-        
-        if (nextProps.merchantNumber != this.props.merchantNumber) {
-            this.state.user.merchant_number = this.props.merchantNumber;
-            this.setState({
-                user: this.state.user
-            }, () => {
-
-            });
-            return true;
-        }
-        return true;
-    }
-
     componentWillUpdate() {
-        
+        /*if (this.props.showForgotPassword) {
+            if (this.dialog != null) {
+                this.dialog.open();
+            }
+        }*/
     }
 
     clearForm() {
         this.setState({
             user: {
                 email: "",
-                account_found: false,
-                merchant_number: "",
+                account_found: false
             },
             account_found: false
         }, ()=> {
@@ -162,7 +145,6 @@ class ForgotPasswordMerchant extends React.Component{
         }
 
         return (
-            
         <div>
           <Dialog 
             style={{width: 400}}
@@ -176,21 +158,12 @@ class ForgotPasswordMerchant extends React.Component{
                 labelWidth={120}
                 labelAlign="right"
                 rules={{
-                        email: ["required"],
-                        merchant_number: ['required']
+                    email: ["required"],
                     }
                 }
                 onChange={this.handleChange.bind(this)}>
 
-                    <h3>Confirm your Merchang Mumber and Email</h3>
-
-                    <div className="mytext">
-                        <p>Merchant Number</p>
-                    </div>
-                    <FormField name="merchant_number" label="">
-                        <TextBox value={this.state.user.merchant_number}></TextBox>
-                    </FormField>
-
+                    <h2>Confirm your Email</h2>
                     <div className="mytext">
                         <p>Please enter your email address.</p>
                     </div>
@@ -202,15 +175,14 @@ class ForgotPasswordMerchant extends React.Component{
                 </Form>
             </div>
             <div className="dialog-button">
-                <LinkButton className="submit-button-red" onClick={this.submit.bind(this)} style={{ width: 80}}>Submit</LinkButton>
+                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" onClick={this.submit.bind(this)} style={{ width: 80}}>Submit</LinkButton>
                 <LinkButton onClick={() => {this.closeThisDialog()}} style={{ width: 80 }}>Cancel</LinkButton>
             </div>
           </Dialog>
-          <ResetPasswordMerchantN 
+          <ResetPassword 
             closeThisDialog={this.closeThisDialog.bind(this)}
             accountFound={this.state.account_found} 
-            email={this.state.user.email}
-            merchantNumber={this.state.user.merchant_number} />
+            email={this.state.user.email} />
           <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
           <Messager ref={ref => this.messager = ref}></Messager>
         </div>
@@ -218,7 +190,7 @@ class ForgotPasswordMerchant extends React.Component{
     }
 }
 
-class ResetPasswordMerchantN extends React.Component{
+class ResetPassword extends React.Component{
     constructor(props) {
         super(props);
         this.state = {
@@ -265,11 +237,10 @@ class ResetPasswordMerchantN extends React.Component{
             let body = {
                 email: this.props.email,
                 verification_code: this.state.user.verification_code,
-                new_password: this.state.user.new_password,
-                merchant_number: this.props.merchantNumber,
+                new_password: this.state.user.new_password
             }
             this.setState({loader: true}, () => {
-                fetch(common.base_url+"/auth/resetPasswordMerchant", {
+                fetch(common.base_url+"/auth/resetPassword", {
                     method: 'POST', // *GET, POST, PUT, DELETE, etc.
                     mode: 'cors', // no-cors, *cors, same-origin
                     cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -386,7 +357,7 @@ class ResetPasswordMerchantN extends React.Component{
                     </Form>
                 </div>
                 <div className="dialog-button">
-                    <LinkButton className="submit-button-red" onClick={this.submit.bind(this)} style={{ width: 80 }}>Submit</LinkButton>
+                    <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" onClick={this.submit.bind(this)} style={{ width: 80 }}>Submit</LinkButton>
                     <LinkButton onClick={() => {this.dialog.close()}} style={{ width: 80 }}>Cancel</LinkButton>
                 </div>
             </Dialog>
@@ -398,4 +369,4 @@ class ResetPasswordMerchantN extends React.Component{
 }
 
 
-export default ForgotPasswordMerchant;
+export default ForgotPassword;

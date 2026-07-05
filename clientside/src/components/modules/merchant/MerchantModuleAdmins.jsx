@@ -4,14 +4,14 @@ import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem } from 'rc-easyui'
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../MainMenu";
-import common from "../Common";
-import Progress from "../Progress";
+import MainMenu from "../../MainMenu";
+import common from "../../Common";
+import Progress from "../../Progress";
 import LinearChart from './LinearChart';
-import styles from '../styles';
-import strings from '../locale';
+import styles from '../../styles';
+import strings from '../../locale';
 
-class ModuleAdminsC extends React.Component {
+class MerchantModuleAdminsC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -37,7 +37,7 @@ class ModuleAdminsC extends React.Component {
                 privileges:[],
                 status: { value: 'ACTIVE', text: "ACTIVE" },
             },
-            privileges: common.privileges,
+            privileges: common.merchant_privileges,
             status: [{ value: 'ACTIVE', text: "ACTIVE" },
                 { value: 'INACTIVE', text: "INACTIVE" },
                 { value: 'SUSPENDED', text: "SUSPENDED" }],
@@ -76,7 +76,9 @@ class ModuleAdminsC extends React.Component {
     }
 
     componentDidMount() {
+        
         window.addEventListener("resize", this.handleResize);
+
         if (this.isUserAllowedAccess()) {
             this.setState({
                 hasAccess:true,
@@ -94,8 +96,8 @@ class ModuleAdminsC extends React.Component {
     }
 
     isUserAllowedAccess() {
-        let user = localStorage.getItem("user") != null ? 
-            JSON.parse(localStorage.getItem("user")) : {};
+        let user = localStorage.getItem("merchantUser") != null ? 
+            JSON.parse(localStorage.getItem("merchantUser")) : {};
 
         let isPrivilegeExists = false;
 
@@ -136,7 +138,7 @@ class ModuleAdminsC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         }
-        fetch(common.base_url+"/admins/getAdmins", {
+        fetch(common.base_url+"/admins/getAdminsMerchant", {
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             mode: 'cors', // no-cors, *cors, same-origin
             cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -249,7 +251,7 @@ class ModuleAdminsC extends React.Component {
                 //Continue to submit the form
                 if (r) {
                     this.props.loader("START");
-                    fetch(common.base_url+"/admins/deleteAdmin", {
+                    fetch(common.base_url+"/admins/deleteAdminMerchant", {
                         method: 'POST', // *GET, POST, PUT, DELETE, etc.
                         mode: 'cors', // no-cors, *cors, same-origin
                         cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -354,9 +356,9 @@ class ModuleAdminsC extends React.Component {
             }
             let url;
             if (this.state.formdMode == "edit") {
-                url = common.base_url+"/admins/editAdmin";
+                url = common.base_url+"/admins/editAdminMerchant";
             } else {
-                url = common.base_url+"/admins/addAdmin";
+                url = common.base_url+"/admins/addAdminMerchant";
             }
 
             //Continue to submit the form
@@ -459,7 +461,7 @@ class ModuleAdminsC extends React.Component {
             <Dialog modal 
                 title={title} 
                 closed={formDialogState} 
-                style={styles.formDialog}
+                style={styles.dim.formDialog} className={styles.formDialog}
                 borderType="none"
                 onClose={() => this.setState({ formDialogState: true })}>
                     <Layout style={{ width: 500, height:'100%', border: '0px #FFFFFF' }}>
@@ -467,7 +469,7 @@ class ModuleAdminsC extends React.Component {
                             region="north" 
                             split={false}
                             style={{ height: 320, border: '0px #FFFFFF' }}>
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     ref={ref => this.form = ref}
                                     model={row}
@@ -484,21 +486,21 @@ class ModuleAdminsC extends React.Component {
                                             inputId="name" 
                                             name="name" 
                                             value={row.name} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="phone" label="Phone">
                                         <TextBox 
                                             inputId="phone" 
                                             name="phone" 
                                             value={row.phone} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="email" label="Email">
                                         <TextBox 
                                             inputId="email" 
                                             name="email" 
                                             value={row.email} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="password" label="User Password">
                                         <PasswordBox
@@ -506,7 +508,7 @@ class ModuleAdminsC extends React.Component {
                                             name="password" 
                                             value={row.password} 
                                             iconCls="icon-lock"
-                                            style={styles.formDialogFields}></PasswordBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></PasswordBox>
                                     </FormField>
                                     <FormField name="status" label="Status:" >
                                         <ComboBox
@@ -514,7 +516,7 @@ class ModuleAdminsC extends React.Component {
                                             name="status"
                                             data={this.state.status}
                                             value={this.state.formd.status}
-                                            style={styles.formDialogFields}
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                             onChange={(value) => this.setState({ value: value })}
                                             />
                                     </FormField>
@@ -525,7 +527,7 @@ class ModuleAdminsC extends React.Component {
                                             multiple
                                             data={this.state.privileges}
                                             value={this.state.formd.privileges}
-                                            style={styles.formDialogFields}
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                             onChange={(value) => this.setState({ value: value })}
                                             />
                                     </FormField>
@@ -534,7 +536,7 @@ class ModuleAdminsC extends React.Component {
                         </LayoutPanel>
                         <LayoutPanel region="south" style={{ height: 48 }}>
                             <div className="dialog-button">
-                                <LinkButton className="submit-button-red" 
+                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
                                     onClick={() => this.saveRow()}>Save</LinkButton>
                                 <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
@@ -602,6 +604,7 @@ class ModuleAdminsC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
+                            <span className="tw:text-base tw:mx-[5px] tw:my-[2px] tw:font-bold">Admins | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}
@@ -609,7 +612,7 @@ class ModuleAdminsC extends React.Component {
                                 onChange={(value) => this.bulkActions(value)}/>
                             <LinkButton 
                                 onClick={() => this.addNew()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-add">{strings.add_admin}</LinkButton>
                         </div>
                         <SearchBox
@@ -666,6 +669,6 @@ class ModuleAdminsC extends React.Component {
     }
 }
 
-const ModuleAdmins = withRouter(ModuleAdminsC);
+const MerchantModuleAdmins = withRouter(MerchantModuleAdminsC);
 
-export default ModuleAdmins;
+export default MerchantModuleAdmins;

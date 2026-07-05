@@ -3,29 +3,38 @@ import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox }
 import { Panel, Layout, LayoutPanel, Messager } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../../MainMenu";
-import common from "../../Common";
-import Progress from "../../Progress";
+import MainMenu from "../MainMenu";
+import common from "../Common";
+import Progress from "../Progress";
 import LinearChart from './LinearChart';
-import styles from '../../styles';
+import styles from '../styles';
 
-class MerchantModuleDashboardC extends React.Component {
+class ModuleDashboardC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            chartData: null, 
-            chartDataTxTypes:null,
-            chartDataTxVolumes:null,
-            chartDataTxPerGateway: null
+            chartData: null,
+            chartDataTxTypes: null,
+            chartDataTxVolumes: null,
+            chartDataTxNetworkBalances: null
         };
+        this._balanceInterval = null;
     }
 
     componentDidMount() {
-        this.getData("chartData", "getDashboardDetailsPayinsVsPayoutsMerchant");
-        this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypesMerchant");
-        this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumesMerchant");
-        this.getData("chartDataTxPerGateway","getDashboardDetailsTxPerGatewayMerchant");
-        //console.log(JSON.stringify(this.props));
+        this.getData("chartData", "getDashboardDetailsPayinsVsPayouts");
+        this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypes");
+        this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumes");
+        this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
+        this._balanceInterval = setInterval(() => {
+            this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
+        }, 240000);
+    }
+
+    componentWillUnmount() {
+        if (this._balanceInterval) {
+            clearInterval(this._balanceInterval);
+        }
     }
 
     getData(chartType, api) {
@@ -65,8 +74,8 @@ class MerchantModuleDashboardC extends React.Component {
                             case "chartDataTxVolumes":
                                 this.setState({chartDataTxVolumes: res.chartData});
                                 break;
-                            case "chartDataTxPerGateway":
-                                this.setState({chartDataTxPerGateway: res.chartData});
+                            case "chartDataTxNetworkBalances":
+                                this.setState({chartDataTxNetworkBalances: res.chartData});
                                 break;
                             default:
                                 break;
@@ -113,18 +122,6 @@ class MerchantModuleDashboardC extends React.Component {
         });
     }
 
-    sessionExpired() {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Session Expired!",
-            icon: "info",
-            msg: "Your are session expired",
-            result: (r) => {
-                history.push("/portal");
-            }
-        });
-    }
-
     render () {
         return (
             <div>
@@ -132,7 +129,7 @@ class MerchantModuleDashboardC extends React.Component {
                 <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                     <LinearChart
                         data={this.state.chartData}
                         title="Payins vs Payouts"
@@ -142,7 +139,7 @@ class MerchantModuleDashboardC extends React.Component {
                     <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                     <LinearChart
                         data={this.state.chartDataTxTypes}
                         title="Transaction Types"
@@ -154,7 +151,7 @@ class MerchantModuleDashboardC extends React.Component {
                 <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                     <LinearChart
                         data={this.state.chartDataTxVolumes}
                         title="Amounts Volumes"
@@ -164,10 +161,10 @@ class MerchantModuleDashboardC extends React.Component {
                     <Panel 
                     title="" 
                     bodyStyle={{ padding: 20 }} 
-                    style={styles.dashboardChartPanel}>
+                    style={styles.dim.dashboardChartPanel} className={styles.dashboardChartPanel}>
                         <LinearChart
-                            data={this.state.chartDataTxPerGateway}
-                            title="TX Per Gateway"
+                            data={this.state.chartDataTxNetworkBalances}
+                            title="Network Balances"
                             color="#70CAD1"
                         />
                     </Panel>
@@ -178,6 +175,6 @@ class MerchantModuleDashboardC extends React.Component {
     }
 }
 
-const MerchantModuleDashboard = withRouter(MerchantModuleDashboardC);
+const ModuleDashboard = withRouter(ModuleDashboardC);
 
-export default MerchantModuleDashboard;
+export default ModuleDashboard;

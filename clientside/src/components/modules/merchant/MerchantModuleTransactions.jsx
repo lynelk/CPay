@@ -435,41 +435,41 @@ class MerchantModuleTransactionsC extends React.Component {
                         cellPadding={10} 
                         style={{width: 800}}>
                         <tr>
-                            <td><span style={styles.titleText}>Merchant Name</span></td>
+                            <td><span className={styles.titleText}>Merchant Name</span></td>
                             <td>{tx_details_row.merchant_name}</td>
                         </tr>
                         <tr>
                             <td>
-                                <span style={styles.titleText}>Merchant number</span>
+                                <span className={styles.titleText}>Merchant number</span>
                             </td>
                             <td>{tx_details_row.merchant_number}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Gateway ID</span></td>
+                            <td><span className={styles.titleText}>Gateway ID</span></td>
                             <td>{tx_details_row.gateway_id}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Status</span></td>
+                            <td><span className={styles.titleText}>Status</span></td>
                             <td>{tx_details_row.status}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Amount</span></td>
+                            <td><span className={styles.titleText}>Amount</span></td>
                             <td>{"UGX "+tx_details_row.original_amount_formatted}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Merchant Reference:</span></td>
+                            <td><span className={styles.titleText}>Merchant Reference:</span></td>
                             <td>{tx_details_row.tx_merchant_ref}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Network Ref:</span></td>
+                            <td><span className={styles.titleText}>Network Ref:</span></td>
                             <td>{tx_details_row.tx_gateway_ref}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Payer/Payee Number:</span></td>
+                            <td><span className={styles.titleText}>Payer/Payee Number:</span></td>
                             <td>{tx_details_row.payer_number}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Merchant Description:</span></td>
+                            <td><span className={styles.titleText}>Merchant Description:</span></td>
                             <td>
                                 <div    
                                     style={{width: "100%", overflow: "auto"}}
@@ -479,13 +479,13 @@ class MerchantModuleTransactionsC extends React.Component {
                                             tx_details_row.tx_merchant_description.replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Our Description:</span></td>
+                            <td><span className={styles.titleText}>Our Description:</span></td>
                             <td>
                                 <div    
                                     style={{width: "100%", overflow: "auto"}}
@@ -495,23 +495,23 @@ class MerchantModuleTransactionsC extends React.Component {
                                             tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Charges:</span></td>
+                            <td><span className={styles.titleText}>Charges:</span></td>
                             <td>{"UGX "+tx_details_row.charges_formatted}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Created On</span></td>
+                            <td><span className={styles.titleText}>Created On</span></td>
                             <td>{tx_details_row.created_on}</td>
                         </tr>
                         
                         
                         <tr>
-                            <td><span style={styles.titleText}>Callback Trace</span></td>
+                            <td><span className={styles.titleText}>Callback Trace</span></td>
                             <td style={{width:500}}>
                                 <div style={{width: '100%', overflow: "auto"}}
                                     dangerouslySetInnerHTML={{
@@ -522,7 +522,7 @@ class MerchantModuleTransactionsC extends React.Component {
                                             +"</PRE>"
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 </div>
                             </td>
                         </tr>
@@ -604,7 +604,7 @@ class MerchantModuleTransactionsC extends React.Component {
                                 inputId="start_date" 
                                 name="start_date" 
                                 value={search_rules.start_date_val} 
-                                style={styles.formDialogFields}></DateBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
                         </FormField>
                         <FormField name="end_date" label="End Date">
                             <DateBox 
@@ -612,7 +612,7 @@ class MerchantModuleTransactionsC extends React.Component {
                                 inputId="end_date" 
                                 name="end_date" 
                                 value={search_rules.end_date_val} 
-                                style={styles.formDialogFields}></DateBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
                         </FormField>
 
                         <FormField name="status" label="Status">
@@ -620,14 +620,14 @@ class MerchantModuleTransactionsC extends React.Component {
                                 inputId="status" 
                                 name="status" 
                                 value={search_rules.status} 
-                                style={styles.formDialogFields}></TextBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                         </FormField>
                         <FormField name="tx_type" label="Type">
                             <TextBox 
                                 inputId="tx_type" 
                                 name="tx_type" 
                                 value={search_rules.tx_type} 
-                                style={styles.formDialogFields}></TextBox>
+                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                         </FormField>
                     </Form>
                 </div>
@@ -661,7 +661,7 @@ class MerchantModuleTransactionsC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
-                            <span class='pg-subtitles'>Transactions | </span>
+                            <span className="tw:text-base tw:mx-[5px] tw:my-[2px] tw:font-bold">Transactions | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}
@@ -670,7 +670,7 @@ class MerchantModuleTransactionsC extends React.Component {
 
                             <LinkButton 
                                 onClick={() => this.addPayIn()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-add">{strings.add_payin}</LinkButton>
 
                         </div>
@@ -859,7 +859,7 @@ class PaymentFormDialog extends React.Component{
             <Dialog modal 
                 title={title} 
                 closed={formDialogStateOpened} 
-                style={styles.formDialog}
+                style={styles.dim.formDialog} className={styles.formDialog}
                 borderType="none"
                 onClose={() => this.props.openOrCloseFormDialog(true)}>
                     <Layout style={{ width: 500, height:'100%', border: '0px #FFFFFF' }}>
@@ -868,7 +868,7 @@ class PaymentFormDialog extends React.Component{
                             split={false}
                             style={{ height: 320, border: '0px #FFFFFF' }}>
                             
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     style={{ width: 400 }}
                                     ref={ref => this.form = ref}
@@ -885,14 +885,14 @@ class PaymentFormDialog extends React.Component{
                                             inputId="account" 
                                             name="account" 
                                             value={formd.account} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="amount" label="Amount">
                                         <TextBox 
                                             inputId="amount" 
                                             name="amount" 
                                             value={formd.amount} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     <FormField name="tx_description" label="Description">
                                         <TextBox 
@@ -908,7 +908,7 @@ class PaymentFormDialog extends React.Component{
                         </LayoutPanel>
                         <LayoutPanel region="south" style={{ height: 48 }}>
                             <div className="dialog-button">
-                                <LinkButton className="submit-button-red" 
+                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
                                             onClick={() => this.saveRow()}>{strings.submit}</LinkButton>
                                 <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 

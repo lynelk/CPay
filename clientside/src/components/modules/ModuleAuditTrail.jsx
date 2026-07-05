@@ -224,10 +224,10 @@ class ModuleAuditTrailC extends React.Component {
 
     renderDetail({ row }) {
         return (
-          <div className="expand-row">
-                <div style={styles.expanderRow}>
-                    <div><span style={styles.expanderRowHighlight}>Created On:</span> {row.created_on}</div>
-                    <div><span style={styles.expanderRowHighlight}>Action:</span> {row.action}</div>
+          <div className="tw:my-[5px] tw:mx-[10px]">
+                <div className={styles.expanderRow}>
+                    <div><span className={styles.expanderRowHighlight}>Created On:</span> {row.created_on}</div>
+                    <div><span className={styles.expanderRowHighlight}>Action:</span> {row.action}</div>
                 </div>
             </div>
         );

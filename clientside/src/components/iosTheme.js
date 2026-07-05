@@ -84,4 +84,4 @@ const iosTheme = {
   },
 };
 
-module.exports = iosTheme;
+export default iosTheme;

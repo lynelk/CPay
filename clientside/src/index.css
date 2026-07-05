@@ -1,17 +1,77 @@
+/* ─── rc-easyui CSS (must precede Tailwind import) ─────────────────────── */
+@import 'rc-easyui/dist/themes/bootstrap/easyui.css';
+@import 'rc-easyui/dist/themes/icon.css';
+@import 'rc-easyui/dist/themes/react.css';
+
+/* ─── Tailwind CSS v4 ───────────────────────────────────────────────────────
+ * All utilities prefixed with tw: (e.g. tw:flex, tw:text-red-500)
+ * Tailwind v4 prefix uses colon syntax, not hyphen.
+ * Preflight disabled via @layer — preserves rc-easyui Bootstrap reset.
+ * ─────────────────────────────────────────────────────────────────────────── */
+@import "tailwindcss" prefix(tw);
+
+/* Disable Tailwind preflight to avoid overriding rc-easyui Bootstrap styles */
+@layer tw-base {
+  /* Intentionally empty — rc-easyui provides the base reset */
+}
+
+/* ─── CPay design tokens ────────────────────────────────────────────────── */
+@theme {
+  /* iOS-inspired colour palette (from iosTheme.js) */
+  --color-cpay-blue:        #007AFF;
+  --color-cpay-light-blue:  #5AC8FA;
+  --color-cpay-teal:        #32ADE6;
+  --color-cpay-green:       #34C759;
+  --color-cpay-orange:      #FF9500;
+  --color-cpay-red:         #FF3B30;
+  --color-cpay-yellow:      #FFCC00;
+  --color-cpay-purple:      #AF52DE;
+  --color-cpay-pink:        #FF2D55;
+  --color-cpay-gray-6:      #F2F2F7;
+  --color-cpay-gray-5:      #E5E5EA;
+  --color-cpay-gray-4:      #D1D1D6;
+  --color-cpay-gray-3:      #C7C7CC;
+  --color-cpay-gray-2:      #AEAEB2;
+  --color-cpay-gray:        #8E8E93;
+  --color-cpay-label:       #000000;
+  --color-cpay-bg:          #FFFFFF;
+  --color-cpay-bg-secondary:#F2F2F7;
+
+  /* iOS font stack */
+  --font-ios: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-ios-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+
+  /* iOS 4-pt spacing grid */
+  --spacing-ios-xs:  4px;
+  --spacing-ios-sm:  8px;
+  --spacing-ios-md:  16px;
+  --spacing-ios-lg:  24px;
+  --spacing-ios-xl:  32px;
+  --spacing-ios-2xl: 48px;
+
+  /* iOS border radii */
+  --radius-ios-sm:   6px;
+  --radius-ios-md:   10px;
+  --radius-ios-lg:   14px;
+  --radius-ios-xl:   20px;
+  --radius-ios-pill: 9999px;
+
+  /* iOS-style shadows */
+  --shadow-ios-sm:   0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-ios-md:   0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-ios-lg:   0 10px 15px rgba(0,0,0,0.10), 0 4px 6px rgba(0,0,0,0.05);
+  --shadow-ios-card: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+/* ─── Base styles ─────────────────────────────────────────────────────────── */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-
-@import '~rc-easyui/dist/themes/bootstrap/easyui.css';
-@import '~rc-easyui/dist/themes/icon.css';
-@import '~rc-easyui/dist/themes/react.css';

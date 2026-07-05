@@ -1,199 +1,66 @@
-const ios = require('./iosTheme');
+/**
+ * Tailwind CSS className strings for CPay components.
+ * Usage: className={styles.X}
+ *
+ * For rc-easyui components requiring pixel dimensions (Dialog, Panel, TextBox),
+ * also pass: style={styles.dim.X}
+ */
 
-let styles = {
-    // -----------------------------------------------------------------------
-    // Typography
-    // -----------------------------------------------------------------------
-    titleText: {
-        fontFamily: ios.typography.fontFamilyDisplay,
-        fontWeight: ios.typography.title3.fontWeight,
-        fontSize: ios.typography.title3.fontSize,
-        color: ios.colors.label,
-        letterSpacing: ios.typography.title3.letterSpacing,
-    },
+const styles = {
+  // Typography
+  titleText: 'tw:font-ios-display tw:font-semibold tw:text-[20px] tw:text-cpay-label tw:tracking-[0.38px]',
 
-    // -----------------------------------------------------------------------
-    // Dashboard
-    // -----------------------------------------------------------------------
-    dashboardChartPanel: {
-        height: 300,
-        width: '45%',
-        margin: ios.spacing.sm,
-        position: 'relative',
-        float: 'left',
-        borderRadius: ios.radii.lg,
-        boxShadow: ios.shadows.card,
-        backgroundColor: ios.colors.systemBackground,
-    },
+  // Dashboard
+  dashboardChartPanel: 'tw:relative tw:float-left tw:rounded-ios-lg tw:shadow-ios-card tw:bg-cpay-bg tw:m-ios-sm',
 
-    // -----------------------------------------------------------------------
-    // Toolbar
-    // -----------------------------------------------------------------------
-    moduleToolBarButtons: {
-        marginLeft: ios.spacing.sm,
-        borderRadius: ios.radii.md,
-        fontFamily: ios.typography.fontFamily,
-    },
+  // Toolbar
+  moduleToolBarButtons: 'tw:ml-ios-sm tw:rounded-ios-md tw:font-ios',
 
-    // -----------------------------------------------------------------------
-    // Dialogs
-    // -----------------------------------------------------------------------
-    formDialog: {
-        width: 500,
-        height: 398,
-        borderRadius: ios.radii.xl,
-        boxShadow: ios.shadows.modal,
-    },
-    formDialogLargeWidth: {
-        width: 800,
-        height: 398,
-        borderRadius: ios.radii.xl,
-        boxShadow: ios.shadows.modal,
-    },
-    moreTableContentDialogLargeWidth: {
-        width: 1024,
-        height: 550,
-        borderRadius: ios.radii.xl,
-        boxShadow: ios.shadows.modal,
-    },
-    formDialogContainer: {
-        padding: `${ios.spacing.lg}px ${ios.spacing.lg}px ${ios.spacing.md}px ${ios.spacing.md}px`,
-        width: '400px',
-        fontFamily: ios.typography.fontFamily,
-    },
-    formDialogFields: {
-        width: 280,
-        padding: ios.spacing.xs,
-        borderRadius: ios.radii.sm,
-        fontFamily: ios.typography.fontFamily,
-    },
-    formDialogFieldsTexField: {
-        width: 280,
-        height: 100,
-        padding: ios.spacing.xs,
-        borderRadius: ios.radii.sm,
-        fontFamily: ios.typography.fontFamily,
-    },
+  // Dialogs - appearance only (dimensions via styles.dim.X)
+  formDialog:                       'tw:rounded-ios-xl tw:shadow-ios-lg',
+  formDialogLargeWidth:             'tw:rounded-ios-xl tw:shadow-ios-lg',
+  moreTableContentDialogLargeWidth: 'tw:rounded-ios-xl tw:shadow-ios-lg',
+  formDialogContainer:              'tw:px-ios-lg tw:pt-ios-lg tw:pb-ios-md tw:w-[400px] tw:font-ios',
+  formDialogFields:                 'tw:p-ios-xs tw:rounded-ios-sm tw:font-ios',
+  formDialogFieldsTexField:         'tw:p-ios-xs tw:rounded-ios-sm tw:font-ios',
 
-    // -----------------------------------------------------------------------
-    // Expander rows
-    // -----------------------------------------------------------------------
-    expanderRow: {
-        padding: `${ios.spacing.lg}px ${ios.spacing.lg}px ${ios.spacing.md}px ${ios.spacing.md}px`,
-        backgroundColor: ios.colors.secondarySystemBackground,
-        borderRadius: ios.radii.md,
-    },
-    expanderRowHighlight: {
-        fontWeight: ios.typography.headline.fontWeight,
-        margin: ios.spacing.xs,
-        color: ios.colors.blue,
-    },
+  // Expander rows
+  expanderRow:          'tw:px-ios-lg tw:pt-ios-lg tw:pb-ios-md tw:bg-cpay-bg-secondary tw:rounded-ios-md',
+  expanderRowHighlight: 'tw:font-semibold tw:m-ios-xs tw:text-cpay-blue',
 
-    // -----------------------------------------------------------------------
-    // Button spacing in large dialogs
-    // -----------------------------------------------------------------------
-    formDialogLargeWidthAddButtons: {
-        marginLeft: 0,
-        marginTop: ios.spacing.sm,
-        marginRight: ios.spacing.sm,
-        marginBottom: ios.spacing.sm,
-        borderRadius: ios.radii.pill,
-        backgroundColor: ios.colors.blue,
-        color: ios.colors.white,
-    },
+  // Buttons
+  formDialogLargeWidthAddButtons: 'tw:my-ios-sm tw:mr-ios-sm tw:rounded-ios-pill tw:bg-cpay-blue tw:text-white',
 
-    // -----------------------------------------------------------------------
-    // Number presentations
-    // -----------------------------------------------------------------------
-    numberPresentationGreenBold: {
-        color: ios.colors.green,
-        fontWeight: ios.typography.headline.fontWeight,
-        fontSize: ios.typography.body.fontSize,
-        fontFamily: ios.typography.fontFamily,
-    },
-    numberPresentationGreen: {
-        color: ios.colors.green,
-        fontWeight: ios.typography.headline.fontWeight,
-        fontFamily: ios.typography.fontFamily,
-    },
-    numberPresentationRed: {
-        color: ios.colors.red,
-        fontWeight: ios.typography.headline.fontWeight,
-        fontFamily: ios.typography.fontFamily,
-    },
+  // Number presentations
+  numberPresentationGreenBold: 'tw:text-cpay-green tw:font-semibold tw:text-[17px] tw:font-ios',
+  numberPresentationGreen:     'tw:text-cpay-green tw:font-semibold tw:font-ios',
+  numberPresentationRed:       'tw:text-cpay-red   tw:font-semibold tw:font-ios',
 
-    // -----------------------------------------------------------------------
-    // Code / log block
-    // -----------------------------------------------------------------------
-    commonBlockText: {
-        width: 400,
-        margin: ios.spacing.sm,
-        overflow: 'scroll',
-        padding: ios.spacing.md,
-        backgroundColor: ios.colors.systemGray6,
-        border: `1px solid ${ios.colors.separator}`,
-        borderRadius: ios.radii.md,
-        fontFamily: '"SF Mono", "Menlo", "Monaco", "Courier New", monospace',
-        fontSize: ios.typography.footnote.fontSize,
-        color: ios.colors.label,
-    },
+  // Code / log block
+  commonBlockText: 'tw:m-ios-sm tw:overflow-x-auto tw:p-ios-md tw:bg-cpay-gray-6 tw:border tw:border-cpay-separator tw:rounded-ios-md tw:font-mono tw:text-[13px] tw:text-cpay-label tw:w-[400px]',
 
-    // -----------------------------------------------------------------------
-    // iOS card (reusable surface)
-    // -----------------------------------------------------------------------
-    card: {
-        backgroundColor: ios.colors.systemBackground,
-        borderRadius: ios.radii.xl,
-        boxShadow: ios.shadows.card,
-        padding: ios.spacing.lg,
-        marginBottom: ios.spacing.md,
-    },
+  // iOS card surface
+  card: 'tw:bg-cpay-bg tw:rounded-ios-xl tw:shadow-ios-card tw:p-ios-lg tw:mb-ios-md',
 
-    // -----------------------------------------------------------------------
-    // iOS-style pill button
-    // -----------------------------------------------------------------------
-    pillButton: {
-        backgroundColor: ios.colors.blue,
-        color: ios.colors.white,
-        borderRadius: ios.radii.pill,
-        padding: `${ios.spacing.sm}px ${ios.spacing.lg}px`,
-        border: 'none',
-        fontFamily: ios.typography.fontFamily,
-        fontWeight: ios.typography.headline.fontWeight,
-        fontSize: ios.typography.body.fontSize,
-        cursor: 'pointer',
-    },
+  // Pill button
+  pillButton: 'tw:bg-cpay-blue tw:text-white tw:rounded-ios-pill tw:px-ios-lg tw:py-ios-sm tw:border-0 tw:font-ios tw:font-semibold tw:text-[17px] tw:cursor-pointer',
 
-    // -----------------------------------------------------------------------
-    // Status badge
-    // -----------------------------------------------------------------------
-    badgeActive: {
-        backgroundColor: ios.colors.green,
-        color: ios.colors.white,
-        borderRadius: ios.radii.pill,
-        padding: `${ios.spacing.xs / 2}px ${ios.spacing.sm}px`,
-        fontSize: ios.typography.caption1.fontSize,
-        fontWeight: ios.typography.headline.fontWeight,
-        display: 'inline-block',
-    },
-    badgeInactive: {
-        backgroundColor: ios.colors.systemGray,
-        color: ios.colors.white,
-        borderRadius: ios.radii.pill,
-        padding: `${ios.spacing.xs / 2}px ${ios.spacing.sm}px`,
-        fontSize: ios.typography.caption1.fontSize,
-        fontWeight: ios.typography.headline.fontWeight,
-        display: 'inline-block',
-    },
-    badgePending: {
-        backgroundColor: ios.colors.orange,
-        color: ios.colors.white,
-        borderRadius: ios.radii.pill,
-        padding: `${ios.spacing.xs / 2}px ${ios.spacing.sm}px`,
-        fontSize: ios.typography.caption1.fontSize,
-        fontWeight: ios.typography.headline.fontWeight,
-        display: 'inline-block',
-    },
+  // Status badges
+  badgeActive:   'tw:bg-cpay-green  tw:text-white tw:rounded-ios-pill tw:px-ios-sm tw:py-[2px] tw:text-[12px] tw:font-semibold tw:inline-block',
+  badgeInactive: 'tw:bg-cpay-gray   tw:text-white tw:rounded-ios-pill tw:px-ios-sm tw:py-[2px] tw:text-[12px] tw:font-semibold tw:inline-block',
+  badgePending:  'tw:bg-cpay-orange tw:text-white tw:rounded-ios-pill tw:px-ios-sm tw:py-[2px] tw:text-[12px] tw:font-semibold tw:inline-block',
+
+  // ── Dimension-only objects for rc-easyui components ──────────────────────
+  // rc-easyui Dialog, Panel, TextBox use style= for pixel sizing.
+  // Usage: style={styles.dim.formDialog} className={styles.formDialog}
+  dim: {
+    formDialog:                       { width: 500,  height: 398 },
+    formDialogLargeWidth:             { width: 800,  height: 398 },
+    moreTableContentDialogLargeWidth: { width: 1024, height: 550 },
+    dashboardChartPanel:              { height: 300, width: '45%' },
+    formDialogFields:                 { width: 280 },
+    formDialogFieldsTexField:         { width: 280, height: 100 },
+  },
 };
 
-module.exports = styles;
+export default styles;

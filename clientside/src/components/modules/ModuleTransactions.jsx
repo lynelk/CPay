@@ -530,7 +530,7 @@ class ModuleTransactionsC extends React.Component {
                             region="north" 
                             split={false}
                             style={{ height: 170, border: '0px #FFFFFF' }}>
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     ref={ref => this.form_resolve = ref}
                                     model={row_resolve_form}
@@ -547,7 +547,7 @@ class ModuleTransactionsC extends React.Component {
                                             inputId="tx_gateway_ref" 
                                             name="tx_gateway_ref" 
                                             value={row_resolve_form.tx_gateway_ref} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
                                     
                                     <FormField name="resolve_status" label="Resolve to Status" >
@@ -556,7 +556,7 @@ class ModuleTransactionsC extends React.Component {
                                             name="resolve_status"
                                             data={this.state.resolve_status}
                                             value={row_resolve_form.resolve_statuses}
-                                            style={styles.formDialogFields}
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
                                             onChange={(value) => {
                                                 this.setState({ 
                                                     value: value 
@@ -569,7 +569,7 @@ class ModuleTransactionsC extends React.Component {
                         </LayoutPanel>
                         <LayoutPanel region="south" style={{ height: 48 }}>
                             <div className="dialog-button">
-                                <LinkButton className="submit-button-red" 
+                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
                                     onClick={() => {
                                         this.resolveTransaction(this.state.row_resolve_form);
@@ -603,41 +603,41 @@ class ModuleTransactionsC extends React.Component {
                         cellPadding={10} 
                         style={{width: 800}}>
                         <tr>
-                            <td><span style={styles.titleText}>Merchant Name</span></td>
+                            <td><span className={styles.titleText}>Merchant Name</span></td>
                             <td>{tx_details_row.merchant_name}</td>
                         </tr>
                         <tr>
                             <td>
-                                <span style={styles.titleText}>Merchant number</span>
+                                <span className={styles.titleText}>Merchant number</span>
                             </td>
                             <td>{tx_details_row.merchant_number}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Gateway ID</span></td>
+                            <td><span className={styles.titleText}>Gateway ID</span></td>
                             <td>{tx_details_row.gateway_id}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Status</span></td>
+                            <td><span className={styles.titleText}>Status</span></td>
                             <td>{tx_details_row.status}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Amount</span></td>
+                            <td><span className={styles.titleText}>Amount</span></td>
                             <td>{"UGX "+tx_details_row.original_amount_formatted}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Merchant Reference:</span></td>
+                            <td><span className={styles.titleText}>Merchant Reference:</span></td>
                             <td>{tx_details_row.tx_merchant_ref}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Network Ref:</span></td>
+                            <td><span className={styles.titleText}>Network Ref:</span></td>
                             <td>{tx_details_row.tx_gateway_ref}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Payer/Payee Number:</span></td>
+                            <td><span className={styles.titleText}>Payer/Payee Number:</span></td>
                             <td>{tx_details_row.payer_number}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Merchant Description:</span></td>
+                            <td><span className={styles.titleText}>Merchant Description:</span></td>
                             <td>
                                 <div    
                                     style={{width: "100%", overflow: "auto"}}
@@ -647,13 +647,13 @@ class ModuleTransactionsC extends React.Component {
                                             tx_details_row.tx_merchant_description.replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Our Description:</span></td>
+                            <td><span className={styles.titleText}>Our Description:</span></td>
                             <td>
                                 <div    
                                     style={{width: "100%", overflow: "auto"}}
@@ -663,21 +663,21 @@ class ModuleTransactionsC extends React.Component {
                                             tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Charges:</span></td>
+                            <td><span className={styles.titleText}>Charges:</span></td>
                             <td>{"UGX "+tx_details_row.charges_formatted}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Created On</span></td>
+                            <td><span className={styles.titleText}>Created On</span></td>
                             <td>{tx_details_row.created_on}</td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Request Trace</span></td>
+                            <td><span className={styles.titleText}>Request Trace</span></td>
                             <td style={{width: 500}}>
                                 <div    
                                     style={{width: "100%", overflow: "auto"}}
@@ -688,13 +688,13 @@ class ModuleTransactionsC extends React.Component {
                                            +"</PRE>"
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Updated Trace</span></td>
+                            <td><span className={styles.titleText}>Updated Trace</span></td>
                             <td style={{width:500}}>
                                 <div style={{width: '100%', overflow: "auto"}}
                                     dangerouslySetInnerHTML={{
@@ -704,12 +704,12 @@ class ModuleTransactionsC extends React.Component {
                                             +"</PRE>"
                                             )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td><span style={styles.titleText}>Callback Trace</span></td>
+                            <td><span className={styles.titleText}>Callback Trace</span></td>
                             <td style={{width:500}}>
                                 <div style={{width: '100%', overflow: "auto"}}
                                     dangerouslySetInnerHTML={{
@@ -720,7 +720,7 @@ class ModuleTransactionsC extends React.Component {
                                             +"</PRE>"
                                         )
                                     }}
-                                    style={styles.commonBlockText}>
+                                    className={styles.commonBlockText}>
                                 </div>
                             </td>
                         </tr>

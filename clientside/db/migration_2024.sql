@@ -102,3 +102,71 @@ INSERT IGNORE INTO `db_changes` (`query_id`, `sql_text`, `roll_back`) VALUES (
 --     MODIFY COLUMN tx_cost         DECIMAL(20,4) NOT NULL DEFAULT 0;
 -- ALTER TABLE merchant_statement
 --     MODIFY COLUMN amount          DECIMAL(20,4) NOT NULL DEFAULT 0;
+
+
+-- ============================================================
+-- 2025: Callback task tables for reliable webhook delivery
+-- ============================================================
+
+-- callback_tasks: tracks each outbound merchant webhook delivery
+CREATE TABLE IF NOT EXISTS `callback_tasks` (
+    `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `merchant_id`     BIGINT UNSIGNED NOT NULL,
+    `transaction_id`  BIGINT UNSIGNED NOT NULL,
+    `reference_value` VARCHAR(255)    NOT NULL,
+    `target_url`      TEXT            NOT NULL,
+    `request_body`    MEDIUMTEXT,
+    `task_status`     ENUM('PENDING','RETRY','DONE','PARKED') NOT NULL DEFAULT 'PENDING',
+    `attempt_count`   INT             NOT NULL DEFAULT 0,
+    `attempt_limit`   INT             NOT NULL DEFAULT 5,
+    `next_run_at`     DATETIME,
+    `last_run_at`     DATETIME,
+    `message`         TEXT,
+    `created_on`      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uq_callback_task` (`merchant_id`, `transaction_id`, `reference_value`),
+    INDEX `idx_status_next` (`task_status`, `next_run_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- callback_task_claims: distributed locking so multiple workers don't double-fire
+CREATE TABLE IF NOT EXISTS `callback_task_claims` (
+    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `task_id`      BIGINT UNSIGNED NOT NULL,
+    `worker_name`  VARCHAR(100)    NOT NULL,
+    `claim_status` ENUM('ACTIVE','RELEASED') NOT NULL DEFAULT 'ACTIVE',
+    `claimed_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uq_task_worker` (`task_id`, `worker_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
+-- 2025: Callback task tables for reliable webhook delivery
+-- ============================================================
+
+-- callback_tasks: tracks each outbound merchant webhook delivery
+CREATE TABLE IF NOT EXISTS `callback_tasks` (
+    `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `merchant_id`     BIGINT UNSIGNED NOT NULL,
+    `transaction_id`  BIGINT UNSIGNED NOT NULL,
+    `reference_value` VARCHAR(255)    NOT NULL,
+    `target_url`      TEXT            NOT NULL,
+    `request_body`    MEDIUMTEXT,
+    `task_status`     ENUM('PENDING','RETRY','DONE','PARKED') NOT NULL DEFAULT 'PENDING',
+    `attempt_count`   INT             NOT NULL DEFAULT 0,
+    `attempt_limit`   INT             NOT NULL DEFAULT 5,
+    `next_run_at`     DATETIME,
+    `last_run_at`     DATETIME,
+    `message`         TEXT,
+    `created_on`      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uq_callback_task` (`merchant_id`, `transaction_id`, `reference_value`),
+    INDEX `idx_status_next` (`task_status`, `next_run_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- callback_task_claims: distributed locking so multiple workers don't double-fire
+CREATE TABLE IF NOT EXISTS `callback_task_claims` (
+    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `task_id`      BIGINT UNSIGNED NOT NULL,
+    `worker_name`  VARCHAR(100)    NOT NULL,
+    `claim_status` ENUM('ACTIVE','RELEASED') NOT NULL DEFAULT 'ACTIVE',
+    `claimed_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uq_task_worker` (`task_id`, `worker_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

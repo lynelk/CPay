@@ -4,14 +4,14 @@ import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem } from 'rc-easyui'
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../../MainMenu";
-import common from "../../Common";
-import Progress from "../../Progress";
+import MainMenu from "../MainMenu";
+import common from "../Common";
+import Progress from "../Progress";
 import LinearChart from './LinearChart';
-import styles from '../../styles';
+import styles from '../styles';
 
 
-class MerchantModuleSettingsC extends React.Component {
+class ModuleSettingsC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -44,11 +44,8 @@ class MerchantModuleSettingsC extends React.Component {
 
     getData() {
         this.props.loader("START");
-        let searchData = { 
-            settings: "all",
-            merchant_id: this.props.merchant_id
-        };
-        fetch(common.base_url+"/settings/getMerchantSettings", {
+        let searchData = { settings: "all"};
+        fetch(common.base_url+"/settings/getSettings", {
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             mode: 'cors', // no-cors, *cors, same-origin
             cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -113,7 +110,7 @@ class MerchantModuleSettingsC extends React.Component {
 
     saveSettings() {
         this.props.loader("START");
-        fetch(common.base_url+"/settings/updateMerchantSettings", {
+        fetch(common.base_url+"/settings/updateSettings", {
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             mode: 'cors', // no-cors, *cors, same-origin
             cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -188,10 +185,9 @@ class MerchantModuleSettingsC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
-                            <span class='pg-subtitles'>Settings | </span>
                             <LinkButton 
                                 onClick={() => this.saveSettings()}
-                                style={styles.moduleToolBarButtons}
+                                className={styles.moduleToolBarButtons}
                                 iconCls="icon-settings">Save Settings</LinkButton>
                         </div>
                     </Panel>
@@ -223,6 +219,6 @@ class MerchantModuleSettingsC extends React.Component {
 }
 
 
-const MerchantModuleSettings = withRouter(MerchantModuleSettingsC);
+const ModuleSettings = withRouter(ModuleSettingsC);
 
-export default MerchantModuleSettings;
+export default ModuleSettings;

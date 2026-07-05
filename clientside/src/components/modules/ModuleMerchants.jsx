@@ -1,18 +1,19 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox, FileButton } from 'rc-easyui';
+import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
 import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton } from 'rc-easyui';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../../MainMenu";
-import common from "../../Common";
-import Progress from "../../Progress";
+import MainMenu from "../MainMenu";
+import common from "../Common";
+import Progress from "../Progress";
 import LinearChart from './LinearChart';
-import styles from '../../styles';
-import strings from '../../locale';
-import MerchantModuleMerchantsAccount from './MerchantModuleMerchantsAccount';
+import styles from '../styles';
+import strings from '../locale';
+import ModuleMerchantsAccount from './ModuleMerchantsAccount';
+import MerchantModuleSettings from './merchant/MerchantModuleSettings';
 
-class MerchantModulePaymentsC extends React.Component {
+class ModuleMerchantsC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -30,26 +31,30 @@ class MerchantModulePaymentsC extends React.Component {
             gridActionsValue: "bulk_actions",
             formdMode: 'new',//Can be set to edit
             formd: {
-                beneficiaries: [],
                 id:"",
                 name: "",
-                description: "",
-                status: "UNPAID",
-                status: "phone",
+                short_name:"",
+                status: "ACTIVE",
+                account_type: "personal",
+                admins:[],
+                status: { value: 'ACTIVE', text: "ACTIVE" },
+                allowed_apis:[],
+                generate_password: false,
+                generate_new_keys: false
             },
             privileges: common.privileges,
             status: [{ value: 'ACTIVE', text: "ACTIVE" },
                 { value: 'INACTIVE', text: "INACTIVE" },
                 { value: 'SUSPENDED', text: "SUSPENDED" }],
             account_types: [
-                { value: 'phone', text: "PHONE NUMBER" },
-                { value: 'cpay', text: "Cpay" },
-                { value: 'bank', text: "Bank" },
+                { value: 'personal', text: "PERSONAL" },
+                { value: 'business', text: "BUSINESS" },
             ],
             rules: {
                 'name': 'required',
                 'status': ['required'],
-                "tx_description": ["required"],
+                "email": {"required":true,"emailValidation":common.emailValidation},
+                "phone": {'required':true, "phoneValidation":common.phoneValidation}
             },
             errors: {},
             title: '',
@@ -68,8 +73,8 @@ class MerchantModulePaymentsC extends React.Component {
             ],
             hasAccess: false,
             openMerchantAccount: {},
-            tx_details_row:{}, 
-            detailedRecordTxDialogStateClosed: true,
+            merchatSettingsDialogStateClosed: true, 
+            selectedMerchantRow: null ,
             windowHeight: window.innerHeight
         };
     }
@@ -104,18 +109,18 @@ class MerchantModulePaymentsC extends React.Component {
     }
 
     isUserAllowedAccess() {
-        let user = localStorage.getItem("merchantUser") != null ? 
-            JSON.parse(localStorage.getItem("merchantUser")) : {};
+        let user = localStorage.getItem("user") != null ? 
+            JSON.parse(localStorage.getItem("user")) : {};
 
         let isPrivilegeExists = false;
 
         if (user.privileges) {
             for (let i=0; i < user.privileges.length; i++) {
-                if (user.privileges[i].privilege == "CREATE_BATCH_TX") {
+                if (user.privileges[i].privilege == "CREATE_ADMIN") {
                     isPrivilegeExists = true;
-                } else if (user.privileges[i].privilege == "APPROVE_BATCH_TX") {
+                } else if (user.privileges[i].privilege == "UPDATE_ADMIN") {
                     isPrivilegeExists = true;
-                } else if (user.privileges[i].privilege == "DOWNLOAD_REPORTS") {
+                } else if (user.privileges[i].privilege == "DETETE_ADMIN") {
                     isPrivilegeExists = true;
                 }
             }
@@ -144,7 +149,7 @@ class MerchantModulePaymentsC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         }
-        fetch(common.base_url+"/transactions/getMerchantPayments", {
+        fetch(common.base_url+"/merchants/getMerchants", {
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             mode: 'cors', // no-cors, *cors, same-origin
             cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -166,7 +171,7 @@ class MerchantModulePaymentsC extends React.Component {
                     try {
                         this.setState({
                             data: res.data,
-                            total: res.total
+                            total: res.data.length
                         });
                     } catch (ex) {
                         this.messager.alert({
@@ -234,21 +239,21 @@ class MerchantModulePaymentsC extends React.Component {
             icon: "info",
             msg: "Your are session expired",
             result: (r) => {
-                history.push("/portal");
+                history.push("/");
             }
         });
     }
 
-    attemptToStart(row) {
+    deleteRow(row) {
         this.messager.confirm({
-            title: "Start this Payment",
+            title: "Delete this User",
             icon: "info",
-            msg: "Are you sure you want to start this payment?",
+            msg: "Are you sure you want to delete this user?",
             result: (r) => {
                 //Continue to submit the form
                 if (r) {
                     this.props.loader("START");
-                    fetch(common.base_url+"/transactions/startPayment", {
+                    fetch(common.base_url+"/merchants/deleteMerchant", {
                         method: 'POST', // *GET, POST, PUT, DELETE, etc.
                         mode: 'cors', // no-cors, *cors, same-origin
                         cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -268,106 +273,18 @@ class MerchantModulePaymentsC extends React.Component {
                             res = JSON.parse(response_);
                             if (res.code === "000") {
                                 try {
-
-                                    this.messager.alert({
-                                        title: "Success!",
-                                        icon: "info",
-                                        msg: res.message,
-                                        result: r => {
-                                            if (r) {
-                                                this.getData();
+                                    this.resetForm(()=> {
+                                        this.messager.alert({
+                                            title: "Success!",
+                                            icon: "info",
+                                            msg: res.message,
+                                            result: r => {
+                                                if (r) {
+                                                    this.getData();
+                                                }
                                             }
-                                        }
+                                        });
                                     });
-                                    
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                //If session timed out
-                                if (res.code === "107") {
-                                    this.sessionExpired();
-                                    return;
-                                }
-
-                                this.messager.alert({
-                                    title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                                    icon: "error",
-                                    msg: res.message+". Error: "+res.error,
-                                    result: (r) => {
-                                        
-                                    }
-                                });
-                            }
-                        } catch(Error) {
-                            //alert(Error.message);
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
-                            });
-                            return;
-                        }
-                    }).catch((error) => {
-                        this.props.loader("STOP");
-                        if (this.messager != null) {
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: error.message
-                            });
-                        }
-                    });
-                }
-            }
-        });
-    }
-
-    attemptToStop(row) {
-        this.messager.confirm({
-            title: "Stop this Payment",
-            icon: "info",
-            msg: "Are you sure you want to stop this payment?",
-            result: (r) => {
-                //Continue to submit the form
-                if (r) {
-                    this.props.loader("START");
-                    fetch(common.base_url+"/transactions/stopPayment", {
-                        method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                        mode: 'cors', // no-cors, *cors, same-origin
-                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                        credentials: 'include', // include, *same-origin, omit
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        redirect: 'follow', // manual, *follow, error
-                        referrer: 'no-referrer', // no-referrer, *client
-                        body: JSON.stringify(row) // body data type must match "Content-Type" header
-                    }).then ((response)=>{
-                        return response.text();
-                    }).then((response_) => {
-                        this.props.loader("STOP");
-                        let res;
-                        try {
-                            res = JSON.parse(response_);
-                            if (res.code === "000") {
-                                try {
-                                    
-                                    this.messager.alert({
-                                        title: "Success!",
-                                        icon: "info",
-                                        msg: res.message,
-                                        result: r => {
-                                            if (r) {
-                                                this.getData();
-                                            }
-                                        }
-                                    });
-                                    
                                 } catch (ex) {
                                     this.messager.alert({
                                         title: "Error",
@@ -416,14 +333,20 @@ class MerchantModulePaymentsC extends React.Component {
     addNew() {
         //this.openOrCloseFormDialog(false);
         this.setState({
-            title: strings.add_payment,
+            title: strings.add_merchant,
             formdMode: 'new',
             formDialogStateOpened: false,
             formd: {
-                beneficiaries: [],
+                admins: [],
                 id:"",
                 name: "",
-                description: "",
+                status: "ACTIVE",
+                account_type: "personal",
+                admins:[],
+                status: { value: 'ACTIVE', text: "ACTIVE" },
+                allowed_apis:[],
+                generate_password: false,
+                generate_new_keys: false
             }
         });
     }
@@ -436,7 +359,7 @@ class MerchantModulePaymentsC extends React.Component {
             formdMode: 'edit',
             formd: formd,
             formDialogStateOpened: false,
-            title: "Edit Payment ("+row.name+")"
+            title: "Edit Merchant ("+row.name+")"
         });
     }
 
@@ -464,9 +387,9 @@ class MerchantModulePaymentsC extends React.Component {
         
         let url;
         if (this.state.formdMode == "edit") {
-            url = common.base_url+"/transactions/editPayment";
+            url = common.base_url+"/merchants/editMerchant";
         } else {
-            url = common.base_url+"/transactions/addPayment";
+            url = common.base_url+"/merchants/addMerchant";
         }
 
         //Continue to submit the form
@@ -491,7 +414,7 @@ class MerchantModulePaymentsC extends React.Component {
                 res = JSON.parse(response_);
                 if (res.code === "000") {
                     try {
-                        //this.resetForm(()=> {
+                        this.resetForm(()=> {
                             this.messager.alert({
                                 title: "Success!",
                                 icon: "info",
@@ -505,7 +428,7 @@ class MerchantModulePaymentsC extends React.Component {
                                     }
                                 }
                             });
-                        //});
+                        });
                     } catch (ex) {
                         this.messager.alert({
                             title: "Error",
@@ -519,10 +442,11 @@ class MerchantModulePaymentsC extends React.Component {
                         this.sessionExpired();
                         return;
                     }
+
                     this.messager.alert({
                         title: "Error "+(res.code ? res.code : res.status+" "+res.error),
                         icon: "error",
-                        msg: res.message
+                        msg: res.message+". Error: "+res.error
                     });
                 }
             } catch(Error) {
@@ -607,129 +531,46 @@ class MerchantModulePaymentsC extends React.Component {
         });
     }
 
-
-    paymentDetailsDialog() {
-        const { tx_details_row, detailedRecordTxDialogStateClosed } = this.state;
+    dialogMerchantSettings() {
+        const { merchatSettingsDialogStateClosed, selectedMerchantRow } = this.state;
+        let merchantSettingsContent = (merchatSettingsDialogStateClosed ? null :
+            <MerchantModuleSettings
+                sessionExpired={this.props.sessionExpired}
+                logOut={this.props.logoutUser}
+                loader={this.props.loader}
+                merchant_id={selectedMerchantRow.id} />
+            );
         return (
+
             <Dialog
-                title={"Payment Details: "+tx_details_row.name}
-                closed={detailedRecordTxDialogStateClosed} 
-                style={{ width: 850, height: 510 }}
+                title={"Merchant Settings: "+(selectedMerchantRow ? selectedMerchantRow.name : "")}
+                closed={merchatSettingsDialogStateClosed} 
+                onClose={() => {
+                    this.setState({
+                        merchatSettingsDialogStateClosed: true
+                    })
+                }}
+                style={{ width: 800, height: 550 }}
                 bodyCls="f-column"
                 modal
-                onClose={() => {
-                    //this.resetRecordTxForm(()=>{});
-                }}
-                ref={ref => this.dlgRowDetailsRecordTx = ref}>
+                ref={ref => this.dlgMerchantSettings = ref}>
+                
                 <div className="f-full" style={{margin: "5px"}}>
-                    <table
-                        cellPadding={10} 
-                        style={{width: 800}}>
-                        <tr>
-                            <td><span style={styles.titleText}>Name</span></td>
-                            <td>{tx_details_row.name}</td>
-                        </tr>
-                        <tr>
-                            <td><span style={styles.titleText}>Description</span></td>
-                            <td style={{width: 500}}>
-                                <div    
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            tx_details_row.tx_description ?
-                                            tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
-                                        )
-                                    }}
-                                    style={styles.commonBlockText}>
-                                
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><span style={styles.titleText}>Payment ID</span></td>
-                            <td>{tx_details_row.batch_id}</td>
-                        </tr>
-                        <tr>
-                            <td><span style={styles.titleText}>Status</span></td>
-                            <td>{tx_details_row.status}</td>
-                        </tr>
-                        <tr>
-                            <td><span style={styles.titleText}>Total Amount</span></td>
-                            <td>{"UGX "+tx_details_row.total_amount}</td>
-                        </tr>
-                        <tr>
-                            <td><span style={styles.titleText}>Created By:</span></td>
-                            <td>{tx_details_row.created_by}</td>
-                        </tr>
-                        <tr>
-                            <td><span style={styles.titleText}>Created On:</span></td>
-                            <td>{tx_details_row.created_on}</td>
-                        </tr>
-                        <tr>
-                            <td><span style={styles.titleText}>Total Paid:</span></td>
-                            <td>{tx_details_row.total_paid+"/"+tx_details_row.total_beneficiaries}</td>
-                        </tr>
-                        
-                    </table>
-                    <h3>Beneficiaries</h3>
-                    <DataGrid
-                        ref={ref => this.datagridPaymentDetailsBeneficiaries = ref}
-                        style={{ height: 'auto', width:750 }}
-                        data={tx_details_row.beneficiaries}>
-                        <GridColumn field="rn" align="center" width="30px"
-                                cellCss="datagrid-td-rownumber"
-                                render={({rowIndex}) => (
-                                <span>{rowIndex+1}</span>
-                                )}
-                            />
-                        <GridColumn field="name" 
-                            title="Name"></GridColumn>
-                        
-                        <GridColumn field="account" 
-                            title="Account"></GridColumn>
-
-                        <GridColumn field="amount" 
-                            title="Amount"></GridColumn>
-
-                        <GridColumn field="beneficiary_status" 
-                            title="Status"></GridColumn>
-                    </DataGrid>
+                    {merchantSettingsContent}
                 </div>
+
                 <div className="dialog-button">
                     <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgRowDetailsRecordTx.close();
+                        this.dlgMerchantSettings.close();
                     }}>{strings.close}</LinkButton>
                 </div>
             </Dialog>
         );
     }
 
-    returnPaymentAction(row) {
-
-        if (row.status == "DONE" || row.status == "STOPPED") {
-            return ("");
-        }
-
-        return (<ButtonGroup style={{marginLeft: 5}}>
-            <LinkButton onClick={() => {
-            this.attemptToStart(row);
-            }}>{
-                (row.status == "PENDING" ? "Start" 
-                : 
-                (row.status == "PROCESSING" ? "Pause" : "Start")
-                )
-            }</LinkButton> 
-
-            <LinkButton onClick={() => {
-                this.attemptToStop(row);
-            }}>{"Stop"}</LinkButton>
-        </ButtonGroup>);
-    }
-
 
     render () {
         const {searchingValue, categories, windowHeight} = this.state;
-
         if (!this.state.hasAccess) {
             return (<div>
                 <Messager ref={ref => this.messager = ref}></Messager>
@@ -741,7 +582,6 @@ class MerchantModulePaymentsC extends React.Component {
                 <div>
                     <Panel bodyStyle={{ padding: '5px'}}>
                         <div style={{float:'left'}}>
-                            <span class='pg-subtitles'>Payments | </span>
                             <ComboBox
                                 inputId="c1"
                                 data={this.state.gridActions}
@@ -749,8 +589,8 @@ class MerchantModulePaymentsC extends React.Component {
                                 onChange={(value) => this.bulkActions(value)}/>
                             <LinkButton 
                                 onClick={() => this.addNew()}
-                                style={styles.moduleToolBarButtons}
-                                iconCls="icon-add">{strings.add_payment}</LinkButton>
+                                className={styles.moduleToolBarButtons}
+                                iconCls="icon-add">{strings.add_merchant}</LinkButton>
                         </div>
                         <SearchBox
                             style={{ width: 300, float:'right' }}
@@ -772,7 +612,6 @@ class MerchantModulePaymentsC extends React.Component {
                     ref={ref => this.dataGrid = ref}
                     style={{ height: (windowHeight - common.toReduceGridHeight) }}
                     selectionMode={"multiple"}
-                    class="f-full"
                     pagination
                     {...this.state}>
                     <GridColumn width={50} align="center"
@@ -784,41 +623,37 @@ class MerchantModulePaymentsC extends React.Component {
                             <CheckBox checked={this.state.allChecked} onChange={(checked) => this.handleAllCheck(checked)}></CheckBox>
                         )}
                         />
-                    <GridColumn field="created_on" title="Created On"></GridColumn>
                     <GridColumn field="name" title="Name"></GridColumn>
-                    <GridColumn width={150} field="tx_description" title="Description" ></GridColumn>
-                    <GridColumn width={70} title="Paid" render={({ row }) => (
-                            <div>
-                                {row.total_paid+"/"+row.total_beneficiaries}
-                            </div>
-                        )}></GridColumn>
+                    <GridColumn width={90} field="short_name" title="Short Name"></GridColumn>
+                    <GridColumn width={80} field="account_number" title="Account"></GridColumn>
+                    <GridColumn width={100} field="account_type" title="Type" ></GridColumn>
+                    <GridColumn width={100} field="created_by" title="Created By" ></GridColumn>
                     <GridColumn width={80} field="status" title="status" align="left"></GridColumn>
-                    <GridColumn width={130} align="left" field="total_amount" title="Total Amount"></GridColumn>
-                    <GridColumn field="note" title="Actions" align="center"
+                    <GridColumn width={300} field="note" title="Actions" align="center"
                         render={({ row }) => (
                             <div>
                                 <ButtonGroup>
                                     <LinkButton onClick={() => {
+                                                this.openAccount(row);
+                                            }}>{strings.account}</LinkButton>
+                                    <LinkButton
+                                        iconCls="icon-settings" 
+                                        onClick={() => {
                                                 this.setState({
-                                                    tx_details_row: row,
-                                                });
-                                                this.dlgRowDetailsRecordTx.open();
-                                            }}>{strings.details}</LinkButton>
+                                                    merchatSettingsDialogStateClosed: false, 
+                                                    selectedMerchantRow: row 
+                                                })
+                                            }}>{"Settings"}</LinkButton>
                                     <LinkButton iconCls="icon-edit" onClick={() => this.editRow(row)}>Edit</LinkButton>
+                                    <LinkButton iconCls="icon-remove" onClick={() => this.deleteRow(row)}>Delete</LinkButton>
                                 </ButtonGroup>
-
-                                {this.returnPaymentAction(row)}
                             </div>
                         )}>
 
                     </GridColumn>
                 </DataGrid>
-                {this.paymentDetailsDialog()}
                 <Messager ref={ref => this.messager = ref}></Messager>
-
-                <PaymentFormDialog 
-                    loader={this.props.loader}
-                    messager={this.messager}
+                <MerchantFormDialog 
                     openOrCloseFormDialog={(state)=> this.openOrCloseFormDialog(state)}
                     parentState={this.state}
                     formd={this.state.formd}
@@ -831,27 +666,41 @@ class MerchantModulePaymentsC extends React.Component {
                         this.saveRow(data);
                     }}
                     />
+
+                <ModuleMerchantsAccount 
+                    openOrCloseStatementDialog={(state)=> this.openOrCloseStatementDialog(state)}
+                    title={this.state.title}
+                    loader={(state) => {this.props.loader(state)}}
+                    sessionExpired={this.sessionExpired}
+                    accessNotAllowed={this.accessNotAllowed.bind(this)}
+                    messager={this.messager}
+                    statementDialogStateOpened={this.state.statementDialogStateOpened}
+                    openMerchantAccount={this.state.openMerchantAccount}
+                    />
+
+                    {this.dialogMerchantSettings()}
             </div>
         );
     }
 }
 
 
-class PaymentFormDialog extends React.Component{
+class MerchantFormDialog extends React.Component{
 
     constructor(props) {
         super(props);
         this.state = Object.assign({}, this.props);
         this.state.clickToEdit = true;
+        this.state.generate_new_keys = false;
         this.state.status = [{ value: 'ACTIVE', text: "ACTIVE" },
         { value: 'INACTIVE', text: "INACTIVE" },
         { value: 'SUSPENDED', text: "SUSPENDED" }];
-        this.state.account_type = common.account_types;
-        this.state.all_fields_amount = "1000";
-        this.state.set_all_fields_amounts = false;
-        this.state.pageOptions = {
-            layout: ['list', 'sep', 'first', 'prev', 'next', 'last', 'sep', 'refresh', 'sep', 'manual', 'info']
-        }
+        this.state.account_types = [
+            { value: 'personal', text: "PERSONAL" },
+            { value: 'business', text: "BUSINESS" },
+        ];
+        this.state.allowed_apis = common.allowed_apis;
+        this.state.privileges = common.merchant_privileges;
     }
 
     componentDidMount() {
@@ -883,10 +732,11 @@ class PaymentFormDialog extends React.Component{
 
         let new_row = {
             name: "",
-            account: "",
-            amount: this.state.all_fields_amount,
-            account_type: "phone",
+            email: "",
+            phone: "",
             status: "ACTIVE",
+            privileges: [],
+            generate_pw: false,
             delete: false,
             id: ""
         };
@@ -894,46 +744,25 @@ class PaymentFormDialog extends React.Component{
         let formd_ = Object.assign({}, this.state.formd);
         let new_array = [];
 
-        let data = formd_.beneficiaries.slice();
+        let data = formd_.admins.slice();
         data.push(new_row);
         //data.unshift({ status: false, _new: true });
 
-        formd_.beneficiaries = data
+        formd_.admins = data
         this.setState({
             formd: formd_,
         }, () => {
-            let last_row = formd_.beneficiaries[(formd_.beneficiaries.length-1)];
+            let last_row = formd_.admins[(formd_.admins.length-1)];
             this.datagrid.beginEdit(last_row);
         });
     }
 
-    async addFormRowItem(new_row) {
-        /*if (!this.datagrid.endEdit()) {
-            return;
-        }*/
-
-        //let new_row = item;
-        let formd_ = Object.assign({}, this.state.formd);
-        let new_array = [];
-
-        let data = formd_.beneficiaries.slice();
-        data.push(new_row);
-        //data.unshift({ status: false, _new: true });
-
-        formd_.beneficiaries = data
-        await this.setState({
-            formd: formd_,
-        }, () => { });
-        let last_row = formd_.beneficiaries[(formd_.beneficiaries.length-1)];
-        this.datagrid.beginEdit(last_row);
-    }
-
     removeFormAdminRow() {
         let formd_ = Object.assign({}, this.state.formd);
-        let beneficiaries = formd_.beneficiaries;
+        let admins = formd_.admins;
         //this.datagrid.endEdit();
-        if (beneficiaries.length > 0) {
-            formd_.beneficiaries = beneficiaries.splice(0, (beneficiaries.length-1));
+        if (admins.length > 0) {
+            formd_.admins = admins.splice(0, (admins.length-1));
             this.setState({
                 formd: formd_
             }, () => {
@@ -951,12 +780,21 @@ class PaymentFormDialog extends React.Component{
         let formd_ = Object.assign({}, this.state.formd);
         let new_array = [];
 
-        let data = formd_.beneficiaries.slice();
+        let data = formd_.admins.slice();
         //data.push(new_row);
         formd_ = {
-            beneficiaries: new_array,
+            admins: new_array,
+            id:"",
             name: "",
-            tx_description: "",
+            short_name: "",
+            status: "ACTIVE",
+            account_type: "personal",
+            privileges: common.merchant_privileges,
+            allowed_apis: [],
+            admins:[],
+            status: 'ACTIVE',
+            generate_pw: false,
+            generate_new_keys: false,
             delete: false,
         };
 
@@ -968,40 +806,10 @@ class PaymentFormDialog extends React.Component{
         
     }
 
-    removeFormAllRows() {
-        let formd_ = Object.assign({}, this.state.formd);
-        let new_array = [];
-        formd_.beneficiaries = new_array
-        this.setState({
-            formd: formd_,
-        }, () => { 
-            let last_row = formd_.beneficiaries[(formd_.beneficiaries.length-1)];
-            this.datagrid.beginEdit(last_row);
-        });
-    }
-
     handleFormChange(name, value) {
         let formd = Object.assign({}, this.state.formd);
         formd[name] = value;
         this.setState({ formd: formd })
-    }
-
-    setAllFieldsAmount() {
-        let formd_ = Object.assign({}, this.state.formd);
-        let data = formd_.beneficiaries.slice();
-        for (let i=0; i < data.length; i++) {
-            data[i].amount = this.state.all_fields_amount;
-        }
-        formd_.beneficiaries = data;
-        this.setState({
-            formd_:formd_
-        }, ()=> {
-            this.datagrid.endEdit();
-        });
-    }
-
-    onSelectBenFile() {
-
     }
 
     render() {
@@ -1013,7 +821,7 @@ class PaymentFormDialog extends React.Component{
             <Dialog modal 
                 title={title} 
                 closed={formDialogStateOpened} 
-                style={styles.formDialogLargeWidth}
+                style={styles.dim.formDialogLargeWidth} className={styles.formDialogLargeWidth}
                 borderType="none"
                 onClose={() => this.props.openOrCloseFormDialog(true)}>
                     <Layout style={{ width: 800, height:'100%', border: '0px #FFFFFF' }}>
@@ -1021,8 +829,7 @@ class PaymentFormDialog extends React.Component{
                             region="north" 
                             split={false}
                             style={{ height: 320, border: '0px #FFFFFF' }}>
-                            
-                            <div style={styles.formDialogContainer}>
+                            <div className={styles.formDialogContainer}>
                                 <Form
                                     style={{ width: 700 }}
                                     ref={ref => this.form = ref}
@@ -1036,104 +843,77 @@ class PaymentFormDialog extends React.Component{
                                     
                                     <FormField name="name" label="Name">
                                         <TextBox 
+                                            iconCls="icon-man"
                                             inputId="name" 
                                             name="name" 
                                             value={row.name} 
-                                            style={styles.formDialogFields}></TextBox>
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
                                     </FormField>
-                                    <FormField name="tx_description" label="Description">
+                                    <FormField name="short_name" label="Short Name">
+                                        <TextBox 
+                                            iconCls="icon-man"
+                                            inputId="short_name" 
+                                            name="short_name" 
+                                            value={row.short_name} 
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
+                                    </FormField>
+                                    <FormField name="status" label="Status">
+                                        <ComboBox 
+                                            inputId="status" 
+                                            name="status" 
+                                            data={this.state.status}
+                                            value={row.status} 
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></ComboBox>
+                                    </FormField>
+                                    <FormField name="account_type" label="Account Type">
+                                        <ComboBox 
+                                            inputId="account_type" 
+                                            name="account_type" 
+                                            data={this.state.account_types}
+                                            value={row.account_type} 
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></ComboBox>
+                                    </FormField>
+                                    <FormField name="allowed_apis" label="Allowed APIs Access" >
+                                        <ComboBox 
+                                            inputId="allowed_apis" 
+                                            name="allowed_apis" 
+                                            multiple
+                                            data={common.allowed_apis}
+                                            value={row.allowed_apis}
+                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></ComboBox>
+                                    </FormField>
+                                    <FormField name="generate_new_keys" label="Generate New Keys">
+                                        <CheckBox 
+                                            inputId="generate_new_keys" 
+                                            name="generate_new_keys" 
+                                            value={row.generate_new_keys} 
+                                            checked={row.generate_new_keys}></CheckBox>
+                                    </FormField>
+
+                                    <FormField name="private_key" label="Private key">
                                         <TextBox 
                                             multiline
-                                            inputId="tx_description" 
-                                            name="tx_description" 
-                                            value={row.tx_description} 
-                                            style={{width:80, height: 60}}></TextBox>
+                                            inputId="private_key" 
+                                            name="private_key" 
+                                            value={row.private_key} 
+                                            style={{width:200, height: 300}}></TextBox>
+                                    </FormField>
+
+                                    <FormField name="public_key" label="Public key">
+                                        <TextBox 
+                                            multiline
+                                            inputId="public_key" 
+                                            name="public_key" 
+                                            value={row.public_key} 
+                                            style={{width:200, height: 300}}></TextBox>
                                     </FormField>
                                     
-                                    <h3>Beneficiaries</h3>
-                                    <div style={styles.formDialogLargeWidthAddButtons}>
-                                        <ButtonGroup>
-                                            <LinkButton onClick={() => {
-                                                this.addFormAdminRow();
-                                            }}>{strings.add_beneficiary}</LinkButton>
-                                            <LinkButton onClick={() => {
-                                                this.removeFormAdminRow();
-                                                }}>{strings.remove_beneficiary}</LinkButton>
-                                            <LinkButton onClick={() => {
-                                                this.removeFormAllRows();
-                                                }}>{strings.remove_all_rows}</LinkButton>
-                                            <FileButton 
-                                                autoUpload={true}
-                                                onSelect={(files)=>{
-                                                    this.props.loader("START");
-                                                }}
-                                                multiple={true}
-                                                onSuccess={(xhr,files) => {
-                                                    this.props.loader("STOP");
-                                                    console.log(xhr);
-                                                    let r = JSON.parse(xhr.xhr.responseText);
-                                                    if (r.state == "ERROR") {
-                                                        this.props.messager.alert({
-                                                            title: "Error",
-                                                            icon: "error",
-                                                            msg: r.message
-                                                        });
-                                                    } else if (r.state == "OK") {
-                                                        for(let i=0; i < r.data.length; i++) {
-                                                            r.data[i].account = r.data[i].account+"";
-                                                            this.addFormRowItem(r.data[i]);
-                                                        }
-                                                    }
-                                                }}
-                                                onError={(xhr,files) => {
-                                                    this.props.loader("STOP");
-                                                    console.log(xhr);
-                                                    let r = JSON.parse(xhr.xhr.responseText);
-                                                    if (r.state == "ERROR") {
-                                                        this.props.messager.alert({
-                                                            title: "Error",
-                                                            icon: "error",
-                                                            msg: r.message
-                                                        });
-                                                    }
-                                                }}
-                                                multiple={false}
-                                                url={common.base_url+"/transactions/uploadBeneficiariesFile"}
-                                                onClick={() => {
-                                                this.onSelectBenFile.bind(this)
-                                                }}>{strings.upload_excel_file}</FileButton>
-                                        </ButtonGroup>
-                                        <div style={{float: 'right', marginTop:'-5px'}}>
-                                            <TextBox 
-                                                placeholder="Amount"
-                                                inputId="all_fields_amount" 
-                                                name="all_fields_amount" 
-                                                value={this.state.all_fields_amount} 
-                                                onChange={
-                                                    (value) => {
-                                                        this.setState({
-                                                            all_fields_amount:value
-                                                        });
-                                                    }
-                                                }
-                                                style={{width: 150, marginLeft:2}}></TextBox>
-                                                <LinkButton 
-                                                    style={{margin: "5px"}}
-                                                    onClick={() => {
-                                                        this.setAllFieldsAmount();
-                                                }}>{"Apply Amount"}</LinkButton>
-                                        </div>
-                                    </div>
-
+                                    <h3>Merchant Admins</h3>
                                     <DataGrid
                                         ref={ref => this.datagrid = ref}
-                                        style={{ height: 150, width:750 }}
-                                        data={row.beneficiaries}
+                                        style={{ height: 200, width:850 }}
+                                        data={row.admins}
                                         clickToEdit={this.state.clickToEdit}
-                                        pagination
-                                        pageSize={50}
-                                        pagePosition={"bottom"}
-                                        pageOptions={this.state.pageOptions}
                                         editMode="row">
                                         <GridColumn field="rn" align="center" width="30px"
                                                 cellCss="datagrid-td-rownumber"
@@ -1141,7 +921,6 @@ class PaymentFormDialog extends React.Component{
                                                 <span>{rowIndex+1}</span>
                                                 )}
                                             />
-
                                         <GridColumn field="name" 
                                             title="Name" 
                                             editRules={['required']}
@@ -1151,37 +930,55 @@ class PaymentFormDialog extends React.Component{
                                                 </Tooltip>
                                             )}
                                             editable></GridColumn>
-                                        
-                                        <GridColumn field="account" 
-                                            title="Account" 
+                                        <GridColumn field="email" 
+                                            title="Email" 
+                                            editRules={{'required':true, "emailValidation":common.emailValidation}}
+                                            editor={({ row, error }) => (
+                                                <Tooltip content={error} tracking>
+                                                    <TextBox value={row.email}></TextBox>
+                                                </Tooltip>
+                                            )}
+                                            editable></GridColumn>
+                                        <GridColumn field="phone" 
+                                            title="Phone" 
                                             editRules={{'required':true, "phoneValidation":common.phoneValidation}}
                                             editor={({ row, error }) => (
                                                 <Tooltip content={error} tracking>
-                                                    <TextBox value={row.account}></TextBox>
+                                                    <TextBox value={row.phone}></TextBox>
                                                 </Tooltip>
                                             )}
                                             editable></GridColumn>
-
-                                        <GridColumn field="amount" 
-                                            title="Amount" 
-                                            editRules={{'required':true, "numericValidation":common.numericValidation}}
-                                            editor={({ row, error }) => (
-                                                <Tooltip content={error} tracking>
-                                                    <TextBox value={row.amount}></TextBox>
-                                                </Tooltip>
-                                            )}
-                                            editable></GridColumn>
-
-                                        <GridColumn field="account_type" 
-                                            title="Account Type" 
+                                        <GridColumn field="status" 
+                                            title="Status" 
                                             editable
                                             editor={({ row }) => (
                                                 <ComboBox 
-                                                    data={this.state.account_type}
-                                                    value={row.account_type}></ComboBox>
+                                                    data={this.state.status}
+                                                    value={row.status}></ComboBox>
                                                 )}>
                                         </GridColumn>
-
+                                        <GridColumn field="privileges" 
+                                            width={150}
+                                            title="Privileges" 
+                                            editable
+                                            editor={({ row }) => (
+                                                <ComboBox 
+                                                    multiple
+                                                    data={this.state.privileges}
+                                                    value={row.privileges}></ComboBox>
+                                                )}>
+                                        </GridColumn>
+                                        <GridColumn field="generate_pw" 
+                                            title={strings.generate_password} 
+                                            align="center"
+                                            editable
+                                            editor={({ row }) => (
+                                                <CheckBox checked={row.generate_pw}></CheckBox>
+                                            )}
+                                            render={({ row }) => (
+                                                <span>{row.generate_pw ? "Yes" : "No"}</span>
+                                            )}
+                                        />
                                         <GridColumn field="delete" 
                                             title={strings.delete} 
                                             align="center"
@@ -1193,17 +990,15 @@ class PaymentFormDialog extends React.Component{
                                                 <span>{row.delete ? "Yes" : "No"}</span>
                                             )}
                                         />
-
                                     </DataGrid>
-
-                                    <div style={styles.formDialogLargeWidthAddButtons}>
+                                    <div className={styles.formDialogLargeWidthAddButtons}>
                                         <ButtonGroup>
                                             <LinkButton onClick={() => {
                                                 this.addFormAdminRow();
-                                            }}>{strings.add_beneficiary}</LinkButton>
+                                            }}>{strings.add_merchant}</LinkButton>
                                             <LinkButton onClick={() => {
                                                 this.removeFormAdminRow();
-                                                }}>{strings.remove_beneficiary}</LinkButton>
+                                                }}>{strings.delete_merchant}</LinkButton>
                                         </ButtonGroup>
                                     </div>
                                 </Form>
@@ -1211,9 +1006,9 @@ class PaymentFormDialog extends React.Component{
                         </LayoutPanel>
                         <LayoutPanel region="south" style={{ height: 48 }}>
                             <div className="dialog-button">
-                                <LinkButton className="submit-button-red" 
+                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
-                                            onClick={() => this.saveRow()}>{strings.submit}</LinkButton>
+                                    onClick={() => this.saveRow()}>Save</LinkButton>
                                 <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
                                     onClick={() => {
                                         this.resetForm(() => {
@@ -1228,6 +1023,6 @@ class PaymentFormDialog extends React.Component{
     }
 }
 
-const MerchantModulePayments = withRouter(MerchantModulePaymentsC);
+const ModuleMerchants = withRouter(ModuleMerchantsC);
 
-export default MerchantModulePayments;
+export default ModuleMerchants;

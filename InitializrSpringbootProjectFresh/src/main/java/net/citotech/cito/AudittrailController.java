@@ -24,8 +24,6 @@ import org.json.JSONObject;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import net.citotech.cito.security.ColumnAllowlist;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,10 +39,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class AudittrailController {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
-    @Autowired
-    TransactionTemplate transactionTemplate;
-    @Autowired
-    private PlatformTransactionManager transactionManager;
     
     
     
@@ -78,7 +72,6 @@ public class AudittrailController {
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_AUDIT_TRAIL+" ";
@@ -88,11 +81,11 @@ public class AudittrailController {
                 
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
-                if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
+                if (value != null && !value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
                     try {
                         String safeCategory = ColumnAllowlist.validate(category);
                         sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
-                        parameters.addValue(safeCategory, "%" + value + "%");
+                        parameters.addValue(safeCategory, "%" + String.valueOf(value) + "%");
                     } catch (IllegalArgumentException e) {
                         return GeneralException.getError("101", "Invalid search field.");
                     }
@@ -106,8 +99,7 @@ public class AudittrailController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<AuditTrail>() {
-            public AuditTrail mapRow(ResultSet rs, int rowNum) throws SQLException {
+            RowMapper<AuditTrail> rm = (rs, rowNum) -> {
                     AuditTrail auditrail = new AuditTrail();
                     auditrail.setId(rs.getLong("id"));
                     auditrail.setUser_name(rs.getString("user_name"));
@@ -116,7 +108,6 @@ public class AudittrailController {
                     auditrail.setUser_id(rs.getString("user_id"));
                     
                     return auditrail;
-                }
             };
             
             //ResultSet rs; 
@@ -189,7 +180,6 @@ public class AudittrailController {
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_AUDIT_TRAIL_MERCHANT+" "
@@ -200,9 +190,14 @@ public class AudittrailController {
                 
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
-                if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                if (value != null && !value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
+                    try {
+                        String safeCategory = ColumnAllowlist.validate(category);
+                        sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
+                        parameters.addValue(safeCategory, "%" + String.valueOf(value) + "%");
+                    } catch (IllegalArgumentException e) {
+                        return GeneralException.getError("101", "Invalid search field.");
+                    }
                 }
             }
             
@@ -213,8 +208,7 @@ public class AudittrailController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<AuditTrail>() {
-            public AuditTrail mapRow(ResultSet rs, int rowNum) throws SQLException {
+            RowMapper<AuditTrail> rm = (rs, rowNum) -> {
                     AuditTrail auditrail = new AuditTrail();
                     auditrail.setId(rs.getLong("id"));
                     auditrail.setUser_name(rs.getString("user_name"));
@@ -223,7 +217,6 @@ public class AudittrailController {
                     auditrail.setUser_id(rs.getString("user_id"));
                     
                     return auditrail;
-                }
             };
             
             //ResultSet rs; 

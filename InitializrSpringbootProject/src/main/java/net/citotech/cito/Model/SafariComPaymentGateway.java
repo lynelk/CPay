@@ -190,7 +190,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
             HttpRequestResponse rs = Common.doHttpRequest("POST", url_string, data, headers);
             if (rs == null) {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
@@ -345,10 +345,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             } else {
                 if (!rs.getResponse().isEmpty())  {
-                    String res = "";
                     String ConversationID = "";
                     String ResponseDescription = "";
-                    String OriginatorConversationID = "";
                     String ResponseCode = "";
 
                     JSONObject rJson = new JSONObject(rs.getResponse());
@@ -603,10 +601,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             } else {
                 if (!rs.getResponse().isEmpty())  {
-                    String res = "";
                     String ResponseCode = "";
                     String ResponseDescription = "";
-                    String MerchantRequestID = "";
                     String CheckoutRequestID = "";
 
                     JSONObject rJson = new JSONObject(rs.getResponse());
@@ -727,7 +723,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
             HttpRequestResponse rs = Common.doHttpRequest("POST", url_string, data, headers);
             if (rs == null) {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
@@ -739,10 +735,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
             String transaction_status = "";
             String ResultCode = "";
             String CheckoutRequestID = "";
-            String MerchantRequestID = "";
             String ResponseDescription = "";
             String ResponseCode = "";
-            String tx_stataus = "";
             String ConversationID = "";//Most for Payouts
 
             if (rs.getStatusCode() != 200) {
@@ -894,7 +888,6 @@ public class SafariComPaymentGateway extends PaymentGateway {
             JSONObject newTokenO = new JSONObject();
             newTokenO.put("txRef", txRef);
             newTokenO.put("ConversationID", ConversationID);
-            String separator = File.separator;
             String filePath = lockfiledirectory+ConversationID+".json";
 
             File resource = new File(filePath);
@@ -989,7 +982,6 @@ public class SafariComPaymentGateway extends PaymentGateway {
         } else {
             JSONObject jsToken = new JSONObject(rs.getResponse());
             String accessToken = jsToken.getString("access_token");
-            String expires_in = jsToken.getString("expires_in");
             LocalDateTime d = LocalDateTime.now();
 
             JSONObject newToken = new JSONObject();

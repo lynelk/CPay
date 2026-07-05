@@ -5,11 +5,9 @@
  */
 package net.citotech.cito.Model;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -20,13 +18,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.citotech.cito.Common;
 import net.citotech.cito.SettingsController;
-import net.citotech.cito.TransactionsLogController;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.configurationprocessor.json.JSONArray;
 import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.format.annotation.DateTimeFormat;
 
 /**
  *
@@ -152,7 +146,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             
             HttpRequestResponse rs = Common.doHttpRequest("GET", url_string, data, headers);
             if (rs == null) {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
@@ -365,7 +359,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             
             HttpRequestResponse rs = Common.doHttpRequest("GET", url_string, data, headers);
             if (rs == null) {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
@@ -605,7 +599,6 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             JSONObject rO = r.getJSONObject(this.segment);
             
             LocalDateTime whenCreated = LocalDateTime.parse(rO.getString("created_on"));
-            Token t = new Token(rO.getString("token"), whenCreated);
             
             //Compare with when it was created
             LocalDateTime now = LocalDateTime.now();
@@ -700,7 +693,6 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
         } else {
             JSONObject jsToken = new JSONObject(rs.getResponse());
             String accessToken = jsToken.getString("access_token");
-            String token_type = jsToken.getString("token_type");
             LocalDateTime d = LocalDateTime.now();
             
             JSONObject newToken = new JSONObject();

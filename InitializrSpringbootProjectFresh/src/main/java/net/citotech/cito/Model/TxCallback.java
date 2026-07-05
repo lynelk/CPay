@@ -4,13 +4,11 @@ import net.citotech.cito.AuthenticationController;
 import net.citotech.cito.Common;
 import net.citotech.cito.GeneralException;
 import net.citotech.cito.TransactionsLogController;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.crypto.Mac;
@@ -70,7 +68,7 @@ public class TxCallback {
         });
     }
 
-    public void start(NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
+    public void start(NamedParameterJdbcTemplate jdbcTemplate, @org.springframework.lang.NonNull PlatformTransactionManager transactionManager) {
         TransactionTemplate template = new TransactionTemplate(transactionManager);
         Thread thread = new Thread() {
             public void run() {
@@ -140,9 +138,7 @@ public class TxCallback {
                         parameters_.addValue("tx_gateway_ref",  tx.getTx_gateway_ref());
                         parameters_.addValue("callback_trace",  rs.toString());
 
-                        String result = template.execute(new TransactionCallback<String>() {
-                            @Override
-                            public String doInTransaction(TransactionStatus status) {
+                        String result = template.execute(status -> {
                                 try {
                                     jdbcTemplate.update(sql_update_final, parameters_);
                                     return "success";
@@ -152,7 +148,6 @@ public class TxCallback {
                                             .log(Level.SEVERE, "INTERNAL ERROR: " + e.getMessage(), "");
                                     return GeneralException.getError("102", GeneralException.ERRORS_102);
                                 }
-                            }
                         });
                         Logger.getLogger(TransactionsLogController.class.getName())
                                 .log(Level.INFO, "Callback result: " + result, "");
