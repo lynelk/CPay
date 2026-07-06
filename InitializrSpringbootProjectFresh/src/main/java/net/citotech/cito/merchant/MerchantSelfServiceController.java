@@ -2,6 +2,8 @@ package net.citotech.cito.merchant;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import net.citotech.cito.Model.MerchantUser;
@@ -40,6 +42,7 @@ public class MerchantSelfServiceController {
         } catch (PaymentGatewayException e) {
             return ResponseEntity.badRequest().body(error("SIGNUP_REJECTED", e.getMessage()));
         } catch (Exception e) {
+            Logger.getLogger(MerchantSelfServiceController.class.getName()).log(Level.SEVERE, "Signup failed", e);
             return ResponseEntity.badRequest().body(error("SIGNUP_FAILED", "Unable to complete merchant signup"));
         }
     }

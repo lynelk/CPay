@@ -1,7 +1,10 @@
 package net.citotech.cito.config;
 
+import java.net.URI;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +25,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:2019}")
+    @Value("${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000,http://[::1]:3000,http://localhost:2019,http://127.0.0.1:2019,http://[::1]:2019}")
     private String[] allowedOrigins;
 
     @Value("${actuator.username}")
@@ -82,7 +85,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration trustedConfig = new CorsConfiguration();
-        trustedConfig.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        trustedConfig.setAllowedOrigins(expandLoopbackAliases(allowedOrigins));
         trustedConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         trustedConfig.setAllowedHeaders(List.of("*"));
         trustedConfig.setAllowCredentials(true);
@@ -92,6 +95,45 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/api/**", trustedConfig);
         source.registerCorsConfiguration("/**", trustedConfig);
         return source;
+    }
+
+    private List<String> expandLoopbackAliases(String[] origins) {
+        Set<String> expandedOrigins = new LinkedHashSet<>();
+        for (String origin : origins) {
+            if (isBlank(origin)) {
+                continue;
+            }
+            String trimmedOrigin = origin.trim();
+            expandedOrigins.add(trimmedOrigin);
+            addLoopbackAlias(expandedOrigins, trimmedOrigin, "localhost");
+            addLoopbackAlias(expandedOrigins, trimmedOrigin, "127.0.0.1");
+            addLoopbackAlias(expandedOrigins, trimmedOrigin, "[::1]");
+        }
+        return List.copyOf(expandedOrigins);
+    }
+
+    private void addLoopbackAlias(Set<String> origins, String origin, String aliasHost) {
+        try {
+            URI uri = URI.create(origin);
+            String host = uri.getHost();
+            if (!isLoopbackHost(host)) {
+                return;
+            }
+            String scheme = uri.getScheme();
+            int port = uri.getPort();
+            if (isBlank(scheme) || port < 0) {
+                return;
+            }
+            origins.add(scheme + "://" + aliasHost + ":" + port);
+        } catch (IllegalArgumentException ignored) {
+            // Leave any non-URI origin unchanged; Spring will validate it later.
+        }
+    }
+
+    private boolean isLoopbackHost(String host) {
+        return "localhost".equalsIgnoreCase(host)
+            || "127.0.0.1".equals(host)
+            || "::1".equals(host);
     }
 
     private void validateCredentials(String username, String password, String message) {
