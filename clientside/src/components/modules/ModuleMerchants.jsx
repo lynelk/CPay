@@ -1,6 +1,6 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton } from 'rc-easyui';
+import { Panel, Messager, Menu, MenuItem, SwitchButton } from 'rc-easyui';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
@@ -12,6 +12,7 @@ import styles from '../styles';
 import strings from '../locale';
 import ModuleMerchantsAccount from './ModuleMerchantsAccount';
 import MerchantModuleSettings from './merchant/MerchantModuleSettings';
+import { buildMerchantPayload, emptyMerchantForm } from './merchantFormPayload';
 
 class ModuleMerchantsC extends React.Component {
     constructor(props) {
@@ -30,18 +31,7 @@ class ModuleMerchantsC extends React.Component {
             { value: "clear", text: "Clear Selection" }],
             gridActionsValue: "bulk_actions",
             formdMode: 'new',//Can be set to edit
-            formd: {
-                id:"",
-                name: "",
-                short_name:"",
-                status: "ACTIVE",
-                account_type: "personal",
-                admins:[],
-                status: { value: 'ACTIVE', text: "ACTIVE" },
-                allowed_apis:[],
-                generate_password: false,
-                generate_new_keys: false
-            },
+            formd: emptyMerchantForm(),
             privileges: common.privileges,
             status: [{ value: 'ACTIVE', text: "ACTIVE" },
                 { value: 'INACTIVE', text: "INACTIVE" },
@@ -52,6 +42,7 @@ class ModuleMerchantsC extends React.Component {
             ],
             rules: {
                 'name': 'required',
+                'short_name': 'required',
                 'status': ['required'],
                 "email": {"required":true,"emailValidation":common.emailValidation},
                 "phone": {'required':true, "phoneValidation":common.phoneValidation}
@@ -131,12 +122,7 @@ class ModuleMerchantsC extends React.Component {
 
     resetForm(after) {
         this.setState({
-            formd: {
-                name: "",
-                account_type: "personal",
-                admins:[],
-                status: 'ACTIVE',
-            }
+            formd: emptyMerchantForm()
         }, ()=> {
             after();
         });
@@ -336,18 +322,7 @@ class ModuleMerchantsC extends React.Component {
             title: strings.add_merchant,
             formdMode: 'new',
             formDialogStateOpened: false,
-            formd: {
-                admins: [],
-                id:"",
-                name: "",
-                status: "ACTIVE",
-                account_type: "personal",
-                admins:[],
-                status: { value: 'ACTIVE', text: "ACTIVE" },
-                allowed_apis:[],
-                generate_password: false,
-                generate_new_keys: false
-            }
+            formd: emptyMerchantForm()
         });
     }
 
@@ -772,7 +747,13 @@ class MerchantFormDialog extends React.Component{
     }
 
     saveRow() {
-        let formd_ = Object.assign({}, this.state.formd);
+        if (this.form && !this.form.validate()) {
+            return;
+        }
+        if (this.datagrid && !this.datagrid.endEdit()) {
+            return;
+        }
+        let formd_ = buildMerchantPayload(this.state.formd);
         this.props.saveRow(formd_);
     }
 
@@ -782,21 +763,7 @@ class MerchantFormDialog extends React.Component{
 
         let data = formd_.admins.slice();
         //data.push(new_row);
-        formd_ = {
-            admins: new_array,
-            id:"",
-            name: "",
-            short_name: "",
-            status: "ACTIVE",
-            account_type: "personal",
-            privileges: common.merchant_privileges,
-            allowed_apis: [],
-            admins:[],
-            status: 'ACTIVE',
-            generate_pw: false,
-            generate_new_keys: false,
-            delete: false,
-        };
+        formd_ = emptyMerchantForm();
 
         this.setState({
             formd: formd_
@@ -821,17 +788,14 @@ class MerchantFormDialog extends React.Component{
             <Dialog modal 
                 title={title} 
                 closed={formDialogStateOpened} 
-                style={styles.dim.formDialogLargeWidth} className={styles.formDialogLargeWidth}
+                style={styles.dim.merchantFormDialog} className={`${styles.formDialogLargeWidth} cpay-merchant-dialog`}
                 borderType="none"
                 onClose={() => this.props.openOrCloseFormDialog(true)}>
-                    <Layout style={{ width: 800, height:'100%', border: '0px #FFFFFF' }}>
-                        <LayoutPanel 
-                            region="north" 
-                            split={false}
-                            style={{ height: 320, border: '0px #FFFFFF' }}>
+                    <div className="cpay-dialog-shell">
+                        <div className="cpay-dialog-scroll-body">
                             <div className={styles.formDialogContainer}>
                                 <Form
-                                    style={{ width: 700 }}
+                                    className="cpay-merchant-form"
                                     ref={ref => this.form = ref}
                                     model={row}
                                     rules={rules}
@@ -896,7 +860,7 @@ class MerchantFormDialog extends React.Component{
                                             inputId="private_key" 
                                             name="private_key" 
                                             value={row.private_key} 
-                                            style={{width:200, height: 300}}></TextBox>
+                                            className="cpay-merchant-key-field"></TextBox>
                                     </FormField>
 
                                     <FormField name="public_key" label="Public key">
@@ -905,13 +869,14 @@ class MerchantFormDialog extends React.Component{
                                             inputId="public_key" 
                                             name="public_key" 
                                             value={row.public_key} 
-                                            style={{width:200, height: 300}}></TextBox>
+                                            className="cpay-merchant-key-field"></TextBox>
                                     </FormField>
                                     
                                     <h3>Merchant Admins</h3>
                                     <DataGrid
                                         ref={ref => this.datagrid = ref}
-                                        style={{ height: 200, width:850 }}
+                                        className="cpay-merchant-admin-grid"
+                                        style={{ height: 220 }}
                                         data={row.admins}
                                         clickToEdit={this.state.clickToEdit}
                                         editMode="row">
@@ -1003,8 +968,8 @@ class MerchantFormDialog extends React.Component{
                                     </div>
                                 </Form>
                             </div>
-                        </LayoutPanel>
-                        <LayoutPanel region="south" style={{ height: 48 }}>
+                        </div>
+                        <div className="cpay-dialog-footer">
                             <div className="dialog-button">
                                 <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
                                     iconCls="icon-save" style={{ width: 80 }} 
@@ -1016,8 +981,8 @@ class MerchantFormDialog extends React.Component{
                                         });
                                     }}>Close</LinkButton>
                             </div>
-                        </LayoutPanel>
-                    </Layout>
+                        </div>
+                    </div>
             </Dialog>
         );
     }

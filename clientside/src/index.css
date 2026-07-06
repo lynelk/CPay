@@ -623,10 +623,22 @@ select,
   z-index: 100000 !important;
 }
 
-.window-mask,
-.window-shadow,
+.window-mask {
+  z-index: 99998 !important;
+  pointer-events: auto !important;
+}
+
+.window-shadow {
+  z-index: 99999 !important;
+  pointer-events: none !important;
+}
+
 .messager-window,
-.messager-body {
+.messager-body,
+.window .dialog-button,
+.messager-button,
+.window .l-btn,
+.messager-window .l-btn {
   pointer-events: auto !important;
 }
 
@@ -645,6 +657,56 @@ select,
   border-top: 1px solid var(--cpay-fuse-line) !important;
   background: var(--cpay-fuse-surface-soft) !important;
   padding: 12px !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.cpay-dialog-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.cpay-dialog-scroll-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 14px 18px 8px;
+}
+
+.cpay-dialog-footer {
+  flex: 0 0 auto;
+}
+
+.cpay-merchant-dialog .panel-body {
+  overflow: hidden !important;
+}
+
+.cpay-merchant-form {
+  width: 100% !important;
+  max-width: 760px;
+}
+
+.cpay-merchant-form .form-field {
+  max-width: 100%;
+}
+
+.cpay-merchant-form .textbox,
+.cpay-merchant-form .combo,
+.cpay-merchant-form .spinner {
+  max-width: min(500px, 100%) !important;
+}
+
+.cpay-merchant-key-field {
+  width: min(500px, 100%) !important;
+  height: 140px !important;
+}
+
+.cpay-merchant-admin-grid {
+  width: 100% !important;
+  min-width: 0;
 }
 
 .combo-panel,
@@ -652,6 +714,7 @@ select,
   border-color: var(--cpay-fuse-line) !important;
   border-radius: var(--cpay-fuse-radius) !important;
   box-shadow: var(--cpay-fuse-shadow) !important;
+  z-index: 100010 !important;
 }
 
 .tabs-header,
