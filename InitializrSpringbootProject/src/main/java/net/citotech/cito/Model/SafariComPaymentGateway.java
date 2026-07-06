@@ -67,6 +67,12 @@ public class SafariComPaymentGateway extends PaymentGateway {
     @Value( "${custom.lockfiledirectory}" )
     private String lockfiledirectory;
 
+    private String lockDir() {
+        if (lockfiledirectory != null && !lockfiledirectory.isEmpty()) return lockfiledirectory;
+        String env = System.getenv("LOCK_FILE_DIR");
+        return (env != null && !env.isEmpty()) ? env : "/tmp/cpay/locks/";
+    }
+
 
 
     public void setApiDetails(String global_url,
@@ -346,6 +352,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             } else {
                 if (!rs.getResponse().isEmpty())  {
                     String ConversationID = "";
+                    String OriginatorConversationID = "";
                     String ResponseDescription = "";
                     String ResponseCode = "";
 
@@ -604,6 +611,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                     String ResponseCode = "";
                     String ResponseDescription = "";
                     String CheckoutRequestID = "";
+                    String MerchantRequestID = "";
 
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("CheckoutRequestID")) {
@@ -888,7 +896,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             JSONObject newTokenO = new JSONObject();
             newTokenO.put("txRef", txRef);
             newTokenO.put("ConversationID", ConversationID);
-            String filePath = lockfiledirectory+ConversationID+".json";
+            String filePath = lockDir()+ConversationID+".json";
 
             File resource = new File(filePath);
             if (resource.createNewFile()) {
@@ -909,7 +917,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
     }
 
     public SafariComPaymentGateway.Token getToken() throws IOException {
-        String filePath = lockfiledirectory+Common.CLASS_PATH_SAFARICOM_TOKEN_FILE;
+        String filePath = lockDir()+Common.CLASS_PATH_SAFARICOM_TOKEN_FILE;
         File resource = new File(filePath);
         if (resource.createNewFile()) {
             Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
@@ -989,7 +997,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             newToken.put("created_on", d.format(formatter));
 
-            String filePath = lockfiledirectory+Common.CLASS_PATH_SAFARICOM_TOKEN_FILE;
+            String filePath = lockDir()+Common.CLASS_PATH_SAFARICOM_TOKEN_FILE;
             Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
                     "SAFARICOM Token "+filePath);
 

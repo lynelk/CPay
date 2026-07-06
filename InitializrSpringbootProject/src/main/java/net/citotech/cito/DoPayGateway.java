@@ -394,8 +394,8 @@ public class DoPayGateway {
         }
         
         
-        String use_open_api = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate)
-                    .getSetting_value();
+        Setting airtelUseOpenApiSetting = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate);
+        String use_open_api = airtelUseOpenApiSetting != null ? airtelUseOpenApiSetting.getSetting_value() : "";
         
         //Do another gateway.
 
@@ -699,7 +699,7 @@ public class DoPayGateway {
             base_currency);
             
             Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "API User Details: "+api_collections_user+" "+api_collections_key, "");
+                    .log(Level.INFO, "MTN gateway initialised for collection pay-in", "");
             
             GateWayResponse pResponse = mtn_mmpgw.doPayIn(amount, msisdn, ref, narrative); 
             return pResponse;
@@ -741,14 +741,14 @@ public class DoPayGateway {
                     app_setting_app_url);
 
             Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "API User Details: "+gw_safaricom_api_consumer_key+" "+gw_safaricom_api_consumer_secret, "");
+                    .log(Level.INFO, "Safaricom gateway initialised", "");
 
             GateWayResponse pResponse = safaricom_mmpgw.doPayIn(amount, msisdn, ref, narrative);
             return pResponse;
         }
         
-        String use_open_api = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate)
-                    .getSetting_value();
+        Setting airtelUseOpenApiSetting = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate);
+        String use_open_api = airtelUseOpenApiSetting != null ? airtelUseOpenApiSetting.getSetting_value() : "";
         
         
         //Do another gateway.
@@ -872,8 +872,8 @@ public class DoPayGateway {
         
         //Get details for Airtel Money.
         
-        String use_open_api = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate)
-                    .getSetting_value();
+        Setting airtelUseOpenApiSetting = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate);
+        String use_open_api = airtelUseOpenApiSetting != null ? airtelUseOpenApiSetting.getSetting_value() : "";
         
         //Do another gateway.
         if (use_open_api.equals("yes")) {
@@ -1083,8 +1083,8 @@ public class DoPayGateway {
         
         //Do another gateway.
 
-        String use_open_api = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate)
-                    .getSetting_value();
+        Setting airtelUseOpenApiSetting = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate);
+        String use_open_api = airtelUseOpenApiSetting != null ? airtelUseOpenApiSetting.getSetting_value() : "";
         
         //Do another gateway.
         if (use_open_api.equals("yes")) {
@@ -1264,15 +1264,15 @@ public class DoPayGateway {
                 safaricom_mmpgw.setSegment("disbursement");
             }
             Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "API User Details: "+gw_safaricom_api_consumer_key+" "+gw_safaricom_api_consumer_secret, "");
+                    .log(Level.INFO, "Safaricom gateway initialised", "");
 
             safaricom_mmpgw.setSegment(tx_type);
             GateWayResponse pResponse = safaricom_mmpgw.checkStatus(ref);
             return pResponse;
         }
        
-        String use_open_api = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate)
-                    .getSetting_value();
+        Setting airtelUseOpenApiSetting = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate);
+        String use_open_api = airtelUseOpenApiSetting != null ? airtelUseOpenApiSetting.getSetting_value() : "";
         
         //Do another gateway.
         if (use_open_api.equals("yes")) {
