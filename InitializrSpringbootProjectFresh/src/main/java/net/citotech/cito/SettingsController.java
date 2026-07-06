@@ -340,7 +340,7 @@ public class SettingsController {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_SETTINGS;   
             
-        RowMapper rm = new RowMapper<Setting>() {
+        RowMapper<Setting> rm = new RowMapper<Setting>() {
         public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Setting setting = new Setting();
                 setting.setLabel(rs.getString("label"));
@@ -363,7 +363,7 @@ public class SettingsController {
         String sqlSelect = "SELECT *  FROM "+Common.DB_MERCHANTS_SETTINGS+" "
                 + " WHERE merchant_id='"+merchant_id+"'";   
 
-        RowMapper rm = new RowMapper<Setting>() {
+        RowMapper<Setting> rm = new RowMapper<Setting>() {
         public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Setting setting = new Setting();
                 setting.setLabel(rs.getString("label"));
@@ -389,7 +389,7 @@ public class SettingsController {
         String sqlSelect = "SELECT *  FROM "+Common.DB_MERCHANTS_SETTINGS; 
         sqlSelect += " WHERE merchant_id=:merchant_id AND name=:name ";
             
-        RowMapper rm = new RowMapper<Setting>() {
+        RowMapper<Setting> rm = new RowMapper<Setting>() {
         public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Setting setting = new Setting();
                 setting.setLabel(rs.getString("label"));
@@ -418,7 +418,7 @@ public class SettingsController {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_SETTINGS; 
         sqlSelect += " WHERE name=:name ";
             
-        RowMapper rm = new RowMapper<Setting>() {
+        RowMapper<Setting> rm = new RowMapper<Setting>() {
         public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Setting setting = new Setting();
                 setting.setLabel(rs.getString("label"));

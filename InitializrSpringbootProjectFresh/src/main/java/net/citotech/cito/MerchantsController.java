@@ -107,7 +107,7 @@ public class MerchantsController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<Merchant>() {
+            RowMapper<Merchant> rm = new RowMapper<Merchant>() {
             public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Merchant m = new Merchant();
                     m.setName(rs.getString("name"));
@@ -216,7 +216,7 @@ public class MerchantsController {
         parameters.addValue("account_number", account);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number";
-        RowMapper rm = new RowMapper<Merchant>() {
+        RowMapper<Merchant> rm = new RowMapper<Merchant>() {
         public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
@@ -257,7 +257,7 @@ public class MerchantsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
@@ -287,7 +287,7 @@ public class MerchantsController {
         parameters.addValue("id", id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number AND id <> :id";
-        RowMapper rm = new RowMapper<Merchant>() {
+        RowMapper<Merchant> rm = new RowMapper<Merchant>() {
         public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
@@ -333,7 +333,7 @@ public class MerchantsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("merchant_id", merchant.getId());
                 
-            RowMapper rm = new RowMapper<MerchantUser>() {
+            RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
                 public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantUser user = new MerchantUser();
                     user.setName(rs.getString("name"));
@@ -776,7 +776,7 @@ public class MerchantsController {
     private String generateMerchantNumber() {
         
         String sqlSelect = "SELECT COUNT(*) AS count_num  FROM "+Common.DB_TABLE_MERCHANTS+" ";
-        RowMapper rm = new RowMapper<Integer>() {
+        RowMapper<Integer> rm = new RowMapper<Integer>() {
         public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
                 
                 return rs.getInt("count_num");
@@ -810,7 +810,7 @@ public class MerchantsController {
         params.addValue("email", email);
         String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
                 + " WHERE merchant_id=:merchant_id AND email=:email";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));
@@ -842,7 +842,7 @@ public class MerchantsController {
         params.addValue("id", id);
         String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
                 + " WHERE merchant_id=:merchant_id AND email=:email AND id <> :id";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));

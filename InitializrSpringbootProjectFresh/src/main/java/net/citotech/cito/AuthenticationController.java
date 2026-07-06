@@ -288,7 +288,7 @@ public class AuthenticationController {
         parameters.addValue("email", u.getEmail());
         parameters.addValue("account_number", u.getMerchant_number());
 
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
             public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser user = new MerchantUser();
                 user.setMerchant_account_type(rs.getString("account_type"));
@@ -342,7 +342,7 @@ public class AuthenticationController {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("email", u.getEmail());
 
-        RowMapper rm = new RowMapper<User>() {
+        RowMapper<User> rm = new RowMapper<User>() {
             public User mapRow(ResultSet rs, int rowNum) throws SQLException {
                 User user = new User();
                 user.setName(rs.getString("name"));
@@ -866,7 +866,7 @@ public class AuthenticationController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
@@ -889,7 +889,7 @@ public class AuthenticationController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));

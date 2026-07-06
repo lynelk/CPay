@@ -1117,7 +1117,7 @@ public class Common {
             public String doInTransaction(TransactionStatus status) {
                 try {
 
-                    RowMapper rm_b = new RowMapper<Statement>() {
+                    RowMapper<Statement> rm_b = new RowMapper<Statement>() {
                     public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                             Statement t = new Statement();
                             t.setId(rs.getLong("id"));
@@ -1357,7 +1357,7 @@ public class Common {
         
         try {
 
-            RowMapper rm_b = new RowMapper<Statement>() {
+            RowMapper<Statement> rm_b = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
                     t.setId(rs.getLong("id"));

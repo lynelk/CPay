@@ -181,7 +181,7 @@ public class StartupApplicationListener {
                 if (nQuery.getQuery_id() != null && !nQuery.getQuery_id().isEmpty()) {
                     String checkSql = "SELECT * FROM `"+Common.DB_TABLE_DB_CHANGES+"` "
                         + "WHERE query_id='"+nQuery.getQuery_id()+"'";
-                    RowMapper rm = new RowMapper<QueryUpdate>() {
+                    RowMapper<QueryUpdate> rm = new RowMapper<QueryUpdate>() {
                     public QueryUpdate mapRow(ResultSet rs, int rowNum) throws SQLException {
                             QueryUpdate t = new QueryUpdate();
                             t.setId(BigInteger.valueOf(rs.getLong("id")));

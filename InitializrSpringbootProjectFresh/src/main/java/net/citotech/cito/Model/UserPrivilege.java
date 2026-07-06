@@ -10,6 +10,7 @@ package net.citotech.cito.Model;
  * @author josephtabajjwa
  */
 public class UserPrivilege implements java.io.Serializable{
+    private static final long serialVersionUID = 1L;
     private Long id;
     private String privilege;
     private Long admin_id;

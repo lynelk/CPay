@@ -637,7 +637,7 @@ public class Api {
             parameters.addValue("tx_merchant_ref", reference);
             parameters.addValue("merchant_id", merchant.getId());
             
-            RowMapper rm = new RowMapper<Transaction>() {
+            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));

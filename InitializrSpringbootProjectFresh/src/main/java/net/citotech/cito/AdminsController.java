@@ -136,7 +136,7 @@ public class AdminsController {
                 }
             }
             
-            RowMapper rm = new RowMapper<User>() {
+            RowMapper<User> rm = new RowMapper<User>() {
             public User mapRow(ResultSet rs, int rowNum) throws SQLException {
                     User user = new User();
                     user.setName(rs.getString("name"));
@@ -242,7 +242,7 @@ public class AdminsController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<MerchantUser>() {
+            RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
             public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantUser user = new MerchantUser();
                     user.setName(rs.getString("name"));
@@ -257,8 +257,8 @@ public class AdminsController {
                 }
             };
             
-            //ResultSet rs; 
-            List<User> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
+            //ResultSet rs;
+            List<MerchantUser> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
@@ -300,7 +300,7 @@ public class AdminsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
@@ -329,7 +329,7 @@ public class AdminsController {
         parameters.addValue("email", email);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_ADMIN+" "
                 + " WHERE email=:email";
-        RowMapper rm = new RowMapper<User>() {
+        RowMapper<User> rm = new RowMapper<User>() {
         public User mapRow(ResultSet rs, int rowNum) throws SQLException {
                 User user = new User();
                 user.setName(rs.getString("name"));
@@ -367,7 +367,7 @@ public class AdminsController {
                 + " WHERE "
                 + " merchant_id =:merchant_id "
                 + " AND email=:email ";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser user = new MerchantUser();
                 user.setName(rs.getString("name"));
@@ -403,7 +403,7 @@ public class AdminsController {
         parameters.addValue("id", id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_ADMIN+" "
                 + " WHERE email=:email AND id <> :id";
-        RowMapper rm = new RowMapper<User>() {
+        RowMapper<User> rm = new RowMapper<User>() {
         public User mapRow(ResultSet rs, int rowNum) throws SQLException {
                 User user = new User();
                 user.setName(rs.getString("name"));
@@ -441,7 +441,7 @@ public class AdminsController {
                 + " WHERE "
                 + " merchant_id=:merchant_id AND "
                 + " email=:email AND id <> :id";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser user = new MerchantUser();
                 user.setName(rs.getString("name"));
@@ -471,7 +471,7 @@ public class AdminsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));

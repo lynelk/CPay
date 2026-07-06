@@ -160,7 +160,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<Transaction>() {
+            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -323,7 +323,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT "+(pageSize * currentPage)+", "+pageSize+" ";
             }*/
             
-            RowMapper rmTotal = new RowMapper<Long>() {
+            RowMapper<Long> rmTotal = new RowMapper<Long>() {
             public Long mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Long t = rs.getLong("total");
                     return t;
@@ -331,7 +331,7 @@ public class TransactionsLogController {
             };
             List<Long> listLong = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
             
-            RowMapper rm = new RowMapper<Transaction>() {
+            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -414,7 +414,7 @@ public class TransactionsLogController {
                 + " ON b.id = t.beneficiary_id "
                 + " WHERE b.batch_id = '"+batch_id+"'";
         
-        RowMapper rm = new RowMapper<Beneficiary>() {
+        RowMapper<Beneficiary> rm = new RowMapper<Beneficiary>() {
             public Beneficiary mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Beneficiary b = new Beneficiary();
                     b.setId(rs.getLong("beneficiary_long_id"));
@@ -515,7 +515,7 @@ public class TransactionsLogController {
             }
             
             
-            RowMapper rm = new RowMapper<Payment>() {
+            RowMapper<Payment> rm = new RowMapper<Payment>() {
             public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Payment t = new Payment();
                     t.setId(rs.getLong("id"));
@@ -533,7 +533,7 @@ public class TransactionsLogController {
                 }
             };
             
-            RowMapper rmTotal = new RowMapper<String>() {
+            RowMapper<String> rmTotal = new RowMapper<String>() {
             public String mapRow(ResultSet rs, int rowNum) throws SQLException {
                     String t =rs.getString("total");
                     return t;
@@ -701,7 +701,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<MerchantSms>() {
+            RowMapper<MerchantSms> rm = new RowMapper<MerchantSms>() {
             public MerchantSms mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantSms t = new MerchantSms();
                     t.setId(BigInteger.valueOf(rs.getLong("id")));
@@ -836,7 +836,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -966,7 +966,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1095,7 +1095,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1311,7 +1311,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1450,7 +1450,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1594,7 +1594,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1738,7 +1738,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1883,7 +1883,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -2042,7 +2042,7 @@ public class TransactionsLogController {
             String sql_update = " UPDATE "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                     + " SET status=:status, tx_update_trace=:tx_update_trace, "
                     + " tx_gateway_ref=:tx_gateway_ref ";
-            RowMapper rm = new RowMapper<Transaction>() {
+            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
                 public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -2927,7 +2927,7 @@ public class TransactionsLogController {
             public String doInTransaction(TransactionStatus status) {
                 try {
 
-                    RowMapper rm_b = new RowMapper<Statement>() {
+                    RowMapper<Statement> rm_b = new RowMapper<Statement>() {
                     public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                             Statement t = new Statement();
                             t.setId(rs.getLong("id"));
@@ -3153,7 +3153,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<Statement>() {
+            RowMapper<Statement> rm = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
                     t.setId(rs.getLong("id"));
@@ -3324,7 +3324,7 @@ public class TransactionsLogController {
             }*/
             
             //Get total records
-            RowMapper rmTotal = new RowMapper<String>() {
+            RowMapper<String> rmTotal = new RowMapper<String>() {
             public String mapRow(ResultSet rs, int rowNum) throws SQLException {
                     String t = rs.getString("total");
                     return t;
@@ -3333,7 +3333,7 @@ public class TransactionsLogController {
             List<String> listTotal = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
             
             
-            RowMapper rm = new RowMapper<Statement>() {
+            RowMapper<Statement> rm = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
                     t.setId(rs.getLong("id"));
@@ -3520,7 +3520,7 @@ public class TransactionsLogController {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE id = '"+id+"'";
         
-        RowMapper rm = new RowMapper<Payment>() {
+        RowMapper<Payment> rm = new RowMapper<Payment>() {
         public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Payment t = new Payment();
                 t.setId(rs.getLong("id"));
@@ -3811,7 +3811,7 @@ public class TransactionsLogController {
                             + "FROM `"+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+"` "
                             + " WHERE batch_id = '"+batchId+"' AND account=:account";
                         
-                        RowMapper rm_ = new RowMapper<Integer>() {
+                        RowMapper<Integer> rm_ = new RowMapper<Integer>() {
                         public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
                                 int r = rs.getInt("found");
                                 return r;
@@ -4643,7 +4643,7 @@ public class TransactionsLogController {
             String sqlSelectPayments = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE status IN('PROCESSING') LIMIT 20 FOR UPDATE";
 
-            RowMapper rm = new RowMapper<Payment>() {
+            RowMapper<Payment> rm = new RowMapper<Payment>() {
             public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Payment t = new Payment();
                     t.setId(rs.getLong("id"));
@@ -4998,7 +4998,7 @@ public class TransactionsLogController {
                     String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
                     sqlSelect += " WHERE id = '"+transactionId+"' FOR UPDATE";
 
-                    RowMapper rm = Common.getTransactionRowMapper();
+                    RowMapper<Transaction> rm = Common.getTransactionRowMapper();
                     List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
                     if (listTxs.size() < 1) {
                         return GeneralException
@@ -5332,7 +5332,7 @@ public class TransactionsLogController {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
         sqlSelect += " WHERE id = '"+id+"'";
         
-        RowMapper rm = new RowMapper<Transaction>() {
+        RowMapper<Transaction> rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -5617,7 +5617,7 @@ public class TransactionsLogController {
                     + " smsgw=:smsgw, "
                     + " trace=:trace";
             
-            RowMapper rm = new RowMapper<MerchantSms>() {
+            RowMapper<MerchantSms> rm = new RowMapper<MerchantSms>() {
                 public MerchantSms mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantSms t = new MerchantSms();
                     t.setId(BigInteger.valueOf(rs.getLong("id")));
