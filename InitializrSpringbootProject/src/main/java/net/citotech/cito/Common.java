@@ -913,12 +913,12 @@ public class Common {
             parameters.addValue("admin_id", user.getId());
                 
             RowMapper<UserPrivilege> rm = (rs, rowNum) -> {
-                    UserPrivilege user = new UserPrivilege();
-                    user.setPrivilege(rs.getString("privilege"));
-                    user.setId(rs.getLong("id"));
-                    user.setCreated_on(rs.getString("created_on"));
-                    user.setUdpated_on(rs.getString("updated_on"));
-                    return user;
+                    UserPrivilege up = new UserPrivilege();
+                    up.setPrivilege(rs.getString("privilege"));
+                    up.setId(rs.getLong("id"));
+                    up.setCreated_on(rs.getString("created_on"));
+                    up.setUdpated_on(rs.getString("updated_on"));
+                    return up;
             };
             
             List<UserPrivilege> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -1135,6 +1135,7 @@ public class Common {
                             t.setTx_type(rs.getString("tx_type"));
                             t.setSms_balance(rs.getDouble("sms_balance"));
                             return t;
+                    }
                     };
 
                     List<Statement> balanceList = jdbcTemplate.query(balanceSql, parametersBalanceSql, rm_b);
@@ -1376,6 +1377,7 @@ public class Common {
                     //safaricom_balance
 
                     return t;
+            }
             };
 
             List<Statement> balanceList = jdbcTemplate.query(balanceSql, parametersBalanceSql, rm_b);

@@ -53,6 +53,12 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     
     @Value( "${custom.lockfiledirectory}" )
     private String lockfiledirectory;
+
+    private String lockDir() {
+        if (lockfiledirectory != null && !lockfiledirectory.isEmpty()) return lockfiledirectory;
+        String env = System.getenv("LOCK_FILE_DIR");
+        return (env != null && !env.isEmpty()) ? env : "/tmp/cpay/locks/";
+    }
     
     public static boolean isValidMisdn(String msisdn) {
         for (int i=0; i <  prefix.length; i++) {
@@ -570,7 +576,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     }
     
     Boolean isTokenAboutToExpire() throws IOException {
-        String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
+        String filePath = lockDir()+Common.CLASS_PATH_MTN_TOKEN_FILE;
         File resource = new File(filePath);  
         if (resource.createNewFile()) {
             Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
@@ -617,7 +623,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     }
     
     public Token getToken() throws IOException {
-        String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
+        String filePath = lockDir()+Common.CLASS_PATH_MTN_TOKEN_FILE;
         File resource = new File(filePath);  
         if (resource.createNewFile()) {
             Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
@@ -700,7 +706,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             newToken.put("created_on", d.format(formatter));
             
-            String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
+            String filePath = lockDir()+Common.CLASS_PATH_MTN_TOKEN_FILE;
             Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
                 "MTN Token "+filePath);
             

@@ -702,7 +702,7 @@ public class Api {
                                             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM API CALLBACK: "+requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM API CALLBACK: "+maskCallbackBody(requestBody), "");
         try {
             //Ensure that we have valid JSON data.
             JSONObject sObject;
@@ -785,7 +785,6 @@ public class Api {
                                     .log(Level.SEVERE, "INTERNAL ERROR: " + e.getMessage(), "");
                             return GeneralException.getError("102", GeneralException.ERRORS_102);
                         }
-                    }
                 });
                 return failResult;
             }
@@ -850,7 +849,6 @@ public class Api {
                             return GeneralException
                                     .getError("102", GeneralException.ERRORS_102);
                         }
-                    }
                 });
 
             //Transaction tx = Common.getTxByNetworkRef(CheckoutRequestID, jdbcTemplate);
@@ -875,7 +873,7 @@ public class Api {
                                                     HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM PAYIN API CALLBACK - PAYOUT: "+requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM PAYIN API CALLBACK - PAYOUT: "+maskCallbackBody(requestBody), "");
 
         try {
             //Ensure that we have valid JSON data.
@@ -981,7 +979,7 @@ public class Api {
                             return GeneralException
                                     .getError("109", String.format(GeneralException.ERRORS_109, "Transaction", networkRefFinal));
                         }
-                        if (tx.equals("SUCCESSFUL") || tx.equals("FAILED")) {
+                        if (tx.getStatus().equals("SUCCESSFUL") || tx.getStatus().equals("FAILED")) {
                             Logger.getLogger(AuthenticationController.class.getName())
                                     .log(Level.INFO, "SAFARICOM API CALLBACK COLLECTIONS- Transaction "+CheckoutRequestIDFinal+" Doesnt exists: "+requestBody, requestBody);
                             return GeneralException
@@ -1030,7 +1028,6 @@ public class Api {
                         return GeneralException
                                 .getError("102", GeneralException.ERRORS_102);
                     }
-                }
             });
             //transactionManager.commit();
             //Transaction tx = Common.getTxByNetworkRef(CheckoutRequestID, jdbcTemplate);
@@ -1054,7 +1051,7 @@ public class Api {
                                              HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: "+requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: "+maskCallbackBody(requestBody), "");
 
         try {
             //Ensure that we have valid JSON data.
@@ -1183,7 +1180,6 @@ public class Api {
                         return GeneralException
                                 .getError("102", GeneralException.ERRORS_102);
                     }
-                }
             });
             //transactionManager.commit();
             //Transaction tx = Common.getTxByNetworkRef(CheckoutRequestID, jdbcTemplate);
@@ -1208,7 +1204,7 @@ public class Api {
                                           HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: "+requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: "+maskCallbackBody(requestBody), "");
         try {
             //Ensure that we have valid JSON data.
             JSONObject sObject;
@@ -1327,7 +1323,6 @@ public class Api {
                         return GeneralException
                                 .getError("102", GeneralException.ERRORS_102);
                     }
-                }
             });
             //transactionManager.commit();
             //Transaction tx = Common.getTxByNetworkRef(CheckoutRequestID, jdbcTemplate);
@@ -1393,7 +1388,7 @@ public class Api {
     public String doAirtelMoneyPayInCallback(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "AIRTEL MONEY CALLBACK: "+requestBody, requestBody);
+                .log(Level.INFO, "AIRTEL MONEY CALLBACK: "+maskCallbackBody(requestBody), "");
         try {
             JSONObject sObject;
             try {
@@ -1451,7 +1446,6 @@ public class Api {
                                 .log(Level.SEVERE, "INTERNAL ERROR: "+e.getMessage(), "");
                         return GeneralException.getError("102", GeneralException.ERRORS_102);
                     }
-                }
             });
             return result;
         } catch (Exception ex) {
@@ -1465,7 +1459,7 @@ public class Api {
     public String doSafaricomAccountBalanceCallback(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM BALANCE CALLBACK: "+requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM BALANCE CALLBACK received", "");
         try {
             JSONObject sObject;
             try {
@@ -1536,7 +1530,7 @@ public class Api {
     public String doSafaricomReversalCallback(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM REVERSAL CALLBACK: "+requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM REVERSAL CALLBACK received", "");
         try {
             JSONObject sObject;
             try {
@@ -1937,7 +1931,6 @@ public class Api {
                         return GeneralException
                             .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
                     }
-                }
             });
             
             if ("success".equals(result)) {
@@ -1959,28 +1952,6 @@ public class Api {
     /*
     * API to add a new admin to the database
     */
-    @PostMapping(path="/testCallbackReception")
-
-    public String testCallbackReception (@RequestBody String requestBody, 
-            HttpServletRequest request, HttpServletResponse response) {
-        //Set the response header
-        
-        try {
-            JSONObject sObject = new JSONObject(requestBody);
-            String reference = sObject.getString("reference");
-            
-            return GeneralSuccessResponse
-                .getMessage("000", GeneralSuccessResponse.SUCCESS_000+". Ref: "+reference);
-            
-        } catch (JSONException e) {
-            return GeneralException
-                .getError("124", 
-                        String.format(GeneralException.ERRORS_124, requestBody));
-        }
-        
-        
-    }
-
     /**
      * Checks whether {@code amount} falls within the gateway's configured
      * min/max transaction limits.  Returns null if OK, or an error JSON string.
@@ -2023,6 +1994,14 @@ public class Api {
      * volume limit.  Returns null if OK, or an error JSON string.
      * Merchant settings keys: daily_volume_limit, monthly_volume_limit.
      */
+    /** Mask MSISDNs and amounts from a callback body before writing to logs. */
+    private static String maskCallbackBody(String body) {
+        if (body == null) return "";
+        // Mask 10–13 digit phone numbers (covers 256XXXXXXXXX, 07XXXXXXXX etc.)
+        return body.replaceAll("\\b(2567[0-9]|2567[0-9]|07[0-9])[0-9]{7,10}\\b", "***MSISDN***")
+                   .replaceAll("\"Amount\"\\s*:\\s*[0-9]+(\\.[0-9]+)?", "\"Amount\":***");
+    }
+
     private String checkMerchantVolumeLimit(Merchant merchant, Double amount) {
         try {
             Setting dailyLimitSetting  = Common.getMerchantSettings("daily_volume_limit",   merchant.getId(), jdbcTemplate);

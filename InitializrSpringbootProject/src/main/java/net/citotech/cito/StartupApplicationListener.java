@@ -132,6 +132,11 @@ public class StartupApplicationListener {
     private boolean applyQueries(String xml_data) {
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            dbFactory.setXIncludeAware(false);
+            dbFactory.setExpandEntityReferences(false);
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(new InputSource(new StringReader(xml_data)));
             doc.getDocumentElement().normalize();
@@ -181,7 +186,7 @@ public class StartupApplicationListener {
                 //Select to see if this query was executed.
                 if (nQuery.getQuery_id() != null && !nQuery.getQuery_id().isEmpty()) {
                     String checkSql = "SELECT * FROM `"+Common.DB_TABLE_DB_CHANGES+"` "
-                        + "WHERE query_id='"+nQuery.getQuery_id()+"'";
+                        + "WHERE query_id=:query_id";
                     RowMapper rm = new RowMapper<QueryUpdate>() {
                     public QueryUpdate mapRow(ResultSet rs, int rowNum) throws SQLException {
                             QueryUpdate t = new QueryUpdate();
@@ -193,8 +198,8 @@ public class StartupApplicationListener {
                             return t;
                         }
                     };
-                    List<QueryUpdate> listQueries = jdbcTemplate.query(checkSql, 
-                            new MapSqlParameterSource(), 
+                    List<QueryUpdate> listQueries = jdbcTemplate.query(checkSql,
+                            new MapSqlParameterSource("query_id", nQuery.getQuery_id()),
                             rm);
                     if (listQueries.size()>0) {
                         java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())

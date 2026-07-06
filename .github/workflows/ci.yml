@@ -146,6 +146,11 @@ jobs:
         run: npm ci --legacy-peer-deps
       - name: Run linter
         run: npm run lint --if-present
+      - name: Run tests
+        run: npm test -- --watchAll=false --passWithNoTests
+        env:
+          CI: "true"
+          NODE_OPTIONS: "--openssl-legacy-provider"
       - name: Build React app
         run: npm run build
         env:

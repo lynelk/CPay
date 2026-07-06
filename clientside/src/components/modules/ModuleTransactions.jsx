@@ -644,7 +644,7 @@ class ModuleTransactionsC extends React.Component {
                                     dangerouslySetInnerHTML={{
                                         __html: (
                                             tx_details_row.tx_merchant_description ?
-                                            tx_details_row.tx_merchant_description.replace(/\n/g, "<BR/>") : ""
+                                            common.encodeHTML(tx_details_row.tx_merchant_description).replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
                                     className={styles.commonBlockText}>
@@ -660,7 +660,7 @@ class ModuleTransactionsC extends React.Component {
                                     dangerouslySetInnerHTML={{
                                         __html: (
                                             tx_details_row.tx_description ?
-                                            tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
+                                            common.encodeHTML(tx_details_row.tx_description).replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
                                     className={styles.commonBlockText}>

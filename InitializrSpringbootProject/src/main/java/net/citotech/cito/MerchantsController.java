@@ -254,12 +254,12 @@ public class MerchantsController {
             parameters.addValue("admin_id", user.getId());
                 
             RowMapper<UserPrivilege> rm = (rs, rowNum) -> {
-                    UserPrivilege user = new UserPrivilege();
-                    user.setPrivilege(rs.getString("privilege"));
-                    user.setId(rs.getLong("id"));
-                    user.setCreated_on(rs.getString("created_on"));
-                    user.setUdpated_on(rs.getString("updated_on"));
-                    return user;
+                    UserPrivilege up = new UserPrivilege();
+                    up.setPrivilege(rs.getString("privilege"));
+                    up.setId(rs.getLong("id"));
+                    up.setCreated_on(rs.getString("created_on"));
+                    up.setUdpated_on(rs.getString("updated_on"));
+                    return up;
             };
             
             List<UserPrivilege> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -487,7 +487,7 @@ public class MerchantsController {
             final String sql_ = sql;
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(status -> {
+            String result = template.execute(txStatus -> {
                     try {
 
                         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -540,11 +540,10 @@ public class MerchantsController {
                         return "success";
                     } catch (Exception e) {
                         //transactionManager.rollback(status);
-                        status.setRollbackOnly();
+                        txStatus.setRollbackOnly();
                         return GeneralException
                             .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
                     }
-                }
             });
             
             if ("success".equals(result)) {
@@ -668,7 +667,7 @@ public class MerchantsController {
             final String sql_ = sql;
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(status -> {
+            String result = template.execute(txStatus -> {
                     try {
 
                         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -722,7 +721,7 @@ public class MerchantsController {
                         
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
-                            status.setRollbackOnly();
+                            txStatus.setRollbackOnly();
                             return actionInsert;
                         }
                         
@@ -731,11 +730,10 @@ public class MerchantsController {
                         return "success";
                     } catch (Exception e) {
                         //transactionManager.rollback(status);
-                        status.setRollbackOnly();
+                        txStatus.setRollbackOnly();
                         return GeneralException
                             .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
                     }
-                }
             });
             
             if ("success".equals(result)) {
@@ -955,7 +953,7 @@ public class MerchantsController {
             
             final String sql_ = sql;
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(status -> {
+            String result = template.execute(txStatus -> {
                     try {
 
                         //Update Merchants Table
@@ -966,14 +964,14 @@ public class MerchantsController {
                         for (int i=0; i < users.length(); i++) {
                             //First check if merchant user exists
                             JSONObject userObject = users.getJSONObject(i);
-                            String name = userObject.getString("name");
+                            String mUserName = userObject.getString("name");
                             String email = userObject.getString("email");
                             String row_id = userObject.getString("id");
                             String phone =  userObject.getString("phone");
                             String status_ =  userObject.getString("status");
                             
                             MerchantUser mu = new MerchantUser();
-                            mu.setName(name);
+                            mu.setName(mUserName);
                             mu.setEmail(email);
                             mu.setPhone(phone);
                             mu.setStatus(status_);
@@ -996,7 +994,7 @@ public class MerchantsController {
                             
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("merchant_id", id);
-                            privParams.addValue("name", name);
+                            privParams.addValue("name", mUserName);
                             privParams.addValue("email", email);
                             privParams.addValue("phone", phone);
                             privParams.addValue("status", status_);
@@ -1012,7 +1010,7 @@ public class MerchantsController {
                                     return GeneralException
                                         .getError("108", 
                                                 String.format(GeneralException.ERRORS_108, 
-                                                "Merchant User ", name));
+                                                "Merchant User ", mUserName));
                                 }
                                 
                                 //Send an email with user's credentials
@@ -1039,7 +1037,7 @@ public class MerchantsController {
                                     return GeneralException
                                         .getError("108", 
                                                 String.format(GeneralException.ERRORS_108, 
-                                                "Merchant User ", name));
+                                                "Merchant User ", mUserName));
                                 }
                                 if (generate_pw) {
                                     sendEmailOnUpdatingMerchantUserPassword(mu, password);
@@ -1051,9 +1049,9 @@ public class MerchantsController {
 
                             //Now update user privileges
                             //Now drop privileges
-                            MapSqlParameterSource parameterDropPrivileges = new MapSqlParameterSource();
-                            parameterDropPrivileges.addValue("admin_id", row_id);
-                            jdbcTemplate.update(sqlPrivilegesDropExistings, parameterDropPrivileges);
+                            MapSqlParameterSource dropPrivParams = new MapSqlParameterSource();
+                            dropPrivParams.addValue("admin_id", row_id);
+                            jdbcTemplate.update(sqlPrivilegesDropExistings, dropPrivParams);
 
                             JSONArray uPrivileges = userObject.getJSONArray("privileges");
                             for (int p=0; p < uPrivileges.length(); p++) {
@@ -1070,7 +1068,7 @@ public class MerchantsController {
                         
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
-                            status.setRollbackOnly();
+                            txStatus.setRollbackOnly();
                             return actionInsert;
                         }
                         
@@ -1081,11 +1079,10 @@ public class MerchantsController {
                         
                         e.printStackTrace();
                         //transactionManager.rollback(status);
-                        status.setRollbackOnly();
+                        txStatus.setRollbackOnly();
                         return GeneralException
                             .getError("102", GeneralException.ERRORS_102+"***: "+e.getStackTrace());
                     }
-                }
             });
             
             if ("success".equals(result)) {
@@ -1182,7 +1179,7 @@ public class MerchantsController {
             
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
-            String result = template.execute(status -> {
+            String result = template.execute(txStatus -> {
                     try {
 
                         jdbcTemplate.update(sql, parameters);
@@ -1193,7 +1190,7 @@ public class MerchantsController {
                         
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
-                            status.setRollbackOnly();
+                            txStatus.setRollbackOnly();
                             return actionInsert;
                         }
                         
@@ -1201,11 +1198,10 @@ public class MerchantsController {
                         return "success";
                     } catch (Exception e) {
                         //transactionManager.rollback(status);
-                        status.setRollbackOnly();
+                        txStatus.setRollbackOnly();
                         return GeneralException
                             .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
                     }
-                }
             });
             
             if ("success".equals(result)) {

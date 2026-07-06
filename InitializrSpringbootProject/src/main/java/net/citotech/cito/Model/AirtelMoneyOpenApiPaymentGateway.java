@@ -52,6 +52,12 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     @Value("${custom.lockfiledirectory}")
     private String lockfiledirectory;
 
+    private String lockDir() {
+        if (lockfiledirectory != null && !lockfiledirectory.isEmpty()) return lockfiledirectory;
+        String env = System.getenv("LOCK_FILE_DIR");
+        return (env != null && !env.isEmpty()) ? env : "/tmp/cpay/locks/";
+    }
+
     public static boolean isValidMisdn(String msisdn) {
         for (String p : prefix) {
             Matcher matcher = Pattern.compile("^" + p).matcher(msisdn);
@@ -343,7 +349,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     }
 
     private File tokenFile() throws IOException {
-        File directory = new File(lockfiledirectory == null ? "/tmp/cpay/locks/" : lockfiledirectory);
+        File directory = new File(lockDir());
         if (!directory.exists()) {
             directory.mkdirs();
         }
