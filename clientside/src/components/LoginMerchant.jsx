@@ -30,7 +30,7 @@ class LoginMerchantWithOutRouter extends React.Component {
 
   footer () {
     return (
-      <div align="center" style={{ padding: 5, fontSize:13 }}>Copyright Text here</div>
+      <div align="center" style={{ padding: 5, fontSize:13 }}>Copyright © 2019</div>
     );
   }
 
@@ -160,7 +160,7 @@ class LoginMerchantWithOutRouter extends React.Component {
     const { user } = this.state;
     const { history } = this.props;
     return (
-      <div align="center" valign="center">
+      <div className="cpay-auth-screen cpay-auth-merchant">
         <Panel 
             title={strings.merchant_title}
             bodyStyle={{ padding: 10 }} 

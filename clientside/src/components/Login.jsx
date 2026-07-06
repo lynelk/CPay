@@ -34,7 +34,7 @@ class LoginWithOutRouter extends React.Component {
   footer () {
     //alert("This is called.");
     return (
-      <div align="center" style={{ padding: 5, fontSize:13 }}>Copyright Text here</div>
+      <div align="center" style={{ padding: 5, fontSize:13 }}>Copyright © 2019</div>
     );
   }
 
@@ -193,7 +193,7 @@ class LoginWithOutRouter extends React.Component {
     const { match, location, history } = this.props;
     
     return (
-      <div align="center" valign="center">
+      <div className="cpay-auth-screen cpay-auth-admin">
         <Panel 
             title={strings.portal_title}
             bodyStyle={{ padding: 20 }} 

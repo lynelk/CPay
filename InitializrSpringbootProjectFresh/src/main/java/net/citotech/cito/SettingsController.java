@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.util.Iterator;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -57,6 +58,112 @@ public class SettingsController {
     private PlatformTransactionManager transactionManager;
     
     
+    static JSONArray parseSettingsCatalog(String settings, String fallbackGroup) {
+        String catalog = settings == null ? "" : settings.trim();
+        if (catalog.isEmpty()) {
+            return new JSONArray();
+        }
+        if (catalog.startsWith("[")) {
+            return normalizeSettingsCatalog(new JSONArray(catalog), fallbackGroup);
+        }
+
+        JSONObject legacySettings = new JSONObject(catalog);
+        JSONArray normalized = new JSONArray();
+        Iterator<String> keys = legacySettings.keys();
+        while (keys.hasNext()) {
+            String name = keys.next();
+            normalized.put(settingsRow(
+                name,
+                labelFromSettingName(name),
+                jsonValueText(legacySettings, name, ""),
+                fallbackGroup,
+                name));
+        }
+        return normalized;
+    }
+
+    private static JSONArray normalizeSettingsCatalog(JSONArray settings, String fallbackGroup) {
+        JSONArray normalized = new JSONArray();
+        for (int i = 0; i < settings.length(); i++) {
+            JSONObject setting = settings.optJSONObject(i);
+            if (setting == null) {
+                continue;
+            }
+            String name = settingText(setting, "name", "").trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            normalized.put(settingsRow(
+                name,
+                settingText(setting, "label", labelFromSettingName(name)),
+                settingText(setting, "setting_value", ""),
+                settingText(setting, "setting_group", fallbackGroup),
+                settingText(setting, "description", name)));
+        }
+        return normalized;
+    }
+
+    private static JSONObject settingsRow(String name, String label, String value, String group, String description) {
+        JSONObject setting = new JSONObject();
+        setting.put("name", name);
+        setting.put("label", label == null || label.isBlank() ? labelFromSettingName(name) : label);
+        setting.put("setting_value", value == null ? "" : value);
+        setting.put("setting_group", group == null || group.isBlank() ? "Application" : group);
+        setting.put("description", description == null || description.isBlank() ? name : description);
+        return setting;
+    }
+
+    private static String settingText(JSONObject setting, String key, String defaultValue) {
+        if (setting == null || !setting.has(key) || setting.isNull(key)) {
+            return defaultValue;
+        }
+        Object value = setting.opt(key);
+        if (value == null || JSONObject.NULL.equals(value)) {
+            return defaultValue;
+        }
+        return String.valueOf(value);
+    }
+
+    private static String jsonValueText(JSONObject setting, String key, String defaultValue) {
+        Object value = setting.opt(key);
+        if (value == null || JSONObject.NULL.equals(value)) {
+            return defaultValue;
+        }
+        return String.valueOf(value);
+    }
+
+    private static String labelFromSettingName(String name) {
+        if (name == null || name.isBlank()) {
+            return "Setting";
+        }
+        String[] parts = name.replaceAll("[._-]+", " ").trim().split("\\s+");
+        StringBuilder label = new StringBuilder();
+        for (String part : parts) {
+            if (part.isBlank()) {
+                continue;
+            }
+            if (label.length() > 0) {
+                label.append(' ');
+            }
+            label.append(part.substring(0, 1).toUpperCase());
+            if (part.length() > 1) {
+                label.append(part.substring(1).toLowerCase());
+            }
+        }
+        return label.length() == 0 ? "Setting" : label.toString();
+    }
+
+    private static String invalidSettingsCatalogError() {
+        return GeneralException
+            .getError("102", GeneralException.ERRORS_102 + ": Settings catalog is empty or invalid.");
+    }
+
+    private static String validateSettingsPayload(JSONArray newSettings) {
+        if (newSettings == null || newSettings.length() == 0) {
+            return invalidSettingsCatalogError();
+        }
+        return "success";
+    }
     @PostMapping(path="/getSettings")
 
     public String getSettings (@RequestBody String requestBody, 
@@ -79,6 +186,9 @@ public class SettingsController {
             
             //First check if there settings
             JSONArray default_settings = getDefaultSettings();
+            if (default_settings.length() == 0) {
+                return invalidSettingsCatalogError();
+            }
             
             String sSettings = updateCurrentSettings(default_settings);
             if (!sSettings.equals("success")) {
@@ -99,9 +209,9 @@ public class SettingsController {
                     u_p_.put("id", us.getId());
                     u_p_.put("name", us.getName());
                     u_p_.put("setting_value", us.getSetting_value());
-                    u_p_.put("label", jObject.getString("label"));
-                    u_p_.put("description", jObject.getString("description"));
-                    u_p_.put("setting_group", jObject.getString("setting_group"));
+                    u_p_.put("label", settingText(jObject, "label", us.getLabel()));
+                    u_p_.put("description", settingText(jObject, "description", us.getDescription()));
+                    u_p_.put("setting_group", settingText(jObject, "setting_group", us.getGroup()));
                     admins_array.put(u_p_);
                 }
             }
@@ -144,6 +254,9 @@ public class SettingsController {
             
             //First check if there settings
             JSONArray default_settings = getDefaultMerchantSettings();
+            if (default_settings.length() == 0) {
+                return invalidSettingsCatalogError();
+            }
 
             
             String sSettings = updateCurrentMerchantSettings(default_settings, merchant_id);
@@ -165,9 +278,9 @@ public class SettingsController {
                     u_p_.put("id", us.getId());
                     u_p_.put("name", us.getName());
                     u_p_.put("setting_value", us.getSetting_value());
-                    u_p_.put("label", jObject.getString("label"));
-                    u_p_.put("description", jObject.getString("description"));
-                    u_p_.put("setting_group", jObject.getString("setting_group"));
+                    u_p_.put("label", settingText(jObject, "label", us.getLabel()));
+                    u_p_.put("description", settingText(jObject, "description", us.getDescription()));
+                    u_p_.put("setting_group", settingText(jObject, "setting_group", us.getGroup()));
                     u_p_.put("merchant_id", merchant_id);
                     admins_array.put(u_p_);
                 } 
@@ -186,6 +299,9 @@ public class SettingsController {
     }
     
     private JSONObject isInCurrentSettings(String setting, JSONArray settingsArray) {
+        if (settingsArray == null) {
+            return null;
+        }
         try {
             for (int i=0; i < settingsArray.length(); i++) {
                 JSONObject jObject = settingsArray.getJSONObject(i);
@@ -201,6 +317,9 @@ public class SettingsController {
     }
     
     private JSONObject isInCurrentMerchantSettings(String setting, JSONArray settingsArray) {
+        if (settingsArray == null) {
+            return null;
+        }
         try {
             for (int i=0; i < settingsArray.length(); i++) {
                 JSONObject jObject = settingsArray.getJSONObject(i);
@@ -296,45 +415,23 @@ public class SettingsController {
     }
     
     private JSONArray getDefaultSettings() throws IOException {
-        InputStream resource = new ClassPathResource(
-            Common.CLASS_PATH_DEFAULT_SETTINGS).getInputStream();//.getFile();
-        String settings = StreamUtils.copyToString(resource, Charset.defaultCharset());
-        /*new String(
-            Files.readAllBytes(resource.toPath())
-        );*/
-        JSONArray r = null;
-        try {
-            r = new JSONArray(settings);
-        } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return r;
+        return loadSettingsCatalog(Common.CLASS_PATH_DEFAULT_SETTINGS, "Application");
     }
     
     private JSONArray getDefaultMerchantSettings() throws IOException {
-        InputStream resource = new ClassPathResource(
-            Common.CLASS_PATH_DEFAULT_MERCHANT_SETTINGS).getInputStream();//.getFile();
-        String settings = StreamUtils.copyToString(resource, Charset.defaultCharset());
-        /*new String(
-            Files.readAllBytes(resource.toPath())
-        );*/
-        JSONArray r = null;
-        try {
-            r = new JSONArray(settings);
-            /*
-            Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "REACHED "+r.toString(), "Parse JSON");
-                    */
-        } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "JSONException", ex);
-        } catch (Exception e) {
-            Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "Exception", e);
-        }
-        return r;
+        return loadSettingsCatalog(Common.CLASS_PATH_DEFAULT_MERCHANT_SETTINGS, "Merchant");
     }
-    
+
+    private JSONArray loadSettingsCatalog(String path, String fallbackGroup) {
+        try (InputStream resource = new ClassPathResource(path).getInputStream()) {
+            String settings = StreamUtils.copyToString(resource, Charset.defaultCharset());
+            return parseSettingsCatalog(settings, fallbackGroup);
+        } catch (Exception ex) {
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, "Failed to load settings catalog " + path, ex);
+            return new JSONArray();
+        }
+    }
     
     private List<Setting> getCurrentSettings() {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
@@ -442,6 +539,10 @@ public class SettingsController {
     
     
     private String updateCurrentSettings(JSONArray new_settings) {
+        String validation = validateSettingsPayload(new_settings);
+        if (!validation.equals("success")) {
+            return validation;
+        }
         
         //Now add the user to database
         String sql = "INSERT INTO "+Common.DB_TABLE_SETTINGS+" "
@@ -521,6 +622,10 @@ public class SettingsController {
     
     
     private String updateCurrentMerchantSettings(JSONArray new_settings, Long merchant_id) {
+        String validation = validateSettingsPayload(new_settings);
+        if (!validation.equals("success")) {
+            return validation;
+        }
         
         //Now add the user to database
         String sql = "INSERT INTO "+Common.DB_MERCHANTS_SETTINGS+" "
@@ -621,6 +726,10 @@ public class SettingsController {
     * Updates settings on HTTP request.
     */
     private String updateCurrentSettings(JSONArray new_settings, User sessionUser) {
+        String validation = validateSettingsPayload(new_settings);
+        if (!validation.equals("success")) {
+            return validation;
+        }
         
         //Now add the user to database
         String sql = "INSERT INTO "+Common.DB_TABLE_SETTINGS+" "
@@ -689,6 +798,10 @@ public class SettingsController {
     }
     
     private String updateCurrentMerchantSettings(JSONArray new_settings, User sessionUser) {
+        String validation = validateSettingsPayload(new_settings);
+        if (!validation.equals("success")) {
+            return validation;
+        }
         
         //Now add the user to database
         String sql = "INSERT INTO "+Common.DB_MERCHANTS_SETTINGS+" "

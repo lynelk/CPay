@@ -111,6 +111,14 @@ public class Common {
     }
 
 
+    public static String jsonText(JSONObject obj, String key, String defaultValue) {
+        if (obj == null || key == null || obj.isNull(key)) {
+            return defaultValue;
+        }
+        Object value = obj.opt(key);
+        return value == null ? defaultValue : String.valueOf(value);
+    }
+
     public static void setSslSkipVerify(boolean skip) {
         skipSslVerify = skip;
         if (skip) {

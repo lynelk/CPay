@@ -135,8 +135,8 @@ public class TransactionsLogController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
@@ -654,8 +654,8 @@ public class TransactionsLogController {
             String end_date = sObjectRules.getString("end_date");
             String status = sObjectRules.getString("status");
             
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_SMS+" "
@@ -3109,8 +3109,8 @@ public class TransactionsLogController {
             JSONObject sObject = new JSONObject(requestBody);
             
             String merchant_id = sObject.getString("merchant_id");
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             parameters.addValue("merchant_id", merchant_id);

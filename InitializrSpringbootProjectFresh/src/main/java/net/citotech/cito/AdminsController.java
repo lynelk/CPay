@@ -85,8 +85,8 @@ public class AdminsController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_ADMIN+" ";
@@ -219,8 +219,8 @@ public class AdminsController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_USERS+" "
