@@ -25,6 +25,36 @@ public class DoPayGateway {
     
     @Value( "${custom.gatewaystate}" )
     public static String gatewaystate;
+    private static String settingValue(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            String name,
+            String fallback) {
+        Setting setting = Common.getSettings(name, jdbcTemplate);
+        if (setting == null || setting.getSetting_value() == null
+                || setting.getSetting_value().trim().isEmpty()) {
+            return fallback;
+        }
+        return setting.getSetting_value().trim();
+    }
+
+    private static boolean hasBlank(String... values) {
+        for (String value : values) {
+            if (value == null || value.trim().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void logBalanceWarning(String message, Exception ex) {
+        Logger logger = Logger.getLogger(DoPayGateway.class.getName());
+        if (ex == null) {
+            logger.log(Level.WARNING, message);
+        } else {
+            logger.log(Level.WARNING, message, ex);
+        }
+    }
+
     
     static String getGatewayIdByMsisdn(String msisdn) {
         
@@ -804,125 +834,99 @@ public class DoPayGateway {
         return null;
     }
     
-    public double[] runPayGatewayNetworkBalances( 
+    public double[] runPayGatewayNetworkBalances(
             NamedParameterJdbcTemplate jdbcTemplate) {
-        
+
         double[] rData = {0.0,0.0,0.0,0.0};
-        
+
         //First check if this is a test.
-        String state = Common.getSettings("application_settings_state", jdbcTemplate) == null ?
-                "production" : 
-                Common.getSettings("application_settings_state", jdbcTemplate)
-                    .getSetting_value();
-        
+        String state = settingValue(jdbcTemplate, "application_settings_state", "production");
+
         if (state.toLowerCase().equals("sandbox")) {
             rData[0] = 200000.0;
             rData[1] = 3500000.0;
             rData[2] = 1000000.0;
             rData[3] = 4000000.0;
-            
+
             return rData;
         }
-        
+
         //Select the gateway
         //Get MTN balances
-            
-        Setting env = Common.getSettings("gw_mtn_api_env", jdbcTemplate);
-        String global_url = "";
-        String api_collections_user = "";
-        String api_collections_key = "";
-        String api_collections_subscription = "";
+        try {
+            String env = settingValue(jdbcTemplate, "gw_mtn_api_env", "");
+            if (env.isEmpty()) {
+                logBalanceWarning("Skipping MTN dashboard balances: gw_mtn_api_env is not configured.", null);
+            } else {
+                boolean production = env.equalsIgnoreCase("mtnuganda");
+                String suffix = production ? "" : "_sandbox";
+                String global_url = settingValue(jdbcTemplate, "gw_mtn_api_url" + suffix, "");
+                String api_collections_user = settingValue(jdbcTemplate, "gw_mtn_api_collections_user_id" + suffix, "");
+                String api_collections_key = settingValue(jdbcTemplate, "gw_mtn_api_collections_user_key" + suffix, "");
+                String api_collections_subscription = settingValue(jdbcTemplate, "gw_mtn_api_collections_subscription_key" + suffix, "");
 
-        String api_disbursements_user = "";
-        String api_disbursements_key = "";
-        String api_disbursements_subscription = "";
-        String base_currency = "";
+                String api_disbursements_user = settingValue(jdbcTemplate, "gw_mtn_api_disbursements_user_id" + suffix, "");
+                String api_disbursements_key = settingValue(jdbcTemplate, "gw_mtn_api_disbursements_user_key" + suffix, "");
+                String api_disbursements_subscription = settingValue(jdbcTemplate, "gw_mtn_api_disbursements_subscription_key" + suffix, "");
+                String base_currency = settingValue(jdbcTemplate, "gw_mtn_api_base_currency" + suffix, "");
 
-        if (env.getSetting_value().equals("mtnuganda")) {
-            global_url = Common.getSettings("gw_mtn_api_url", jdbcTemplate).getSetting_value();
-            api_collections_user = Common.getSettings("gw_mtn_api_collections_user_id", jdbcTemplate).getSetting_value();
-            api_collections_key = Common.getSettings("gw_mtn_api_collections_user_key", jdbcTemplate).getSetting_value();
-            api_collections_subscription = Common.getSettings("gw_mtn_api_collections_subscription_key", jdbcTemplate).getSetting_value();
-
-            api_disbursements_user = Common.getSettings("gw_mtn_api_disbursements_user_id", jdbcTemplate).getSetting_value();
-            api_disbursements_key = Common.getSettings("gw_mtn_api_disbursements_user_key", jdbcTemplate).getSetting_value();
-            api_disbursements_subscription = Common.getSettings("gw_mtn_api_disbursements_subscription_key", jdbcTemplate).getSetting_value();
-            base_currency = Common.getSettings("gw_mtn_api_base_currency", jdbcTemplate).getSetting_value();
-        } else {
-            global_url = Common.getSettings("gw_mtn_api_url_sandbox", jdbcTemplate).getSetting_value();
-            api_collections_user = Common.getSettings("gw_mtn_api_collections_user_id_sandbox", jdbcTemplate).getSetting_value();
-            api_collections_key = Common.getSettings("gw_mtn_api_collections_user_key_sandbox", jdbcTemplate).getSetting_value();
-            api_collections_subscription = Common.getSettings("gw_mtn_api_collections_subscription_key_sandbox", jdbcTemplate).getSetting_value();
-
-            api_disbursements_user = Common.getSettings("gw_mtn_api_disbursements_user_id_sandbox", jdbcTemplate).getSetting_value();
-            api_disbursements_key = Common.getSettings("gw_mtn_api_disbursements_user_key_sandbox", jdbcTemplate).getSetting_value();
-            api_disbursements_subscription = Common.getSettings("gw_mtn_api_disbursements_subscription_key_sandbox", jdbcTemplate).getSetting_value();
-            base_currency = Common.getSettings("gw_mtn_api_base_currency_sandbox", jdbcTemplate).getSetting_value();
+                if (hasBlank(global_url, api_collections_user, api_collections_key,
+                        api_collections_subscription, api_disbursements_user,
+                        api_disbursements_key, api_disbursements_subscription, base_currency)) {
+                    logBalanceWarning("Skipping MTN dashboard balances: MTN gateway settings are incomplete.", null);
+                } else {
+                    mtn_mmpgw = new MTNMoMoPaymentGateway();
+                    mtn_mmpgw.setSegment("collection");
+                    mtn_mmpgw.setApiDetails(global_url, api_collections_user,
+                        api_collections_key, api_collections_subscription,
+                        api_disbursements_user, api_disbursements_key,
+                        api_disbursements_subscription, env, base_currency);
+                    rData[0] = Common.round(mtn_mmpgw.getBalance("collection"), 2);
+                    mtn_mmpgw.setSegment("disbursement");
+                    rData[1] = Common.round(mtn_mmpgw.getBalance("disbursement"), 2);
+                }
+            }
+        } catch (Exception ex) {
+            logBalanceWarning("Skipping MTN dashboard balances after gateway error.", ex);
         }
-        mtn_mmpgw = new MTNMoMoPaymentGateway();
-        mtn_mmpgw.setSegment("collection");
-        mtn_mmpgw.setApiDetails(global_url, api_collections_user, 
-            api_collections_key, api_collections_subscription,
-            api_disbursements_user, api_disbursements_key,
-            api_disbursements_subscription, env.getSetting_value(),
-            base_currency);
-        rData[0] =  Common.round(mtn_mmpgw.getBalance("collection"),2);
-        mtn_mmpgw.setSegment("disbursement");
-        rData[1] =  Common.round(mtn_mmpgw.getBalance("disbursement"),2);
-        
+
         //Get details for Airtel Money.
-        
-        String use_open_api = Common.getSettings("gw_airtelmoney_use_open_api", jdbcTemplate)
-                    .getSetting_value();
-        
-        //Do another gateway.
-        if (use_open_api.equals("yes")) {
-            
-            global_url = Common.getSettings("gw_airtelmoney_api_url", jdbcTemplate)
-                        .getSetting_value();
-            String api_username = Common.getSettings("gw_airtelmoney_api_username", jdbcTemplate)
-                        .getSetting_value();
-            String api_password = Common.getSettings("gw_airtelmoney_api_password", jdbcTemplate)
-                        .getSetting_value();
+        try {
+            String use_open_api = settingValue(jdbcTemplate, "gw_airtelmoney_use_open_api", "no");
+            String global_url = settingValue(jdbcTemplate, "gw_airtelmoney_api_url", "");
+            String api_username = settingValue(jdbcTemplate, "gw_airtelmoney_api_username", "");
+            String api_password = settingValue(jdbcTemplate, "gw_airtelmoney_api_password", "");
+            String disbursement_acc = settingValue(jdbcTemplate, "gw_airtelmoney_disbursement_account", "");
+            String collections_acc = settingValue(jdbcTemplate, "gw_airtelmoney_collections_account", "");
 
-            String disbursement_acc = Common.getSettings("gw_airtelmoney_disbursement_account", jdbcTemplate)
-                        .getSetting_value();
-            String collections_acc = Common.getSettings("gw_airtelmoney_collections_account", jdbcTemplate)
-                        .getSetting_value();
-            
-            String api_pin = Common.getSettings("gw_airtelmoney_api_pin", jdbcTemplate)
-                        .getSetting_value();
+            if (use_open_api.equals("yes")) {
+                String api_pin = settingValue(jdbcTemplate, "gw_airtelmoney_api_pin", "");
+                if (hasBlank(global_url, api_username, api_password, api_pin,
+                        disbursement_acc, collections_acc)) {
+                    logBalanceWarning("Skipping Airtel dashboard balances: Airtel Open API settings are incomplete.", null);
+                } else {
+                    airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
+                    airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                    Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
+                    if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
 
-            airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
-            airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
-            Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
-            if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
+                    rData[2] = Common.round(airteloapimm_mmpgw.getBalance(collections_acc), 2);
+                    rData[3] = Common.round(airteloapimm_mmpgw.getBalance(disbursement_acc), 2);
+                }
+            } else if (hasBlank(global_url, api_username, api_password, disbursement_acc, collections_acc)) {
+                logBalanceWarning("Skipping Airtel dashboard balances: Airtel gateway settings are incomplete.", null);
+            } else {
+                airtelmm_mmpgw = new AirtelMoneyPaymentGateway();
+                airtelmm_mmpgw.setApiDetails(global_url, api_username, api_password);
 
-            rData[2] = Common.round(airteloapimm_mmpgw.getBalance(collections_acc), 2);
-            rData[3] = Common.round(airteloapimm_mmpgw.getBalance(disbursement_acc),2);
-        
-        } else {
-            global_url = Common.getSettings("gw_airtelmoney_api_url", jdbcTemplate)
-                        .getSetting_value();
-            String api_username = Common.getSettings("gw_airtelmoney_api_username", jdbcTemplate)
-                        .getSetting_value();
-            String api_password = Common.getSettings("gw_airtelmoney_api_password", jdbcTemplate)
-                        .getSetting_value();
-
-            String disbursement_acc = Common.getSettings("gw_airtelmoney_disbursement_account", jdbcTemplate)
-                        .getSetting_value();
-            String collections_acc = Common.getSettings("gw_airtelmoney_collections_account", jdbcTemplate)
-                        .getSetting_value();
-
-            airtelmm_mmpgw = new AirtelMoneyPaymentGateway();
-            airtelmm_mmpgw.setApiDetails(global_url, api_username, api_password);
-
-            rData[2] = Common.round(airtelmm_mmpgw.getBalance(collections_acc), 2);
-            rData[3] = Common.round(airtelmm_mmpgw.getBalance(disbursement_acc),2);
+                rData[2] = Common.round(airtelmm_mmpgw.getBalance(collections_acc), 2);
+                rData[3] = Common.round(airtelmm_mmpgw.getBalance(disbursement_acc), 2);
+            }
+        } catch (Exception ex) {
+            logBalanceWarning("Skipping Airtel dashboard balances after gateway error.", ex);
         }
         return rData;
     }
-    
     private GateWayResponse sandboxRunPayGatewayDoPayIn(String msisdn,
             Double amount, 
             String ref,
@@ -1380,4 +1384,3 @@ public class DoPayGateway {
     }
 
 }
-

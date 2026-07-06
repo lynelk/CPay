@@ -9,6 +9,17 @@ import Progress from "../Progress";
 import LinearChart from './LinearChart';
 import styles from '../styles';
 
+export const dashboardErrorDetails = (res) => {
+    const hasCode = res && res.code !== undefined && res.code !== null && String(res.code).trim() !== "";
+    const message = (res && (res.message || res.error))
+        || (res && res.status ? `Request failed with status ${res.status}` : "Request failed.");
+
+    return {
+        title: hasCode ? `Error ${res.code}` : "Error",
+        message
+    };
+};
+
 class ModuleDashboardC extends React.Component {
     constructor(props) {
         super(props);
@@ -96,11 +107,11 @@ class ModuleDashboardC extends React.Component {
                         this.accessNotAllowed(res.message);
                         return;
                     }
-
+                    const errorDetails = dashboardErrorDetails(res);
                     this.messager.alert({
-                        title: "Error "+res.code,
+                        title: errorDetails.title,
                         icon: "error",
-                        msg: res.message
+                        msg: errorDetails.message
                     });
                 }
             } catch(Error) {

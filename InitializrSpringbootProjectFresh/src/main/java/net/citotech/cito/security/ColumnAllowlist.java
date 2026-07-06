@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -81,10 +82,16 @@ public final class ColumnAllowlist {
         return validate("default", column);
     }
 
+    public static Optional<String> merchantUserColumn(String column) {
+        try {
+            return Optional.of(validate("merchant_admins", column));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+    }
     // -------------------------------------------------------------------------
 
     private static Set<String> setOf(String... values) {
         return Arrays.stream(values).collect(Collectors.toSet());
     }
 }
-
