@@ -25,5 +25,6 @@ export default defineConfig({
   define: {
     "process.env.NODE_ENV": JSON.stringify("development"),
     "process.env.PUBLIC_URL": JSON.stringify(""),
+    "process.env.REACT_APP_API_BASE": JSON.stringify(process.env.REACT_APP_API_BASE || process.env.VITE_API_BASE || ""),
   },
 });
