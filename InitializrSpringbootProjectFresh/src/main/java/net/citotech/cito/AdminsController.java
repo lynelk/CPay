@@ -232,8 +232,13 @@ public class AdminsController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist
+                            .merchantUserColumn(category)
+                            .orElse(null);
+                    if (safeCategory != null) {
+                        sqlSelect += " AND " + safeCategory + " LIKE :searchValue ";
+                        parameters.addValue("searchValue", "%" + value + "%");
+                    }
                 }
             }
             
