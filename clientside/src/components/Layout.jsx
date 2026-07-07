@@ -205,7 +205,7 @@ class LayoutWithOutRouter extends React.Component {
           <MainMenu activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} />
         </aside>
 
-        <main className="cpay-main">
+        <main className={`cpay-main ${this.state.currentMenuKey === 'dashboard' ? 'cpay-main-dashboard' : ''}`}>
           <header className="cpay-topbar">
             <div className="cpay-toolbar-left">
               <button className="cpay-icon-button" type="button" title="Navigation">☰</button>

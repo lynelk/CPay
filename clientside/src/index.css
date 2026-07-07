@@ -798,3 +798,723 @@ select,
     padding-left: 0;
   }
 }
+
+/* ─── Auth shell refresh ─────────────────────────────────────────────────── */
+.cpay-auth-screen {
+  display: flex;
+  height: 100vh;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(37, 99, 235, 0.12), transparent 26%),
+    radial-gradient(circle at 86% 12%, rgba(14, 165, 233, 0.12), transparent 22%),
+    linear-gradient(135deg, #f8fbff 0%, #eef4fb 100%);
+  padding: 24px;
+}
+
+.cpay-auth-card {
+  display: grid;
+  width: min(980px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  grid-template-columns: 340px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 14px;
+  background: var(--cpay-fuse-surface);
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.13);
+}
+
+.cpay-auth-aside {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 22px;
+  min-height: 520px;
+  padding: 34px;
+  background: linear-gradient(160deg, #0f172a 0%, #1d4ed8 58%, #0891b2 100%);
+  color: #fff;
+}
+
+.cpay-auth-brand-large {
+  width: 150px;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 22px rgba(15, 23, 42, 0.18));
+}
+
+.cpay-auth-aside h2 {
+  margin: auto 0 0;
+  color: #fff;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.08;
+}
+
+.cpay-auth-aside p {
+  margin: -12px 0 0;
+  max-width: 250px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cpay-auth-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cpay-auth-chip-grid span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.cpay-auth-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 30px 34px 18px;
+}
+
+.cpay-auth-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.cpay-auth-logo {
+  width: 72px;
+  min-width: 72px;
+  object-fit: contain;
+}
+
+.cpay-auth-header h1 {
+  margin: 0;
+  color: var(--cpay-fuse-text);
+  font-size: 25px;
+  font-weight: 850;
+  line-height: 1.08;
+}
+
+.cpay-auth-header p {
+  margin: 5px 0 0;
+  color: var(--cpay-fuse-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.cpay-auth-content {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.cpay-auth-form {
+  display: grid;
+  width: 100%;
+  gap: 14px;
+}
+
+.cpay-auth-form .form-field {
+  margin-bottom: 0;
+}
+
+.cpay-auth-form .f-field,
+.cpay-auth-form .form-field .textbox {
+  margin-bottom: 0 !important;
+}
+
+.cpay-auth-form .textbox,
+.cpay-auth-form .combo,
+.cpay-auth-form .spinner {
+  width: 100% !important;
+  min-height: 40px !important;
+}
+
+.cpay-auth-form .textbox .textbox-text {
+  min-height: 38px !important;
+  color: var(--cpay-fuse-text) !important;
+  font-size: 14px !important;
+  font-weight: 550;
+  line-height: 38px !important;
+}
+
+.cpay-auth-form .form-label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.cpay-auth-form .validatebox-invalid,
+.cpay-auth-native-field input:invalid,
+.cpay-auth-native-field select:invalid {
+  background: #fff7f7 !important;
+}
+
+.cpay-auth-actions,
+.cpay-auth-native-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.cpay-auth-actions .l-btn,
+.cpay-auth-native-actions button,
+.cpay-auth-result button {
+  min-height: 40px !important;
+  border-radius: var(--cpay-fuse-radius) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.cpay-auth-submit,
+.cpay-auth-native-primary {
+  border: 1px solid var(--cpay-fuse-blue-dark) !important;
+  background: var(--cpay-fuse-blue) !important;
+  color: #fff !important;
+  padding: 0 20px !important;
+}
+
+.cpay-auth-link,
+.cpay-auth-native-secondary {
+  border: 1px solid var(--cpay-fuse-line-strong) !important;
+  background: var(--cpay-fuse-surface) !important;
+  color: var(--cpay-fuse-blue-dark) !important;
+  padding: 0 16px !important;
+}
+
+.cpay-auth-footer {
+  flex: 0 0 auto;
+  margin-top: 20px;
+  border-top: 1px solid var(--cpay-fuse-line);
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  padding-top: 14px;
+  text-align: center;
+}
+
+.cpay-signup-form {
+  display: grid;
+  gap: 16px;
+}
+
+.cpay-signup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cpay-auth-native-field {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cpay-auth-native-field input,
+.cpay-auth-native-field select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--cpay-fuse-line-strong);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-surface);
+  color: var(--cpay-fuse-text);
+  font-size: 14px;
+  font-weight: 550;
+  outline: 0;
+  padding: 0 12px;
+}
+
+.cpay-auth-native-field input:focus,
+.cpay-auth-native-field select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.cpay-auth-message,
+.cpay-auth-result {
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: #f8fafc;
+  color: var(--cpay-fuse-text);
+  font-size: 13px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+}
+
+.cpay-auth-message-error {
+  border-color: #fecaca;
+  background: #fff7f7;
+  color: #991b1b;
+}
+
+.cpay-auth-message-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.cpay-auth-result h2 {
+  margin: 0 0 12px;
+  color: var(--cpay-fuse-text);
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.cpay-auth-result dl {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.cpay-auth-result div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.cpay-auth-result dt {
+  color: var(--cpay-fuse-muted);
+  font-weight: 750;
+}
+
+.cpay-auth-result dd {
+  margin: 0;
+  color: var(--cpay-fuse-text);
+  font-weight: 850;
+}
+
+.cpay-auth-result p {
+  color: #475569;
+  margin: 0 0 14px;
+}
+
+@media (max-height: 760px) {
+  .cpay-auth-screen {
+    padding: 12px;
+  }
+
+  .cpay-auth-card {
+    max-height: calc(100vh - 24px);
+  }
+
+  .cpay-auth-aside {
+    min-height: 0;
+    padding: 26px;
+  }
+
+  .cpay-auth-main {
+    padding: 24px 28px 14px;
+  }
+
+  .cpay-auth-header {
+    margin-bottom: 18px;
+  }
+
+  .cpay-auth-footer {
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .cpay-auth-screen {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+
+  .cpay-auth-card {
+    width: min(100%, 520px);
+    max-height: none;
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-auth-aside {
+    min-height: 0;
+    padding: 22px;
+  }
+
+  .cpay-auth-brand-large,
+  .cpay-auth-aside p,
+  .cpay-auth-chip-grid {
+    display: none;
+  }
+
+  .cpay-auth-aside h2 {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .cpay-auth-main {
+    padding: 24px 20px 16px;
+  }
+
+  .cpay-auth-header {
+    align-items: flex-start;
+  }
+
+  .cpay-signup-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Dashboard card canvas ──────────────────────────────────────────────── */
+.cpay-main-dashboard {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.cpay-main-dashboard .cpay-page-heading {
+  flex: 0 0 auto;
+  padding: 20px 28px 10px;
+}
+
+.cpay-main-dashboard .cpay-page-heading h1 {
+  font-size: 28px;
+}
+
+.cpay-main-dashboard .cpay-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 28px 18px;
+}
+
+.cpay-main-dashboard .cpay-footer {
+  display: none;
+}
+
+.cpay-dashboard {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  overflow: hidden;
+}
+
+.cpay-dashboard-toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--cpay-fuse-shadow);
+  padding: 10px 14px;
+}
+
+.cpay-dashboard-toolbar h2 {
+  margin: 0;
+  color: var(--cpay-fuse-text);
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.cpay-dashboard-toolbar p {
+  margin: 3px 0 0;
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+}
+
+.cpay-dashboard-actions {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.cpay-dashboard-actions > button,
+.cpay-dashboard-picker button {
+  min-height: 36px;
+  border: 1px solid var(--cpay-fuse-blue-dark);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-blue);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+  padding: 0 14px;
+}
+
+.cpay-dashboard-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  width: 260px;
+  gap: 8px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-surface);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+  padding: 10px;
+}
+
+.cpay-dashboard-picker button {
+  display: grid;
+  min-height: 48px;
+  justify-items: start;
+  border-color: var(--cpay-fuse-line-strong);
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-text);
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.cpay-dashboard-picker button:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-dashboard-picker span {
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+}
+
+.cpay-dashboard-grid {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1.18fr) minmax(0, 1fr);
+  gap: 12px;
+  overflow: hidden;
+}
+
+.cpay-dashboard-card {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow);
+  padding: 14px;
+}
+
+.cpay-dashboard-card-balance {
+  grid-column: span 4;
+}
+
+.cpay-dashboard-card-collections {
+  grid-column: span 5;
+}
+
+.cpay-dashboard-card-notifications {
+  grid-column: span 3;
+}
+
+.cpay-dashboard-snapshot-card {
+  grid-column: span 3;
+}
+
+.cpay-dashboard-card-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cpay-dashboard-card-header span {
+  display: block;
+  color: var(--cpay-fuse-blue-dark);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.cpay-dashboard-card-header h3 {
+  margin: 3px 0 0;
+  color: var(--cpay-fuse-text);
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.12;
+}
+
+.cpay-dashboard-card-header strong,
+.cpay-dashboard-metric {
+  color: var(--cpay-fuse-text);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cpay-dashboard-card-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 999px;
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-muted);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cpay-dashboard-card-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.cpay-dashboard-chart-shell {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.cpay-dashboard-chart-shell canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.cpay-dashboard-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--cpay-fuse-radius);
+  background: #f8fafc;
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 16px;
+  text-align: center;
+}
+
+.cpay-dashboard-notifications {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  gap: 8px;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.cpay-dashboard-notification {
+  display: grid;
+  gap: 3px;
+  min-height: 0;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: #f8fafc;
+  padding: 9px 10px;
+}
+
+.cpay-dashboard-notification strong {
+  color: var(--cpay-fuse-text);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.cpay-dashboard-notification span {
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.cpay-dashboard-notification-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.cpay-dashboard-notification-info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.cpay-dashboard-notification-danger {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.cpay-dashboard-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: auto;
+}
+
+.cpay-dashboard-status-grid span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--cpay-fuse-radius);
+  background: #f0fdf4;
+  color: #166534;
+  padding: 10px;
+}
+
+.cpay-dashboard-status-grid strong {
+  color: #14532d;
+  font-size: 13px;
+}
+
+.cpay-dashboard-status-grid em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cpay-dashboard-card-copy {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1180px) {
+  .cpay-dashboard-card-balance,
+  .cpay-dashboard-card-collections,
+  .cpay-dashboard-card-notifications,
+  .cpay-dashboard-snapshot-card {
+    grid-column: span 6;
+  }
+}

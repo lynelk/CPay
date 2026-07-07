@@ -389,7 +389,7 @@ public class AuthenticationController {
     }
 
     
-    @PostMapping(path="/isMerchantLoggedIn")
+    @PostMapping(path={"/isMerchantLoggedIn", "/isMerchantUserLoggedIn"})
     public String isMerchantUserLoggedIn (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         HttpSession session = request.getSession();
@@ -905,7 +905,7 @@ public class AuthenticationController {
             return listUsers;
     }
     
-    @PostMapping(path="/logout")
+    @PostMapping(path={"/logout", "/logoutMerchantUser"})
     public String logOut (@RequestBody String requestBody, HttpServletRequest request) {
         request.getSession().invalidate();
         

@@ -46,6 +46,12 @@ public class ApiV1Controller {
         return api.doGetBalances(requestBody, request, response);
     }
 
+    @PostMapping(path = "/doSendSms")
+    @CrossOrigin
+    public String doSendSms(@RequestBody String requestBody,
+                            HttpServletRequest request, HttpServletResponse response) {
+        return api.doSendSms(requestBody, request, response);
+    }
     @PostMapping(path = "/doSafaricomPayCallback")
     @CrossOrigin
     public String doSafaricomPayCallback(@RequestBody String requestBody,
