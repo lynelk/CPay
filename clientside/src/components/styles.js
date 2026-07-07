@@ -10,9 +10,6 @@ const styles = {
   // Typography
   titleText: 'tw:font-ios-display tw:font-semibold tw:text-[20px] tw:text-cpay-label tw:tracking-[0.38px]',
 
-  // Dashboard
-  dashboardChartPanel: 'tw:relative tw:float-left tw:rounded-ios-lg tw:shadow-ios-card tw:bg-cpay-bg tw:m-ios-sm',
-
   // Toolbar
   moduleToolBarButtons: 'tw:ml-ios-sm tw:rounded-ios-md tw:font-ios',
 
@@ -20,7 +17,7 @@ const styles = {
   formDialog:                       'tw:rounded-ios-xl tw:shadow-ios-lg',
   formDialogLargeWidth:             'tw:rounded-ios-xl tw:shadow-ios-lg',
   moreTableContentDialogLargeWidth: 'tw:rounded-ios-xl tw:shadow-ios-lg',
-  formDialogContainer:              'tw:px-ios-lg tw:pt-ios-lg tw:pb-ios-md tw:w-[400px] tw:font-ios',
+  formDialogContainer:              'tw:px-ios-lg tw:pt-ios-lg tw:pb-ios-md tw:w-full tw:font-ios',
   formDialogFields:                 'tw:p-ios-xs tw:rounded-ios-sm tw:font-ios',
   formDialogFieldsTexField:         'tw:p-ios-xs tw:rounded-ios-sm tw:font-ios',
 
@@ -56,8 +53,8 @@ const styles = {
   dim: {
     formDialog:                       { width: 500,  height: 398 },
     formDialogLargeWidth:             { width: 800,  height: 398 },
+    merchantFormDialog:               { width: 'min(960px, calc(100vw - 32px))', height: 'min(720px, calc(100vh - 72px))' },
     moreTableContentDialogLargeWidth: { width: 1024, height: 550 },
-    dashboardChartPanel:              { height: 300, width: '45%' },
     formDialogFields:                 { width: 280 },
     formDialogFieldsTexField:         { width: 280, height: 100 },
   },

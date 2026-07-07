@@ -391,7 +391,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
@@ -401,7 +401,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -649,7 +649,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
@@ -659,7 +659,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -857,7 +857,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
         Cipher cipher = null;
         try {
-            cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
             File file = ResourceUtils.getFile(new ClassPathResource("keystore/ProductionCertificate.cer").getPath());
             FileInputStream fin = new FileInputStream(file);
             CertificateFactory f = CertificateFactory.getInstance("X.509");
@@ -867,17 +867,17 @@ public class SafariComPaymentGateway extends PaymentGateway {
             byte[] cipherText = cipher.doFinal(input);
             return Base64.getEncoder().encodeToString(cipherText);
         } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (CertificateException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (BadPaddingException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (InvalidKeyException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         }
         return "";
     }
@@ -894,17 +894,14 @@ public class SafariComPaymentGateway extends PaymentGateway {
             JSONObject newTokenO = new JSONObject();
             newTokenO.put("txRef", txRef);
             newTokenO.put("ConversationID", ConversationID);
-            String separator = File.separator;
-            String filePath = lockfiledirectory+ConversationID+".json";
-
-            File resource = new File(filePath);
+            File resource = Common.safeLockFile(lockfiledirectory, ConversationID + ".json");
             if (resource.createNewFile()) {
                 Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
-                        "SAFARICOM ConversationID File "+filePath+" has been created.");
+                        "SAFARICOM ConversationID File "+resource.getAbsolutePath()+" has been created.");
             }
             if (!resource.exists()) {
                 Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
-                        "SAFARICOM ConversationID File "+filePath+" has not been created.");
+                        "SAFARICOM ConversationID File "+resource.getAbsolutePath()+" has not been created.");
                 return;
             }
             Files.writeString(resource.toPath(), newTokenO.toString());

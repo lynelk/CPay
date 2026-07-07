@@ -1,6 +1,7 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem } from 'rc-easyui';
+import { Panel, Layout, LayoutPanel, Menu, MenuItem } from 'rc-easyui';
+import Messager from '../StableMessager';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
@@ -68,7 +69,7 @@ class ModuleAdminsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {

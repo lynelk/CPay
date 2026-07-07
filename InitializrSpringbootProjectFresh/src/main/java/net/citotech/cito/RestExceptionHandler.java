@@ -5,6 +5,9 @@
  */
 package net.citotech.cito;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -21,6 +24,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
  */
 @ControllerAdvice
 public class RestExceptionHandler {
+    private static final Logger LOGGER = Logger.getLogger(RestExceptionHandler.class.getName());
    
    
     @ExceptionHandler(NoHandlerFoundException.class)
@@ -58,10 +62,17 @@ public class RestExceptionHandler {
                .body(GeneralException.getError(code, message));
     }
     
+    @ExceptionHandler(Exception.class)
+    @ResponseBody
+    protected ResponseEntity<String> requestUnhandledException(Exception ex) {
+        LOGGER.log(Level.SEVERE, "Unhandled API exception", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+               .header("Content-Type", "application/json")
+               .body(GeneralException.getError("102", GeneralException.ERRORS_102));
+    }
     /*@Bean
     RouterFunction staticResourceLocator(){
             return RouterFunctions.resources("/**", new ClassPathResource("/"));
     }*/
     
 }
-

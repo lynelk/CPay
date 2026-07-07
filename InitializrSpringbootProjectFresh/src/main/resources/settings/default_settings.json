@@ -1,9 +1,667 @@
-{
-  "mail.smtp.host": "localhost",
-  "mail.smtp.port": "25",
-  "mail.smtp.username": "",
-  "mail.smtp.password": "",
-  "mail.smtp.auth": "false",
-  "mail.smtp.starttls.enable": "false",
-  "mail.smtp.from": "noreply@localhost"
-}
+[
+  {
+    "name": "app_setting_app_url",
+    "label": "Application URL",
+    "setting_value": "http://localhost:3000",
+    "setting_group": "Application",
+    "description": "Base application URL used in links and notifications."
+  },
+  {
+    "name": "application_settings_state",
+    "label": "Application State",
+    "setting_value": "production",
+    "setting_group": "Application",
+    "description": "Runtime state used by payment gateway logic."
+  },
+  {
+    "name": "internal_app_access_auths",
+    "label": "Internal App Access Auths",
+    "setting_value": "",
+    "setting_group": "Application",
+    "description": "Allowed internal API authentication tokens or identifiers."
+  },
+  {
+    "name": "internal_app_access_ips",
+    "label": "Internal App Access IPs",
+    "setting_value": "127.0.0.1,::1",
+    "setting_group": "Application",
+    "description": "Comma-separated IP allowlist for internal application access."
+  },
+  {
+    "name": "float_stock_account",
+    "label": "Float Stock Account",
+    "setting_value": "",
+    "setting_group": "Accounts",
+    "description": "Merchant/account number used for float stock."
+  },
+  {
+    "name": "revenue_account",
+    "label": "Revenue Account",
+    "setting_value": "",
+    "setting_group": "Accounts",
+    "description": "Merchant/account number used for revenue postings."
+  },
+  {
+    "name": "suspense_account",
+    "label": "Suspense Account",
+    "setting_value": "",
+    "setting_group": "Accounts",
+    "description": "Merchant/account number used for suspense postings."
+  },
+  {
+    "name": "sms_revenue_account",
+    "label": "SMS Revenue Account",
+    "setting_value": "",
+    "setting_group": "Accounts",
+    "description": "Merchant/account number used for SMS revenue postings."
+  },
+  {
+    "name": "float_alert_email",
+    "label": "Float Alert Email",
+    "setting_value": "",
+    "setting_group": "Accounts",
+    "description": "Email address that receives low float alerts."
+  },
+  {
+    "name": "email_tmp_on_creating_merchant_user",
+    "label": "Merchant User Created Email Template",
+    "setting_value": "Your CPay user has been created.",
+    "setting_group": "Email",
+    "description": "Email template sent when a merchant user is created."
+  },
+  {
+    "name": "email_tmp_pw_reset",
+    "label": "Password Reset Email Template",
+    "setting_value": "Use the password reset link provided.",
+    "setting_group": "Email",
+    "description": "Email template sent for password reset requests."
+  },
+  {
+    "name": "email_tmp_on_password_reset_done",
+    "label": "Password Reset Done Email Template",
+    "setting_value": "Your CPay password has been reset.",
+    "setting_group": "Email",
+    "description": "Email template sent after password reset completion."
+  },
+  {
+    "name": "mail.smtp.host",
+    "label": "SMTP Host",
+    "setting_value": "localhost",
+    "setting_group": "Email",
+    "description": "SMTP server host used for outbound email."
+  },
+  {
+    "name": "mail.smtp.port",
+    "label": "SMTP Port",
+    "setting_value": "25",
+    "setting_group": "Email",
+    "description": "SMTP server port used for outbound email."
+  },
+  {
+    "name": "mail.smtp.username",
+    "label": "SMTP Username",
+    "setting_value": "",
+    "setting_group": "Email",
+    "description": "SMTP username for authenticated mail delivery."
+  },
+  {
+    "name": "mail.smtp.password",
+    "label": "SMTP Password",
+    "setting_value": "",
+    "setting_group": "Email",
+    "description": "SMTP password for authenticated mail delivery."
+  },
+  {
+    "name": "mail.smtp.auth",
+    "label": "SMTP Auth",
+    "setting_value": "false",
+    "setting_group": "Email",
+    "description": "Whether SMTP authentication is enabled."
+  },
+  {
+    "name": "mail.smtp.starttls.enable",
+    "label": "SMTP StartTLS",
+    "setting_value": "false",
+    "setting_group": "Email",
+    "description": "Whether SMTP StartTLS is enabled."
+  },
+  {
+    "name": "mail.smtp.from",
+    "label": "SMTP From Address",
+    "setting_value": "noreply@localhost",
+    "setting_group": "Email",
+    "description": "Default sender address for outbound email."
+  },
+  {
+    "name": "gw_mtn_api_url",
+    "label": "MTN API URL",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live API base URL."
+  },
+  {
+    "name": "gw_mtn_api_url_sandbox",
+    "label": "MTN Sandbox API URL",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox API base URL."
+  },
+  {
+    "name": "gw_mtn_api_env",
+    "label": "MTN API Environment",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN environment value; use live for production or sandbox/test values as configured."
+  },
+  {
+    "name": "gw_mtn_api_base_currency",
+    "label": "MTN Base Currency",
+    "setting_value": "UGX",
+    "setting_group": "MTN",
+    "description": "MTN live transaction currency."
+  },
+  {
+    "name": "gw_mtn_api_base_currency_sandbox",
+    "label": "MTN Sandbox Base Currency",
+    "setting_value": "UGX",
+    "setting_group": "MTN",
+    "description": "MTN sandbox transaction currency."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_id",
+    "label": "MTN Collections User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live collections API user ID."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_key",
+    "label": "MTN Collections User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live collections API user key."
+  },
+  {
+    "name": "gw_mtn_api_collections_subscription_key",
+    "label": "MTN Collections Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live collections subscription key."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_id",
+    "label": "MTN Disbursements User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live disbursements API user ID."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_key",
+    "label": "MTN Disbursements User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live disbursements API user key."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_subscription_key",
+    "label": "MTN Disbursements Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live disbursements subscription key."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_id_sandbox",
+    "label": "MTN Sandbox Collections User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox collections API user ID."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_key_sandbox",
+    "label": "MTN Sandbox Collections User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox collections API user key."
+  },
+  {
+    "name": "gw_mtn_api_collections_subscription_key_sandbox",
+    "label": "MTN Sandbox Collections Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox collections subscription key."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_id_sandbox",
+    "label": "MTN Sandbox Disbursements User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox disbursements API user ID."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_key_sandbox",
+    "label": "MTN Sandbox Disbursements User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox disbursements API user key."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_subscription_key_sandbox",
+    "label": "MTN Sandbox Disbursements Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox disbursements subscription key."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_inbound_payment",
+    "label": "MTN Cost Of Inbound Payment",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Internal MTN inbound payment cost amount."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_inbound_payment_method",
+    "label": "MTN Cost Of Inbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN inbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_outbound_payment",
+    "label": "MTN Cost Of Outbound Payment",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Internal MTN outbound payment cost amount."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_outbound_payment_method",
+    "label": "MTN Cost Of Outbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN outbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_inbound",
+    "label": "MTN Customer Inbound Charge",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Customer charge for MTN inbound payments."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_inbound_method",
+    "label": "MTN Customer Inbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN inbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_outbound",
+    "label": "MTN Customer Outbound Charge",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Customer charge for MTN outbound payments."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_outbound_method",
+    "label": "MTN Customer Outbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN outbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_method",
+    "label": "MTN Customer Charge Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "Default MTN customer charge method."
+  },
+  {
+    "name": "gw_mtn_api_min_amount",
+    "label": "MTN Minimum Amount",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Minimum MTN transaction amount."
+  },
+  {
+    "name": "gw_mtn_api_max_amount",
+    "label": "MTN Maximum Amount",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "Maximum MTN transaction amount; blank means no configured limit."
+  },
+  {
+    "name": "gw_airtelmoney_use_open_api",
+    "label": "Airtel Use Open API",
+    "setting_value": "no",
+    "setting_group": "Airtel",
+    "description": "Use yes to route Airtel through the Open API implementation."
+  },
+  {
+    "name": "gw_airtelmoney_api_url",
+    "label": "Airtel API URL",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money API base URL."
+  },
+  {
+    "name": "gw_airtelmoney_api_username",
+    "label": "Airtel API Username",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money API username."
+  },
+  {
+    "name": "gw_airtelmoney_api_password",
+    "label": "Airtel API Password",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money API password."
+  },
+  {
+    "name": "gw_airtelmoney_api_pin",
+    "label": "Airtel API PIN",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money Open API PIN."
+  },
+  {
+    "name": "gw_airtelmoney_api_public_key",
+    "label": "Airtel API Public Key",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money Open API public key."
+  },
+  {
+    "name": "gw_airtelmoney_disbursement_account",
+    "label": "Airtel Disbursement Account",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel disbursement account used for balance checks."
+  },
+  {
+    "name": "gw_airtelmoney_collections_account",
+    "label": "Airtel Collections Account",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel collections account used for balance checks."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_inbound_payment",
+    "label": "Airtel Cost Of Inbound Payment",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Internal Airtel inbound payment cost amount."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_inbound_payment_method",
+    "label": "Airtel Cost Of Inbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel inbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_outbound_payment",
+    "label": "Airtel Cost Of Outbound Payment",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Internal Airtel outbound payment cost amount."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_outbound_payment_method",
+    "label": "Airtel Cost Of Outbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel outbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_inbound",
+    "label": "Airtel Customer Inbound Charge",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Customer charge for Airtel inbound payments."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_inbound_method",
+    "label": "Airtel Customer Inbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel inbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_outbound",
+    "label": "Airtel Customer Outbound Charge",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Customer charge for Airtel outbound payments."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_outbound_method",
+    "label": "Airtel Customer Outbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel outbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_method",
+    "label": "Airtel Customer Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Default Airtel customer charge method."
+  },
+  {
+    "name": "gw_airtelmoney_api_min_amount",
+    "label": "Airtel Minimum Amount",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Minimum Airtel transaction amount."
+  },
+  {
+    "name": "gw_airtelmoney_api_max_amount",
+    "label": "Airtel Maximum Amount",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Maximum Airtel transaction amount; blank means no configured limit."
+  },
+  {
+    "name": "sms_api_url",
+    "label": "SMS API URL",
+    "setting_value": "",
+    "setting_group": "SMS",
+    "description": "SMS gateway endpoint URL."
+  },
+  {
+    "name": "sms_api_parameters",
+    "label": "SMS API Parameters",
+    "setting_value": "",
+    "setting_group": "SMS",
+    "description": "SMS gateway request parameter template."
+  },
+  {
+    "name": "sms_api_http_method",
+    "label": "SMS API HTTP Method",
+    "setting_value": "POST",
+    "setting_group": "SMS",
+    "description": "SMS gateway HTTP method, usually GET or POST."
+  },
+  {
+    "name": "sms_gateway_name",
+    "label": "SMS Gateway Name",
+    "setting_value": "",
+    "setting_group": "SMS",
+    "description": "SMS gateway display or provider name."
+  },
+  {
+    "name": "sms_gateway_cost",
+    "label": "SMS Gateway Cost",
+    "setting_value": "0",
+    "setting_group": "SMS",
+    "description": "Internal SMS gateway cost per message."
+  },
+  {
+    "name": "sms_customer_charge",
+    "label": "SMS Customer Charge",
+    "setting_value": "0",
+    "setting_group": "SMS",
+    "description": "Customer SMS charge per message."
+  },
+  {
+    "name": "gw_safaricom_api_url",
+    "label": "Gw Safaricom Api Url",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_url"
+  },
+  {
+    "name": "gw_safaricom_api_version",
+    "label": "Gw Safaricom Api Version",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_version"
+  },
+  {
+    "name": "gw_safaricom_api_env",
+    "label": "Gw Safaricom Api Env",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_env"
+  },
+  {
+    "name": "gw_safaricom_api_shortcode",
+    "label": "Gw Safaricom Api Shortcode",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_shortcode"
+  },
+  {
+    "name": "gw_safaricom_api_shortcode_disbursement",
+    "label": "Gw Safaricom Api Shortcode Disbursement",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_shortcode_disbursement"
+  },
+  {
+    "name": "gw_safaricom_api_password",
+    "label": "Gw Safaricom Api Password",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_password"
+  },
+  {
+    "name": "gw_safaricom_api_consumer_key",
+    "label": "Gw Safaricom Api Consumer Key",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_consumer_key"
+  },
+  {
+    "name": "gw_safaricom_api_consumer_secret",
+    "label": "Gw Safaricom Api Consumer Secret",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_consumer_secret"
+  },
+  {
+    "name": "gw_safaricom_api_consumer_key_disbursement",
+    "label": "Gw Safaricom Api Consumer Key Disbursement",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_consumer_key_disbursement"
+  },
+  {
+    "name": "gw_safaricom_api_consumer_secret_disbursement",
+    "label": "Gw Safaricom Api Consumer Secret Disbursement",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_consumer_secret_disbursement"
+  },
+  {
+    "name": "gw_safaricom_api_initiator_username_disbursement",
+    "label": "Gw Safaricom Api Initiator Username Disbursement",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_initiator_username_disbursement"
+  },
+  {
+    "name": "gw_safaricom_api_initiator_pw_disbursement",
+    "label": "Gw Safaricom Api Initiator Pw Disbursement",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_initiator_pw_disbursement"
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_inbound_payment",
+    "label": "Gw Safaricom Api Cost Of Inbound Payment",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_cost_of_inbound_payment"
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_inbound_payment_method",
+    "label": "Gw Safaricom Api Cost Of Inbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_cost_of_inbound_payment_method"
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_outbound_payment",
+    "label": "Gw Safaricom Api Cost Of Outbound Payment",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_cost_of_outbound_payment"
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_outbound_payment_method",
+    "label": "Gw Safaricom Api Cost Of Outbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_cost_of_outbound_payment_method"
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_inbound",
+    "label": "Gw Safaricom Api Customer Charge Inbound",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_customer_charge_inbound"
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_inbound_method",
+    "label": "Gw Safaricom Api Customer Charge Inbound Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_customer_charge_inbound_method"
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_outbound",
+    "label": "Gw Safaricom Api Customer Charge Outbound",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_customer_charge_outbound"
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_outbound_method",
+    "label": "Gw Safaricom Api Customer Charge Outbound Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_customer_charge_outbound_method"
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_method",
+    "label": "Gw Safaricom Api Customer Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_customer_charge_method"
+  },
+  {
+    "name": "gw_safaricom_api_min_amount",
+    "label": "Gw Safaricom Api Min Amount",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_min_amount"
+  },
+  {
+    "name": "gw_safaricom_api_max_amount",
+    "label": "Gw Safaricom Api Max Amount",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom setting: gw_safaricom_api_max_amount"
+  }
+]

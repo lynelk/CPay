@@ -1,20 +1,20 @@
 /**
- * iOS-inspired design tokens for CPay.
+ * CPay brand-aligned design tokens.
  *
- * Colours are drawn from Apple's Human Interface Guidelines colour palette.
- * Typography uses the iOS system font stack (SF Pro / -apple-system).
+ * Colours follow the CPay Brand Guidelines v2 palette while keeping
+ * the compact spacing/radius scale used throughout the React client.
  */
 const iosTheme = {
   // Colour palette
   colors: {
-    // System Blues
-    blue: '#007AFF',
-    lightBlue: '#5AC8FA',
-    teal: '#32ADE6',
+    // Brand accents
+    blue: '#1198C4',
+    lightBlue: '#5FBBD4',
+    teal: '#1198C4',
 
     // Status colours
     green: '#34C759',
-    orange: '#FF9500',
+    orange: '#F3B01B',
     red: '#FF3B30',
     yellow: '#FFCC00',
     purple: '#AF52DE',
@@ -22,28 +22,28 @@ const iosTheme = {
 
     // Greyscale
     white: '#FFFFFF',
-    systemGray6: '#F2F2F7',
-    systemGray5: '#E5E5EA',
-    systemGray4: '#D1D1D6',
-    systemGray3: '#C7C7CC',
-    systemGray2: '#AEAEB2',
-    systemGray: '#8E8E93',
-    label: '#000000',
-    secondaryLabel: 'rgba(60,60,67,0.6)',
-    tertiaryLabel: 'rgba(60,60,67,0.3)',
+    systemGray6: '#F5F7FA',
+    systemGray5: '#E4EAF0',
+    systemGray4: '#D6E3EA',
+    systemGray3: '#B8C6D1',
+    systemGray2: '#8A98A8',
+    systemGray: '#667085',
+    label: '#163B5C',
+    secondaryLabel: 'rgba(102,112,133,0.72)',
+    tertiaryLabel: 'rgba(102,112,133,0.42)',
 
     // Backgrounds
     systemBackground: '#FFFFFF',
-    secondarySystemBackground: '#F2F2F7',
+    secondarySystemBackground: '#F5F7FA',
     tertiarySystemBackground: '#FFFFFF',
-    groupedBackground: '#F2F2F7',
-    separator: 'rgba(60,60,67,0.29)',
+    groupedBackground: '#F5F7FA',
+    separator: 'rgba(102,112,133,0.24)',
   },
 
   // Typography
   typography: {
-    fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
-    fontFamilyDisplay: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif',
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+    fontFamilyDisplay: 'Montserrat, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
     largeTitle: { fontSize: 34, fontWeight: '700', letterSpacing: 0.37 },
     title1:     { fontSize: 28, fontWeight: '700', letterSpacing: 0.36 },
     title2:     { fontSize: 22, fontWeight: '700', letterSpacing: 0.35 },

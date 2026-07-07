@@ -40,7 +40,7 @@ public class MerchantSelfServiceSignupService {
         p.addValue("created_by", "SELF_SERVICE");
         p.addValue("status", "PENDING_APPROVAL");
         p.addValue("short_name", shortName);
-        p.addValue("allowed_apis", Common.API_MOBILE_MONEY_PAYIN + "," + Common.API_MOBILE_MONEY_PAYOUT + "," + Common.API_BALANCE_CHECK);
+        p.addValue("allowed_apis", Common.API_MOBILE_MONEY_PAYIN + "," + Common.API_MOBILE_MONEY_PAYOUT + "," + Common.API_TRANSACTION_CHECKSTATUS + "," + Common.API_BALANCE_CHECK + "," + Common.API_SEND_SMS);
         p.addValue("account_type", accountType);
         p.addValue("public_key", keys.getPublic_key());
         p.addValue("private_key", keys.getPrivate_key());
@@ -60,6 +60,9 @@ public class MerchantSelfServiceSignupService {
         addPrivilege(adminId, "ACCESS_MERCHANT");
         addPrivilege(adminId, "MANAGE_CHANNELS");
         addPrivilege(adminId, "VIEW_TRANSACTIONS");
+        addPrivilege(adminId, "CREATE_BATCH_TX");
+        addPrivilege(adminId, "ACCESS_SMS_LOG");
+        addPrivilege(adminId, "SEND_SMS");
         addPrivilege(adminId, "MANAGE_CALLBACKS");
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("code", "000");

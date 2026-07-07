@@ -1,6 +1,7 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox, FileButton } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton, DateTimeSpinner } from 'rc-easyui';
+import { Panel, Layout, LayoutPanel, Menu, MenuItem, SwitchButton, DateTimeSpinner } from 'rc-easyui';
+import Messager from '../../StableMessager';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip, DateBox } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
@@ -12,6 +13,7 @@ import styles from '../../styles';
 import strings from '../../locale';
 import MerchantModuleMerchantsAccount from './MerchantModuleMerchantsAccount';
 import DatetimePicker from '../../DatetimePicker';
+import { replaceSmsColumnToken } from './smsTemplate';
 
 import ReactExport from "../../../shared/export/ExcelExport";
 
@@ -107,7 +109,7 @@ class MerchantModuleSmsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {
@@ -1076,7 +1078,7 @@ class MerchantModuleSmsC extends React.Component {
                                 className={styles.moduleToolBarButtons}
                                 iconCls="icon-money" 
                                 onClick={() => {
-                                    console.log(this.dataGridMain);
+
                                     this.dlgRecordTx.open();
                                 }}>{strings.buy_sms}</LinkButton>
                             <span> | </span>
@@ -1346,8 +1348,7 @@ class PaymentFormDialog extends React.Component{
                 }}
                 multiple={false}
                 onSuccess={(xhr,files) => {
-                    
-                    console.log(xhr);
+
                     let r = JSON.parse(xhr.xhr.responseText);
                     if (r.state == "ERROR") {
                         this.props.messager.alert({
@@ -1361,15 +1362,11 @@ class PaymentFormDialog extends React.Component{
                             r.data[i].phone = r.data[i].phone+"";
                             if (this.state.ismultiple) {
                                 var content_ = content;
-                                content_ = content_.replace(new RegExp('\{COLB\}', 'i'), r.data[i].cellB);
-                                content_ = content_.replace(new RegExp('\{COLC\}', 'i'), 
-                                    r.data[i].cellC);
-                                content_ = content_.replace(new RegExp('\{COLD\}', 'i'), 
-                                    r.data[i].cellD);
-                                content_ = content_.replace(new RegExp('\{COLE\}', 'i'), 
-                                    r.data[i].cellE);
-                                content_ = content_.replace(new RegExp('\{COLF\}', 'i'), 
-                                    r.data[i].cellF);
+                                content_ = replaceSmsColumnToken(content_, 'COLB', r.data[i].cellB);
+                                content_ = replaceSmsColumnToken(content_, 'COLC', r.data[i].cellC);
+                                content_ = replaceSmsColumnToken(content_, 'COLD', r.data[i].cellD);
+                                content_ = replaceSmsColumnToken(content_, 'COLE', r.data[i].cellE);
+                                content_ = replaceSmsColumnToken(content_, 'COLF', r.data[i].cellF);
                                 
                                 r.data[i].content = content_;
                             } else {
@@ -1382,7 +1379,7 @@ class PaymentFormDialog extends React.Component{
                 }}
                 onError={(xhr,files) => {
                     this.props.loader("STOP");
-                    console.log(xhr);
+
                     let r = JSON.parse(xhr.xhr.responseText);
                     if (r.state == "ERROR") {
                         this.props.messager.alert({
@@ -1401,7 +1398,7 @@ class PaymentFormDialog extends React.Component{
     }
 
     render() {
-        //console.log(this.state.formd);
+
         const row = this.state.formd;
         const { title, formDialogStateOpened, rules } = this.props;
         
@@ -1475,7 +1472,7 @@ class PaymentFormDialog extends React.Component{
                                             name="send_time" 
                                             value={row.send_time} 
                                             onValueSelected={(value) => {
-                                                console.log(value);
+
                                                 this.handleFormChange('send_time', value);
                                             }}
                                             ></DatetimePicker>

@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/admins")
+@RequestMapping(path="/admins", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class AdminsController {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -85,8 +85,8 @@ public class AdminsController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_ADMIN+" ";
@@ -136,7 +136,7 @@ public class AdminsController {
                 }
             }
             
-            RowMapper rm = new RowMapper<User>() {
+            RowMapper<User> rm = new RowMapper<User>() {
             public User mapRow(ResultSet rs, int rowNum) throws SQLException {
                     User user = new User();
                     user.setName(rs.getString("name"));
@@ -219,12 +219,13 @@ public class AdminsController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_USERS+" "
-                    + " WHERE merchant_id='"+sessionUser.getMerchant_id()+"' ";
+                    + " WHERE merchant_id=:merchantId ";
+            parameters.addValue("merchantId", sessionUser.getMerchant_id());
             
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
@@ -232,8 +233,13 @@ public class AdminsController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " AND "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    String safeCategory = ColumnAllowlist
+                            .merchantUserColumn(category)
+                            .orElse(null);
+                    if (safeCategory != null) {
+                        sqlSelect += " AND " + safeCategory + " LIKE :searchValue ";
+                        parameters.addValue("searchValue", "%" + value + "%");
+                    }
                 }
             }
             
@@ -242,7 +248,7 @@ public class AdminsController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<MerchantUser>() {
+            RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
             public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantUser user = new MerchantUser();
                     user.setName(rs.getString("name"));
@@ -257,8 +263,8 @@ public class AdminsController {
                 }
             };
             
-            //ResultSet rs; 
-            List<User> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
+            //ResultSet rs;
+            List<MerchantUser> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
@@ -300,7 +306,7 @@ public class AdminsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
@@ -329,7 +335,7 @@ public class AdminsController {
         parameters.addValue("email", email);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_ADMIN+" "
                 + " WHERE email=:email";
-        RowMapper rm = new RowMapper<User>() {
+        RowMapper<User> rm = new RowMapper<User>() {
         public User mapRow(ResultSet rs, int rowNum) throws SQLException {
                 User user = new User();
                 user.setName(rs.getString("name"));
@@ -367,7 +373,7 @@ public class AdminsController {
                 + " WHERE "
                 + " merchant_id =:merchant_id "
                 + " AND email=:email ";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser user = new MerchantUser();
                 user.setName(rs.getString("name"));
@@ -403,7 +409,7 @@ public class AdminsController {
         parameters.addValue("id", id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_ADMIN+" "
                 + " WHERE email=:email AND id <> :id";
-        RowMapper rm = new RowMapper<User>() {
+        RowMapper<User> rm = new RowMapper<User>() {
         public User mapRow(ResultSet rs, int rowNum) throws SQLException {
                 User user = new User();
                 user.setName(rs.getString("name"));
@@ -441,7 +447,7 @@ public class AdminsController {
                 + " WHERE "
                 + " merchant_id=:merchant_id AND "
                 + " email=:email AND id <> :id";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser user = new MerchantUser();
                 user.setName(rs.getString("name"));
@@ -471,7 +477,7 @@ public class AdminsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
@@ -637,7 +643,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -654,7 +660,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -780,7 +786,7 @@ public class AdminsController {
                         String eMessage = e.getMessage();
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": Here... "+eMessage);
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -797,7 +803,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -922,7 +928,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -939,7 +945,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1063,7 +1069,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1080,7 +1086,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1164,7 +1170,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1181,7 +1187,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1264,7 +1270,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1281,7 +1287,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
 }

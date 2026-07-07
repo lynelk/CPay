@@ -71,7 +71,7 @@ public class AudittrailController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_AUDIT_TRAIL+" ";
@@ -179,7 +179,7 @@ public class AudittrailController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_AUDIT_TRAIL_MERCHANT+" "

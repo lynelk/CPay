@@ -12,6 +12,7 @@ import java.util.List;
  * @author josephtabajjwa
  */
 public class User implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private Long id;
     private String name;
     private String email;

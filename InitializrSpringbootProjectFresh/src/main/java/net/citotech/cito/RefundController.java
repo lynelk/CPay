@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  *   4. Dispatches the payout via the same gateway.
  */
 @RestController
-@RequestMapping(path = "/api")
+@RequestMapping(path = "/api", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class RefundController {
 
     private static final Logger logger = Logger.getLogger(RefundController.class.getName());
@@ -55,7 +55,6 @@ public class RefundController {
     RateLimiterService rateLimiterService;
 
     @PostMapping(path = "/doMobileMoneyRefund")
-    @CrossOrigin
     public String doMobileMoneyRefund(@RequestBody String requestBody,
                                       HttpServletRequest request,
                                       HttpServletResponse response) {

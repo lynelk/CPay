@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/merchants")
+@RequestMapping(path="/merchants", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class MerchantsController {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -85,8 +85,8 @@ public class MerchantsController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" ";
@@ -97,8 +97,13 @@ public class MerchantsController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.toLowerCase().equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " WHERE "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    try {
+                        String safeCategory = ColumnAllowlist.validate("merchants", category);
+                        sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
+                        parameters.addValue(safeCategory, "%" + value + "%");
+                    } catch (IllegalArgumentException e) {
+                        return GeneralException.getError("101", "Invalid search field.");
+                    }
                 }
             }
             
@@ -107,7 +112,7 @@ public class MerchantsController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<Merchant>() {
+            RowMapper<Merchant> rm = new RowMapper<Merchant>() {
             public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Merchant m = new Merchant();
                     m.setName(rs.getString("name"));
@@ -216,7 +221,7 @@ public class MerchantsController {
         parameters.addValue("account_number", account);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number";
-        RowMapper rm = new RowMapper<Merchant>() {
+        RowMapper<Merchant> rm = new RowMapper<Merchant>() {
         public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
@@ -257,7 +262,7 @@ public class MerchantsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("admin_id", user.getId());
                 
-            RowMapper rm = new RowMapper<UserPrivilege>() {
+            RowMapper<UserPrivilege> rm = new RowMapper<UserPrivilege>() {
                 public UserPrivilege mapRow(ResultSet rs, int rowNum) throws SQLException {
                     UserPrivilege user = new UserPrivilege();
                     user.setPrivilege(rs.getString("privilege"));
@@ -287,7 +292,7 @@ public class MerchantsController {
         parameters.addValue("id", id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANTS+" "
                 + " WHERE account_number=:account_number AND id <> :id";
-        RowMapper rm = new RowMapper<Merchant>() {
+        RowMapper<Merchant> rm = new RowMapper<Merchant>() {
         public Merchant mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Merchant m = new Merchant();
                 m.setName(rs.getString("name"));
@@ -333,7 +338,7 @@ public class MerchantsController {
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("merchant_id", merchant.getId());
                 
-            RowMapper rm = new RowMapper<MerchantUser>() {
+            RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
                 public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantUser user = new MerchantUser();
                     user.setName(rs.getString("name"));
@@ -558,7 +563,7 @@ public class MerchantsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -580,7 +585,7 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }   
     }
     
@@ -752,7 +757,7 @@ public class MerchantsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -769,14 +774,14 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
     private String generateMerchantNumber() {
         
         String sqlSelect = "SELECT COUNT(*) AS count_num  FROM "+Common.DB_TABLE_MERCHANTS+" ";
-        RowMapper rm = new RowMapper<Integer>() {
+        RowMapper<Integer> rm = new RowMapper<Integer>() {
         public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
                 
                 return rs.getInt("count_num");
@@ -810,7 +815,7 @@ public class MerchantsController {
         params.addValue("email", email);
         String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
                 + " WHERE merchant_id=:merchant_id AND email=:email";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));
@@ -842,7 +847,7 @@ public class MerchantsController {
         params.addValue("id", id);
         String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
                 + " WHERE merchant_id=:merchant_id AND email=:email AND id <> :id";
-        RowMapper rm = new RowMapper<MerchantUser>() {
+        RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));
@@ -1111,11 +1116,11 @@ public class MerchantsController {
                         return "success";
                     } catch (Exception e) {
                         
-                        e.printStackTrace();
+                        Logger.getLogger(MerchantsController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+"***: "+e.getStackTrace());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1132,7 +1137,7 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, ex.getMessage(), ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1237,7 +1242,7 @@ public class MerchantsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1254,8 +1259,7 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
 }
-

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton, DateBox } from 'rc-easyui';
+import { Panel, Layout, LayoutPanel, Menu, MenuItem, SwitchButton, DateBox } from 'rc-easyui';
+import Messager from '../../StableMessager';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
@@ -87,7 +88,7 @@ class MerchantModuleTransactionsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {
@@ -704,7 +705,7 @@ class MerchantModuleTransactionsC extends React.Component {
                 </div>
                 <DataGrid
                     onRowClick={(row)=> {
-                        console.log(this.dataGrid);
+
                     }}
                     ref={ref => this.dataGrid = ref}
                     style={{ height: (windowHeight - common.toReduceGridHeight) }}
@@ -850,7 +851,7 @@ class PaymentFormDialog extends React.Component{
     }
 
     render() {
-        //console.log(this.state.formd);
+
         //const row = this.state.formd;
         const { title, formDialogStateOpened } = this.props;
         const {rules, formd } = this.state;

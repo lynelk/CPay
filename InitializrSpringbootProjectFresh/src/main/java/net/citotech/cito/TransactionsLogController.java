@@ -94,7 +94,7 @@ import java.math.RoundingMode;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/transactions")
+@RequestMapping(path="/transactions", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class TransactionsLogController {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -135,8 +135,8 @@ public class TransactionsLogController {
             
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
@@ -160,7 +160,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<Transaction>() {
+            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -323,7 +323,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT "+(pageSize * currentPage)+", "+pageSize+" ";
             }*/
             
-            RowMapper rmTotal = new RowMapper<Long>() {
+            RowMapper<Long> rmTotal = new RowMapper<Long>() {
             public Long mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Long t = rs.getLong("total");
                     return t;
@@ -331,7 +331,7 @@ public class TransactionsLogController {
             };
             List<Long> listLong = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
             
-            RowMapper rm = new RowMapper<Transaction>() {
+            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -414,7 +414,7 @@ public class TransactionsLogController {
                 + " ON b.id = t.beneficiary_id "
                 + " WHERE b.batch_id = '"+batch_id+"'";
         
-        RowMapper rm = new RowMapper<Beneficiary>() {
+        RowMapper<Beneficiary> rm = new RowMapper<Beneficiary>() {
             public Beneficiary mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Beneficiary b = new Beneficiary();
                     b.setId(rs.getLong("beneficiary_long_id"));
@@ -515,7 +515,7 @@ public class TransactionsLogController {
             }
             
             
-            RowMapper rm = new RowMapper<Payment>() {
+            RowMapper<Payment> rm = new RowMapper<Payment>() {
             public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Payment t = new Payment();
                     t.setId(rs.getLong("id"));
@@ -533,7 +533,7 @@ public class TransactionsLogController {
                 }
             };
             
-            RowMapper rmTotal = new RowMapper<String>() {
+            RowMapper<String> rmTotal = new RowMapper<String>() {
             public String mapRow(ResultSet rs, int rowNum) throws SQLException {
                     String t =rs.getString("total");
                     return t;
@@ -654,8 +654,8 @@ public class TransactionsLogController {
             String end_date = sObjectRules.getString("end_date");
             String status = sObjectRules.getString("status");
             
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_SMS+" "
@@ -701,7 +701,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<MerchantSms>() {
+            RowMapper<MerchantSms> rm = new RowMapper<MerchantSms>() {
             public MerchantSms mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantSms t = new MerchantSms();
                     t.setId(BigInteger.valueOf(rs.getLong("id")));
@@ -836,7 +836,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -966,7 +966,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1095,7 +1095,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1311,7 +1311,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1450,7 +1450,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1594,7 +1594,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1738,7 +1738,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -1883,7 +1883,7 @@ public class TransactionsLogController {
             
             
             
-            RowMapper rm = new RowMapper<JSONObject>() {
+            RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
                     
                     try {
@@ -2042,7 +2042,7 @@ public class TransactionsLogController {
             String sql_update = " UPDATE "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                     + " SET status=:status, tx_update_trace=:tx_update_trace, "
                     + " tx_gateway_ref=:tx_gateway_ref ";
-            RowMapper rm = new RowMapper<Transaction>() {
+            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
                 public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -2392,7 +2392,7 @@ public class TransactionsLogController {
                                         } catch (JSONException ex) {
                                             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                         }
-                                        //System.out.println("Thread Running");
+
                                     }
                                 };
                                 thread.start();
@@ -2523,11 +2523,11 @@ public class TransactionsLogController {
             Logger.getLogger(TransactionsLogController.class.getName())
                     .log(Level.SEVERE, "HANDLING_INITIAL_PROCESS IOException:"+ex.getMessage(), ex);
             return GeneralException
-                    .getError("107", GeneralException.ERRORS_107+". File error: "+ex.getMessage());
+                    .getError("107", GeneralException.ERRORS_107);
         } catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "HANDLING_INITIAL_PROCESS OverlappingFileLockException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
+
             return "OverlappingFileLockException";
         }
         
@@ -2698,7 +2698,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -2874,7 +2874,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -2927,7 +2927,7 @@ public class TransactionsLogController {
             public String doInTransaction(TransactionStatus status) {
                 try {
 
-                    RowMapper rm_b = new RowMapper<Statement>() {
+                    RowMapper<Statement> rm_b = new RowMapper<Statement>() {
                     public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                             Statement t = new Statement();
                             t.setId(rs.getLong("id"));
@@ -3027,7 +3027,7 @@ public class TransactionsLogController {
                     //transactionManager.rollback(status);
                     status.setRollbackOnly();
                     return GeneralException
-                        .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                        .getError("102", GeneralException.ERRORS_102);
                 }
             }
         });
@@ -3109,8 +3109,8 @@ public class TransactionsLogController {
             JSONObject sObject = new JSONObject(requestBody);
             
             String merchant_id = sObject.getString("merchant_id");
-            String pageSize = sObject.getString("pageSize");
-            String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
+            String pageSize = Common.jsonText(sObject, "pageSize", "");
+            String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             parameters.addValue("merchant_id", merchant_id);
@@ -3153,7 +3153,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper rm = new RowMapper<Statement>() {
+            RowMapper<Statement> rm = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
                     t.setId(rs.getLong("id"));
@@ -3324,7 +3324,7 @@ public class TransactionsLogController {
             }*/
             
             //Get total records
-            RowMapper rmTotal = new RowMapper<String>() {
+            RowMapper<String> rmTotal = new RowMapper<String>() {
             public String mapRow(ResultSet rs, int rowNum) throws SQLException {
                     String t = rs.getString("total");
                     return t;
@@ -3333,7 +3333,7 @@ public class TransactionsLogController {
             List<String> listTotal = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
             
             
-            RowMapper rm = new RowMapper<Statement>() {
+            RowMapper<Statement> rm = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
                     t.setId(rs.getLong("id"));
@@ -3520,7 +3520,7 @@ public class TransactionsLogController {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE id = '"+id+"'";
         
-        RowMapper rm = new RowMapper<Payment>() {
+        RowMapper<Payment> rm = new RowMapper<Payment>() {
         public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Payment t = new Payment();
                 t.setId(rs.getLong("id"));
@@ -3670,7 +3670,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -3811,7 +3811,7 @@ public class TransactionsLogController {
                             + "FROM `"+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+"` "
                             + " WHERE batch_id = '"+batchId+"' AND account=:account";
                         
-                        RowMapper rm_ = new RowMapper<Integer>() {
+                        RowMapper<Integer> rm_ = new RowMapper<Integer>() {
                         public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
                                 int r = rs.getInt("found");
                                 return r;
@@ -3867,7 +3867,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -3884,7 +3884,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4068,7 +4068,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4085,7 +4085,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4154,7 +4154,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4171,7 +4171,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4364,7 +4364,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4381,7 +4381,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4478,7 +4478,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4495,7 +4495,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
 
@@ -4586,7 +4586,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4603,7 +4603,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4643,7 +4643,7 @@ public class TransactionsLogController {
             String sqlSelectPayments = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE status IN('PROCESSING') LIMIT 20 FOR UPDATE";
 
-            RowMapper rm = new RowMapper<Payment>() {
+            RowMapper<Payment> rm = new RowMapper<Payment>() {
             public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Payment t = new Payment();
                     t.setId(rs.getLong("id"));
@@ -4863,7 +4863,7 @@ public class TransactionsLogController {
 
                             return "success";
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                             //transactionManager.rollback(status);
                             status.setRollbackOnly();
                             Logger.getLogger(AuthenticationController.class.getName())
@@ -4893,13 +4893,13 @@ public class TransactionsLogController {
         } catch (IOException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON IOException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
-            return "IOException: "+ex.getMessage();
+
+            return GeneralException.ERRORS_102;
         } 
         catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON OverlappingFileLockException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
+
             return "OverlappingFileLockException";
         }
         
@@ -4928,6 +4928,11 @@ public class TransactionsLogController {
         xml += "</Response></AutoCreate>";
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            dbFactory.setXIncludeAware(false);
+            dbFactory.setExpandEntityReferences(false);
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(new InputSource(new StringReader(xml)));
             doc.getDocumentElement().normalize();
@@ -4951,7 +4956,7 @@ public class TransactionsLogController {
             }
             return return_string;
         } catch (Exception e) {
-            return e.getMessage();
+            return GeneralException.ERRORS_102;
         }
     }
     
@@ -4998,7 +5003,7 @@ public class TransactionsLogController {
                     String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
                     sqlSelect += " WHERE id = '"+transactionId+"' FOR UPDATE";
 
-                    RowMapper rm = Common.getTransactionRowMapper();
+                    RowMapper<Transaction> rm = Common.getTransactionRowMapper();
                     List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
                     if (listTxs.size() < 1) {
                         return GeneralException
@@ -5323,7 +5328,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -5332,7 +5337,7 @@ public class TransactionsLogController {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
         sqlSelect += " WHERE id = '"+id+"'";
         
-        RowMapper rm = new RowMapper<Transaction>() {
+        RowMapper<Transaction> rm = new RowMapper<Transaction>() {
             public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Transaction t = new Transaction();
                     t.setId(rs.getLong("id"));
@@ -5463,8 +5468,7 @@ public class TransactionsLogController {
             
             return resJson.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            
+            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             return GeneralException
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename()));
         }
@@ -5544,8 +5548,7 @@ public class TransactionsLogController {
             
             return resJson.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            
+            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             return GeneralException
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename()));
         }
@@ -5617,7 +5620,7 @@ public class TransactionsLogController {
                     + " smsgw=:smsgw, "
                     + " trace=:trace";
             
-            RowMapper rm = new RowMapper<MerchantSms>() {
+            RowMapper<MerchantSms> rm = new RowMapper<MerchantSms>() {
                 public MerchantSms mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantSms t = new MerchantSms();
                     t.setId(BigInteger.valueOf(rs.getLong("id")));
@@ -5746,10 +5749,9 @@ public class TransactionsLogController {
                             
                         } catch (Exception ex) {
                             status.setRollbackOnly();
-                            ex.printStackTrace();
+                            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                             return GeneralException
-                                    .getError("102", GeneralException.ERRORS_102
-                                            +". Error: "+ex.getMessage());
+                                    .getError("102", GeneralException.ERRORS_102);
                         }
                         return res;
                     }
@@ -5838,10 +5840,9 @@ public class TransactionsLogController {
 
                                 } catch (Exception ex) {
                                     status.setRollbackOnly();
-                                    ex.printStackTrace();
+                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                                     return GeneralException
-                                            .getError("102", GeneralException.ERRORS_102
-                                                    +". Error: "+ex.getMessage());
+                                            .getError("102", GeneralException.ERRORS_102);
                                 }
                                 return res;
                             }
@@ -5899,12 +5900,12 @@ public class TransactionsLogController {
             Logger.getLogger(TransactionsLogController.class.getName())
                     .log(Level.SEVERE, "HANDLING_SMS_SERVICE IOException:"+ex.getMessage(), ex);
             return GeneralException
-                    .getError("107", GeneralException.ERRORS_107+". File error: "+ex.getMessage());
+                    .getError("107", GeneralException.ERRORS_107);
             
         } catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "HANDLING_SMS_SERVICE OverlappingFileLockException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
+
             return "OverlappingFileLockException";
         }
     }

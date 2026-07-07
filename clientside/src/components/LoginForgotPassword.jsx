@@ -1,6 +1,7 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel,Messager, Dialog } from 'rc-easyui';
+import { Panel, Dialog } from 'rc-easyui';
+import Messager from './StableMessager';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
 import common from './Common';

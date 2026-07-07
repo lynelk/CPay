@@ -7,6 +7,7 @@ package net.citotech.cito;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -20,6 +21,9 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -91,6 +95,24 @@ public class Common {
     public static final String CLASS_PATH_MTN_TOKEN_FILE = "default_mtn_token.json";
     public static final String CLASS_PATH_SAFARICOM_TOKEN_FILE = "default_safaricom_token.json";
     public static final String CLASS_PATH_AIRTELOAPI_TOKEN_FILE = "default_airteloapi_token.json";
+
+    public static File safeLockFile(String lockFileDirectory, String fileName) throws IOException {
+        if (fileName == null || !fileName.matches("[A-Za-z0-9._-]+")) {
+            throw new IOException("Invalid lock file name.");
+        }
+
+        Path base = Paths.get(lockFileDirectory == null ? "" : lockFileDirectory)
+                .toAbsolutePath()
+                .normalize();
+        Files.createDirectories(base);
+
+        Path resolved = base.resolve(fileName).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new IOException("Invalid lock file path.");
+        }
+
+        return resolved.toFile();
+    }
     public static final String CLASS_PATH_CHECK_TX_LOCK = "check_tx.lock";
     public static final String CLASS_PATH_SEND_SMS_SERVICE_TX_LOCK = "send_sms_service_tx.lock";
     public static final String CLASS_PATH_UPLOAD_DIRECTORY = "uploadDir";
@@ -110,6 +132,14 @@ public class Common {
         appBaseUrl = (url != null) ? url : "";
     }
 
+
+    public static String jsonText(JSONObject obj, String key, String defaultValue) {
+        if (obj == null || key == null || obj.isNull(key)) {
+            return defaultValue;
+        }
+        Object value = obj.opt(key);
+        return value == null ? defaultValue : String.valueOf(value);
+    }
 
     public static void setSslSkipVerify(boolean skip) {
         skipSslVerify = skip;
@@ -169,7 +199,7 @@ public class Common {
             return "success";
         } catch (Exception e) {
             return GeneralException
-                .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -195,7 +225,7 @@ public class Common {
             return "success";
         } catch (Exception e) {
             return GeneralException
-                .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -506,7 +536,7 @@ public class Common {
             String sha256 = String.format("%040x", new BigInteger(1, digest.digest()));
             return sha256;
         } catch (Exception e){
-            e.printStackTrace();
+            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             return "";
         }
     }
@@ -913,12 +943,12 @@ public class Common {
             parameters.addValue("admin_id", user.getId());
                 
             RowMapper<UserPrivilege> rm = (rs, rowNum) -> {
-                    UserPrivilege user = new UserPrivilege();
-                    user.setPrivilege(rs.getString("privilege"));
-                    user.setId(rs.getLong("id"));
-                    user.setCreated_on(rs.getString("created_on"));
-                    user.setUdpated_on(rs.getString("updated_on"));
-                    return user;
+                    UserPrivilege up = new UserPrivilege();
+                    up.setPrivilege(rs.getString("privilege"));
+                    up.setId(rs.getLong("id"));
+                    up.setCreated_on(rs.getString("created_on"));
+                    up.setUdpated_on(rs.getString("updated_on"));
+                    return up;
             };
             
             List<UserPrivilege> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -1117,7 +1147,7 @@ public class Common {
             public String doInTransaction(TransactionStatus status) {
                 try {
 
-                    RowMapper rm_b = new RowMapper<Statement>() {
+                    RowMapper<Statement> rm_b = new RowMapper<Statement>() {
                     public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                             Statement t = new Statement();
                             t.setId(rs.getLong("id"));
@@ -1135,6 +1165,7 @@ public class Common {
                             t.setTx_type(rs.getString("tx_type"));
                             t.setSms_balance(rs.getDouble("sms_balance"));
                             return t;
+                    }
                     };
 
                     List<Statement> balanceList = jdbcTemplate.query(balanceSql, parametersBalanceSql, rm_b);
@@ -1296,7 +1327,7 @@ public class Common {
 
                     return "success";
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                     status.setRollbackOnly();
                     return GeneralException
                         .getError("102", GeneralException.ERRORS_102);
@@ -1356,7 +1387,7 @@ public class Common {
         
         try {
 
-            RowMapper rm_b = new RowMapper<Statement>() {
+            RowMapper<Statement> rm_b = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
                     t.setId(rs.getLong("id"));
@@ -1376,6 +1407,7 @@ public class Common {
                     //safaricom_balance
 
                     return t;
+            }
             };
 
             List<Statement> balanceList = jdbcTemplate.query(balanceSql, parametersBalanceSql, rm_b);
@@ -1536,7 +1568,7 @@ public class Common {
 
             return "success";
         } catch (Exception e) {
-            e.printStackTrace();
+            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             status.setRollbackOnly();
             return GeneralException
                 .getError("102", GeneralException.ERRORS_102);
@@ -2317,7 +2349,7 @@ public class Common {
                             
                             return "success";
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                             Logger.getLogger(AuthenticationController.class.getName())
                                 .log(Level.SEVERE, "INTERNAL ERROR - SAVING TX UPDATE: "+e.getStackTrace(), "");
                             
@@ -2671,7 +2703,7 @@ public class Common {
                                 } catch (JSONException ex) {
                                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                 }
-                                //System.out.println("Thread Running");
+
                             }
                         };
                         thread.start();
@@ -2903,7 +2935,7 @@ public class Common {
                                 } catch (JSONException ex) {
                                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                 }
-                                //System.out.println("Thread Running");
+
                             }
                         };
                         thread.start();

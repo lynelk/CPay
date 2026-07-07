@@ -4,13 +4,10 @@
  * and open the template in the editor.
  */
 package net.citotech.cito;
-
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.lang.System.Logger;
 import java.math.BigInteger;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -24,6 +21,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import net.citotech.cito.Model.QueryUpdate;
@@ -49,7 +47,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
-
 /**
  *
  * @author josephtabajjwa
@@ -131,6 +128,11 @@ public class StartupApplicationListener {
     private boolean applyQueries(String xml_data) {
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            dbFactory.setXIncludeAware(false);
+            dbFactory.setExpandEntityReferences(false);
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(new InputSource(new StringReader(xml_data)));
             doc.getDocumentElement().normalize();
@@ -181,7 +183,7 @@ public class StartupApplicationListener {
                 if (nQuery.getQuery_id() != null && !nQuery.getQuery_id().isEmpty()) {
                     String checkSql = "SELECT * FROM `"+Common.DB_TABLE_DB_CHANGES+"` "
                         + "WHERE query_id='"+nQuery.getQuery_id()+"'";
-                    RowMapper rm = new RowMapper<QueryUpdate>() {
+                    RowMapper<QueryUpdate> rm = new RowMapper<QueryUpdate>() {
                     public QueryUpdate mapRow(ResultSet rs, int rowNum) throws SQLException {
                             QueryUpdate t = new QueryUpdate();
                             t.setId(BigInteger.valueOf(rs.getLong("id")));
@@ -233,7 +235,7 @@ public class StartupApplicationListener {
                         queries.set(i, nQuery);
 
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        Logger.getLogger(StartupApplicationListener.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                         for (int j=i; j >= 0; j--) {
                             //Ignore the current failed query
                             if (j==i) {

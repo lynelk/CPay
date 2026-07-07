@@ -1,32 +1,23 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem } from 'rc-easyui';
-import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
-import PropTypes from "prop-types";
-import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../MainMenu";
+import { DataGrid, GridColumn, LinkButton, Panel, PasswordBox, TextBox } from 'rc-easyui';
+import Messager from '../StableMessager';
+import { withRouter } from "react-router-dom";
 import common from "../Common";
-import Progress from "../Progress";
-import LinearChart from './LinearChart';
 import styles from '../styles';
-
+import { isSensitiveSetting, maskedSettingValue } from './settingsGridHelpers';
 
 class ModuleSettingsC extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            data:[],
+            data: [],
             windowHeight: window.innerHeight
         };
+        this.handleResize = this.handleResize.bind(this);
     }
 
-    handleResize(e) {
+    handleResize() {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
-    }
-
-    componentWillMount() {
-        window.addEventListener("resize", this.handleResize);
     }
 
     componentDidMount() {
@@ -34,164 +25,115 @@ class ModuleSettingsC extends React.Component {
         this.getData();
     }
 
-    renderGroup({value,rows} ) {
-        return (
-            <span style={{fontWeight:'bold'}}>
-                {value}
-            </span>
-        )
+    componentWillUnmount() {
+        window.removeEventListener("resize", this.handleResize);
+    }
+
+    renderGroup({ value }) {
+        return <span style={{ fontWeight: 'bold' }}>{value}</span>;
     }
 
     getData() {
         this.props.loader("START");
-        let searchData = { settings: "all"};
-        fetch(common.base_url+"/settings/getSettings", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(searchData) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
-            this.props.loader("STOP");
-            let res;
-            try {
-                res = JSON.parse(response_);
-                if (res.code === "000") {
-                    try {
-                        console.log(res.data);
-                        //return;
-                        this.setState({
-                            data: res.data,
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
+        fetch(common.base_url + "/settings/getSettings", {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            body: JSON.stringify({ settings: "all" })
+        }).then((response) => response.text())
+            .then((response_) => {
+                this.props.loader("STOP");
+                let res;
+                try {
+                    res = JSON.parse(response_);
+                    if (res.code === "000") {
+                        this.setState({ data: Array.isArray(res.data) ? res.data : [] });
+                    } else {
+                        if (res.code === "107") {
+                            this.props.sessionExpired();
+                            return;
+                        }
+                        this.messager.alert({ title: "Error " + res.code, icon: "error", msg: res.message });
                     }
-                } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.props.sessionExpired();
-                        return;
-                    }
-
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
+                } catch (Error) {
+                    this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
                 }
-            } catch(Error) {
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
-            }
-        }).catch((error) => {
-            this.props.loader("STOP");
-            this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
+            }).catch((error) => {
+                this.props.loader("STOP");
+                this.messager.alert({ title: "Error", icon: "error", msg: error.message });
             });
-        });
     }
 
     saveSettings() {
         this.props.loader("START");
-        fetch(common.base_url+"/settings/updateSettings", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(this.state.data) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
-            this.props.loader("STOP");
-            let res;
-            try {
-                res = JSON.parse(response_);
-                if (res.code === "000") {
-                    try {
-                        this.messager.alert({
-                            title: "Success!",
-                            icon: "info",
-                            msg: res.message,
-                            result: r => {
-                                if (r) {
-                                   
-                                }
-                            }
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
+        fetch(common.base_url + "/settings/updateSettings", {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            body: JSON.stringify(this.state.data)
+        }).then((response) => response.text())
+            .then((response_) => {
+                this.props.loader("STOP");
+                let res;
+                try {
+                    res = JSON.parse(response_);
+                    if (res.code === "000") {
+                        this.messager.alert({ title: "Success!", icon: "info", msg: res.message });
+                    } else {
+                        if (res.code === "107") {
+                            this.props.sessionExpired();
+                            return;
+                        }
+                        this.messager.alert({ title: "Error " + res.code, icon: "error", msg: res.message });
                     }
-                } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.props.sessionExpired();
-                        return;
-                    }
-
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
+                } catch (Error) {
+                    this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
                 }
-            } catch(Error) {
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
-            }
-        }).catch((error) => {
-            this.props.loader("STOP");
-            this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
+            }).catch((error) => {
+                this.props.loader("STOP");
+                this.messager.alert({ title: "Error", icon: "error", msg: error.message });
             });
-        });
+    }
+
+    renderSettingValueEditor(row) {
+        if (isSensitiveSetting(row)) {
+            return (
+                <PasswordBox
+                    value={row.setting_value || ''}
+                    placeholder={maskedSettingValue}
+                    iconCls="icon-lock"
+                    style={{ width: '100%' }} />
+            );
+        }
+
+        return (
+            <TextBox
+                multiline
+                value={row.setting_value || ''}
+                style={{ width: '100%', height: 120 }} />
+        );
     }
 
     render() {
-        const {windowHeight} = this.state;
+        const { windowHeight } = this.state;
         return (
             <div>
-                <div>
-                    <Panel bodyStyle={{ padding: '5px'}}>
-                        <div style={{float:'left'}}>
-                            <LinkButton 
-                                onClick={() => this.saveSettings()}
-                                className={styles.moduleToolBarButtons}
-                                iconCls="icon-settings">Save Settings</LinkButton>
-                        </div>
-                    </Panel>
-                </div>
+                <Panel bodyStyle={{ padding: '5px' }}>
+                    <div style={{ float: 'left' }}>
+                        <LinkButton
+                            onClick={() => this.saveSettings()}
+                            className={styles.moduleToolBarButtons}
+                            iconCls="icon-settings">Save Settings</LinkButton>
+                    </div>
+                </Panel>
                 <DataGrid
                     clickToEdit
                     selectionMode="cell"
@@ -202,14 +144,10 @@ class ModuleSettingsC extends React.Component {
                     renderGroup={this.renderGroup}
                     data={this.state.data}>
                     <GridColumn field="label" title="Settings Label"></GridColumn>
-                    <GridColumn field="setting_value" 
+                    <GridColumn
+                        field="setting_value"
                         editable
-                        editor={({row})=>(
-                            <TextBox 
-                                multiline 
-                                value={row.setting_value} 
-                                style={{ width: '100%', height: 120 }}>{row.setting_value}</TextBox>
-                        )}
+                        editor={({ row }) => this.renderSettingValueEditor(row)}
                         title="Setting Value"></GridColumn>
                 </DataGrid>
                 <Messager ref={ref => this.messager = ref}></Messager>
@@ -217,7 +155,6 @@ class ModuleSettingsC extends React.Component {
         );
     }
 }
-
 
 const ModuleSettings = withRouter(ModuleSettingsC);
 

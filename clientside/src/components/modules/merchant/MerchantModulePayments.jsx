@@ -1,6 +1,7 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox, FileButton } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton } from 'rc-easyui';
+import { Panel, Layout, LayoutPanel, Menu, MenuItem, SwitchButton } from 'rc-easyui';
+import Messager from '../../StableMessager';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";
@@ -76,7 +77,7 @@ class MerchantModulePaymentsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {
@@ -1005,7 +1006,7 @@ class PaymentFormDialog extends React.Component{
     }
 
     render() {
-        //console.log(this.state.formd);
+
         const row = this.state.formd;
         const { title, formDialogStateOpened, rules } = this.props;
         
@@ -1070,7 +1071,7 @@ class PaymentFormDialog extends React.Component{
                                                 multiple={true}
                                                 onSuccess={(xhr,files) => {
                                                     this.props.loader("STOP");
-                                                    console.log(xhr);
+
                                                     let r = JSON.parse(xhr.xhr.responseText);
                                                     if (r.state == "ERROR") {
                                                         this.props.messager.alert({
@@ -1087,7 +1088,7 @@ class PaymentFormDialog extends React.Component{
                                                 }}
                                                 onError={(xhr,files) => {
                                                     this.props.loader("STOP");
-                                                    console.log(xhr);
+
                                                     let r = JSON.parse(xhr.xhr.responseText);
                                                     if (r.state == "ERROR") {
                                                         this.props.messager.alert({

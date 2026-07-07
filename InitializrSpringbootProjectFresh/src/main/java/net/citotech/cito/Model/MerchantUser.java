@@ -10,6 +10,7 @@ package net.citotech.cito.Model;
  * @author josephtabajjwa
  */
 public class MerchantUser extends User implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     String merchant_number;
     String merchant_status;
     String merchant_name;
