@@ -665,7 +665,11 @@ select,
 
 .window-shadow {
   z-index: 99999 !important;
-  pointer-events: none !important;
+}
+
+.window.window-shadow,
+.messager-window.window-shadow {
+  pointer-events: auto !important;
 }
 
 .messager-window,
@@ -694,6 +698,143 @@ select,
   padding: 12px !important;
   position: relative !important;
   z-index: 2 !important;
+}
+
+.cpay-stable-messager-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.cpay-stable-messager-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.14);
+  pointer-events: auto;
+}
+
+.cpay-stable-messager-window {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 12px;
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow);
+  pointer-events: auto;
+}
+
+.cpay-stable-messager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  border-bottom: 1px solid var(--cpay-fuse-line);
+  padding: 10px 12px;
+}
+
+.cpay-stable-messager-header h2 {
+  margin: 0;
+  color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.cpay-stable-messager-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #7EAAD4;
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+}
+
+.cpay-stable-messager-close:hover {
+  background: #ECF9FC;
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-stable-messager-body {
+  min-height: 104px;
+  padding: 16px;
+}
+
+.cpay-stable-messager-message {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+  color: var(--cpay-fuse-text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.cpay-stable-messager-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--cpay-fuse-blue);
+  color: var(--cpay-brand-white);
+  font-size: 22px;
+  font-weight: 850;
+  font-family: var(--cpay-heading-font);
+}
+
+.cpay-stable-messager-icon-error {
+  background: var(--cpay-fuse-danger);
+}
+
+.cpay-stable-messager-icon-question {
+  background: var(--cpay-brand-gold);
+  color: var(--cpay-fuse-text);
+}
+
+.cpay-stable-messager-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  border-top: 1px solid var(--cpay-fuse-line);
+  background: var(--cpay-fuse-surface-soft);
+  padding: 12px;
+}
+
+.cpay-stable-messager-action {
+  min-width: 88px;
+  min-height: 38px;
+  border: 1px solid var(--cpay-fuse-line-strong);
+  border-radius: 12px;
+  background: var(--cpay-fuse-surface);
+  color: var(--cpay-fuse-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cpay-stable-messager-action:hover {
+  border-color: rgba(17, 152, 196, 0.42);
+  background: #ECF9FC;
+  color: var(--cpay-fuse-blue-dark);
 }
 
 .cpay-dialog-shell {
@@ -865,7 +1006,8 @@ select,
 .cpay-auth-aside {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
   gap: 22px;
   min-height: 520px;
   padding: 34px;
@@ -877,12 +1019,13 @@ select,
 .cpay-auth-brand-large {
   width: 150px;
   max-width: 100%;
+  margin: 0 auto;
   object-fit: contain;
   filter: drop-shadow(0 10px 22px rgba(15, 23, 42, 0.18));
 }
 
 .cpay-auth-aside h2 {
-  margin: auto 0 0;
+  margin: 0;
   color: #fff;
   font-family: var(--cpay-heading-font);
   font-size: 25px;
@@ -891,30 +1034,12 @@ select,
 }
 
 .cpay-auth-aside p {
-  margin: -12px 0 0;
+  margin: -12px auto 0;
   max-width: 250px;
   color: rgba(255, 255, 255, 0.78);
   font-size: 13px;
   line-height: 1.5;
-}
-
-.cpay-auth-chip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.cpay-auth-chip-grid span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  padding: 0 12px;
+  text-align: center;
 }
 
 .cpay-auth-main {
@@ -931,6 +1056,13 @@ select,
   align-items: center;
   gap: 16px;
   margin-bottom: 26px;
+}
+
+.cpay-auth-header-centered {
+  justify-content: center;
+  text-align: center;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .cpay-auth-logo {
@@ -1195,8 +1327,7 @@ select,
   }
 
   .cpay-auth-brand-large,
-  .cpay-auth-aside p,
-  .cpay-auth-chip-grid {
+  .cpay-auth-aside p {
     display: none;
   }
 
@@ -1210,7 +1341,7 @@ select,
   }
 
   .cpay-auth-header {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .cpay-signup-grid {

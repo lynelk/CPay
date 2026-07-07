@@ -31,4 +31,15 @@ describe('auth layout viewport safety', () => {
     expect(adminLogin).not.toContain('findDOMNode');
     expect(merchantLogin).not.toContain('findDOMNode');
   });
+
+  test('login shell centers the brand mark and avoids service chips on the login screen', () => {
+    const authShell = read('components/AuthShell.jsx');
+    const css = read('index.css');
+
+    expect(authShell).not.toContain("['MTN', 'Airtel', 'Pay In', 'Pay Out', 'SMS']");
+    expect(authShell).not.toContain('cpay-auth-chip-grid');
+    expect(authShell).toContain('cpay-auth-header-centered');
+    expect(css).toMatch(/\.cpay-auth-header-centered\s*\{[^}]*justify-content:\s*center;[^}]*text-align:\s*center;/s);
+    expect(css).toMatch(/\.cpay-auth-brand-large\s*\{[^}]*margin:\s*0 auto;/s);
+  });
 });

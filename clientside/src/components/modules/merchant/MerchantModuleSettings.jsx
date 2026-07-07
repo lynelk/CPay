@@ -1,5 +1,6 @@
 import React from 'react';
-import { DataGrid, GridColumn, LinkButton, Messager, Panel, PasswordBox, TextBox } from 'rc-easyui';
+import { DataGrid, GridColumn, LinkButton, Panel, PasswordBox, TextBox } from 'rc-easyui';
+import Messager from '../../StableMessager';
 import { withRouter } from "react-router-dom";
 import common from "../../Common";
 import styles from '../../styles';

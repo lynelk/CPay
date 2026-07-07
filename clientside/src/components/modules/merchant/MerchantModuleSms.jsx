@@ -1,6 +1,7 @@
 import React from 'react';
 import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox, FileButton } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Messager, Menu, MenuItem, SwitchButton, DateTimeSpinner } from 'rc-easyui';
+import { Panel, Layout, LayoutPanel, Menu, MenuItem, SwitchButton, DateTimeSpinner } from 'rc-easyui';
+import Messager from '../../StableMessager';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip, DateBox } from 'rc-easyui';
 import PropTypes from "prop-types";
 import { useHistory, withRouter } from "react-router-dom";

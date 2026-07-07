@@ -1,5 +1,6 @@
 import React from 'react';
-import { Form, FormField, LinkButton, Messager, PasswordBox, TextBox } from 'rc-easyui';
+import { Form, FormField, LinkButton, PasswordBox, TextBox } from 'rc-easyui';
+import Messager from './StableMessager';
 import { withRouter } from "react-router-dom";
 import common from './Common';
 import Progress from './Progress';
@@ -154,7 +155,7 @@ class LoginMerchantWithOutRouter extends React.Component {
         title={strings.merchant_title}
         subtitle="Merchant access"
         asideTitle="Merchant workspace"
-        asideCopy="Collections, payouts, balances, and SMS activity."
+        asideCopy="Account access, balances, and activity in one place."
         footer={this.footer()}
       >
         <Form

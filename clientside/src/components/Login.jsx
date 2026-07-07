@@ -1,5 +1,6 @@
 import React from 'react';
-import { Form, FormField, LinkButton, Messager, PasswordBox, TextBox } from 'rc-easyui';
+import { Form, FormField, LinkButton, PasswordBox, TextBox } from 'rc-easyui';
+import Messager from './StableMessager';
 import { withRouter } from "react-router-dom";
 import common from './Common';
 import Progress from './Progress';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Messager } from 'rc-easyui';
+import Messager from './StableMessager';
 import { withRouter } from "react-router-dom";
 import MainMenu from "./MainMenu";
 import common from "./Common";

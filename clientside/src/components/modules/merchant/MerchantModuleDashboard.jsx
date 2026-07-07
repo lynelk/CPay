@@ -1,5 +1,5 @@
 import React from 'react';
-import { Messager } from 'rc-easyui';
+import Messager from '../../StableMessager';
 import { withRouter } from "react-router-dom";
 import common from "../../Common";
 import { CardsIcon, CheckIcon, CloseIcon } from "../../ShellIcons";
