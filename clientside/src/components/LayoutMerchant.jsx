@@ -4,6 +4,7 @@ import { withRouter } from "react-router-dom";
 import MainMenuMerchant from "./MainMenuMerchant";
 import common from "./Common";
 import Progress from "./Progress";
+import { MailIcon, MenuIcon, PaymentsIcon } from "./ShellIcons";
 import Logo from "../media/images/gwlogo.png";
 
 import MerchantModuleDashboard from './modules/merchant/MerchantModuleDashboard';
@@ -192,9 +193,9 @@ class LayoutMerchantWithOutRouter extends React.Component {
         <main className={`cpay-main ${this.state.currentMenuKey === 'dashboard' ? 'cpay-main-dashboard' : ''}`}>
           <header className="cpay-topbar">
             <div className="cpay-toolbar-left">
-              <button className="cpay-icon-button" type="button" title="Navigation">☰</button>
-              <button className="cpay-icon-button" type="button" title="Payments">$</button>
-              <button className="cpay-icon-button" type="button" title="SMS">✉</button>
+              <button className="cpay-icon-button" type="button" title="Navigation" aria-label="Navigation"><MenuIcon /></button>
+              <button className="cpay-icon-button" type="button" title="Payments" aria-label="Payments"><PaymentsIcon /></button>
+              <button className="cpay-icon-button" type="button" title="SMS" aria-label="SMS"><MailIcon /></button>
             </div>
             <div className="cpay-toolbar-right">
               <button className="cpay-secondary-button" type="button" onClick={() => this.goToScreen('settings')}>Settings</button>

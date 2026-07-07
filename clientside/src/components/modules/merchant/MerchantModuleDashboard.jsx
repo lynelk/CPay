@@ -2,6 +2,7 @@ import React from 'react';
 import { Messager } from 'rc-easyui';
 import { withRouter } from "react-router-dom";
 import common from "../../Common";
+import { CardsIcon, CheckIcon, CloseIcon } from "../../ShellIcons";
 import LinearChart from './LinearChart';
 import { dashboardErrorDetails, formatAmount, formatCount, numericValues } from '../ModuleDashboard';
 
@@ -79,6 +80,21 @@ class MerchantModuleDashboardC extends React.Component {
     removeSnapshotCard(cardId) {
         this.setState(prevState => {
             const nextCards = sanitizeSnapshotCards(prevState.visibleSnapshotCards.filter(activeId => activeId !== cardId));
+            this.saveSnapshotCards(nextCards);
+            return { visibleSnapshotCards: nextCards };
+        });
+    }
+
+    toggleSnapshotCard(cardId) {
+        this.setState(prevState => {
+            const isActive = prevState.visibleSnapshotCards.includes(cardId);
+            if (!isActive && prevState.visibleSnapshotCards.length >= MAX_SNAPSHOT_CARDS) {
+                return { showSnapshotPicker: true };
+            }
+
+            const nextCards = isActive
+                ? sanitizeSnapshotCards(prevState.visibleSnapshotCards.filter(activeId => activeId !== cardId))
+                : sanitizeSnapshotCards([...prevState.visibleSnapshotCards, cardId]);
             this.saveSnapshotCards(nextCards);
             return { visibleSnapshotCards: nextCards };
         });
@@ -234,7 +250,9 @@ class MerchantModuleDashboardC extends React.Component {
                         <span>{card.label}</span>
                         <h3>{card.title}</h3>
                     </div>
-                    <button type="button" title="Remove snapshot" onClick={() => this.removeSnapshotCard(card.id)}>×</button>
+                    <button type="button" title="Remove card" aria-label={`Remove ${card.title}`} onClick={() => this.removeSnapshotCard(card.id)}>
+                        <CloseIcon />
+                    </button>
                 </header>
                 <div className="cpay-dashboard-metric">{metric}</div>
                 <div className="cpay-dashboard-card-body">{body}</div>
@@ -249,18 +267,35 @@ class MerchantModuleDashboardC extends React.Component {
 
         const active = new Set(this.state.visibleSnapshotCards);
         const canAdd = this.state.visibleSnapshotCards.length < MAX_SNAPSHOT_CARDS;
-        const inactiveCards = merchantSnapshotCards.filter(card => !active.has(card.id));
+        const activeCount = this.state.visibleSnapshotCards.length;
 
         return (
-            <div className="cpay-dashboard-picker">
-                {inactiveCards.length === 0 || !canAdd ? (
-                    <span>Remove a card to add another snapshot.</span>
-                ) : inactiveCards.map(card => (
-                    <button key={card.id} type="button" onClick={() => this.addSnapshotCard(card.id)}>
+            <div className="cpay-dashboard-picker" role="menu" aria-label="Customize dashboard cards">
+                <div className="cpay-dashboard-picker-heading">
+                    <strong>Dashboard cards</strong>
+                    <span>{activeCount}/{MAX_SNAPSHOT_CARDS} shown</span>
+                </div>
+                {merchantSnapshotCards.map(card => {
+                    const isActive = active.has(card.id);
+                    const disabled = !isActive && !canAdd;
+                    return (
+                    <button
+                        key={card.id}
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-pressed={isActive}
+                        disabled={disabled}
+                        className={`cpay-dashboard-picker-option${isActive ? ' cpay-dashboard-picker-option-active' : ''}`}
+                        onClick={() => this.toggleSnapshotCard(card.id)}>
+                        <span className="cpay-dashboard-picker-state">{isActive ? <CheckIcon /> : <CardsIcon />}</span>
+                        <span className="cpay-dashboard-picker-copy">
                         <strong>{card.title}</strong>
                         <span>{card.label}</span>
+                        </span>
+                        <em>{isActive ? 'Shown' : disabled ? 'Limit reached' : 'Add'}</em>
                     </button>
-                ))}
+                    );
+                })}
             </div>
         );
     }
@@ -272,13 +307,20 @@ class MerchantModuleDashboardC extends React.Component {
         return (
             <div className="cpay-dashboard cpay-merchant-dashboard">
                 <section className="cpay-dashboard-toolbar">
-                    <div>
+                    <div className="cpay-dashboard-toolbar-copy">
                         <h2>Merchant snapshot</h2>
-                        <p>Pay In, Pay Out, SMS, API, and operational notices in one no-scroll view.</p>
+                        <p>Pay In, Pay Out, SMS, API, and operational notices in a compact command view.</p>
                     </div>
                     <div className="cpay-dashboard-actions">
-                        <button type="button" onClick={() => this.setState(prevState => ({ showSnapshotPicker: !prevState.showSnapshotPicker }))}>
-                            Add Snapshot
+                        <button
+                            className="cpay-card-manager-button"
+                            type="button"
+                            aria-expanded={this.state.showSnapshotPicker}
+                            aria-label="Customize dashboard cards"
+                            onClick={() => this.setState(prevState => ({ showSnapshotPicker: !prevState.showSnapshotPicker }))}>
+                            <CardsIcon />
+                            <span>Customize cards</span>
+                            <em>{this.state.visibleSnapshotCards.length}/{MAX_SNAPSHOT_CARDS}</em>
                         </button>
                         {this.renderSnapshotPicker()}
                     </div>
