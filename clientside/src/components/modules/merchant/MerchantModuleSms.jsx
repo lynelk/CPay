@@ -13,6 +13,7 @@ import styles from '../../styles';
 import strings from '../../locale';
 import MerchantModuleMerchantsAccount from './MerchantModuleMerchantsAccount';
 import DatetimePicker from '../../DatetimePicker';
+import { replaceSmsColumnToken } from './smsTemplate';
 
 import ReactExport from "../../../shared/export/ExcelExport";
 
@@ -1361,15 +1362,11 @@ class PaymentFormDialog extends React.Component{
                             r.data[i].phone = r.data[i].phone+"";
                             if (this.state.ismultiple) {
                                 var content_ = content;
-                                content_ = content_.replace(new RegExp('\{COLB\}', 'i'), r.data[i].cellB);
-                                content_ = content_.replace(new RegExp('\{COLC\}', 'i'), 
-                                    r.data[i].cellC);
-                                content_ = content_.replace(new RegExp('\{COLD\}', 'i'), 
-                                    r.data[i].cellD);
-                                content_ = content_.replace(new RegExp('\{COLE\}', 'i'), 
-                                    r.data[i].cellE);
-                                content_ = content_.replace(new RegExp('\{COLF\}', 'i'), 
-                                    r.data[i].cellF);
+                                content_ = replaceSmsColumnToken(content_, 'COLB', r.data[i].cellB);
+                                content_ = replaceSmsColumnToken(content_, 'COLC', r.data[i].cellC);
+                                content_ = replaceSmsColumnToken(content_, 'COLD', r.data[i].cellD);
+                                content_ = replaceSmsColumnToken(content_, 'COLE', r.data[i].cellE);
+                                content_ = replaceSmsColumnToken(content_, 'COLF', r.data[i].cellF);
                                 
                                 r.data[i].content = content_;
                             } else {
