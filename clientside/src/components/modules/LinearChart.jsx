@@ -29,6 +29,37 @@ class LinearChart extends React.Component {
     }
   }
 
+  colorToRgba(color, alpha) {
+    if (!color || !/^#[0-9a-f]{6}$/i.test(color)) {
+      return `rgba(17, 152, 196, ${alpha})`;
+    }
+
+    const red = parseInt(color.slice(1, 3), 16);
+    const green = parseInt(color.slice(3, 5), 16);
+    const blue = parseInt(color.slice(5, 7), 16);
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  }
+
+  chartData(data) {
+    const color = this.props.color || '#1198C4';
+    const fillColor = this.colorToRgba(color, 0.14);
+    const datasets = data && data.data && Array.isArray(data.data.datasets)
+      ? data.data.datasets.map(dataset => ({
+        borderColor: color,
+        backgroundColor: fillColor,
+        pointBackgroundColor: color,
+        pointBorderColor: '#FFFFFF',
+        tension: 0.35,
+        ...dataset,
+      }))
+      : [];
+
+    return {
+      ...data.data,
+      datasets,
+    };
+  }
+
   chartConfig(data) {
     if (!data) {
       return data;
@@ -36,6 +67,7 @@ class LinearChart extends React.Component {
 
     return {
       ...data,
+      data: this.chartData(data),
       options: {
         responsive: true,
         maintainAspectRatio: false,

@@ -17,29 +17,29 @@
 
 /* ─── CPay design tokens ────────────────────────────────────────────────── */
 @theme {
-  /* iOS-inspired colour palette (from iosTheme.js) */
-  --color-cpay-blue:        #007AFF;
-  --color-cpay-light-blue:  #5AC8FA;
-  --color-cpay-teal:        #32ADE6;
+  /* CPay brand palette */
+  --color-cpay-blue:        #1198C4;
+  --color-cpay-light-blue:  #5FBBD4;
+  --color-cpay-teal:        #1198C4;
   --color-cpay-green:       #34C759;
-  --color-cpay-orange:      #FF9500;
+  --color-cpay-orange:      #F3B01B;
   --color-cpay-red:         #FF3B30;
   --color-cpay-yellow:      #FFCC00;
   --color-cpay-purple:      #AF52DE;
   --color-cpay-pink:        #FF2D55;
-  --color-cpay-gray-6:      #F2F2F7;
-  --color-cpay-gray-5:      #E5E5EA;
-  --color-cpay-gray-4:      #D1D1D6;
-  --color-cpay-gray-3:      #C7C7CC;
-  --color-cpay-gray-2:      #AEAEB2;
-  --color-cpay-gray:        #8E8E93;
-  --color-cpay-label:       #000000;
+  --color-cpay-gray-6:      #F5F7FA;
+  --color-cpay-gray-5:      #E4EAF0;
+  --color-cpay-gray-4:      #D6E3EA;
+  --color-cpay-gray-3:      #B8C6D1;
+  --color-cpay-gray-2:      #8A98A8;
+  --color-cpay-gray:        #667085;
+  --color-cpay-label:       #163B5C;
   --color-cpay-bg:          #FFFFFF;
-  --color-cpay-bg-secondary:#F2F2F7;
+  --color-cpay-bg-secondary:#F5F7FA;
 
-  /* iOS font stack */
-  --font-ios: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --font-ios-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  /* CPay typography stack */
+  --font-ios: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --font-ios-display: Montserrat, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 
   /* iOS 4-pt spacing grid */
   --spacing-ios-xs:  4px;
@@ -66,8 +66,7 @@
 /* ─── Base styles ─────────────────────────────────────────────────────────── */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-family: var(--cpay-body-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -76,26 +75,34 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
-/* ─── Fuse-inspired CPay application shell ──────────────────────────────── */
+/* ─── CPay brand application shell ──────────────────────────────────────── */
 :root {
-  --cpay-fuse-bg: #f5f7fb;
-  --cpay-fuse-sidebar: rgba(239, 244, 250, 0.92);
-  --cpay-fuse-surface: #ffffff;
-  --cpay-fuse-surface-soft: #f8fbff;
-  --cpay-fuse-line: #dce6f2;
-  --cpay-fuse-line-strong: #c7d6e8;
-  --cpay-fuse-text: #071225;
-  --cpay-fuse-muted: #64758b;
-  --cpay-fuse-blue: #0a84ff;
-  --cpay-fuse-blue-dark: #0066d6;
-  --cpay-fuse-dark: #101828;
+  --cpay-brand-teal: #1198C4;
+  --cpay-brand-gold: #F3B01B;
+  --cpay-brand-navy: #163B5C;
+  --cpay-brand-slate: #667085;
+  --cpay-brand-soft-gray: #F5F7FA;
+  --cpay-brand-white: #FFFFFF;
+  --cpay-heading-font: Montserrat, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --cpay-body-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --cpay-fuse-bg: var(--cpay-brand-soft-gray);
+  --cpay-fuse-sidebar: rgba(245, 247, 250, 0.94);
+  --cpay-fuse-surface: var(--cpay-brand-white);
+  --cpay-fuse-surface-soft: #FAFCFD;
+  --cpay-fuse-line: #D6E3EA;
+  --cpay-fuse-line-strong: #B8C6D1;
+  --cpay-fuse-text: var(--cpay-brand-navy);
+  --cpay-fuse-muted: var(--cpay-brand-slate);
+  --cpay-fuse-blue: var(--cpay-brand-teal);
+  --cpay-fuse-blue-dark: #0E7FA5;
+  --cpay-fuse-dark: var(--cpay-brand-navy);
   --cpay-fuse-danger: #ff3b30;
   --cpay-fuse-green: #30d158;
   --cpay-fuse-radius: 16px;
   --cpay-fuse-radius-sm: 12px;
   --cpay-fuse-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 14px 36px rgba(15, 23, 42, 0.06);
   --cpay-fuse-shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.05);
-  --cpay-fuse-font: "Geist", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --cpay-fuse-font: var(--cpay-body-font);
 }
 
 html,
@@ -107,7 +114,7 @@ body,
 
 body {
   color: var(--cpay-fuse-text);
-  font-family: var(--cpay-fuse-font);
+  font-family: var(--cpay-body-font);
   font-size: 14px;
   line-height: 1.35;
   overflow-x: hidden;
@@ -132,7 +139,7 @@ select,
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background: linear-gradient(180deg, #fbfdff 0%, var(--cpay-fuse-bg) 42%, #eef4fb 100%);
+  background: linear-gradient(180deg, var(--cpay-brand-white) 0%, var(--cpay-fuse-bg) 48%, #EEF4F7 100%);
   color: var(--cpay-fuse-text);
 }
 
@@ -166,6 +173,7 @@ select,
 
 .cpay-brand-name {
   color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
   font-size: 18px;
   font-weight: 800;
   line-height: 1;
@@ -224,13 +232,13 @@ select,
 }
 
 .cpay-nav-item:hover {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(17, 152, 196, 0.08);
   color: var(--cpay-fuse-blue-dark);
 }
 
 .cpay-nav-item-active {
-  background: rgba(10, 132, 255, 0.12);
-  color: #111827;
+  background: rgba(17, 152, 196, 0.12);
+  color: var(--cpay-fuse-dark);
   box-shadow: inset 3px 0 0 var(--cpay-fuse-blue);
   font-weight: 700;
 }
@@ -296,8 +304,8 @@ select,
 }
 
 .cpay-icon-button:hover {
-  border-color: #a9cdfd;
-  background: #eef6ff;
+  border-color: rgba(17, 152, 196, 0.42);
+  background: #ECF9FC;
   color: var(--cpay-fuse-blue-dark);
 }
 
@@ -329,14 +337,14 @@ select,
 
 .cpay-primary-button {
   border: 1px solid var(--cpay-fuse-blue-dark);
-  background: linear-gradient(180deg, #3b9cff 0%, var(--cpay-fuse-blue) 100%);
+  background: linear-gradient(180deg, #19A9D4 0%, var(--cpay-fuse-blue) 100%);
   color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 8px 18px rgba(10, 132, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 18px rgba(17, 152, 196, 0.18);
 }
 
 .cpay-secondary-button {
-  border: 1px solid #374151;
-  background: linear-gradient(180deg, #172033 0%, var(--cpay-fuse-dark) 100%);
+  border: 1px solid #0F2D47;
+  background: linear-gradient(180deg, #1E4C72 0%, var(--cpay-fuse-dark) 100%);
   color: #fff;
 }
 
@@ -356,7 +364,7 @@ select,
   width: 42px;
   height: 42px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #0a84ff, #5ac8fa);
+  background: linear-gradient(135deg, var(--cpay-brand-teal), var(--cpay-brand-gold));
   color: #fff;
   font-size: 14px;
   font-weight: 800;
@@ -414,6 +422,7 @@ select,
 .cpay-page-heading h1 {
   margin: 0;
   color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
   font-size: clamp(24px, 2vw, 30px);
   font-weight: 800;
   line-height: 1.08;
@@ -421,7 +430,7 @@ select,
 
 .cpay-page-heading p {
   margin: 4px 0 0;
-  color: #475569;
+  color: var(--cpay-fuse-muted);
   font-size: 14px;
 }
 
@@ -458,8 +467,8 @@ select,
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 15% 20%, rgba(37, 99, 235, 0.12), transparent 28%),
-    radial-gradient(circle at 85% 12%, rgba(14, 165, 233, 0.12), transparent 24%),
+    linear-gradient(135deg, rgba(17, 152, 196, 0.10) 0%, transparent 46%),
+    linear-gradient(315deg, rgba(243, 176, 27, 0.12) 0%, transparent 34%),
     var(--cpay-fuse-bg);
   padding: 32px 16px;
 }
@@ -483,6 +492,7 @@ select,
 
 .cpay-auth-screen .panel-title {
   color: var(--cpay-fuse-text) !important;
+  font-family: var(--cpay-heading-font) !important;
   font-size: 18px !important;
   font-weight: 800 !important;
 }
@@ -520,6 +530,7 @@ select,
 .panel-title,
 .window-title {
   color: var(--cpay-fuse-text) !important;
+  font-family: var(--cpay-heading-font) !important;
   font-size: 14px !important;
   font-weight: 800 !important;
 }
@@ -547,8 +558,8 @@ select,
 .datagrid-htable,
 .datagrid-header-row,
 .datagrid-header td {
-  background: #f8fafc !important;
-  color: #475569 !important;
+  background: var(--cpay-fuse-surface-soft) !important;
+  color: var(--cpay-fuse-muted) !important;
   font-size: 12px !important;
   font-weight: 800 !important;
 }
@@ -566,8 +577,8 @@ select,
 
 .datagrid-row-over,
 .datagrid-row-selected {
-  background: #eff6ff !important;
-  color: #1d4ed8 !important;
+  background: #ECF9FC !important;
+  color: var(--cpay-fuse-blue-dark) !important;
 }
 
 .datagrid-cell,
@@ -598,8 +609,8 @@ select,
 .l-btn:hover,
 .l-btn-selected,
 .l-btn-plain:hover {
-  border-color: #93c5fd !important;
-  background: #eff6ff !important;
+  border-color: rgba(17, 152, 196, 0.42) !important;
+  background: #ECF9FC !important;
   color: var(--cpay-fuse-blue-dark) !important;
 }
 
@@ -630,8 +641,8 @@ select,
 .combo-focused,
 .spinner-focused,
 .searchbox-focused {
-  border-color: #60a5fa !important;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  border-color: var(--cpay-fuse-blue) !important;
+  box-shadow: 0 0 0 3px rgba(17, 152, 196, 0.12) !important;
 }
 
 .form-field,
@@ -750,8 +761,8 @@ select,
 
 .tabs li a.tabs-inner {
   border-radius: var(--cpay-fuse-radius) var(--cpay-fuse-radius) 0 0 !important;
-  background: #f8fafc !important;
-  color: #475569 !important;
+  background: var(--cpay-fuse-surface-soft) !important;
+  color: var(--cpay-fuse-muted) !important;
   font-weight: 700 !important;
 }
 
@@ -833,9 +844,9 @@ select,
   justify-content: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at 14% 18%, rgba(37, 99, 235, 0.12), transparent 26%),
-    radial-gradient(circle at 86% 12%, rgba(14, 165, 233, 0.12), transparent 22%),
-    linear-gradient(135deg, #f8fbff 0%, #eef4fb 100%);
+    linear-gradient(135deg, rgba(17, 152, 196, 0.10) 0%, transparent 46%),
+    linear-gradient(315deg, rgba(243, 176, 27, 0.12) 0%, transparent 34%),
+    linear-gradient(135deg, #FFFFFF 0%, var(--cpay-brand-soft-gray) 100%);
   padding: 24px;
 }
 
@@ -858,7 +869,8 @@ select,
   gap: 22px;
   min-height: 520px;
   padding: 34px;
-  background: linear-gradient(160deg, #0f172a 0%, #1d4ed8 58%, #0891b2 100%);
+  background: linear-gradient(160deg, #0F2D47 0%, var(--cpay-brand-navy) 52%, var(--cpay-brand-teal) 100%);
+  box-shadow: inset 0 4px 0 var(--cpay-brand-gold);
   color: #fff;
 }
 
@@ -872,6 +884,7 @@ select,
 .cpay-auth-aside h2 {
   margin: auto 0 0;
   color: #fff;
+  font-family: var(--cpay-heading-font);
   font-size: 25px;
   font-weight: 800;
   line-height: 1.08;
@@ -929,6 +942,7 @@ select,
 .cpay-auth-header h1 {
   margin: 0;
   color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
   font-size: 25px;
   font-weight: 850;
   line-height: 1.08;
@@ -980,7 +994,7 @@ select,
 }
 
 .cpay-auth-form .form-label {
-  color: #334155;
+  color: var(--cpay-fuse-text);
   font-size: 13px;
   font-weight: 750;
 }
@@ -1048,7 +1062,7 @@ select,
 .cpay-auth-native-field {
   display: grid;
   gap: 6px;
-  color: #334155;
+  color: var(--cpay-fuse-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1069,15 +1083,15 @@ select,
 
 .cpay-auth-native-field input:focus,
 .cpay-auth-native-field select:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: var(--cpay-fuse-blue);
+  box-shadow: 0 0 0 3px rgba(17, 152, 196, 0.12);
 }
 
 .cpay-auth-message,
 .cpay-auth-result {
   border: 1px solid var(--cpay-fuse-line);
   border-radius: var(--cpay-fuse-radius);
-  background: #f8fafc;
+  background: var(--cpay-fuse-surface-soft);
   color: var(--cpay-fuse-text);
   font-size: 13px;
   margin-bottom: 14px;
@@ -1099,6 +1113,7 @@ select,
 .cpay-auth-result h2 {
   margin: 0 0 12px;
   color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
   font-size: 18px;
   font-weight: 850;
 }
@@ -1129,7 +1144,7 @@ select,
 }
 
 .cpay-auth-result p {
-  color: #475569;
+  color: var(--cpay-fuse-muted);
   margin: 0 0 14px;
 }
 
@@ -1247,10 +1262,10 @@ select,
   justify-content: space-between;
   gap: 14px;
   min-height: 58px;
-  border: 1px solid rgba(199, 214, 232, 0.9);
+  border: 1px solid rgba(214, 227, 234, 0.95);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--cpay-fuse-shadow-soft);
+  box-shadow: inset 4px 0 0 rgba(243, 176, 27, 0.88), var(--cpay-fuse-shadow-soft);
   padding: 10px 12px 10px 16px;
   backdrop-filter: blur(14px);
 }
@@ -1262,6 +1277,7 @@ select,
 .cpay-dashboard-toolbar h2 {
   margin: 0;
   color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
   font-size: clamp(16px, 1.25vw, 18px);
   font-weight: 850;
   line-height: 1.12;
@@ -1288,9 +1304,9 @@ select,
   justify-content: center;
   gap: 8px;
   min-height: 42px;
-  border: 1px solid rgba(10, 132, 255, 0.4);
+  border: 1px solid rgba(17, 152, 196, 0.42);
   border-radius: 14px;
-  background: linear-gradient(180deg, #f7fbff 0%, #eaf4ff 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #ECF9FC 100%);
   color: var(--cpay-fuse-blue-dark);
   cursor: pointer;
   font-size: 13px;
@@ -1303,8 +1319,8 @@ select,
 .cpay-card-manager-button:hover,
 .cpay-card-manager-button[aria-expanded="true"] {
   border-color: var(--cpay-fuse-blue);
-  background: linear-gradient(180deg, #eaf4ff 0%, #dcedff 100%);
-  color: #0057b8;
+  background: linear-gradient(180deg, #ECF9FC 0%, #DDF3F8 100%);
+  color: var(--cpay-fuse-blue-dark);
 }
 
 .cpay-card-manager-button em {
@@ -1314,8 +1330,8 @@ select,
   min-width: 34px;
   height: 24px;
   border-radius: 999px;
-  background: rgba(10, 132, 255, 0.12);
-  color: #0057b8;
+  background: rgba(243, 176, 27, 0.18);
+  color: #8D6100;
   font-size: 11px;
   font-style: normal;
   font-weight: 850;
@@ -1331,7 +1347,7 @@ select,
   max-height: min(440px, calc(100vh - 140px));
   gap: 8px;
   overflow-y: auto;
-  border: 1px solid rgba(199, 214, 232, 0.95);
+  border: 1px solid rgba(214, 227, 234, 0.95);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 22px 54px rgba(15, 23, 42, 0.18);
@@ -1376,8 +1392,8 @@ select,
 }
 
 .cpay-dashboard-picker-option:hover {
-  border-color: #a9cdfd;
-  background: #eef6ff;
+  border-color: rgba(17, 152, 196, 0.42);
+  background: #ECF9FC;
 }
 
 .cpay-dashboard-picker-option:disabled {
@@ -1397,7 +1413,7 @@ select,
   width: 28px;
   height: 28px;
   border-radius: 10px;
-  background: rgba(10, 132, 255, 0.1);
+  background: rgba(17, 152, 196, 0.1);
   color: var(--cpay-fuse-blue-dark);
 }
 
@@ -1444,7 +1460,7 @@ select,
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(199, 214, 232, 0.92);
+  border: 1px solid rgba(214, 227, 234, 0.95);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: var(--cpay-fuse-shadow-soft);
@@ -1501,6 +1517,7 @@ select,
   margin: 3px 0 0;
   overflow: hidden;
   color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
   font-size: clamp(15px, 1.2vw, 17px);
   font-weight: 850;
   line-height: 1.12;
@@ -1566,9 +1583,9 @@ select,
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed #c7d6e8;
+  border: 1px dashed var(--cpay-fuse-line-strong);
   border-radius: 14px;
-  background: linear-gradient(180deg, #fbfdff 0%, #f5f8fc 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--cpay-brand-soft-gray) 100%);
   color: var(--cpay-fuse-muted);
   font-size: 12px;
   font-weight: 750;
@@ -1595,7 +1612,7 @@ select,
   overflow: hidden;
   border: 1px solid var(--cpay-fuse-line);
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--cpay-fuse-surface-soft);
   padding: 8px 10px;
 }
 
@@ -1612,7 +1629,7 @@ select,
 .cpay-dashboard-notification span {
   display: -webkit-box;
   overflow: hidden;
-  color: #475569;
+  color: var(--cpay-fuse-muted);
   font-size: 12px;
   line-height: 1.28;
   -webkit-box-orient: vertical;
@@ -1625,8 +1642,8 @@ select,
 }
 
 .cpay-dashboard-notification-info {
-  border-color: #c7defe;
-  background: #f1f7ff;
+  border-color: rgba(17, 152, 196, 0.26);
+  background: #ECF9FC;
 }
 
 .cpay-dashboard-notification-danger {
@@ -1677,7 +1694,7 @@ select,
   align-items: center;
   margin: 0;
   overflow: hidden;
-  color: #475569;
+  color: var(--cpay-fuse-muted);
   font-size: 12px;
   line-height: 1.42;
 }

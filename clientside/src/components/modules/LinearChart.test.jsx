@@ -70,6 +70,25 @@ describe('LinearChart', () => {
     expect(container.querySelector('canvas')).toBeTruthy();
   });
 
+  test('applies the supplied chart color to datasets without explicit colors', () => {
+    const chartData = {
+      type: 'line',
+      data: {
+        labels: ['Jan'],
+        datasets: [{ label: 'Payins', data: [100] }],
+      },
+    };
+
+    renderChart(<LinearChart data={chartData} title="Payins" color="#1198C4" />);
+
+    const config = Chart.mock.calls[0][1];
+    expect(config.data.datasets[0]).toMatchObject({
+      borderColor: '#1198C4',
+      backgroundColor: 'rgba(17, 152, 196, 0.14)',
+      pointBackgroundColor: '#1198C4',
+    });
+  });
+
   test('re-renders without crashing on prop update', () => {
     renderChart(<LinearChart data={null} title="Initial" color="#fff" />);
     renderChart(<LinearChart data={null} title="Updated" color="#000" />);

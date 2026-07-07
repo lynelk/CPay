@@ -256,7 +256,7 @@ class ModuleDashboardC extends React.Component {
     renderChart(data, emptyText) {
         return (
             <div className="cpay-dashboard-chart-shell">
-                <LinearChart data={data} title={emptyText} color="#2563eb" />
+                <LinearChart data={data} title={emptyText} color="#1198C4" />
                 {!data ? <div className="cpay-dashboard-empty">{emptyText}</div> : null}
             </div>
         );
