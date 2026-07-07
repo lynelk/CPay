@@ -29,7 +29,7 @@ export const availableSnapshotCards = [
 const STORAGE_KEY = 'cpay-admin-dashboard-snapshots';
 const MAX_SNAPSHOT_CARDS = 4;
 
-const numericValues = (chartData) => {
+export const numericValues = (chartData) => {
     const datasets = chartData && chartData.data && Array.isArray(chartData.data.datasets)
         ? chartData.data.datasets
         : [];
@@ -49,14 +49,14 @@ const latestDatasetTotal = (chartData) => {
     }, 0);
 };
 
-const formatAmount = (value) => {
+export const formatAmount = (value) => {
     if (!Number.isFinite(value) || value <= 0) {
         return 'Awaiting data';
     }
     return `UGX ${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)}`;
 };
 
-const formatCount = (value) => {
+export const formatCount = (value) => {
     if (!Number.isFinite(value) || value <= 0) {
         return '0';
     }

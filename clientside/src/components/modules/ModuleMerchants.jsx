@@ -72,7 +72,7 @@ class ModuleMerchantsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {
@@ -780,7 +780,7 @@ class MerchantFormDialog extends React.Component{
     }
 
     render() {
-        //console.log(this.state.formd);
+
         const row = this.state.formd;
         const { title, formDialogStateOpened, rules } = this.props;
         

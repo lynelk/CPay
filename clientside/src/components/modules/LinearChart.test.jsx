@@ -2,9 +2,10 @@
  * Unit tests for clientside/src/components/modules/LinearChart.js
  */
 
-import React from 'react';
-import { render, unmountComponentAtNode } from 'react-dom';
-import { act } from 'react-dom/test-utils';
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import LinearChart from './LinearChart';
 import MerchantLinearChart from './merchant/LinearChart';
 import Chart from 'chart.js/auto';
@@ -18,16 +19,29 @@ jest.mock('chart.js/auto', () => {
 });
 
 let container = null;
+let root = null;
+
+const renderChart = (component) => {
+  act(() => {
+    root.render(component);
+  });
+};
 
 beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
+  root = createRoot(container);
 });
 
 afterEach(() => {
-  unmountComponentAtNode(container);
+  if (root) {
+    act(() => {
+      root.unmount();
+    });
+  }
   container.remove();
   container = null;
+  root = null;
   Chart.mockClear();
   Chart.prototype.destroy.mockClear();
   Chart.prototype.update.mockClear();
@@ -35,16 +49,12 @@ afterEach(() => {
 
 describe('LinearChart', () => {
   test('renders a canvas element', () => {
-    act(() => {
-      render(<LinearChart data={null} title="Test Chart" color="#fff" />, container);
-    });
+    renderChart(<LinearChart data={null} title="Test Chart" color="#fff" />);
     expect(container.querySelector('canvas')).not.toBeNull();
   });
 
   test('renders without crashing when data is null', () => {
-    act(() => {
-      render(<LinearChart data={null} title="No Data" color="#aaa" />, container);
-    });
+    renderChart(<LinearChart data={null} title="No Data" color="#aaa" />);
     expect(container.querySelector('canvas')).toBeTruthy();
   });
 
@@ -56,22 +66,13 @@ describe('LinearChart', () => {
         datasets: [{ label: 'Payins', data: [100, 200, 300] }],
       },
     };
-    act(() => {
-      render(
-        <LinearChart data={chartData} title="Payins vs Payouts" color="#70CAD1" />,
-        container
-      );
-    });
+    renderChart(<LinearChart data={chartData} title="Payins vs Payouts" color="#70CAD1" />);
     expect(container.querySelector('canvas')).toBeTruthy();
   });
 
   test('re-renders without crashing on prop update', () => {
-    act(() => {
-      render(<LinearChart data={null} title="Initial" color="#fff" />, container);
-    });
-    act(() => {
-      render(<LinearChart data={null} title="Updated" color="#000" />, container);
-    });
+    renderChart(<LinearChart data={null} title="Initial" color="#fff" />);
+    renderChart(<LinearChart data={null} title="Updated" color="#000" />);
     expect(container.querySelector('canvas')).toBeTruthy();
   });
 
@@ -94,13 +95,8 @@ describe('LinearChart', () => {
       },
     };
 
-    act(() => {
-      render(<ChartComponent data={firstData} title="Initial" color="#fff" />, container);
-    });
-
-    act(() => {
-      render(<ChartComponent data={secondData} title="Updated" color="#000" />, container);
-    });
+    renderChart(<ChartComponent data={firstData} title="Initial" color="#fff" />);
+    renderChart(<ChartComponent data={secondData} title="Updated" color="#000" />);
 
     expect(Chart.prototype.destroy).toHaveBeenCalledTimes(1);
     expect(Chart).toHaveBeenCalledTimes(2);
@@ -118,13 +114,12 @@ describe('LinearChart', () => {
       },
     };
 
-    act(() => {
-      render(<ChartComponent data={chartData} title="Unmount" color="#fff" />, container);
-    });
+    renderChart(<ChartComponent data={chartData} title="Unmount" color="#fff" />);
 
     act(() => {
-      unmountComponentAtNode(container);
+      root.unmount();
     });
+    root = null;
 
     expect(Chart.prototype.destroy).toHaveBeenCalledTimes(1);
   });

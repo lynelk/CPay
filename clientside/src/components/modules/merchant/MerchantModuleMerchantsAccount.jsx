@@ -87,7 +87,7 @@ class MerchantModuleMerchantAccouunt extends React.Component{
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {
@@ -100,7 +100,7 @@ class MerchantModuleMerchantAccouunt extends React.Component{
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        console.log(nextProps);
+
         /*if (!this.props.statementDialogStateOpened) {
             this.getData();
         }*/

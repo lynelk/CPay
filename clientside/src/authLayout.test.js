@@ -23,4 +23,12 @@ describe('auth layout viewport safety', () => {
     expect(adminLogin).not.toMatch(/height:\s*\d+/);
     expect(merchantLogin).not.toMatch(/height:\s*\d+/);
   });
+
+  test('login screens avoid legacy ReactDOM lookups for keyboard handling', () => {
+    const adminLogin = read('components/Login.jsx');
+    const merchantLogin = read('components/LoginMerchant.jsx');
+
+    expect(adminLogin).not.toContain('findDOMNode');
+    expect(merchantLogin).not.toContain('findDOMNode');
+  });
 });

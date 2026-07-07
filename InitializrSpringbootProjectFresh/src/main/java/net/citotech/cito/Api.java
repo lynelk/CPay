@@ -41,7 +41,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -76,7 +75,6 @@ public class Api {
     * API to add a new admin to the database
     */
     @PostMapping(path="/doMobileMoneyPayIn")
-    @CrossOrigin
     public String doMobileMoneyPayIn (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -304,7 +302,6 @@ public class Api {
     * Initiate a Mobile Money payout request
     */
     @PostMapping(path="/doMobileMoneyPayOut")
-    @CrossOrigin
     public String doMobileMoneyPayOut (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -549,7 +546,6 @@ public class Api {
     * API to check the status of an earlier submitted transaction
     */
     @PostMapping(path="/doTransactionCheckStatus")
-    @CrossOrigin
     public String doTransactionCheckStatus (@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
@@ -1032,7 +1028,7 @@ public class Api {
                         }
 
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Logger.getLogger(Api.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         Logger.getLogger(AuthenticationController.class.getName())
@@ -1189,7 +1185,7 @@ public class Api {
                         }
 
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Logger.getLogger(Api.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         Logger.getLogger(AuthenticationController.class.getName())
@@ -1339,7 +1335,7 @@ public class Api {
                         }
 
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Logger.getLogger(Api.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         Logger.getLogger(AuthenticationController.class.getName())

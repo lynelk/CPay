@@ -2392,7 +2392,7 @@ public class TransactionsLogController {
                                         } catch (JSONException ex) {
                                             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                         }
-                                        //System.out.println("Thread Running");
+
                                     }
                                 };
                                 thread.start();
@@ -2527,7 +2527,7 @@ public class TransactionsLogController {
         } catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "HANDLING_INITIAL_PROCESS OverlappingFileLockException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
+
             return "OverlappingFileLockException";
         }
         
@@ -4863,7 +4863,7 @@ public class TransactionsLogController {
 
                             return "success";
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                             //transactionManager.rollback(status);
                             status.setRollbackOnly();
                             Logger.getLogger(AuthenticationController.class.getName())
@@ -4893,13 +4893,13 @@ public class TransactionsLogController {
         } catch (IOException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON IOException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
+
             return "IOException: "+ex.getMessage();
         } 
         catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON OverlappingFileLockException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
+
             return "OverlappingFileLockException";
         }
         
@@ -5463,8 +5463,7 @@ public class TransactionsLogController {
             
             return resJson.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            
+            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             return GeneralException
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename()));
         }
@@ -5544,8 +5543,7 @@ public class TransactionsLogController {
             
             return resJson.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            
+            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             return GeneralException
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename()));
         }
@@ -5746,7 +5744,7 @@ public class TransactionsLogController {
                             
                         } catch (Exception ex) {
                             status.setRollbackOnly();
-                            ex.printStackTrace();
+                            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                             return GeneralException
                                     .getError("102", GeneralException.ERRORS_102
                                             +". Error: "+ex.getMessage());
@@ -5838,7 +5836,7 @@ public class TransactionsLogController {
 
                                 } catch (Exception ex) {
                                     status.setRollbackOnly();
-                                    ex.printStackTrace();
+                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                                     return GeneralException
                                             .getError("102", GeneralException.ERRORS_102
                                                     +". Error: "+ex.getMessage());
@@ -5904,7 +5902,7 @@ public class TransactionsLogController {
         } catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "HANDLING_SMS_SERVICE OverlappingFileLockException: "+ex.getMessage(), "");
-            //ex.printStackTrace();
+
             return "OverlappingFileLockException";
         }
     }

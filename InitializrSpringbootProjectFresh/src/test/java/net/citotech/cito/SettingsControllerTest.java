@@ -98,6 +98,38 @@ class SettingsControllerTest {
         assertThat(setting.getString("description")).isEqualTo("mail.smtp.host");
     }
 
+    @Test
+    void sensitiveSettingsAreMarkedAndMaskedForResponses() {
+        assertThat(SettingsController.isSensitiveSettingName("gw_mtn_api_collections_user_key")).isTrue();
+        assertThat(SettingsController.isSensitiveSettingName("gw_airtelmoney_api_password")).isTrue();
+        assertThat(SettingsController.isSensitiveSettingName("sms_gateway_name")).isFalse();
+
+        assertThat(SettingsController.maskSettingValueForResponse("gw_mtn_api_collections_user_key", "actual-secret"))
+            .isEqualTo(SettingsController.MASKED_SETTING_VALUE);
+        assertThat(SettingsController.maskSettingValueForResponse("sms_gateway_name", "Infobip"))
+            .isEqualTo("Infobip");
+    }
+
+    @Test
+    void maskedSensitiveSettingsPreserveCurrentStoredValueOnUpdate() {
+        assertThat(SettingsController.settingValueForUpdate(
+            "gw_airtelmoney_api_password",
+            SettingsController.MASKED_SETTING_VALUE,
+            "current-secret"))
+            .isEqualTo("current-secret");
+
+        assertThat(SettingsController.settingValueForUpdate(
+            "gw_airtelmoney_api_password",
+            "new-secret",
+            "current-secret"))
+            .isEqualTo("new-secret");
+
+        assertThat(SettingsController.settingValueForUpdate(
+            "sms_gateway_name",
+            SettingsController.MASKED_SETTING_VALUE,
+            "Infobip"))
+            .isEqualTo(SettingsController.MASKED_SETTING_VALUE);
+    }
     private JSONArray readSettingsCatalog(String path) throws IOException {
         String json = StreamUtils.copyToString(
             new ClassPathResource(path).getInputStream(),

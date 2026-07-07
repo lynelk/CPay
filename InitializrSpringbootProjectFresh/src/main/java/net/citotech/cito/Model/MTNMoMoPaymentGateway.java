@@ -522,7 +522,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
@@ -532,7 +532,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());

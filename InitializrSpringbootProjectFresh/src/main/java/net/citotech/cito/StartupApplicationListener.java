@@ -4,13 +4,10 @@
  * and open the template in the editor.
  */
 package net.citotech.cito;
-
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.lang.System.Logger;
 import java.math.BigInteger;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -24,6 +21,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import net.citotech.cito.Model.QueryUpdate;
@@ -49,7 +47,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
-
 /**
  *
  * @author josephtabajjwa
@@ -233,7 +230,7 @@ public class StartupApplicationListener {
                         queries.set(i, nQuery);
 
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        Logger.getLogger(StartupApplicationListener.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                         for (int j=i; j >= 0; j--) {
                             //Ignore the current failed query
                             if (j==i) {

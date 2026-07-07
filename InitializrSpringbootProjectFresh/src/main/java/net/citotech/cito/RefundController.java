@@ -55,7 +55,6 @@ public class RefundController {
     RateLimiterService rateLimiterService;
 
     @PostMapping(path = "/doMobileMoneyRefund")
-    @CrossOrigin
     public String doMobileMoneyRefund(@RequestBody String requestBody,
                                       HttpServletRequest request,
                                       HttpServletResponse response) {

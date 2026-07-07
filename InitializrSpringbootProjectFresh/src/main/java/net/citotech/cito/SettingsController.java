@@ -50,6 +50,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController 
 @RequestMapping(path="/settings")
 public class SettingsController {
+    static final String MASKED_SETTING_VALUE = "********";
+    private static final String[] SENSITIVE_SETTING_TOKENS = {
+        "password", "secret", "token", "pin", "user_key", "subscription_key",
+        "consumer_key", "api_key", "passkey", "hmac"
+    };
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
     @Autowired
@@ -153,6 +158,54 @@ public class SettingsController {
         return label.length() == 0 ? "Setting" : label.toString();
     }
 
+    static boolean isSensitiveSettingName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String normalized = name.toLowerCase();
+        for (String token : SENSITIVE_SETTING_TOKENS) {
+            if (normalized.contains(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static String maskSettingValueForResponse(String name, String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return isSensitiveSettingName(name) ? MASKED_SETTING_VALUE : value;
+    }
+
+    static String settingValueForUpdate(String name, String submittedValue, String currentValue) {
+        String safeSubmittedValue = submittedValue == null ? "" : submittedValue;
+        if (isSensitiveSettingName(name) && MASKED_SETTING_VALUE.equals(safeSubmittedValue)) {
+            return currentValue == null ? "" : currentValue;
+        }
+        return safeSubmittedValue;
+    }
+
+    static JSONArray redactSettingsForAudit(JSONArray settings) {
+        JSONArray redacted = new JSONArray();
+        if (settings == null) {
+            return redacted;
+        }
+        for (int i = 0; i < settings.length(); i++) {
+            JSONObject source = settings.optJSONObject(i);
+            if (source == null) {
+                continue;
+            }
+            JSONObject copy = new JSONObject(source.toString());
+            String name = settingText(copy, "name", "");
+            if (isSensitiveSettingName(name) && copy.has("setting_value")) {
+                copy.put("setting_value", MASKED_SETTING_VALUE);
+            }
+            redacted.put(copy);
+        }
+        return redacted;
+    }
+
     private static String invalidSettingsCatalogError() {
         return GeneralException
             .getError("102", GeneralException.ERRORS_102 + ": Settings catalog is empty or invalid.");
@@ -208,7 +261,8 @@ public class SettingsController {
                 if ( jObject != null) {
                     u_p_.put("id", us.getId());
                     u_p_.put("name", us.getName());
-                    u_p_.put("setting_value", us.getSetting_value());
+                    u_p_.put("setting_value", maskSettingValueForResponse(us.getName(), us.getSetting_value()));
+                    u_p_.put("sensitive", isSensitiveSettingName(us.getName()));
                     u_p_.put("label", settingText(jObject, "label", us.getLabel()));
                     u_p_.put("description", settingText(jObject, "description", us.getDescription()));
                     u_p_.put("setting_group", settingText(jObject, "setting_group", us.getGroup()));
@@ -277,7 +331,8 @@ public class SettingsController {
                 if ( jObject != null) {
                     u_p_.put("id", us.getId());
                     u_p_.put("name", us.getName());
-                    u_p_.put("setting_value", us.getSetting_value());
+                    u_p_.put("setting_value", maskSettingValueForResponse(us.getName(), us.getSetting_value()));
+                    u_p_.put("sensitive", isSensitiveSettingName(us.getName()));
                     u_p_.put("label", settingText(jObject, "label", us.getLabel()));
                     u_p_.put("description", settingText(jObject, "description", us.getDescription()));
                     u_p_.put("setting_group", settingText(jObject, "setting_group", us.getGroup()));
@@ -580,7 +635,9 @@ public class SettingsController {
                         privParams = new MapSqlParameterSource();
                         privParams.addValue("name", setting.getString("name"));
                         privParams.addValue("label", setting.getString("label"));
-                        privParams.addValue("setting_value", setting.getString("setting_value"));
+                        String submittedSettingValue = settingText(setting, "setting_value", "");
+                        String currentSettingValue = thisSetting == null ? "" : thisSetting.getSetting_value();
+                        privParams.addValue("setting_value", settingValueForUpdate(setting.getString("name"), submittedSettingValue, currentSettingValue));
                         privParams.addValue("setting_group", setting.getString("setting_group"));
                         privParams.addValue("description", setting.getString("description"));
                         if (thisSetting != null ) {
@@ -671,7 +728,9 @@ public class SettingsController {
                         privParams = new MapSqlParameterSource();
                         privParams.addValue("name", setting.getString("name"));
                         privParams.addValue("label", setting.getString("label"));
-                        privParams.addValue("setting_value", setting.getString("setting_value"));
+                        String submittedSettingValue = settingText(setting, "setting_value", "");
+                        String currentSettingValue = thisSetting == null ? "" : thisSetting.getSetting_value();
+                        privParams.addValue("setting_value", settingValueForUpdate(setting.getString("name"), submittedSettingValue, currentSettingValue));
                         privParams.addValue("setting_group", setting.getString("setting_group"));
                         privParams.addValue("description", setting.getString("description"));
                         privParams.addValue("merchant_id", merchant_id);
@@ -708,7 +767,6 @@ public class SettingsController {
                     return "success";
                 } catch (Exception e) {
                     //transactionManager.rollback(status);
-                    e.printStackTrace();
                     Logger.getLogger(AuthenticationController.class.getName())
                             .log(Level.SEVERE, "Reaches Here - "+e.getMessage(), "");
                     status.setRollbackOnly();
@@ -763,7 +821,9 @@ public class SettingsController {
                         privParams = new MapSqlParameterSource();
                         privParams.addValue("name", setting.getString("name"));
                         privParams.addValue("label", setting.getString("label"));
-                        privParams.addValue("setting_value", setting.getString("setting_value"));
+                        String submittedSettingValue = settingText(setting, "setting_value", "");
+                        String currentSettingValue = thisSetting == null ? "" : thisSetting.getSetting_value();
+                        privParams.addValue("setting_value", settingValueForUpdate(setting.getString("name"), submittedSettingValue, currentSettingValue));
                         privParams.addValue("setting_group", setting.getString("setting_group"));
                         privParams.addValue("description", setting.getString("description"));
                         if (thisSetting != null ) {
@@ -775,7 +835,7 @@ public class SettingsController {
 
                     //Now insert audit Trail
                     String actionInsert = Common.recordAction(sessionUser, 
-                            "Updated Settings to: "+new_settings.toString(), jdbcTemplate);
+                            "Updated Settings to: "+redactSettingsForAudit(new_settings).toString(), jdbcTemplate);
 
                     //If it failed to execute the statement to record this action
                     if (!actionInsert.equals("success")) {
@@ -836,7 +896,9 @@ public class SettingsController {
                         privParams = new MapSqlParameterSource();
                         privParams.addValue("name", setting.getString("name"));
                         privParams.addValue("label", setting.getString("label"));
-                        privParams.addValue("setting_value", setting.getString("setting_value"));
+                        String submittedSettingValue = settingText(setting, "setting_value", "");
+                        String currentSettingValue = thisSetting == null ? "" : thisSetting.getSetting_value();
+                        privParams.addValue("setting_value", settingValueForUpdate(setting.getString("name"), submittedSettingValue, currentSettingValue));
                         privParams.addValue("setting_group", setting.getString("setting_group"));
                         privParams.addValue("description", setting.getString("description"));
                         privParams.addValue("merchant_id", merchant_id);
@@ -854,7 +916,7 @@ public class SettingsController {
 
                     //Now insert audit Trail
                     String actionInsert = Common.recordAction(sessionUser, 
-                            "Updated Merchant Settings to: "+new_settings.toString(), jdbcTemplate);
+                            "Updated Merchant Settings to: "+redactSettingsForAudit(new_settings).toString(), jdbcTemplate);
 
                     //If it failed to execute the statement to record this action
                     if (!actionInsert.equals("success")) {

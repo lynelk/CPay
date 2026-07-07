@@ -107,7 +107,7 @@ class MerchantModuleSmsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {
@@ -1076,7 +1076,7 @@ class MerchantModuleSmsC extends React.Component {
                                 className={styles.moduleToolBarButtons}
                                 iconCls="icon-money" 
                                 onClick={() => {
-                                    console.log(this.dataGridMain);
+
                                     this.dlgRecordTx.open();
                                 }}>{strings.buy_sms}</LinkButton>
                             <span> | </span>
@@ -1346,8 +1346,7 @@ class PaymentFormDialog extends React.Component{
                 }}
                 multiple={false}
                 onSuccess={(xhr,files) => {
-                    
-                    console.log(xhr);
+
                     let r = JSON.parse(xhr.xhr.responseText);
                     if (r.state == "ERROR") {
                         this.props.messager.alert({
@@ -1382,7 +1381,7 @@ class PaymentFormDialog extends React.Component{
                 }}
                 onError={(xhr,files) => {
                     this.props.loader("STOP");
-                    console.log(xhr);
+
                     let r = JSON.parse(xhr.xhr.responseText);
                     if (r.state == "ERROR") {
                         this.props.messager.alert({
@@ -1401,7 +1400,7 @@ class PaymentFormDialog extends React.Component{
     }
 
     render() {
-        //console.log(this.state.formd);
+
         const row = this.state.formd;
         const { title, formDialogStateOpened, rules } = this.props;
         
@@ -1475,7 +1474,7 @@ class PaymentFormDialog extends React.Component{
                                             name="send_time" 
                                             value={row.send_time} 
                                             onValueSelected={(value) => {
-                                                console.log(value);
+
                                                 this.handleFormChange('send_time', value);
                                             }}
                                             ></DatetimePicker>

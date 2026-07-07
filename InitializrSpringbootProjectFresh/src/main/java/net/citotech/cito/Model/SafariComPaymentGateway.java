@@ -391,7 +391,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
@@ -401,7 +401,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -649,7 +649,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
@@ -659,7 +659,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -867,17 +867,17 @@ public class SafariComPaymentGateway extends PaymentGateway {
             byte[] cipherText = cipher.doFinal(input);
             return Base64.getEncoder().encodeToString(cipherText);
         } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (CertificateException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (BadPaddingException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         } catch (InvalidKeyException e) {
-            e.printStackTrace();
+            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
         }
         return "";
     }

@@ -1111,7 +1111,7 @@ public class MerchantsController {
                         return "success";
                     } catch (Exception e) {
                         
-                        e.printStackTrace();
+                        Logger.getLogger(MerchantsController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException

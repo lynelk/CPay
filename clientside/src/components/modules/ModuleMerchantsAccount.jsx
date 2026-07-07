@@ -85,7 +85,7 @@ class ModuleMerchantAccouunt extends React.Component{
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        console.log(nextProps);
+
         /*if (!this.props.statementDialogStateOpened) {
             this.getData();
         }*/

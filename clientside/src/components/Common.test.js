@@ -122,6 +122,13 @@ describe('formatDate', () => {
     expect(common.formatDate(date)).toBe('2024-01-05');
   });
 
+  test('does not write debug logs while formatting dates', () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    common.formatDate(new Date(2024, 0, 5));
+    expect(logSpy).not.toHaveBeenCalled();
+    logSpy.mockRestore();
+  });
+
   test('pads single-digit month and day', () => {
     const date = new Date(2023, 2, 8); // March 8, 2023
     expect(common.formatDate(date)).toBe('2023-03-08');

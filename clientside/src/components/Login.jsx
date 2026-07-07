@@ -4,7 +4,6 @@ import { withRouter } from "react-router-dom";
 import common from './Common';
 import Progress from './Progress';
 import ForgotPassword from './LoginForgotPassword';
-import ReactDOM from 'react-dom';
 import strings from './locale';
 import AuthShell from './AuthShell';
 
@@ -42,15 +41,15 @@ class LoginWithOutRouter extends React.Component {
     if (is_logged_in) {
       history.push("/dashboard");
     }
-    ReactDOM.findDOMNode(this).addEventListener("keyup", this.eventHandler);
+    window.addEventListener("keyup", this.eventHandler);
   }
 
   componentWillUnmount() {
-    ReactDOM.findDOMNode(this).removeEventListener("keyup", this.eventHandler);
+    window.removeEventListener("keyup", this.eventHandler);
   }
 
   eventHandler = (event) => {
-    if (event.keyCode === 13) {
+    if (event.key === "Enter" || event.keyCode === 13) {
       this.handleSubmit();
     }
   }

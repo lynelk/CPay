@@ -31,3 +31,23 @@ describe('admin dashboard card layout', () => {
     expect(css).toMatch(/\.cpay-dashboard-grid\s*\{[^}]*grid-template-columns:\s*repeat\(12, minmax\(0, 1fr\)\);[^}]*overflow:\s*hidden;/s);
   });
 });
+
+describe('shared chart cleanup', () => {
+  test('merchant chart reuses the shared LinearChart implementation', () => {
+    const merchantChart = read('components/modules/merchant/LinearChart.jsx');
+
+    expect(merchantChart).toContain("from '../LinearChart'");
+    expect(merchantChart).not.toContain("chart.js/auto");
+  });
+});
+describe('merchant dashboard card layout', () => {
+  test('merchant dashboard uses cards instead of fixed rc-easyui chart panels', () => {
+    const dashboard = read('components/modules/merchant/MerchantModuleDashboard.jsx');
+
+    expect(dashboard).toContain('cpay-dashboard');
+    expect(dashboard).toContain('cpay-dashboard-card');
+    expect(dashboard).toContain('Add Snapshot');
+    expect(dashboard).not.toMatch(/<Panel\b/);
+    expect(dashboard).not.toContain('dashboardChartPanel');
+  });
+});

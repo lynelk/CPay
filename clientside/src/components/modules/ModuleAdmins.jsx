@@ -68,7 +68,7 @@ class ModuleAdminsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {

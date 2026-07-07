@@ -514,7 +514,7 @@ public class Common {
             String sha256 = String.format("%040x", new BigInteger(1, digest.digest()));
             return sha256;
         } catch (Exception e){
-            e.printStackTrace();
+            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             return "";
         }
     }
@@ -1305,7 +1305,7 @@ public class Common {
 
                     return "success";
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                     status.setRollbackOnly();
                     return GeneralException
                         .getError("102", GeneralException.ERRORS_102);
@@ -1546,7 +1546,7 @@ public class Common {
 
             return "success";
         } catch (Exception e) {
-            e.printStackTrace();
+            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
             status.setRollbackOnly();
             return GeneralException
                 .getError("102", GeneralException.ERRORS_102);
@@ -2327,7 +2327,7 @@ public class Common {
                             
                             return "success";
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
                             Logger.getLogger(AuthenticationController.class.getName())
                                 .log(Level.SEVERE, "INTERNAL ERROR - SAVING TX UPDATE: "+e.getStackTrace(), "");
                             
@@ -2681,7 +2681,7 @@ public class Common {
                                 } catch (JSONException ex) {
                                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                 }
-                                //System.out.println("Thread Running");
+
                             }
                         };
                         thread.start();
@@ -2913,7 +2913,7 @@ public class Common {
                                 } catch (JSONException ex) {
                                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                 }
-                                //System.out.println("Thread Running");
+
                             }
                         };
                         thread.start();

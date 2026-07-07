@@ -1,15 +1,3 @@
-/**
- * Number.prototype.format(n, x)
- *
- * @param integer n: length of decimal
- * @param integer x: length of sections
- */
-Number.prototype.format = (n, x) => {
-    var re = '\\d(?=(\\d{' + (x || 3) + '})+' + (n > 0 ? '\\.' : '$') + ')';
-    return this.toFixed(Math.max(0, ~~n)).replace(new RegExp(re, 'g'), '$&,');
-};
-
-
 let common = {
     base_url: "",
     emailValidation: {
@@ -42,7 +30,7 @@ let common = {
     },
     numericValidation: {
         "validator": (value) => {
-            //console.log(value);
+
             var numericExp = /^\d+(\.\d+)?(\d+)?$/;
             if (value.toString().match(numericExp)){
                 return true;
@@ -59,7 +47,6 @@ let common = {
     toReduceGridHeight: 142, //The amount to reduce from the windowHeight
 
     formatDate(date) {
-        console.log(date);
         if (date == null || date == "") {
             return "";
         }

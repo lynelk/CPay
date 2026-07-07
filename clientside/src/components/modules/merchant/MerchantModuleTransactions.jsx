@@ -87,7 +87,7 @@ class MerchantModuleTransactionsC extends React.Component {
 
     handleResize(e) {
         this.setState({ windowHeight: window.innerHeight });
-        //console.log(e);
+
     }
 
     componentWillMount() {
@@ -704,7 +704,7 @@ class MerchantModuleTransactionsC extends React.Component {
                 </div>
                 <DataGrid
                     onRowClick={(row)=> {
-                        console.log(this.dataGrid);
+
                     }}
                     ref={ref => this.dataGrid = ref}
                     style={{ height: (windowHeight - common.toReduceGridHeight) }}
@@ -850,7 +850,7 @@ class PaymentFormDialog extends React.Component{
     }
 
     render() {
-        //console.log(this.state.formd);
+
         //const row = this.state.formd;
         const { title, formDialogStateOpened } = this.props;
         const {rules, formd } = this.state;
