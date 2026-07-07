@@ -477,23 +477,23 @@ class MerchantModuleTransactionsC extends React.Component {
                                     dangerouslySetInnerHTML={{
                                         __html: (
                                             tx_details_row.tx_merchant_description ?
-                                            tx_details_row.tx_merchant_description.replace(/\n/g, "<BR/>") : ""
+                                            common.encodeHTML(tx_details_row.tx_merchant_description).replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
                                     className={styles.commonBlockText}>
-                                
+
                                 </div>
                             </td>
                         </tr>
                         <tr>
                             <td><span className={styles.titleText}>Our Description:</span></td>
                             <td>
-                                <div    
+                                <div
                                     style={{width: "100%", overflow: "auto"}}
                                     dangerouslySetInnerHTML={{
                                         __html: (
                                             tx_details_row.tx_description ?
-                                            tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
+                                            common.encodeHTML(tx_details_row.tx_description).replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
                                     className={styles.commonBlockText}>

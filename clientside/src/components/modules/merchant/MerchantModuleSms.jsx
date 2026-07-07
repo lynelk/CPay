@@ -710,7 +710,7 @@ class MerchantModuleSmsC extends React.Component {
                                     dangerouslySetInnerHTML={{
                                         __html: (
                                             tx_details_row.content ?
-                                            tx_details_row.content.replace(/\n/g, "<BR/>") : ""
+                                            common.encodeHTML(tx_details_row.content).replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
                                     className={styles.commonBlockText}>

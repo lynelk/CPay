@@ -638,7 +638,7 @@ class MerchantModulePaymentsC extends React.Component {
                                     dangerouslySetInnerHTML={{
                                         __html: (
                                             tx_details_row.tx_description ?
-                                            tx_details_row.tx_description.replace(/\n/g, "<BR/>") : ""
+                                            common.encodeHTML(tx_details_row.tx_description).replace(/\n/g, "<BR/>") : ""
                                         )
                                     }}
                                     className={styles.commonBlockText}>
