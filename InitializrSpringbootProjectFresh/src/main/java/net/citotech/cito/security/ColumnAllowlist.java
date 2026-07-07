@@ -1,12 +1,9 @@
 package net.citotech.cito.security;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Centralised allowlist of SQL column names that are permitted in dynamic
@@ -23,29 +20,29 @@ public final class ColumnAllowlist {
      * Per-table permitted search columns.
      * Key = logical table identifier used in controllers.
      */
-    private static final Map<String, Set<String>> TABLE_COLUMNS;
+    private static final Map<String, Map<String, String>> TABLE_COLUMNS;
 
     static {
-        Map<String, Set<String>> m = new HashMap<>();
+        Map<String, Map<String, String>> m = new HashMap<>();
 
-        m.put("admins", setOf("name", "email", "phone", "status", "created_on", "updated_on"));
+        m.put("admins", mapOf("name", "email", "phone", "status", "created_on", "updated_on"));
 
-        m.put("merchant_admins", setOf("name", "email", "phone", "status",
+        m.put("merchant_admins", mapOf("name", "email", "phone", "status",
                 "created_on", "updated_on"));
 
-        m.put("merchants", setOf("name", "account_number", "status", "account_type",
+        m.put("merchants", mapOf("name", "account_number", "status", "account_type",
                 "created_on", "updated_on", "short_name"));
 
-        m.put("merchant_transactions_log", setOf(
+        m.put("merchant_transactions_log", mapOf(
                 "gateway_id", "status", "payer_number", "tx_type",
                 "tx_unique_id", "tx_gateway_ref", "tx_merchant_ref",
                 "charging_method", "created_on", "updated_on", "merchant_id"));
 
-        m.put("audit_trail", setOf("user_name", "user_id", "action",
+        m.put("audit_trail", mapOf("user_name", "user_id", "action",
                 "created_on", "updated_on"));
 
         // Catch-all fallback (used when table is not specified).
-        m.put("default", setOf("name", "email", "phone", "status",
+        m.put("default", mapOf("name", "email", "phone", "status",
                 "created_on", "updated_on", "gateway_id", "tx_type",
                 "payer_number", "user_name", "user_id", "action",
                 "account_number", "short_name"));
@@ -67,12 +64,14 @@ public final class ColumnAllowlist {
         if (column == null || column.isEmpty()) {
             throw new IllegalArgumentException("Search column must not be empty");
         }
-        Set<String> allowed = TABLE_COLUMNS.getOrDefault(table, TABLE_COLUMNS.get("default"));
-        if (!allowed.contains(column.toLowerCase())) {
+        String normalized = column.toLowerCase();
+        Map<String, String> allowed = TABLE_COLUMNS.getOrDefault(table, TABLE_COLUMNS.get("default"));
+        String canonical = allowed.get(normalized);
+        if (canonical == null) {
             throw new IllegalArgumentException(
                     "Search by column '" + column + "' is not permitted on table '" + table + "'");
         }
-        return column.toLowerCase();
+        return canonical;
     }
 
     /**
@@ -91,7 +90,12 @@ public final class ColumnAllowlist {
     }
     // -------------------------------------------------------------------------
 
-    private static Set<String> setOf(String... values) {
-        return Arrays.stream(values).collect(Collectors.toSet());
+    private static Map<String, String> mapOf(String... values) {
+        Map<String, String> m = new HashMap<>();
+        for (String value : values) {
+            String normalized = value.toLowerCase();
+            m.put(normalized, normalized);
+        }
+        return Collections.unmodifiableMap(m);
     }
 }

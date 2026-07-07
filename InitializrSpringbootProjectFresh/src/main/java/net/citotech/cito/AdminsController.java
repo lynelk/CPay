@@ -224,7 +224,8 @@ public class AdminsController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_USERS+" "
-                    + " WHERE merchant_id='"+sessionUser.getMerchant_id()+"' ";
+                    + " WHERE merchant_id=:merchantId ";
+            parameters.addValue("merchantId", sessionUser.getMerchant_id());
             
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
