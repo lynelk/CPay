@@ -25,7 +25,7 @@ import javax.crypto.NoSuchPaddingException;
  */
 public class RSAUtil {
     protected static String DEFAULT_ENCRYPTION_ALGORITHM = "RSA";
-    protected static String DEFAULT_TRANSFORMATION = "RSA/ECB/PKCS1Padding";
+    protected static String DEFAULT_TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
 
     public static PublicKey getPublicKey(String base64PublicKey) {
         PublicKey publicKey = null;

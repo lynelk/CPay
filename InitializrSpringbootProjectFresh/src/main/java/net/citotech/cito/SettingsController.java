@@ -669,7 +669,7 @@ public class SettingsController {
                     //transactionManager.rollback(status);
                     status.setRollbackOnly();
                     return GeneralException
-                        .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                        .getError("102", GeneralException.ERRORS_102);
                 }
             }
         });
@@ -771,7 +771,7 @@ public class SettingsController {
                             .log(Level.SEVERE, "Reaches Here - "+e.getMessage(), "");
                     status.setRollbackOnly();
                     return GeneralException
-                        .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                        .getError("102", GeneralException.ERRORS_102);
                 }
             }
         });
@@ -850,7 +850,7 @@ public class SettingsController {
                     //transactionManager.rollback(status);
                     status.setRollbackOnly();
                     return GeneralException
-                        .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                        .getError("102", GeneralException.ERRORS_102);
                 }
             }
         });
@@ -931,7 +931,7 @@ public class SettingsController {
                     //transactionManager.rollback(status);
                     status.setRollbackOnly();
                     return GeneralException
-                        .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                        .getError("102", GeneralException.ERRORS_102);
                 }
             }
         });

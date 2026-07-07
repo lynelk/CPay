@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/merchants")
+@RequestMapping(path="/merchants", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class MerchantsController {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -97,8 +97,13 @@ public class MerchantsController {
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.toLowerCase().equals("all") && !category.isEmpty() && !value.isEmpty()) {
-                    sqlSelect += " WHERE "+category+" LIKE :"+category+" ";
-                    parameters.addValue(category, "%"+value+"%");
+                    try {
+                        String safeCategory = ColumnAllowlist.validate("merchants", category);
+                        sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
+                        parameters.addValue(safeCategory, "%" + value + "%");
+                    } catch (IllegalArgumentException e) {
+                        return GeneralException.getError("101", "Invalid search field.");
+                    }
                 }
             }
             
@@ -558,7 +563,7 @@ public class MerchantsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -580,7 +585,7 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }   
     }
     
@@ -752,7 +757,7 @@ public class MerchantsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -769,7 +774,7 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1115,7 +1120,7 @@ public class MerchantsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+"***: "+e.getStackTrace());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1132,7 +1137,7 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, ex.getMessage(), ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1237,7 +1242,7 @@ public class MerchantsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1254,7 +1259,7 @@ public class MerchantsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
 }

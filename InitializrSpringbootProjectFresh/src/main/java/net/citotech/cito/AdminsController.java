@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/admins")
+@RequestMapping(path="/admins", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class AdminsController {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -643,7 +643,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -660,7 +660,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -786,7 +786,7 @@ public class AdminsController {
                         String eMessage = e.getMessage();
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": Here... "+eMessage);
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -803,7 +803,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -928,7 +928,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -945,7 +945,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1069,7 +1069,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1086,7 +1086,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1170,7 +1170,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1187,7 +1187,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -1270,7 +1270,7 @@ public class AdminsController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -1287,7 +1287,7 @@ public class AdminsController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
 }

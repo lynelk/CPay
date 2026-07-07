@@ -2,7 +2,7 @@ let common = {
     base_url: "",
     emailValidation: {
         "validator": (value) => {
-            var emailExp = /^[\w\-\.\+]+\@[a-zA-Z0-9\.\-]+\.[a-zA-z0-9]{2,4}$/;
+            var emailExp = /^[\w\-\.\+]+\@[a-zA-Z0-9\.\-]+\.[a-zA-Z0-9]{2,4}$/;
             if (value.match(emailExp)){
                 return true;
             } else {

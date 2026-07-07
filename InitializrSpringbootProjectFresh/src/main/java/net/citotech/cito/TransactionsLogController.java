@@ -94,7 +94,7 @@ import java.math.RoundingMode;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/transactions")
+@RequestMapping(path="/transactions", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class TransactionsLogController {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -2523,7 +2523,7 @@ public class TransactionsLogController {
             Logger.getLogger(TransactionsLogController.class.getName())
                     .log(Level.SEVERE, "HANDLING_INITIAL_PROCESS IOException:"+ex.getMessage(), ex);
             return GeneralException
-                    .getError("107", GeneralException.ERRORS_107+". File error: "+ex.getMessage());
+                    .getError("107", GeneralException.ERRORS_107);
         } catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "HANDLING_INITIAL_PROCESS OverlappingFileLockException: "+ex.getMessage(), "");
@@ -2698,7 +2698,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -2874,7 +2874,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -3027,7 +3027,7 @@ public class TransactionsLogController {
                     //transactionManager.rollback(status);
                     status.setRollbackOnly();
                     return GeneralException
-                        .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                        .getError("102", GeneralException.ERRORS_102);
                 }
             }
         });
@@ -3670,7 +3670,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -3867,7 +3867,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -3884,7 +3884,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4068,7 +4068,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4085,7 +4085,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4154,7 +4154,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4171,7 +4171,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4364,7 +4364,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4381,7 +4381,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4478,7 +4478,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4495,7 +4495,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
 
@@ -4586,7 +4586,7 @@ public class TransactionsLogController {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });
@@ -4603,7 +4603,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -4894,7 +4894,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON IOException: "+ex.getMessage(), "");
 
-            return "IOException: "+ex.getMessage();
+            return GeneralException.ERRORS_102;
         } 
         catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
@@ -4928,6 +4928,11 @@ public class TransactionsLogController {
         xml += "</Response></AutoCreate>";
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            dbFactory.setXIncludeAware(false);
+            dbFactory.setExpandEntityReferences(false);
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(new InputSource(new StringReader(xml)));
             doc.getDocumentElement().normalize();
@@ -4951,7 +4956,7 @@ public class TransactionsLogController {
             }
             return return_string;
         } catch (Exception e) {
-            return e.getMessage();
+            return GeneralException.ERRORS_102;
         }
     }
     
@@ -5323,7 +5328,7 @@ public class TransactionsLogController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -5746,8 +5751,7 @@ public class TransactionsLogController {
                             status.setRollbackOnly();
                             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                             return GeneralException
-                                    .getError("102", GeneralException.ERRORS_102
-                                            +". Error: "+ex.getMessage());
+                                    .getError("102", GeneralException.ERRORS_102);
                         }
                         return res;
                     }
@@ -5838,8 +5842,7 @@ public class TransactionsLogController {
                                     status.setRollbackOnly();
                                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
                                     return GeneralException
-                                            .getError("102", GeneralException.ERRORS_102
-                                                    +". Error: "+ex.getMessage());
+                                            .getError("102", GeneralException.ERRORS_102);
                                 }
                                 return res;
                             }
@@ -5897,7 +5900,7 @@ public class TransactionsLogController {
             Logger.getLogger(TransactionsLogController.class.getName())
                     .log(Level.SEVERE, "HANDLING_SMS_SERVICE IOException:"+ex.getMessage(), ex);
             return GeneralException
-                    .getError("107", GeneralException.ERRORS_107+". File error: "+ex.getMessage());
+                    .getError("107", GeneralException.ERRORS_107);
             
         } catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())

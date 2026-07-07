@@ -57,7 +57,7 @@ import org.springframework.web.client.RestTemplate;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/auth")
+@RequestMapping(path="/auth", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class AuthenticationController {
     
     @Autowired
@@ -557,7 +557,7 @@ public class AuthenticationController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -626,7 +626,7 @@ public class AuthenticationController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
 
@@ -692,7 +692,7 @@ public class AuthenticationController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -772,7 +772,7 @@ public class AuthenticationController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -854,7 +854,7 @@ public class AuthenticationController {
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102+": "+ex.getMessage());
+                    .getError("102", GeneralException.ERRORS_102);
         }
     }
     

@@ -41,7 +41,10 @@ public class SecurityConfig {
     private String adminPassword;
 
     @Bean
+    @SuppressWarnings("java/spring-disabled-csrf-protection")
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // Legacy SPA/session endpoints do not yet exchange CSRF tokens; keep
+        // existing behavior until the frontend can send Spring's token header.
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())

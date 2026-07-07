@@ -54,7 +54,7 @@ import net.citotech.cito.service.RateLimiterService;
  * @author josephtabajjwa
  */
 @RestController 
-@RequestMapping(path="/api")
+@RequestMapping(path="/api", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class Api {
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -1359,9 +1359,7 @@ public class Api {
     }
 
     public String getPayoutConversationIdToken(String ConversationID) throws IOException {
-        String separator = File.separator;
-        String filePath = lockfiledirectory+ConversationID+".json";
-        File resource = new File(filePath);
+        File resource = Common.safeLockFile(lockfiledirectory, ConversationID + ".json");
         if (!resource.exists()) {
             Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "ConversationID: "+resource.getAbsolutePath()+" DOES NOT EXISTS", "" );
             return "";
@@ -1396,12 +1394,10 @@ public class Api {
     }
 
     private void getPayoutConversationIdDeleteFile(String ConversationID) throws IOException {
-        String separator = File.separator;
-        String filePath = lockfiledirectory + ConversationID + ".json";
-        File resource = new File(filePath);
+        File resource = Common.safeLockFile(lockfiledirectory, ConversationID + ".json");
         if (resource.exists()) {
             if (resource.delete()) {
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "FILE: " + filePath + " deleted", "");
+                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "FILE: " + resource.getAbsolutePath() + " deleted", "");
             }
             return;
         }
@@ -1959,7 +1955,7 @@ public class Api {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
-                            .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                            .getError("102", GeneralException.ERRORS_102);
                     }
                 }
             });

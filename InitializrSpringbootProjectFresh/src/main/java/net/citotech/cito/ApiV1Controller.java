@@ -12,7 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * The original /api/ endpoints remain for backward compatibility.
  */
 @RestController
-@RequestMapping(path = "/api/v1")
+@RequestMapping(path = "/api/v1", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class ApiV1Controller {
 
     @Autowired

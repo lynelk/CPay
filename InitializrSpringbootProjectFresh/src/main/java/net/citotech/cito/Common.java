@@ -7,6 +7,7 @@ package net.citotech.cito;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -20,6 +21,9 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -91,6 +95,24 @@ public class Common {
     public static final String CLASS_PATH_MTN_TOKEN_FILE = "default_mtn_token.json";
     public static final String CLASS_PATH_SAFARICOM_TOKEN_FILE = "default_safaricom_token.json";
     public static final String CLASS_PATH_AIRTELOAPI_TOKEN_FILE = "default_airteloapi_token.json";
+
+    public static File safeLockFile(String lockFileDirectory, String fileName) throws IOException {
+        if (fileName == null || !fileName.matches("[A-Za-z0-9._-]+")) {
+            throw new IOException("Invalid lock file name.");
+        }
+
+        Path base = Paths.get(lockFileDirectory == null ? "" : lockFileDirectory)
+                .toAbsolutePath()
+                .normalize();
+        Files.createDirectories(base);
+
+        Path resolved = base.resolve(fileName).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new IOException("Invalid lock file path.");
+        }
+
+        return resolved.toFile();
+    }
     public static final String CLASS_PATH_CHECK_TX_LOCK = "check_tx.lock";
     public static final String CLASS_PATH_SEND_SMS_SERVICE_TX_LOCK = "send_sms_service_tx.lock";
     public static final String CLASS_PATH_UPLOAD_DIRECTORY = "uploadDir";
@@ -177,7 +199,7 @@ public class Common {
             return "success";
         } catch (Exception e) {
             return GeneralException
-                .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                .getError("102", GeneralException.ERRORS_102);
         }
     }
     
@@ -203,7 +225,7 @@ public class Common {
             return "success";
         } catch (Exception e) {
             return GeneralException
-                .getError("102", GeneralException.ERRORS_102+": "+e.getMessage());
+                .getError("102", GeneralException.ERRORS_102);
         }
     }
     
