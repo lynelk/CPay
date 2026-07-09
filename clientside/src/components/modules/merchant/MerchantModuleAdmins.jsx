@@ -4,7 +4,7 @@ import { Panel, Layout, LayoutPanel, Menu, MenuItem } from 'rc-easyui';
 import Messager from '../../StableMessager';
 import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
 import PropTypes from "prop-types";
-import { useHistory, withRouter } from "react-router-dom";
+import { useHistory, withRouter } from '../../../shared/router/compat';
 import MainMenu from "../../MainMenu";
 import common from "../../Common";
 import Progress from "../../Progress";

@@ -3,7 +3,7 @@ import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox }
 import { Panel, Dialog } from 'rc-easyui';
 import Messager from './StableMessager';
 import PropTypes from "prop-types";
-import { useHistory, withRouter } from "react-router-dom";
+import { useHistory, withRouter } from '../shared/router/compat';
 import common from './Common';
 import Progress from './Progress';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import Messager from './StableMessager';
-import { withRouter } from "react-router-dom";
+import { withRouter } from '../shared/router/compat';
 import MainMenu from "./MainMenu";
 import common from "./Common";
 import Progress from "./Progress";

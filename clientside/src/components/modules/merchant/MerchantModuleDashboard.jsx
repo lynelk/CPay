@@ -1,6 +1,6 @@
 import React from 'react';
 import Messager from '../../StableMessager';
-import { withRouter } from "react-router-dom";
+import { withRouter } from '../../../shared/router/compat';
 import common from "../../Common";
 import { CardsIcon, CheckIcon, CloseIcon } from "../../ShellIcons";
 import LinearChart from './LinearChart';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { DataGrid, GridColumn, LinkButton, Panel, PasswordBox, TextBox } from 'rc-easyui';
 import Messager from '../../StableMessager';
-import { withRouter } from "react-router-dom";
+import { withRouter } from '../../../shared/router/compat';
 import common from "../../Common";
 import styles from '../../styles';
 import { isSensitiveSetting, maskedSettingValue } from '../settingsGridHelpers';

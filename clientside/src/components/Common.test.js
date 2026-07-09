@@ -123,7 +123,7 @@ describe('formatDate', () => {
   });
 
   test('does not write debug logs while formatting dates', () => {
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     common.formatDate(new Date(2024, 0, 5));
     expect(logSpy).not.toHaveBeenCalled();
     logSpy.mockRestore();
