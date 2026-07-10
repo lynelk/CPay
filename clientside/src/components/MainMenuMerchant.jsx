@@ -1,90 +1,56 @@
 import React from 'react';
-import Messager from './StableMessager';
-import { withRouter } from '../shared/router/compat';
-import Progress from "./Progress";
+import { NavGroup, NavItem, Icons } from '../ui';
 
 const navGroups = [
   {
     title: 'Workspace',
     items: [
-      { value: 'dashboard', text: 'Dashboard', iconCls: 'icon-dashboard' },
-      { value: 'channels', text: 'Payment Channels', iconCls: 'icon-more' },
-      { value: 'statement', text: 'Statement', iconCls: 'icon-report' },
+      { value: 'dashboard', text: 'Dashboard', Icon: Icons.DashboardIcon },
+      { value: 'channels', text: 'Payment Channels', Icon: Icons.CardsIcon },
+      { value: 'statement', text: 'Statement', Icon: Icons.ReceiptIcon },
     ],
   },
   {
     title: 'Operations',
     items: [
-      { value: 'payments', text: 'Payments', iconCls: 'icon-banknote' },
-      { value: 'sms', text: 'SMS', iconCls: 'icon-iphone' },
-      { value: 'transactions', text: 'Transactions', iconCls: 'icon-report2' },
+      { value: 'payments', text: 'Payments', Icon: Icons.PaymentsIcon },
+      { value: 'sms', text: 'SMS', Icon: Icons.SmsIcon },
+      { value: 'transactions', text: 'Transactions', Icon: Icons.ReceiptIcon },
     ],
   },
   {
     title: 'Administration',
     items: [
-      { value: 'admins', text: 'Administrators', iconCls: 'icon-two-men' },
-      { value: 'audittrail', text: 'Audit Trail', iconCls: 'icon-report' },
-      { value: 'settings', text: 'Settings', iconCls: 'icon-settings' },
+      { value: 'admins', text: 'Administrators', Icon: Icons.UsersIcon },
+      { value: 'audittrail', text: 'Audit Trail', Icon: Icons.HistoryIcon },
+      { value: 'settings', text: 'Settings', Icon: Icons.SettingsIcon },
     ],
   },
 ];
 
-class MainMenuMerchantWithOutRouter extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { value: props.activeItem || 'dashboard', loader: false, progressValue: 0 };
-  }
-
-  componentDidUpdate(prevProps) {
-    if (prevProps.activeItem !== this.props.activeItem && this.props.activeItem) {
-      this.setState({ value: this.props.activeItem });
-    }
-  }
-
-  handleItemClick(value) {
-    this.props.onChangeMenu(value);
-    this.setState({ value });
-  }
-
-  renderNavItem(item) {
-    const isActive = this.state.value === item.value;
-    return (
-      <button
-        type="button"
-        key={item.value}
-        className={`cpay-nav-item${isActive ? ' cpay-nav-item-active' : ''}`}
-        onClick={() => this.handleItemClick(item.value)}>
-        <span className={`cpay-nav-icon ${item.iconCls}`} aria-hidden="true" />
-        <span>{item.text}</span>
-      </button>
-    );
-  }
-
-  render() {
-    return (
-      <div className="cpay-nav-menu">
-        {navGroups.map(group => (
-          <div className="cpay-nav-group" key={group.title}>
-            <div className="cpay-nav-group-title">{group.title}</div>
-            {group.items.map(item => this.renderNavItem(item))}
-          </div>
-        ))}
-        <div className="cpay-nav-group cpay-nav-group-bottom">
-          <button
-            type="button"
-            className="cpay-nav-item cpay-nav-item-danger"
-            onClick={() => this.handleItemClick('exit')}>
-            <span className="cpay-nav-icon icon-logout" aria-hidden="true" />
-            <span>Logout</span>
-          </button>
-        </div>
-        <Messager ref={ref => this.messager = ref}></Messager>
-        <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
-      </div>
-    );
-  }
+/** Merchant portal navigation. */
+export default function MainMenuMerchant({ activeItem, onChangeMenu }) {
+  return (
+    <>
+      {navGroups.map((group) => (
+        <NavGroup title={group.title} key={group.title}>
+          {group.items.map((item) => (
+            <NavItem
+              key={item.value}
+              icon={<item.Icon size={20} />}
+              active={activeItem === item.value}
+              onClick={() => onChangeMenu(item.value)}
+            >
+              {item.text}
+            </NavItem>
+          ))}
+        </NavGroup>
+      ))}
+      <NavGroup bottom>
+        <NavItem danger icon={<Icons.LogoutIcon size={20} />} onClick={() => onChangeMenu('exit')}>
+          Logout
+        </NavItem>
+      </NavGroup>
+    </>
+  );
 }
-
-const MainMenuMerchant = withRouter(MainMenuMerchantWithOutRouter);
-export default MainMenuMerchant;
