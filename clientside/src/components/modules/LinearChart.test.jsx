@@ -11,11 +11,11 @@ import MerchantLinearChart from './merchant/LinearChart';
 import Chart from 'chart.js/auto';
 
 // Mock Chart.js so tests don't require a canvas implementation
-jest.mock('chart.js/auto', () => {
-  const ChartMock = jest.fn();
-  ChartMock.prototype.destroy = jest.fn();
-  ChartMock.prototype.update = jest.fn();
-  return ChartMock;
+vi.mock('chart.js/auto', () => {
+  const ChartMock = vi.fn();
+  ChartMock.prototype.destroy = vi.fn();
+  ChartMock.prototype.update = vi.fn();
+  return { default: ChartMock };
 });
 
 let container = null;

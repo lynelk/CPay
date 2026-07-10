@@ -1,10 +1,13 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, relativePath), 'utf8');
 
 describe('auth layout viewport safety', () => {
-  test('auth CSS owns the viewport and prevents nested auth scrollbars', () => {
+  test('legacy AuthShell CSS still owns the viewport and prevents nested auth scrollbars', () => {
     const css = read('index.css');
 
     expect(css).toMatch(/\.cpay-auth-screen\s*\{[^}]*height:\s*100vh;[^}]*overflow:\s*hidden;/s);
@@ -12,24 +15,34 @@ describe('auth layout viewport safety', () => {
     expect(css).toMatch(/\.cpay-auth-form\s+\.form-field\s*\{[^}]*margin-bottom:\s*0;/s);
   });
 
-  test('admin and merchant login screens do not use fixed-height rc-easyui panels', () => {
-    const adminLogin = read('components/Login.jsx');
-    const merchantLogin = read('components/LoginMerchant.jsx');
+  test('iOS auth layout owns the viewport without nested scrollbars', () => {
+    const css = read('styles/ios.css');
 
-    expect(adminLogin).toContain("from './AuthShell'");
-    expect(merchantLogin).toContain("from './AuthShell'");
-    expect(adminLogin).not.toMatch(/<Panel\b/);
-    expect(merchantLogin).not.toMatch(/<Panel\b/);
-    expect(adminLogin).not.toMatch(/height:\s*\d+/);
-    expect(merchantLogin).not.toMatch(/height:\s*\d+/);
+    expect(css).toMatch(/\.ios-auth\s*\{[^}]*min-height:\s*100vh;/s);
+    expect(css).toMatch(/\.ios-auth__card\s*\{[^}]*overflow:\s*hidden;/s);
   });
 
-  test('login screens avoid legacy ReactDOM lookups for keyboard handling', () => {
-    const adminLogin = read('components/Login.jsx');
-    const merchantLogin = read('components/LoginMerchant.jsx');
+  test('admin, merchant, and signup screens are off rc-easyui and use the iOS AuthLayout', () => {
+    const adminLogin = read('components/Login.tsx');
+    const merchantLogin = read('components/LoginMerchant.tsx');
+    const signup = read('components/MerchantSignup.tsx');
 
-    expect(adminLogin).not.toContain('findDOMNode');
-    expect(merchantLogin).not.toContain('findDOMNode');
+    for (const source of [adminLogin, merchantLogin, signup]) {
+      expect(source).toContain('AuthLayout');
+      expect(source).toContain("from '../ui'");
+      expect(source).not.toContain('rc-easyui');
+      expect(source).not.toMatch(/<Panel\b/);
+      expect(source).not.toMatch(/height:\s*\d+/);
+      expect(source).not.toContain('findDOMNode');
+    }
+  });
+
+  test('migrated screens no longer depend on the rc-easyui Progress loader', () => {
+    const adminLogin = read('components/Login.tsx');
+    const merchantLogin = read('components/LoginMerchant.tsx');
+
+    expect(adminLogin).not.toContain("from './Progress'");
+    expect(merchantLogin).not.toContain("from './Progress'");
   });
 
   test('login shell centers the brand mark and avoids service chips on the login screen', () => {

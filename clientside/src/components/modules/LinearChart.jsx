@@ -29,6 +29,12 @@ class LinearChart extends React.Component {
     }
   }
 
+  cssVar(name, fallback) {
+    if (typeof window === 'undefined' || !window.getComputedStyle) return fallback;
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
   colorToRgba(color, alpha) {
     if (!color || !/^#[0-9a-f]{6}$/i.test(color)) {
       return `rgba(17, 152, 196, ${alpha})`;
@@ -65,6 +71,16 @@ class LinearChart extends React.Component {
       return data;
     }
 
+    const fontFamily = this.cssVar('--ios-font', 'Inter, -apple-system, sans-serif');
+    const gridColor = this.cssVar('--ios-separator', 'rgba(102,112,133,0.16)');
+    const tickColor = this.cssVar('--ios-text-secondary', 'rgba(102,112,133,0.9)');
+    const tooltipBg = this.cssVar('--ios-text', '#163B5C');
+    const tooltipFg = this.cssVar('--ios-surface-solid', '#FFFFFF');
+    const themedAxis = {
+      grid: { color: gridColor, drawBorder: false },
+      ticks: { color: tickColor, font: { family: fontFamily, size: 11 } },
+    };
+
     return {
       ...data,
       data: this.chartData(data),
@@ -72,6 +88,7 @@ class LinearChart extends React.Component {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
+        font: { family: fontFamily },
         interaction: {
           mode: 'index',
           intersect: false,
@@ -85,13 +102,26 @@ class LinearChart extends React.Component {
               boxWidth: 10,
               boxHeight: 10,
               usePointStyle: true,
-              font: { size: 11, weight: '600' }
+              color: tickColor,
+              font: { family: fontFamily, size: 11, weight: '600' }
             }
           },
-          tooltip: { enabled: true },
+          tooltip: {
+            enabled: true,
+            backgroundColor: tooltipBg,
+            titleColor: tooltipFg,
+            bodyColor: tooltipFg,
+            cornerRadius: 8,
+            padding: 10,
+            usePointStyle: true,
+            titleFont: { family: fontFamily },
+            bodyFont: { family: fontFamily },
+          },
           ...(data.options && data.options.plugins ? data.options.plugins : {})
         },
         scales: {
+          x: { ...themedAxis, ...(data.options && data.options.scales && data.options.scales.x ? data.options.scales.x : {}) },
+          y: { ...themedAxis, ...(data.options && data.options.scales && data.options.scales.y ? data.options.scales.y : {}) },
           ...(data.options && data.options.scales ? data.options.scales : {})
         },
         ...(data.options || {})

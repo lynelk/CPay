@@ -1,629 +1,268 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Menu, MenuItem, SwitchButton } from 'rc-easyui';
-import Messager from '../StableMessager';
-import { DataGrid, GridColumn, Label,DateBox, ButtonGroup, SearchBox, Dialog, Tooltip } from 'rc-easyui';
-import PropTypes from "prop-types";
-import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../MainMenu";
 import common from "../Common";
-import Progress from "../Progress";
-import LinearChart from './LinearChart';
-import styles from '../styles';
 import strings from '../locale';
-
 import ReactExport from "../../shared/export/ExcelExport";
+import {
+  Toolbar, Table, Select, Sheet, Button, TextField, TextArea, DateField, Icons,
+} from '../../ui';
+
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
 const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
 
+const toOptions = (arr) => (Array.isArray(arr) ? arr.map((t) => ({ value: t.value, label: t.text })) : []);
+
 /**
- * 
- * Props: 
- * - loader()
- * - sessionExpired()
- * - accessNotAllowed()
- * - messager
- * - openOrCloseStatementDialog
+ * Merchant account statement dialog. Rendered by ModuleMerchants; visibility is
+ * driven by props.statementDialogStateOpened (true = closed) +
+ * props.openOrCloseStatementDialog. Migrated off rc-easyui to iOS Sheets/Table.
  */
-
-class ModuleMerchantAccouunt extends React.Component{
-
+class ModuleMerchantAccouunt extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             pageSize: 50,
-            data:[],
-            pageOptions: {
-                layout: ['list', 'sep', 'first', 'prev', 'next', 'last', 'sep', 'refresh', 'sep', 'manual', 'info']
-            },
+            data: [],
             total: 0,
-            searchingValue: {
-                value: "",
-                category: ""
-            },
-            categories: [
-                {value:'all',text:'All Fields',iconCls:'icon-ok'},
-                {value:'account_number',text:'Merchant Account', iconCls:'icon-settings'},
-                {value:'status',text:'Status', iconCls:'icon-settings'},
-                {value:'account_type',text:'Business Type', iconCls:'icon-settings'},
-                {value:'name',text:'Name', iconCls:'icon-settings'}
-            ],
-            search_rules: {
-                start_date: "",
-                end_date: ""
-            },
-            errors: "",
-            rules: {
-                'start_date': 'required',
-                'end_date': ['required']
-            },
-            formSearchDialogStateClosed: true,
-
-            /*Below are the RecordTx dialog details*/
-            record_tx_data: {
-                tx_type: "",
-                amount: "",
-                description: "",
-                balance_type: "",
-            }, 
-            record_tx_rules: {
-                'amount': {'required':true, "numericValidation":common.numericValidation},
-                'tx_type': 'required',
-                'description': ['required']
-            }, 
-            formRecordTxDialogStateClosed: true,
-            tx_types: common.tx_types,
-            balance_type: common.balance_type,
+            searchingValue: { value: "", category: "all" },
+            search_rules: { start_date: "", end_date: "" },
+            searchOpen: false,
+            record_tx_data: { tx_type: "", amount: "", description: "", balance_type: "" },
+            recordTxOpen: false,
+            recordTxErrors: {},
             available_balances: "",
-            tx_details_row:{}, 
-            detailedRecordTxDialogStateClosed:true,
         };
     }
 
-    componentDidMount() {
-       
-    }
-
-    shouldComponentUpdate(nextProps, nextState) {
-
-        /*if (!this.props.statementDialogStateOpened) {
+    componentDidUpdate(prevProps) {
+        // Fetch when the statement dialog transitions from closed -> open.
+        if (prevProps.statementDialogStateOpened && !this.props.statementDialogStateOpened) {
             this.getData();
-        }*/
-        /*
-        if (this.props.statementDialogStateOpened !=  nextProps.statementDialogStateOpened) {
-            if (!nextProps.statementDialogStateOpened) {
-                this.getData();
-            }
-        }*/
-        return true;
+        }
     }
 
     getData() {
         this.props.loader("START");
-        let searchData = {
+        const searchData = {
             search_rules: {
-                start_date: common.formatDate(this.state.search_rules.start_date),
-                end_date: common.formatDate(this.state.search_rules.end_date)
+                start_date: this.state.search_rules.start_date || "",
+                end_date: this.state.search_rules.end_date || "",
             },
-            merchant_id: this.props.openMerchantAccount.id? this.props.openMerchantAccount.id : null,
+            merchant_id: this.props.openMerchantAccount.id ? this.props.openMerchantAccount.id : null,
             pageSize: this.state.pageSize,
             searchingValue: this.state.searchingValue,
             sort: 'asc'
-        }
-        let url = "";
-        if (this.props.openMerchantAccount.id) {
-            url = common.base_url+"/transactions/getMerchantStatement";
-        } else {
-            url = common.base_url+"/transactions/getMerchantStatementByMerchant";
-        }
+        };
+        const url = this.props.openMerchantAccount.id
+            ? common.base_url + "/transactions/getMerchantStatement"
+            : common.base_url + "/transactions/getMerchantStatementByMerchant";
 
         fetch(url, {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(searchData) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
+            method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+            body: JSON.stringify(searchData)
+        }).then((response) => response.text()).then((response_) => {
             this.props.loader("STOP");
             let res;
             try {
                 res = JSON.parse(response_);
                 if (res.code === "000") {
-                    try {
-                        this.setState({
-                            data: res.data,
-                            total: res.data.length,
-                            available_balances: res.balances
-                        });
-                    } catch (ex) {
-                        this.props.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
+                    this.setState({ data: res.data, total: res.data.length, available_balances: res.balances });
                 } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.props.sessionExpired();
-                        return;
-                    } else if (res.code === "110") {
-                        this.props.accessNotAllowed(res.message);
-                        return;
-                    }
-
-                    this.props.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
+                    if (res.code === "107") { this.props.sessionExpired(); return; }
+                    if (res.code === "110") { this.props.accessNotAllowed(res.message); return; }
+                    this.props.messager.alert({ title: "Error " + res.code, icon: "error", msg: res.message });
                 }
-            } catch(Error) {
-                //alert(Error.message);
-                this.props.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
+            } catch (Error) {
+                this.props.messager.alert({ title: "Error", icon: "error", msg: Error.message });
             }
         }).catch((error) => {
             this.props.loader("STOP");
-            this.props.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
-            });
+            this.props.messager.alert({ title: "Error", icon: "error", msg: error.message });
         });
     }
 
     recordTransactionRequest() {
         this.props.loader("START");
-        let data = this.state.record_tx_data;
-        data.merchant_id = this.props.openMerchantAccount.id;
-
-        fetch(common.base_url+"/transactions/recordTransaction", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(data) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
+        const data = { ...this.state.record_tx_data, merchant_id: this.props.openMerchantAccount.id };
+        fetch(common.base_url + "/transactions/recordTransaction", {
+            method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+            body: JSON.stringify(data)
+        }).then((response) => response.text()).then((response_) => {
             this.props.loader("STOP");
             let res;
             try {
                 res = JSON.parse(response_);
                 if (res.code === "000") {
-                    try {
-                        this.resetRecordTxForm(()=> {
-                            this.dlgRecordTx.close();
-                            this.props.messager.alert({
-                                title: "Success!",
-                                icon: "info",
-                                msg: res.message,
-                                result: r => {
-                                    if (r) {
-                                        this.getData();
-                                    }
-                                }
-                            });
-                        });
-                    } catch (ex) {
+                    this.resetRecordTxForm(() => {
+                        this.setState({ recordTxOpen: false });
                         this.props.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
+                            title: "Success!", icon: "info", msg: res.message,
+                            result: (ok) => { if (ok) this.getData(); }
                         });
-                    }
-                } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.props.sessionExpired();
-                        return;
-                    } else if (res.code === "110") {
-                        this.props.accessNotAllowed(res.message);
-                        return;
-                    }
-
-                    this.props.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
                     });
+                } else {
+                    if (res.code === "107") { this.props.sessionExpired(); return; }
+                    if (res.code === "110") { this.props.accessNotAllowed(res.message); return; }
+                    this.props.messager.alert({ title: "Error " + res.code, icon: "error", msg: res.message });
                 }
-            } catch(Error) {
-                //alert(Error.message);
-                this.props.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
+            } catch (Error) {
+                this.props.messager.alert({ title: "Error", icon: "error", msg: Error.message });
             }
         }).catch((error) => {
             this.props.loader("STOP");
-            this.props.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
-            });
+            this.props.messager.alert({ title: "Error", icon: "error", msg: error.message });
         });
-    }
-
-    addFormAdminRow() {
-        
-    }
-
-    removeFormAdminRow() {
-        
-    }
-
-    saveRow() {
-        
-    }
-
-    resetForm(whenDone) {
-        
-    }
-
-    handleFormChange(name, value) {
-        
-    }
-
-    handleSearch() {
-        
-    }
-
-    download() {
-
     }
 
     recordTxSubmit() {
-        this.recordTxForm.validate(errors => {
-            if (errors != null) {
-                return;
-            }
-            
-            this.recordTransactionRequest();
-        });
+        const f = this.state.record_tx_data;
+        const errors = {};
+        if (!f.tx_type) errors.tx_type = 'Transaction type is required';
+        if (!f.description) errors.description = 'Description is required';
+        if (f.amount === '' || Number.isNaN(Number(f.amount))) errors.amount = 'Enter a valid amount';
+        this.setState({ recordTxErrors: errors });
+        if (Object.keys(errors).length === 0) this.recordTransactionRequest();
     }
 
     handleSearchFormChange(name, value) {
-        let formd = Object.assign({}, this.state.search_rules);
-        formd[name] = value;
-        this.setState({ search_rules: formd });
+        this.setState((prev) => ({ search_rules: { ...prev.search_rules, [name]: value } }));
     }
 
     handleRecordFormChange(name, value) {
-        let formd = Object.assign({}, this.state.record_tx_data);
-        formd[name] = value;
-        this.setState({ record_tx_data: formd });
+        this.setState((prev) => ({ record_tx_data: { ...prev.record_tx_data, [name]: value } }));
     }
 
-    clearSearch_() {
-        let search_rules = Object.assign({}, this.state.search_rules);
-        search_rules.start_date = null;
-        search_rules.end_date = null;
-        this.setState({ search_rules: search_rules });
-    }
-
-    dialog() {
-        const { search_rules, rules, formSearchDialogStateClosed } = this.state;
-        return (
-            <Dialog
-                title="Search"
-                closed={formSearchDialogStateClosed} 
-                style={{ width: 400, height: 210 }}
-                bodyCls="f-column"
-                modal
-                ref={ref => this.dlg = ref}>
-                
-                <div className="f-full" style={{margin: "5px"}}>
-                    <Form
-                        ref={ref => this.form = ref}
-                        model={search_rules}
-                        rules={rules}
-                        floatingLabel
-                        labelWidth={120}
-                        /*labelPosition="top"*/
-                        onChange={this.handleSearchFormChange.bind(this)}
-                        onValidate={(errors) => this.setState({ errors: errors })}>
-                    
-                        <FormField name="start_date" label="Start Date">
-                            <DateBox 
-                                format="yyyy-MM-dd"
-                                inputId="start_date" 
-                                name="start_date" 
-                                value={search_rules.start_date} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
-                        </FormField>
-                        <FormField name="end_date" label="End Date">
-                            <DateBox 
-                                format="yyyy-MM-dd"
-                                inputId="end_date" 
-                                name="end_date" 
-                                value={search_rules.end_date} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
-                        </FormField>
-                    </Form>
-                </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.getData();
-                    }}>{strings.go}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.clearSearch_();
-                    }}>{strings.clear}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlg.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
-        );
+    clearSearch() {
+        this.setState({ search_rules: { start_date: "", end_date: "" } });
     }
 
     resetRecordTxForm(whenDone) {
-        this.setState({
-            record_tx_data: {
-                tx_type: "",
-                amount: "",
-                description: "",
-                balance_type: "",
-            },
-        }, () => {
-            whenDone();
-        });
+        this.setState({ record_tx_data: { tx_type: "", amount: "", description: "", balance_type: "" }, recordTxErrors: {} }, whenDone);
     }
 
-    recordTxDialog() {
-        const { record_tx_data, record_tx_rules, formRecordTxDialogStateClosed, errors } = this.state;
+    searchSheet() {
+        const s = this.state.search_rules;
         return (
-            <Dialog
-                title={strings.record_tx}
-                closed={formRecordTxDialogStateClosed} 
-                style={{ width: 500, height: 410 }}
-                bodyCls="f-column"
-                modal
-                onClose={() => {
-                    this.resetRecordTxForm(()=>{});
-                }}
-                ref={ref => this.dlgRecordTx = ref}>
-                <div className="f-full" style={{margin: "5px"}}>
-                    <Form
-                        ref={ref => this.recordTxForm = ref}
-                        model={record_tx_data}
-                        rules={record_tx_rules}
-                        floatingLabel
-                        labelWidth={120}
-                        /*labelPosition="top"*/
-                        onChange={this.handleRecordFormChange.bind(this)}
-                        onValidate={(errors) => this.setState({ errors: errors })}>
-
-                        <FormField name="balance_type" label="Balance Type" >
-                            <ComboBox
-                                inputId="balance_type"
-                                name="balance_type"
-                                data={this.state.balance_type}
-                                value={this.state.record_tx_data.balance_type}
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}
-                                onChange={(value) => this.setState({ value: value })}
-                                />
-                        </FormField>
-                        <FormField name="tx_type" label="Transaction Type:" >
-                            <ComboBox
-                                inputId="tx_type"
-                                name="tx_type"
-                                data={this.state.tx_types}
-                                value={this.state.record_tx_data.tx_type}
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}
-                                onChange={(value) => this.setState({ value: value })}
-                                />
-                        </FormField>
-                        <FormField name="amount" label="Amount">
-                            <TextBox 
-                                inputId="amount" 
-                                name="amount" 
-                                value={record_tx_data.amount} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                        </FormField>
-                        <FormField name="description" label="Description">
-                            <TextBox
-                                multiline
-                                inputId="description" 
-                                name="description" 
-                                value={record_tx_data.description} 
-                                style={styles.dim.formDialogFieldsTexField} className={styles.formDialogFieldsTexField}></TextBox>
-                        </FormField>
-                    </Form>
+            <Sheet
+                open={this.state.searchOpen}
+                onClose={() => this.setState({ searchOpen: false })}
+                title="Search"
+                size="sm"
+                footer={<>
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.clearSearch()}>{strings.clear}</Button>
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: false })}>{strings.close}</Button>
+                    <Button variant="primary" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: false }, () => this.getData())}>{strings.go}</Button>
+                </>}
+            >
+                <div className="ios-form">
+                    <DateField id="stmt-start" label="Start Date" kind="date" value={s.start_date} onValueChange={(v) => this.handleSearchFormChange('start_date', v)} />
+                    <DateField id="stmt-end" label="End Date" kind="date" value={s.end_date} onValueChange={(v) => this.handleSearchFormChange('end_date', v)} />
                 </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.recordTxSubmit();
-                    }}>{strings.save}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgRecordTx.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
+            </Sheet>
         );
     }
 
-
-    recordTxDetailsDialog() {
-        const { tx_details_row, detailedRecordTxDialogStateClosed } = this.state;
+    recordTxSheet() {
+        const { record_tx_data: f, recordTxErrors: e } = this.state;
         return (
-            <Dialog
-                title={"Transaction Details: "+tx_details_row.merchant_name}
-                closed={detailedRecordTxDialogStateClosed} 
-                style={{ width: 500, height: 410 }}
-                bodyCls="f-column"
-                modal
-                onClose={() => {
-                    //this.resetRecordTxForm(()=>{});
-                }}
-                ref={ref => this.dlgRowDetailsRecordTx = ref}>
-                <div className="f-full" style={{margin: "5px"}}>
-                    <table with="99%">
-                        <tr>
-                            <td>Merchant Name</td><td>{tx_details_row.merchant_name}</td>
-                            <td>Merchant number</td><td>{tx_details_row.merchant_number}</td>
-                            <td>Gateway ID=</td><td>{tx_details_row.gateway_id}</td>
-                            <td>Status</td><td>{tx_details_row.status}</td>
-                            <td>Amount</td><td>{tx_details_row.original_amount}</td>
-                            <td>Merchant Reference:</td><td>{tx_details_row.tx_merchant_ref}</td>
-                            <td>Network Ref:</td><td>{tx_details_row.tx_gateway_ref}</td>
-                            <td>Payar Number:</td><td>{tx_details_row.payer_number}</td>
-                            <td>Created On</td><td>{tx_details_row.created_on}</td>
-                            <td>Request Trace</td><td>{tx_details_row.tx_request_trace}</td>
-                            <td>Updated Trace</td><td>{tx_details_row.tx_update_trace}</td>
-                        </tr>
-                    </table>
+            <Sheet
+                open={this.state.recordTxOpen}
+                onClose={() => this.resetRecordTxForm(() => this.setState({ recordTxOpen: false }))}
+                title={strings.record_tx}
+                size="sm"
+                footer={<>
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.resetRecordTxForm(() => this.setState({ recordTxOpen: false }))}>{strings.close}</Button>
+                    <Button variant="primary" className="ios-btn--sm" onClick={() => this.recordTxSubmit()}>{strings.save}</Button>
+                </>}
+            >
+                <div className="ios-form">
+                    <Select id="rtx-balance" label="Balance Type" value={f.balance_type} placeholder="Select" options={toOptions(common.balance_type)} onValueChange={(v) => this.handleRecordFormChange('balance_type', v)} />
+                    <Select id="rtx-type" label="Transaction Type" value={f.tx_type} placeholder="Select" options={toOptions(common.tx_types)} onValueChange={(v) => this.handleRecordFormChange('tx_type', v)} />
+                    {e.tx_type ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.tx_type}</span> : null}
+                    <TextField id="rtx-amount" label="Amount" value={f.amount} invalid={Boolean(e.amount)} onValueChange={(v) => this.handleRecordFormChange('amount', v)} />
+                    {e.amount ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.amount}</span> : null}
+                    <TextArea id="rtx-desc" label="Description" rows={3} value={f.description} invalid={Boolean(e.description)} onValueChange={(v) => this.handleRecordFormChange('description', v)} />
+                    {e.description ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.description}</span> : null}
                 </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgRowDetailsRecordTx.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
+            </Sheet>
         );
     }
 
     render() {
         const { title, statementDialogStateOpened } = this.props;
-        
+        const columns = [
+            { key: 'rownum', header: '#', width: 44, render: (row, i) => i + 1 },
+            { key: 'created_on', header: 'Created On', accessor: (r) => r.created_on, width: 170 },
+            { key: 'description', header: 'Description', render: (r) => `${r.narrative}: ${r.description}` },
+            {
+                key: 'amount', header: 'Amount', numeric: true,
+                render: (r) => (
+                    <span style={{ color: r.tx_type === 'CR' ? 'var(--ios-success)' : 'var(--ios-danger)', fontWeight: 600 }}>
+                        {common.formatNumber(r.amount)}
+                    </span>
+                ),
+            },
+            { key: 'balances', header: 'Balance', numeric: true, accessor: (r) => r.balances },
+        ];
+
         return (
-            <div>
-                <Dialog modal 
-                    ref={ref => this.generalDialog = ref}
-                    title={title} 
-                    closed={statementDialogStateOpened} 
-                    style={styles.dim.moreTableContentDialogLargeWidth} className={styles.moreTableContentDialogLargeWidth}
-                    borderType="none"
-                    onOpen={() => {
-                        this.getData();
-                    }}
-                    onClose={() => {
-                        this.props.openOrCloseStatementDialog(true)
-                        }}>
-                        <Layout style={{ width: 900, border: '0px #FFFFFF' }}>  
-                            <div style={{ padding: '5px'}}>
-                                <div style={{margin: '5px', float:'left'}}> 
-                                    <span className={styles.titleText}>Available Balances: </span>
-                                    <span className={styles.numberPresentationGreenBold}>
-                                        {this.state.available_balances}
-                                    </span>
-                                </div>
-                                <div  style={{margin: '5px', float:'right'}}>
-                                    <ButtonGroup>
-                                        <LinkButton 
-                                            iconCls="icon-search" 
-                                            onClick={() => {
-                                                this.dlg.open();
-                                                /*this.setState({
-                                                    formSearchDialogStateClosed: false
-                                                });*/
-                                            }}>{strings.search}</LinkButton>
-                                        <Download data={this.state.data} />
-                                        
-                                    </ButtonGroup>
-                                </div>
-                            </div>
-                            <DataGrid
-                                ref={ref => this.datagrid = ref}
-                                style={{ height: 430, width:899 }}
-                                data={this.state.data}
-                                pagination
-                                {...this.state}>
-                                <GridColumn
-                                    align="center" 
-                                    width="30px"
-                                    cellCss="datagrid-td-rownumber"
-                                    render={({rowIndex}) => (
-                                        <span>{rowIndex+1}</span>
-                                    )}
-                                    />
-                                <GridColumn field="created_on" 
-                                    width="150px"
-                                    title="Created On" 
-                                    ></GridColumn>
-                                <GridColumn field="description" 
-                                    title="Description" 
-                                    render={({ row }) => (
-                                        <span>{row.narrative+": "+row.description}</span>
-                                    )}
-                                    width="250px"
-                                    ></GridColumn>
-                                <GridColumn field="amount" 
-                                    width="120px"
-                                    render={({ row }) => (
-                                        <span 
-                                            style={row.tx_type == "CR" ? styles.numberPresentationGreen : styles.numberPresentationRed}>
-                                            {common.formatNumber(row.amount)}
-                                        </span>
-                                    )}
-                                    align="right"
-                                    title="Amount" ></GridColumn>
-                                <GridColumn field="balances"
-                                    align="right"
-                                    title="Balance">
-                                </GridColumn>
-                            </DataGrid>
-                            <LayoutPanel region="south" style={{ height: 48 }}>
-                                <div className="dialog-button">
-                                    <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
-                                        iconCls="icon-money" style={{ width: 150 }} 
-                                            onClick={() => {
-                                                this.dlgRecordTx.open();
-                                            }}>{strings.record_tx}</LinkButton>
-                                    <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
-                                        onClick={() => {
-                                            this.generalDialog.close()
-                                            //this.props.openOrCloseStatementDialog(true);
-                                        }}>Close</LinkButton>
-                                </div>
-                            </LayoutPanel>
-                        </Layout>
-                </Dialog>
-                {this.dialog()}
-                {this.recordTxDialog()}
-            </div>
+            <>
+                <Sheet
+                    open={!statementDialogStateOpened}
+                    onClose={() => this.props.openOrCloseStatementDialog(true)}
+                    title={title}
+                    size="xl"
+                    footer={<>
+                        <Button variant="primary" className="ios-btn--sm" onClick={() => this.setState({ recordTxOpen: true })}>
+                            <Icons.PaymentsIcon size={16} />{strings.record_tx}
+                        </Button>
+                        <Button variant="ghost" className="ios-btn--sm" onClick={() => this.props.openOrCloseStatementDialog(true)}>Close</Button>
+                    </>}
+                >
+                    <Toolbar>
+                        <span style={{ color: 'var(--ios-text-secondary)', fontSize: 'var(--ios-fs-footnote)' }}>Available Balances:</span>
+                        <strong style={{ color: 'var(--ios-success)' }}>{this.state.available_balances}</strong>
+                        <Toolbar.Spacer />
+                        <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: true })}>
+                            <Icons.SearchIcon size={16} />{strings.search}
+                        </Button>
+                        <Download data={this.state.data} />
+                    </Toolbar>
+                    <div style={{ marginTop: 'var(--ios-space-4)' }}>
+                        <Table
+                            columns={columns}
+                            rows={this.state.data}
+                            rowKey={(row, i) => row.id ?? i}
+                            pageSize={this.state.pageSize}
+                            emptyText="No statement entries to display."
+                        />
+                    </div>
+                </Sheet>
+                {this.searchSheet()}
+                {this.recordTxSheet()}
+            </>
         );
     }
 }
 
-
 class Download extends React.Component {
     render() {
         return (
-            <ExcelFile 
+            <ExcelFile
                 filename="Account_Statement"
                 ref={ref => this.excelRef = ref}
-                element={<LinkButton 
-                    onClick={() => {
-                        this.excelRef.download();
-                    }}
-                    iconCls="icon-excel">{strings.download}</LinkButton>}>
+                element={
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.excelRef.download()}>
+                        <Icons.DownloadIcon size={16} />{strings.download}
+                    </Button>
+                }>
                 <ExcelSheet data={this.props.data} name="Statement">
-                    <ExcelColumn label="Date time" value="created_on"/>
-                    <ExcelColumn label="Description" value="description"/>
-                    <ExcelColumn label="Amount" value="amount"/>
-                    <ExcelColumn label="Balances"
-                                 value={"balances"}/>
+                    <ExcelColumn label="Date time" value="created_on" />
+                    <ExcelColumn label="Description" value="description" />
+                    <ExcelColumn label="Amount" value="amount" />
+                    <ExcelColumn label="Balances" value={"balances"} />
                 </ExcelSheet>
             </ExcelFile>
         );

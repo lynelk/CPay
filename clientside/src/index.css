@@ -1,18 +1,13 @@
-/* ─── rc-easyui CSS (must precede Tailwind import) ─────────────────────── */
-@import 'rc-easyui/dist/themes/bootstrap/easyui.css';
-@import 'rc-easyui/dist/themes/icon.css';
-@import 'rc-easyui/dist/themes/react.css';
-
 /* ─── Tailwind CSS v4 ───────────────────────────────────────────────────────
  * All utilities prefixed with tw: (e.g. tw:flex, tw:text-red-500)
  * Tailwind v4 prefix uses colon syntax, not hyphen.
- * Preflight disabled via @layer — preserves rc-easyui Bootstrap reset.
+ * Preflight disabled via @layer so the app owns its base reset.
  * ─────────────────────────────────────────────────────────────────────────── */
 @import "tailwindcss" prefix(tw);
 
-/* Disable Tailwind preflight to avoid overriding rc-easyui Bootstrap styles */
+/* Disable Tailwind preflight; CPay owns the base reset. */
 @layer tw-base {
-  /* Intentionally empty — rc-easyui provides the base reset */
+  /* Intentionally empty. */
 }
 
 /* ─── CPay design tokens ────────────────────────────────────────────────── */

@@ -1,5 +1,5 @@
 import LocalizedStrings from 'react-localization';
-let strings = new LocalizedStrings({
+const strings = new LocalizedStrings({
     en:{
         add_admin:"Add Admin",
         edit_admin:"Edit Admin",

@@ -1,15 +1,15 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Menu, MenuItem } from 'rc-easyui';
 import Messager from '../StableMessager';
-import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
-import PropTypes from "prop-types";
-import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../MainMenu";
+import { withRouter } from '../../shared/router/compat';
 import common from "../Common";
-import Progress from "../Progress";
-import LinearChart from './LinearChart';
-import styles from '../styles';
+import { Card, Toolbar, Table, Select, SearchField, Checkbox, Badge } from '../../ui';
+
+const CATEGORIES = [
+  { value: 'all', label: 'All Fields' },
+  { value: 'user_id', label: 'User ID' },
+  { value: 'action', label: 'Action' },
+  { value: 'user_name', label: 'User Name' },
+];
 
 class ModuleAuditTrailC extends React.Component {
     constructor(props) {
@@ -19,280 +19,139 @@ class ModuleAuditTrailC extends React.Component {
             total: 0,
             pageSize: 50,
             allChecked: false,
-            rowClicked: false,
-            data:[],
-            pageOptions: {
-                layout: ['list', 'sep', 'first', 'prev', 'next', 'last', 'sep', 'refresh', 'sep', 'manual', 'info']
-            },
-            gridActions: [{ value: "bulk_actions", text: "Bulk Actions" },
-            { value: "all", text: "Select All" },
-            { value: "clear", text: "Clear Selection" }],
-            gridActionsValue: "bulk_actions",
-            searchingValue: {
-                value: "",
-                category: ""
-            },
-            categories: [
-                {value:'all',text:'All Fields',iconCls:'icon-ok'},
-                {value:'user_id',text:'User ID', iconCls:'icon-settings'},
-                {value:'action',text:'Action', iconCls:'icon-settings'},
-                {value:'user_name',text:'User Name', iconCls:'icon-man'},
-            ],
-            windowHeight: window.innerHeight
+            data: [],
+            searchingValue: { value: '', category: 'all' },
         };
     }
 
-    handleResize(e) {
-        this.setState({ windowHeight: window.innerHeight });
-
-    }
-
-    componentWillMount() {
-        window.addEventListener("resize", this.handleResize);
-    }
-
     componentDidMount() {
-        window.addEventListener("resize", this.handleResize);
         this.getData();
     }
 
     getData() {
         this.props.loader("START");
-        let searchData = {
+        const searchData = {
             pageSize: this.state.pageSize,
             searchingValue: this.state.searchingValue,
             sort: 'asc'
-        }
-        fetch(common.base_url+"/audittrail/getAudittrails", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(searchData) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
+        };
+        fetch(common.base_url + "/audittrail/getAudittrails", {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            body: JSON.stringify(searchData)
+        }).then((response) => response.text()).then((response_) => {
             this.props.loader("STOP");
             let res;
             try {
                 res = JSON.parse(response_);
                 if (res.code === "000") {
-                    try {
-                        this.setState({
-                            hasAccess:true,
-                            data: res.data,
-                            total: res.data.length
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
+                    this.setState({ hasAccess: true, data: res.data, total: res.data.length, allChecked: false });
                 } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.sessionExpired();
-                        return;
-                    } else if (res.code === "110") {
-                        this.accessNotAllowed(res.message);
-                        return;
-                    }
-
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
+                    if (res.code === "107") { this.sessionExpired(); return; }
+                    if (res.code === "110") { this.accessNotAllowed(res.message); return; }
+                    this.messager.alert({ title: "Error " + res.code, icon: "error", msg: res.message });
                 }
-            } catch(Error) {
-                //alert(Error.message);
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
+            } catch (Error) {
+                this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
             }
         }).catch((error) => {
             this.props.loader("STOP");
-            this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
-            });
+            this.messager.alert({ title: "Error", icon: "error", msg: error.message });
         });
     }
 
     sessionExpired() {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Session Expired!",
-            icon: "info",
-            msg: "Your are session expired",
-            result: (r) => {
-                history.push("/");
-            }
-        });
+        const { history } = this.props;
+        this.messager.alert({ title: "Session Expired!", icon: "info", msg: "Your session expired", result: () => history.push("/") });
     }
 
     accessNotAllowed(msg) {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Access denied!",
-            icon: "info",
-            msg: msg,
-            result: (r) => {
-                this.setState({
-                    hasAccess: false
-                });
-                //history.goBack();
-            }
-        });
+        this.messager.alert({ title: "Access denied!", icon: "info", msg, result: () => this.setState({ hasAccess: false }) });
     }
 
-    handleSearch(searchingValue) {
-        this.setState({
-            searchingValue: searchingValue
-        }, () => {
-            this.getData();
-        });
-        //alert(JSON.stringify(searchingValue));
-    }
-
-    handleClear() {
-
-    }
-
-    handleFormChange(name, value) {
-        let formd = Object.assign({}, this.state.formd);
-        formd[name] = value;
-        this.setState({ formd: formd })
-    }
-
-    bulkActions(value) {
-        this.setState({
-            gridActionsValue: value
-        },() => {
-            if (value == "all") {
-                this.dataGrid.selectRow(0);
-            }
-        });
-    }
-
-    getError(name) {
-        const { errors } = this.state;
-        if (!errors){
-          return null;
-        }
-        return errors[name] && errors[name].length
-            ? errors[name][0]
-            : null;
-    }
-
-    handleRowCheck(row, checked) {
-        let data = this.state.data.slice();
-        let index = this.state.data.indexOf(row);
-        data.splice(index, 1, Object.assign({}, row, { selected: checked }));
-        let checkedRows = data.filter(row => row.selected);
-        this.setState({
-            allChecked: data.length === checkedRows.length,
-            rowClicked: true,
-            data: data
-        }, () => {
-            this.setState({ rowClicked: false })
-        });
-    }
-
-    handleAllCheck(checked) {
-        if (this.state.rowClicked) {
-            return;
-        }
-        let data = this.state.data.map(row => {
-            return Object.assign({}, row, { selected: checked })
-        });
-        this.setState({
-            allChecked: checked,
-            data: data
-        })
-    }
-
-    renderDetail({ row }) {
-        return (
-          <div className="tw:my-[5px] tw:mx-[10px]">
-                <div className={styles.expanderRow}>
-                    <div><span className={styles.expanderRowHighlight}>Created On:</span> {row.created_on}</div>
-                    <div><span className={styles.expanderRowHighlight}>Action:</span> {row.action}</div>
-                </div>
-            </div>
+    handleSearch(value) {
+        this.setState(
+            (prev) => ({ searchingValue: { ...prev.searchingValue, value } }),
+            () => this.getData(),
         );
     }
 
+    handleCategory(category) {
+        this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, category } }));
+    }
 
-    render () {
-        const {searchingValue, categories, windowHeight} = this.state;
+    handleRowCheck(row, checked) {
+        const data = this.state.data.map((r) => (r === row ? { ...r, selected: checked } : r));
+        this.setState({ data, allChecked: data.every((r) => r.selected) });
+    }
+
+    handleAllCheck(checked) {
+        this.setState({ allChecked: checked, data: this.state.data.map((r) => ({ ...r, selected: checked })) });
+    }
+
+    render() {
+        const { searchingValue, data, allChecked } = this.state;
         if (!this.state.hasAccess) {
-            return (<div>
-                <Messager ref={ref => this.messager = ref}></Messager>
-            </div>);
+            return <div><Messager ref={ref => this.messager = ref}></Messager></div>;
         }
+
+        const columns = [
+            {
+                key: 'ck',
+                width: 44,
+                header: <Checkbox checked={allChecked} onCheckedChange={(c) => this.handleAllCheck(c)} />,
+                render: (row) => (
+                    <Checkbox checked={Boolean(row.selected)} onCheckedChange={(c) => this.handleRowCheck(row, c)} />
+                ),
+            },
+            { key: 'created_on', header: 'Created On', accessor: (r) => r.created_on, sortable: true, sortValue: (r) => r.created_on || '', width: 190 },
+            { key: 'user_id', header: 'User ID', accessor: (r) => r.user_id, sortable: true, sortValue: (r) => r.user_id || '', width: 150 },
+            { key: 'user_name', header: 'User Name', accessor: (r) => r.user_name, sortable: true, sortValue: (r) => r.user_name || '', width: 160 },
+            { key: 'action', header: 'Action', render: (r) => <Badge tone="info">{r.action}</Badge> },
+        ];
+
         return (
-            <div>
-                <div>
-                    <Panel bodyStyle={{ padding: '5px'}}>
-                        <div style={{float:'left'}}>
-                            <ComboBox
-                                inputId="c1"
-                                data={this.state.gridActions}
-                                value={this.state.gridActionsValue}
-                                onChange={(value) => this.bulkActions(value)}/>
-                        </div>
-                        <SearchBox
-                            style={{ width: 300, float:'right' }}
-                            placeholder="Search Admin"
-                            value={searchingValue.value}
-                            onSearch={this.handleSearch.bind(this)}
-                            category={searchingValue.category}
-                            categories={categories}
-                            addonRight={() => (
-                                <span 
-                                    className="textbox-icon icon-clear" 
-                                    title="Clear value" 
-                                    onClick={this.handleClear.bind(this)}></span>
-                            )}
+            <Card flush>
+                <div style={{ padding: 'var(--ios-space-4)' }}>
+                    <Toolbar>
+                        <div style={{ minWidth: 200 }}>
+                            <Select
+                                id="audit-category"
+                                value={searchingValue.category}
+                                options={CATEGORIES}
+                                onValueChange={(v) => this.handleCategory(v)}
                             />
-                    </Panel>
-                </div>
-                <DataGrid
-                    ref={ref => this.dataGrid = ref}
-                    style={{ height: (windowHeight - common.toReduceGridHeight) }}
-                    selectionMode={"multiple"}
-                    pagination
-                    renderDetail={this.renderDetail}
-                    {...this.state}>
-                    <GridColumn expander width="30px"></GridColumn>
-                    <GridColumn width={50} align="center"
-                        field="ck"
-                        render={({ row }) => (
-                            <CheckBox checked={row.selected} onChange={(checked) => this.handleRowCheck(row, checked)}></CheckBox>
-                        )}
-                        header={() => (
-                            <CheckBox checked={this.state.allChecked} onChange={(checked) => this.handleAllCheck(checked)}></CheckBox>
-                        )}
+                        </div>
+                        <Toolbar.Spacer />
+                        <SearchField
+                            value={searchingValue.value}
+                            onValueChange={(v) => this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, value: v } }))}
+                            onSubmit={(v) => this.handleSearch(v)}
+                            placeholder="Search audit trail"
                         />
-                    <GridColumn width={150} field="created_on" title="created_on"></GridColumn>
-                    <GridColumn width={140} field="user_id" title="user_id"></GridColumn>
-                    <GridColumn width={140} field="user_name" title="User Name"></GridColumn>
-                    <GridColumn field="action" title="Action"></GridColumn>
-                </DataGrid>
+                    </Toolbar>
+                </div>
+                <Table
+                    columns={columns}
+                    rows={data}
+                    rowKey={(row, i) => row.id ?? `${row.user_id}-${row.created_on}-${i}`}
+                    pageSize={this.state.pageSize}
+                    isRowSelected={(row) => Boolean(row.selected)}
+                    renderDetail={(row) => (
+                        <div className="ios-grid">
+                            <div><strong>Created On:</strong> {row.created_on}</div>
+                            <div><strong>Action:</strong> {row.action}</div>
+                        </div>
+                    )}
+                    emptyText="No audit records to display."
+                />
                 <Messager ref={ref => this.messager = ref}></Messager>
-            </div>
+            </Card>
         );
     }
 }

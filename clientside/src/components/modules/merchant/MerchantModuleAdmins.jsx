@@ -1,16 +1,43 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Menu, MenuItem } from 'rc-easyui';
 import Messager from '../../StableMessager';
-import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog } from 'rc-easyui';
-import PropTypes from "prop-types";
-import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../../MainMenu";
+import { withRouter } from '../../../shared/router/compat';
 import common from "../../Common";
-import Progress from "../../Progress";
-import LinearChart from './LinearChart';
-import styles from '../../styles';
 import strings from '../../locale';
+import {
+  Card, Toolbar, Table, Select, SearchField, Checkbox, Badge, Sheet, Button,
+  TextField, PasswordField, Icons,
+} from '../../../ui';
+
+const STATUS_OPTIONS = [
+  { value: 'ACTIVE', label: 'ACTIVE' },
+  { value: 'INACTIVE', label: 'INACTIVE' },
+  { value: 'SUSPENDED', label: 'SUSPENDED' },
+];
+
+const CATEGORIES = [
+  { value: 'all', label: 'All Fields' },
+  { value: 'email', label: 'Email' },
+  { value: 'status', label: 'Status' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'name', label: 'Name' },
+];
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function statusTone(status) {
+  const v = typeof status === 'object' && status ? status.value : status;
+  if (v === 'ACTIVE') return 'success';
+  if (v === 'SUSPENDED') return 'danger';
+  return 'neutral';
+}
+function statusText(status) {
+  return typeof status === 'object' && status ? status.value : status;
+}
+function privilegeValue(p) {
+  if (p == null) return '';
+  if (typeof p === 'object') return p.value ?? p.privilege ?? '';
+  return p;
+}
 
 class MerchantModuleAdminsC extends React.Component {
     constructor(props) {
@@ -19,653 +46,303 @@ class MerchantModuleAdminsC extends React.Component {
             total: 0,
             pageSize: 50,
             allChecked: false,
-            rowClicked: false,
-            data:[],
-            pageOptions: {
-                layout: ['list', 'sep', 'first', 'prev', 'next', 'last', 'sep', 'refresh', 'sep', 'manual', 'info']
-            },
-            gridActions: [{ value: "bulk_actions", text: "Bulk Actions" },
-            { value: "all", text: "Select All" },
-            { value: "clear", text: "Clear Selection" }],
-            gridActionsValue: "bulk_actions",
-            formdMode: 'new',//Can be set to edit
-            formd: {
-                id:"",
-                email: "",
-                name: "",
-                phone: "",
-                password: "",
-                privileges:[],
-                status: { value: 'ACTIVE', text: "ACTIVE" },
-            },
-            privileges: common.merchant_privileges,
-            status: [{ value: 'ACTIVE', text: "ACTIVE" },
-                { value: 'INACTIVE', text: "INACTIVE" },
-                { value: 'SUSPENDED', text: "SUSPENDED" }],
-            rules: {
-                'name': 'required',
-                'status': ['required'],
-                "email": {"required":true,"emailValidation":common.emailValidation},
-                "phone": {'required':true, "phoneValidation":common.phoneValidation}
-            },
+            data: [],
+            formdMode: 'new',
+            formd: { id: "", email: "", name: "", phone: "", password: "", privileges: [], status: 'ACTIVE' },
+            privileges: common.merchant_privileges || [],
             errors: {},
             title: '',
-            formDialogState: true,
-            searchingValue: {
-                value: "",
-                category: ""
-            },
-            categories: [
-                {value:'all',text:'All Fields',iconCls:'icon-ok'},
-                {value:'email',text:'Email', iconCls:'icon-settings'},
-                {value:'status',text:'Status', iconCls:'icon-settings'},
-                {value:'phone',text:'Phone', iconCls:'icon-man'},
-                {value:'name',text:'Name', iconCls:'icon-man'}
-            ],
+            dialogOpen: false,
+            searchingValue: { value: "", category: "all" },
             hasAccess: false,
-            windowHeight: window.innerHeight
         };
     }
 
-    handleResize(e) {
-        this.setState({ windowHeight: window.innerHeight });
-
-    }
-
-    componentWillMount() {
-        window.addEventListener("resize", this.handleResize);
-    }
-
     componentDidMount() {
-        
-        window.addEventListener("resize", this.handleResize);
-
         if (this.isUserAllowedAccess()) {
-            this.setState({
-                hasAccess:true,
-            }, ()=> {
-                this.getData();
-            });
+            this.setState({ hasAccess: true }, () => this.getData());
         } else {
-            this.messager.alert({
-                title: "Access denied!",
-                icon: "info",
-                msg: "You are not allowed access to this section.",
-                result: (r) => {}
-            });
+            this.messager.alert({ title: "Access denied!", icon: "info", msg: "You are not allowed access to this section." });
         }
     }
 
     isUserAllowedAccess() {
-        let user = localStorage.getItem("merchantUser") != null ? 
-            JSON.parse(localStorage.getItem("merchantUser")) : {};
-
-        let isPrivilegeExists = false;
-
+        const user = localStorage.getItem("merchantUser") != null ? JSON.parse(localStorage.getItem("merchantUser")) : {};
         if (user.privileges) {
-            for (let i=0; i < user.privileges.length; i++) {
-                if (user.privileges[i].privilege == "CREATE_ADMIN") {
-                    isPrivilegeExists = true;
-                } else if (user.privileges[i].privilege == "UPDATE_ADMIN") {
-                    isPrivilegeExists = true;
-                } else if (user.privileges[i].privilege == "DETETE_ADMIN") {
-                    isPrivilegeExists = true;
-                }
+            for (let i = 0; i < user.privileges.length; i++) {
+                const p = user.privileges[i].privilege;
+                if (p === "CREATE_ADMIN" || p === "UPDATE_ADMIN" || p === "DETETE_ADMIN") return true;
             }
         }
-        
-        return isPrivilegeExists;
+        return false;
     }
 
     resetForm(after) {
         this.setState({
-            formd: {
-                email: "",
-                name: "",
-                phone: "",
-                password: "",
-                privileges:[],
-                status: 'ACTIVE',
-            }
-        }, ()=> {
-            after();
-        });
+            formd: { id: "", email: "", name: "", phone: "", password: "", privileges: [], status: 'ACTIVE' },
+            errors: {},
+        }, after);
     }
 
     getData() {
         this.props.loader("START");
-        let searchData = {
-            pageSize: this.state.pageSize,
-            searchingValue: this.state.searchingValue,
-            sort: 'asc'
-        }
-        fetch(common.base_url+"/admins/getAdminsMerchant", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(searchData) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
+        const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
+        fetch(common.base_url + "/admins/getAdminsMerchant", {
+            method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+            body: JSON.stringify(searchData)
+        }).then((response) => response.text()).then((response_) => {
             this.props.loader("STOP");
             let res;
             try {
                 res = JSON.parse(response_);
                 if (res.code === "000") {
-                    try {
-                        this.setState({
-                            data: res.data,
-                            total: res.data.length
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
+                    this.setState({ data: res.data, total: res.data.length, allChecked: false });
                 } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.sessionExpired();
-                        return;
-                    } else if (res.code === "110") {
-                        this.accessNotAllowed(res.message);
-                        return;
-                    }
-
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
+                    if (res.code === "107") { this.sessionExpired(); return; }
+                    if (res.code === "110") { this.accessNotAllowed(res.message); return; }
+                    this.messager.alert({ title: "Error " + res.code, icon: "error", msg: res.message });
                 }
-            } catch(Error) {
-                //alert(Error.message);
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
+            } catch (Error) {
+                this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
             }
         }).catch((error) => {
             this.props.loader("STOP");
-            this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
-            });
+            this.messager.alert({ title: "Error", icon: "error", msg: error.message });
         });
     }
 
     accessNotAllowed(msg) {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Access denied!",
-            icon: "info",
-            msg: msg,
-            result: (r) => {
-                this.setState({
-                    hasAccess: false
-                });
-                //history.goBack();
-            }
-        });
+        this.messager.alert({ title: "Access denied!", icon: "info", msg, result: () => this.setState({ hasAccess: false }) });
     }
 
     sessionExpired() {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Session Expired!",
-            icon: "info",
-            msg: "Your are session expired",
-            result: (r) => {
-                history.push("/");
-            }
-        });
+        const { history } = this.props;
+        this.messager.alert({ title: "Session Expired!", icon: "info", msg: "Your session expired", result: () => history.push("/") });
     }
 
     editRow(row) {
-        let formd = Object.assign({}, row);
-        formd.password = "";
-        this.setState({ 
-            formdMode: 'edit',
-            formd: formd,
-            formDialogState: false,
-            title: "Add new Admin ("+row.name+")"
-        });
+        const formd = { ...row, password: "", privileges: (row.privileges || []).map(privilegeValue) };
+        this.setState({ formdMode: 'edit', formd, dialogOpen: true, errors: {}, title: "Edit Admin (" + row.name + ")" });
     }
 
     deleteRow(row) {
         this.messager.confirm({
-            title: "Delete this User",
-            icon: "info",
-            msg: "Are you sure you want to delete this user?",
+            title: "Delete this User", icon: "info", msg: "Are you sure you want to delete this user?",
             result: (r) => {
-                //Continue to submit the form
-                if (r) {
-                    this.props.loader("START");
-                    fetch(common.base_url+"/admins/deleteAdminMerchant", {
-                        method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                        mode: 'cors', // no-cors, *cors, same-origin
-                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                        credentials: 'include', // include, *same-origin, omit
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        redirect: 'follow', // manual, *follow, error
-                        referrer: 'no-referrer', // no-referrer, *client
-                        body: JSON.stringify(row) // body data type must match "Content-Type" header
-                    }).then ((response)=>{
-                        return response.text();
-                    }).then((response_) => {
-                        this.props.loader("STOP");
-                        let res;
-                        try {
-                            res = JSON.parse(response_);
-                            if (res.code === "000") {
-                                try {
-                                    this.resetForm(()=> {
-                                        this.messager.alert({
-                                            title: "Success!",
-                                            icon: "info",
-                                            msg: res.message,
-                                            result: r => {
-                                                if (r) {
-                                                    this.getData();
-                                                }
-                                            }
-                                        });
-                                    });
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                //If session timed out
-                                if (res.code === "107") {
-                                    this.sessionExpired();
-                                    return;
-                                }
-
-                                this.messager.alert({
-                                    title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                                    icon: "error",
-                                    msg: res.message+". Error: "+res.error,
-                                    result: (r) => {
-                                        
-                                    }
-                                });
-                            }
-                        } catch(Error) {
-                            //alert(Error.message);
+                if (!r) return;
+                this.props.loader("START");
+                fetch(common.base_url + "/admins/deleteAdminMerchant", {
+                    method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+                    body: JSON.stringify(row)
+                }).then((response) => response.text()).then((response_) => {
+                    this.props.loader("STOP");
+                    let res;
+                    try {
+                        res = JSON.parse(response_);
+                        if (res.code === "000") {
+                            this.resetForm(() => this.messager.alert({
+                                title: "Success!", icon: "info", msg: res.message,
+                                result: (ok) => { if (ok) this.getData(); }
+                            }));
+                        } else {
+                            if (res.code === "107") { this.sessionExpired(); return; }
                             this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
+                                title: "Error " + (res.code ? res.code : res.status + " " + res.error),
+                                icon: "error", msg: res.message + ". Error: " + res.error,
                             });
-                            return;
                         }
-                    }).catch((error) => {
-                        this.props.loader("STOP");
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: error.message
-                        });
-                    });
-                }
+                    } catch (Error) {
+                        this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
+                    }
+                }).catch((error) => {
+                    this.props.loader("STOP");
+                    this.messager.alert({ title: "Error", icon: "error", msg: error.message });
+                });
             }
         });
     }
 
     addNew() {
-        this.setState({
-            formDialogState: false,
-            title: "Add new Admin"
-        });
+        this.resetForm(() => this.setState({ formdMode: 'new', dialogOpen: true, title: "Add new Admin" }));
     }
 
-    handleSearch(searchingValue) {
-        this.setState({
-            searchingValue: searchingValue
-        }, () => {
-            this.getData();
-        });
-        //alert(JSON.stringify(searchingValue));
-    }
-
-    handleClear() {
-
-    }
-
-    saveRow() {
-        //alert(JSON.stringify(this.state.formd));
-        this.form.validate(errors => {
-            if (errors != null) {
-                return;
-            }
-            let url;
-            if (this.state.formdMode == "edit") {
-                url = common.base_url+"/admins/editAdminMerchant";
-            } else {
-                url = common.base_url+"/admins/addAdminMerchant";
-            }
-
-            //Continue to submit the form
-            this.props.loader("START");
-            fetch(url, {
-                method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                mode: 'cors', // no-cors, *cors, same-origin
-                cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                credentials: 'include', // include, *same-origin, omit
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                redirect: 'follow', // manual, *follow, error
-                referrer: 'no-referrer', // no-referrer, *client
-                body: JSON.stringify(this.state.formd) // body data type must match "Content-Type" header
-            }).then ((response)=>{
-                return response.text();
-            }).then((response_) => {
-                this.props.loader("STOP");
-                let res;
-                try {
-                    res = JSON.parse(response_);
-                    if (res.code === "000") {
-                        try {
-                            this.resetForm(()=> {
-                                this.messager.alert({
-                                    title: "Success!",
-                                    icon: "info",
-                                    msg: res.message,
-                                    result: r => {
-                                        if (r) {
-                                            this.setState({ formDialogState: true }, ()=> {
-                                                this.getData();
-                                            });
-                                        }
-                                    }
-                                });
-                            });
-                        } catch (ex) {
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: ex.message
-                            });
-                        }
-                    } else {
-                        //If session timed out
-                        if (res.code === "107") {
-                            this.sessionExpired();
-                            return;
-                        }
-
-                        this.messager.alert({
-                            title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                            icon: "error",
-                            msg: res.message+". Error: "+res.error
-                        });
-                    }
-                } catch(Error) {
-                    //alert(Error.message);
-                    this.messager.alert({
-                        title: "Error",
-                        icon: "error",
-                        msg: Error.message
-                    });
-                    return;
-                }
-            }).catch((error) => {
-                this.props.loader("STOP");
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: error.message
-                });
-            });
-        });
+    handleSearch(value) {
+        this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, value } }), () => this.getData());
     }
 
     handleFormChange(name, value) {
-        let formd = Object.assign({}, this.state.formd);
-        formd[name] = value;
-        this.setState({ formd: formd })
+        this.setState((prev) => ({ formd: { ...prev.formd, [name]: value } }));
     }
 
-    bulkActions(value) {
-        this.setState({
-            gridActionsValue: value
-        },() => {
-            if (value == "all") {
-                this.dataGrid.selectRow(0);
-            }
+    togglePrivilege(value, checked) {
+        this.setState((prev) => {
+            const current = new Set((prev.formd.privileges || []).map(privilegeValue));
+            if (checked) current.add(value); else current.delete(value);
+            return { formd: { ...prev.formd, privileges: Array.from(current) } };
         });
     }
 
-
-    renderDialog() {
-        const row = this.state.formd;
-        const { title, formDialogState, rules } = this.state;
-        return (
-            <Dialog modal 
-                title={title} 
-                closed={formDialogState} 
-                style={styles.dim.formDialog} className={styles.formDialog}
-                borderType="none"
-                onClose={() => this.setState({ formDialogState: true })}>
-                    <Layout style={{ width: 500, height:'100%', border: '0px #FFFFFF' }}>
-                        <LayoutPanel 
-                            region="north" 
-                            split={false}
-                            style={{ height: 320, border: '0px #FFFFFF' }}>
-                            <div className={styles.formDialogContainer}>
-                                <Form
-                                    ref={ref => this.form = ref}
-                                    model={row}
-                                    rules={rules}
-                                    floatingLabel
-                                    labelWidth={120}
-                                    /*labelPosition="top"*/
-                                    onChange={this.handleFormChange.bind(this)}
-                                    onValidate={(errors) => this.setState({ errors: errors })}>
-                                    
-                                    <FormField name="name" label="Name">
-                                        <TextBox 
-                                            iconCls="icon-man"
-                                            inputId="name" 
-                                            name="name" 
-                                            value={row.name} 
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                                    </FormField>
-                                    <FormField name="phone" label="Phone">
-                                        <TextBox 
-                                            inputId="phone" 
-                                            name="phone" 
-                                            value={row.phone} 
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                                    </FormField>
-                                    <FormField name="email" label="Email">
-                                        <TextBox 
-                                            inputId="email" 
-                                            name="email" 
-                                            value={row.email} 
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                                    </FormField>
-                                    <FormField name="password" label="User Password">
-                                        <PasswordBox
-                                            inputId="password" 
-                                            name="password" 
-                                            value={row.password} 
-                                            iconCls="icon-lock"
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></PasswordBox>
-                                    </FormField>
-                                    <FormField name="status" label="Status:" >
-                                        <ComboBox
-                                            inputId="status"
-                                            name="status"
-                                            data={this.state.status}
-                                            value={this.state.formd.status}
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
-                                            onChange={(value) => this.setState({ value: value })}
-                                            />
-                                    </FormField>
-                                    <FormField name="privileges" label="Privileges">
-                                        <ComboBox
-                                            inputId="privileges"
-                                            name="privileges"
-                                            multiple
-                                            data={this.state.privileges}
-                                            value={this.state.formd.privileges}
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}
-                                            onChange={(value) => this.setState({ value: value })}
-                                            />
-                                    </FormField>
-                                </Form>
-                            </div>
-                        </LayoutPanel>
-                        <LayoutPanel region="south" style={{ height: 48 }}>
-                            <div className="dialog-button">
-                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
-                                    iconCls="icon-save" style={{ width: 80 }} 
-                                    onClick={() => this.saveRow()}>Save</LinkButton>
-                                <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
-                                    onClick={() => {
-                                        this.resetForm(() => {
-                                            this.setState({ formDialogState: true });
-                                        });
-                                    }}>Close</LinkButton>
-                            </div>
-                        </LayoutPanel>
-                    </Layout>
-            </Dialog>
-        );
+    validate() {
+        const f = this.state.formd;
+        const errors = {};
+        if (!f.name) errors.name = 'Name is required';
+        if (!statusText(f.status)) errors.status = 'Status is required';
+        if (!f.email) errors.email = 'Email is required';
+        else if (!EMAIL_RE.test(f.email)) errors.email = 'Enter a valid email address';
+        if (!f.phone) errors.phone = 'Phone is required';
+        this.setState({ errors });
+        return Object.keys(errors).length === 0;
     }
 
+    saveRow() {
+        if (!this.validate()) return;
+        const url = this.state.formdMode === "edit"
+            ? common.base_url + "/admins/editAdminMerchant"
+            : common.base_url + "/admins/addAdminMerchant";
+        this.props.loader("START");
+        fetch(url, {
+            method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+            body: JSON.stringify(this.state.formd)
+        }).then((response) => response.text()).then((response_) => {
+            this.props.loader("STOP");
+            let res;
+            try {
+                res = JSON.parse(response_);
+                if (res.code === "000") {
+                    this.resetForm(() => this.messager.alert({
+                        title: "Success!", icon: "info", msg: res.message,
+                        result: (ok) => { if (ok) this.setState({ dialogOpen: false }, () => this.getData()); }
+                    }));
+                } else {
+                    if (res.code === "107") { this.sessionExpired(); return; }
+                    this.messager.alert({
+                        title: "Error " + (res.code ? res.code : res.status + " " + res.error),
+                        icon: "error", msg: res.message + ". Error: " + res.error,
+                    });
+                }
+            } catch (Error) {
+                this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
+            }
+        }).catch((error) => {
+            this.props.loader("STOP");
+            this.messager.alert({ title: "Error", icon: "error", msg: error.message });
+        });
+    }
 
-    getError(name) {
-        const { errors } = this.state;
-        if (!errors){
-          return null;
-        }
-        return errors[name] && errors[name].length
-            ? errors[name][0]
-            : null;
+    closeDialog() {
+        this.resetForm(() => this.setState({ dialogOpen: false }));
     }
 
     handleRowCheck(row, checked) {
-        let data = this.state.data.slice();
-        let index = this.state.data.indexOf(row);
-        data.splice(index, 1, Object.assign({}, row, { selected: checked }));
-        let checkedRows = data.filter(row => row.selected);
-        this.setState({
-            allChecked: data.length === checkedRows.length,
-            rowClicked: true,
-            data: data
-        }, () => {
-            this.setState({ rowClicked: false })
-        });
+        const data = this.state.data.map((r) => (r === row ? { ...r, selected: checked } : r));
+        this.setState({ data, allChecked: data.every((r) => r.selected) });
     }
 
     handleAllCheck(checked) {
-        if (this.state.rowClicked) {
-            return;
-        }
-        let data = this.state.data.map(row => {
-            return Object.assign({}, row, { selected: checked })
-        });
-        this.setState({
-            allChecked: checked,
-            data: data
-        })
+        this.setState({ allChecked: checked, data: this.state.data.map((r) => ({ ...r, selected: checked })) });
     }
 
+    renderDialog() {
+        const { formd, errors, privileges, dialogOpen, title } = this.state;
+        const selected = new Set((formd.privileges || []).map(privilegeValue));
+        return (
+            <Sheet
+                open={dialogOpen}
+                onClose={() => this.closeDialog()}
+                title={title || 'Admin'}
+                size="md"
+                footer={<>
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.closeDialog()}>Close</Button>
+                    <Button variant="primary" className="ios-btn--sm" onClick={() => this.saveRow()}>Save</Button>
+                </>}
+            >
+                <div className="ios-form">
+                    <TextField id="madmin-name" label="Name" value={formd.name || ''} invalid={Boolean(errors.name)} onValueChange={(v) => this.handleFormChange('name', v)} />
+                    {errors.name ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{errors.name}</span> : null}
+                    <TextField id="madmin-phone" label="Phone" value={formd.phone || ''} invalid={Boolean(errors.phone)} onValueChange={(v) => this.handleFormChange('phone', v)} />
+                    {errors.phone ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{errors.phone}</span> : null}
+                    <TextField id="madmin-email" label="Email" type="email" value={formd.email || ''} invalid={Boolean(errors.email)} onValueChange={(v) => this.handleFormChange('email', v)} />
+                    {errors.email ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{errors.email}</span> : null}
+                    <PasswordField id="madmin-password" label="User Password" value={formd.password || ''} onValueChange={(v) => this.handleFormChange('password', v)} />
+                    <Select id="madmin-status" label="Status" value={statusText(formd.status) || 'ACTIVE'} options={STATUS_OPTIONS} onValueChange={(v) => this.handleFormChange('status', v)} />
+                    <div className="ios-field">
+                        <span className="ios-field__label">Privileges</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                            {privileges.map((p) => (
+                                <Checkbox
+                                    key={p.value}
+                                    checked={selected.has(p.value)}
+                                    onCheckedChange={(c) => this.togglePrivilege(p.value, c)}
+                                    label={p.text}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </Sheet>
+        );
+    }
 
-    render () {
-        const {searchingValue, categories, windowHeight} = this.state;
+    render() {
+        const { searchingValue, data, allChecked } = this.state;
         if (!this.state.hasAccess) {
-            return (<div>
-                <Messager ref={ref => this.messager = ref}></Messager>
-            </div>);
+            return <div><Messager ref={ref => this.messager = ref}></Messager></div>;
         }
 
-        return (
-            <div>
-                <div>
-                    <Panel bodyStyle={{ padding: '5px'}}>
-                        <div style={{float:'left'}}>
-                            <span className="tw:text-base tw:mx-[5px] tw:my-[2px] tw:font-bold">Admins | </span>
-                            <ComboBox
-                                inputId="c1"
-                                data={this.state.gridActions}
-                                value={this.state.gridActionsValue}
-                                onChange={(value) => this.bulkActions(value)}/>
-                            <LinkButton 
-                                onClick={() => this.addNew()}
-                                className={styles.moduleToolBarButtons}
-                                iconCls="icon-add">{strings.add_admin}</LinkButton>
-                        </div>
-                        <SearchBox
-                            style={{ width: 300, float:'right' }}
-                            placeholder={strings.search_admin}
-                            value={searchingValue.value}
-                            onSearch={this.handleSearch.bind(this)}
-                            category={searchingValue.category}
-                            categories={categories}
-                            addonRight={() => (
-                                <span 
-                                    className="textbox-icon icon-clear" 
-                                    title={strings.clear_value} 
-                                    onClick={this.handleClear.bind(this)}></span>
-                            )}
-                            />
-                    </Panel>
-                </div>
-                <DataGrid
-                    ref={ref => this.dataGrid = ref}
-                    style={{ height: (windowHeight - common.toReduceGridHeight) }}
-                    selectionMode={"multiple"}
-                    pagination
-                    {...this.state}>
-                    <GridColumn width={50} align="center"
-                        field="ck"
-                        render={({ row }) => (
-                            <CheckBox checked={row.selected} onChange={(checked) => this.handleRowCheck(row, checked)}></CheckBox>
-                        )}
-                        header={() => (
-                            <CheckBox checked={this.state.allChecked} onChange={(checked) => this.handleAllCheck(checked)}></CheckBox>
-                        )}
-                        />
-                    <GridColumn field="name" title="Name"></GridColumn>
-                    <GridColumn field="email" title="Email" align="left"></GridColumn>
-                    <GridColumn field="phone" title="phone" align="left"></GridColumn>
-                    <GridColumn field="status" title="status" align="left"></GridColumn>
-                    <GridColumn field="note" title="Actions" align="center"
-                        render={({ row }) => (
-                            <div>
-                                <ButtonGroup>
-                                    <LinkButton iconCls="icon-edit" onClick={() => this.editRow(row)}>Edit</LinkButton>
-                                    <LinkButton iconCls="icon-remove" onClick={() => this.deleteRow(row)}>Delete</LinkButton>
-                                </ButtonGroup>
-                            </div>
-                        )}>
+        const columns = [
+            {
+                key: 'ck', width: 44,
+                header: <Checkbox checked={allChecked} onCheckedChange={(c) => this.handleAllCheck(c)} />,
+                render: (row) => <Checkbox checked={Boolean(row.selected)} onCheckedChange={(c) => this.handleRowCheck(row, c)} />,
+            },
+            { key: 'name', header: 'Name', accessor: (r) => r.name, sortable: true, sortValue: (r) => r.name || '' },
+            { key: 'email', header: 'Email', accessor: (r) => r.email, sortable: true, sortValue: (r) => r.email || '' },
+            { key: 'phone', header: 'Phone', accessor: (r) => r.phone },
+            { key: 'status', header: 'Status', render: (r) => <Badge tone={statusTone(r.status)}>{statusText(r.status)}</Badge>, sortable: true, sortValue: (r) => statusText(r.status) || '' },
+            {
+                key: 'actions', header: 'Actions', align: 'center',
+                render: (row) => (
+                    <span className="ios-cell-actions">
+                        <Button variant="ghost" className="ios-btn--sm" onClick={() => this.editRow(row)}>Edit</Button>
+                        <Button variant="danger" className="ios-btn--sm" onClick={() => this.deleteRow(row)}>Delete</Button>
+                    </span>
+                ),
+            },
+        ];
 
-                    </GridColumn>
-                </DataGrid>
+        return (
+            <Card flush>
+                <div style={{ padding: 'var(--ios-space-4)' }}>
+                    <Toolbar>
+                        <Button variant="primary" className="ios-btn--sm" onClick={() => this.addNew()}>
+                            <Icons.PlusIcon size={16} />{strings.add_admin}
+                        </Button>
+                        <Toolbar.Spacer />
+                        <div style={{ minWidth: 160 }}>
+                            <Select id="madmin-category" value={searchingValue.category} options={CATEGORIES} onValueChange={(v) => this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, category: v } }))} />
+                        </div>
+                        <SearchField
+                            value={searchingValue.value}
+                            onValueChange={(v) => this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, value: v } }))}
+                            onSubmit={(v) => this.handleSearch(v)}
+                            placeholder={strings.search_admin}
+                        />
+                    </Toolbar>
+                </div>
+                <Table
+                    columns={columns}
+                    rows={data}
+                    rowKey={(row, i) => row.id ?? `${row.email}-${i}`}
+                    pageSize={this.state.pageSize}
+                    isRowSelected={(row) => Boolean(row.selected)}
+                    emptyText="No administrators to display."
+                />
                 <Messager ref={ref => this.messager = ref}></Messager>
                 {this.renderDialog()}
-            </div>
+            </Card>
         );
     }
 }

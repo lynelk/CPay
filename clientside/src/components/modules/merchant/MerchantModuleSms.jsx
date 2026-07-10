@@ -1,1607 +1,671 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox, FileButton } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Menu, MenuItem, SwitchButton, DateTimeSpinner } from 'rc-easyui';
 import Messager from '../../StableMessager';
-import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip, DateBox } from 'rc-easyui';
-import PropTypes from "prop-types";
-import { useHistory, withRouter } from "react-router-dom";
-import MainMenu from "../../MainMenu";
-import common from "../../Common";
-import Progress from "../../Progress";
-import LinearChart from './LinearChart';
-import styles from '../../styles';
+import { withRouter } from '../../../shared/router/compat';
+import common from '../../Common';
 import strings from '../../locale';
-import MerchantModuleMerchantsAccount from './MerchantModuleMerchantsAccount';
-import DatetimePicker from '../../DatetimePicker';
 import { replaceSmsColumnToken } from './smsTemplate';
-
-import ReactExport from "../../../shared/export/ExcelExport";
+import ReactExport from '../../../shared/export/ExcelExport';
+import {
+  Badge, Button, Card, Checkbox, DateField, FileButton, Icons, SearchField,
+  Select, Sheet, Table, TextArea, TextField, Toolbar,
+} from '../../../ui';
 
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
 const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
 
-class MerchantModuleSmsC extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            total: 0,
-            pageSize: 50,
-            allChecked: false,
-            rowClicked: false,
-            data:[],
-            pageOptions: {
-                layout: ['list', 'sep', 'first', 'prev', 'next', 'last', 'sep', 'refresh', 'sep', 'manual', 'info']
-            },
-            gridActions: [{ value: "bulk_actions", text: "Bulk Actions" },
-            { value: "cancel", text: "Cancel Selection" }],
-            gridActionsValue: "bulk_actions",
-            formdMode: 'new',//Can be set to edit
-            formd: {
-                recipients: [],
-                id:"",
-                send_time: common.getDefaultDateTime(),
-                content: "",
-                status: "PENDING",
-                ismultiple: false,
-            },
-            privileges: common.privileges,
-            status: [{ value: 'ACTIVE', text: "ACTIVE" },
-                { value: 'INACTIVE', text: "INACTIVE" },
-                { value: 'SUSPENDED', text: "SUSPENDED" }],
-            account_types: [
-                { value: 'phone', text: "PHONE NUMBER" },
-                { value: 'cpay', text: "Cpay" },
-                { value: 'bank', text: "Bank" },
-            ],
-            rules: {
-                'content': 'required',
-            },
-            errors: {},
-            title: '',
-            formDialogStateOpened: true,
-            statementDialogStateOpened: true,
-            searchingValue: {
-                value: "",
-                category: ""
-            },
-            categories: [
-                {value:'all',text:'All Fields',iconCls:'icon-ok'},
-                {value:'recipients',text:'Recipient', iconCls:'icon-iphone'},
-                {value:'status',text:'Status', iconCls:'icon-settings'},
-                {value:'content',text:'Content', iconCls:'icon-details'}
-            ],
-            hasAccess: false,
-            openMerchantAccount: {},
-            tx_details_row:{}, 
-            detailedRecordTxDialogStateClosed: true,
-            record_tx_data: {
-                tx_type: "",
-                amount: "",
-                description: "",
-                balance_type: "",
-            },
-            record_tx_rules: {
-                'amount': {'required':true, "numericValidation":common.numericValidation},
-                'tx_type': 'required',
-                'description': ['required']
-            },
-            search_rules: {
-                start_date: common.formatDate(common.getDateMonthsBefore(new Date(), 6)),
-                end_date: common.formatDate(new Date()),
-                start_date_val : common.getDateMonthsBefore(new Date(), 6),
-                end_date_val :new Date(),
-                status: "",
-                tx_type: ""
-            },
-            formSearchDialogStateClosed: true,
-            formRecordTxDialogStateClosed: true,
-            tx_types: common.tx_types,
-            balance_type: common.balance_type,
-            available_balances: "",
-            tx_details_row:{}, 
-            detailedRecordTxDialogStateClosed: true,
-            current_balances: [],
-            sms_balance: "",
-            windowHeight: window.innerHeight
-        };
-    }
-
-    handleResize(e) {
-        this.setState({ windowHeight: window.innerHeight });
-
-    }
-
-    componentWillMount() {
-        window.addEventListener("resize", this.handleResize);
-    }
-
-    componentDidMount() {
-        window.addEventListener("resize", this.handleResize);
-
-        if (this.isUserAllowedAccess()) {
-            this.setState({
-                hasAccess:true,
-            }, ()=> {
-                this.getData();
-            });
-        } else {
-            this.messager.alert({
-                title: "Access denied!",
-                icon: "info",
-                msg: "You are not allowed access to this section.",
-                result: (r) => {}
-            });
-        }
-    }
-
-    isUserAllowedAccess() {
-        let user = localStorage.getItem("merchantUser") != null ? 
-            JSON.parse(localStorage.getItem("merchantUser")) : {};
-
-        let isPrivilegeExists = false;
-
-        if (user.privileges) {
-            for (let i=0; i < user.privileges.length; i++) {
-                if (user.privileges[i].privilege == "CREATE_BATCH_TX") {
-                    isPrivilegeExists = true;
-                } else if (user.privileges[i].privilege == "APPROVE_BATCH_TX") {
-                    isPrivilegeExists = true;
-                } else if (user.privileges[i].privilege == "DOWNLOAD_REPORTS") {
-                    isPrivilegeExists = true;
-                }
-            }
-        }
-        
-        return isPrivilegeExists;
-    }
-
-    resetForm(after) {
-        this.setState({
-            formd: {
-                name: "",
-                account_type: "personal",
-                admins:[],
-                status: 'ACTIVE',
-            }
-        }, ()=> {
-            after();
-        });
-    }
-
-    generateBalanceTypesList(balances)
-    {
-        let bals = [];
-        let sms_balance = "";
-        for (var i =0; i < balances.length; i++) {
-            bals.push({ 
-                value: balances[i].balance_type, 
-                text: balances[i].code+" ("+common.formatNumber(balances[i].amount)+")", 
-            });
-            if (balances[i].balance_type == "sms_balance") {
-                sms_balance = balances[i].code +" "+common.formatNumber(balances[i].amount);
-            }
-        }
-        this.setState({
-            balance_type : bals,
-            sms_balance: sms_balance
-        });
-    }
-
-    getData() {
-        this.props.loader("START");
-        let searchData = {
-            search_rules: this.state.search_rules,
-            pageSize: this.state.pageSize,
-            searchingValue: this.state.searchingValue,
-            sort: 'asc'
-        }
-        fetch(common.base_url+"/transactions/getMerchantSms", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(searchData) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
-            this.props.loader("STOP");
-            let res;
-            try {
-                res = JSON.parse(response_);
-                if (res.code === "000") {
-                    try {
-                        this.setState({
-                            data: res.data,
-                            total: res.data.length,
-                            current_balances: res.balances
-                        }, () => {
-                            this.generateBalanceTypesList(res.balances);
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
-                } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.sessionExpired();
-                        return;
-                    } else if (res.code === "110") {
-                        this.accessNotAllowed(res.message);
-                        return;
-                    }
-
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
-                }
-            } catch(Error) {
-                //alert(Error.message);
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
-            }
-        }).catch((error) => {
-            this.props.loader("STOP");
-            if (this.messager != null) {
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: error.message
-                });
-            }
-        });
-    }
-
-    accessNotAllowed(msg) {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Access denied!",
-            icon: "info",
-            msg: msg,
-            result: (r) => {
-                this.setState({
-                    hasAccess: false
-                });
-                //history.goBack();
-            }
-        });
-    }
-
-    sessionExpired() {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Session Expired!",
-            icon: "info",
-            msg: "Your are session expired",
-            result: (r) => {
-                history.push("/portal");
-            }
-        });
-    }
-
-    attemptToStart(row) {
-        this.messager.confirm({
-            title: "Start this Payment",
-            icon: "info",
-            msg: "Are you sure you want to start this payment?",
-            result: (r) => {
-                //Continue to submit the form
-                if (r) {
-                    this.props.loader("START");
-                    fetch(common.base_url+"/transactions/startPayment", {
-                        method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                        mode: 'cors', // no-cors, *cors, same-origin
-                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                        credentials: 'include', // include, *same-origin, omit
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        redirect: 'follow', // manual, *follow, error
-                        referrer: 'no-referrer', // no-referrer, *client
-                        body: JSON.stringify(row) // body data type must match "Content-Type" header
-                    }).then ((response)=>{
-                        return response.text();
-                    }).then((response_) => {
-                        this.props.loader("STOP");
-                        let res;
-                        try {
-                            res = JSON.parse(response_);
-                            if (res.code === "000") {
-                                try {
-
-                                    this.messager.alert({
-                                        title: "Success!",
-                                        icon: "info",
-                                        msg: res.message,
-                                        result: r => {
-                                            if (r) {
-                                                this.getData();
-                                            }
-                                        }
-                                    });
-                                    
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                //If session timed out
-                                if (res.code === "107") {
-                                    this.sessionExpired();
-                                    return;
-                                }
-
-                                this.messager.alert({
-                                    title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                                    icon: "error",
-                                    msg: res.message+". Error: "+res.error,
-                                    result: (r) => {
-                                        
-                                    }
-                                });
-                            }
-                        } catch(Error) {
-                            //alert(Error.message);
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
-                            });
-                            return;
-                        }
-                    }).catch((error) => {
-                        this.props.loader("STOP");
-                        if (this.messager != null) {
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: error.message
-                            });
-                        }
-                    });
-                }
-            }
-        });
-    }
-
-    attemptToCancel(data) {
-        
-        this.messager.confirm({
-            title: "Cancel SMS",
-            icon: "info",
-            msg: "Are you sure you want to cancel selected SMS(s)?",
-            result: (r) => {
-                //Continue to submit the form
-                if (r) {
-                    this.props.loader("START");
-                    fetch(common.base_url+"/transactions/cancelSms", {
-                        method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                        mode: 'cors', // no-cors, *cors, same-origin
-                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                        credentials: 'include', // include, *same-origin, omit
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        redirect: 'follow', // manual, *follow, error
-                        referrer: 'no-referrer', // no-referrer, *client
-                        body: JSON.stringify(data) // body data type must match "Content-Type" header
-                    }).then ((response)=>{
-                        return response.text();
-                    }).then((response_) => {
-                        this.props.loader("STOP");
-                        let res;
-                        try {
-                            res = JSON.parse(response_);
-                            if (res.code === "000") {
-                                try {
-                                    
-                                    this.messager.alert({
-                                        title: "Success!",
-                                        icon: "info",
-                                        msg: res.message,
-                                        result: r => {
-                                            if (r) {
-                                                this.getData();
-                                            }
-                                        }
-                                    });
-                                    
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                //If session timed out
-                                if (res.code === "107") {
-                                    this.sessionExpired();
-                                    return;
-                                }
-
-                                this.messager.alert({
-                                    title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                                    icon: "error",
-                                    msg: res.message+". Error: "+res.error,
-                                    result: (r) => {
-                                        
-                                    }
-                                });
-                            }
-                        } catch(Error) {
-                            //alert(Error.message);
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
-                            });
-                            return;
-                        }
-                    }).catch((error) => {
-                        this.props.loader("STOP");
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: error.message
-                        });
-                    });
-                }
-            }
-        });
-    }
-
-    addNew() {
-        //this.openOrCloseFormDialog(false);
-        this.setState({
-            title: strings.new_sms,
-            formdMode: 'new',
-            formDialogStateOpened: false,
-            formd: {
-                recipients: [],
-                id:"",
-                content: "",
-                send_time: common.getDefaultDateTime()
-            }
-        });
-    }
-
-    editRow(row) {
-        row.generate_password = false;
-        row.generate_new_keys = false;
-        let formd = Object.assign({}, row);
-        this.setState({ 
-            formdMode: 'edit',
-            formd: formd,
-            formDialogStateOpened: false,
-            title: "Edit Payment ("+row.name+")"
-        });
-    }
-
-    openAccount(row) {
-        this.setState({
-            openMerchantAccount: row,
-            statementDialogStateOpened: false,
-            title: "Merchant ("+row.name+") - "+row.account_number
-        });
-    }
-
-    handleSearch(searchingValue) {
-        this.setState({
-            searchingValue: searchingValue
-        }, () => {
-            this.getData();
-        });
-    }
-
-    handleClear() {
-
-    }
-
-    saveRow(data) {
-        
-        let url;
-        if (this.state.formdMode == "edit") {
-            url = common.base_url+"/transactions/saveSms";
-        } else {
-            url = common.base_url+"/transactions/saveSms";
-        }
-
-        //Continue to submit the form
-        this.props.loader("START");
-        fetch(url, {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(data) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
-            this.props.loader("STOP");
-            let res;
-            try {
-                res = JSON.parse(response_);
-                if (res.code === "000") {
-                    try {
-                        this.resetForm(()=> {
-                            this.messager.alert({
-                                title: "Success!",
-                                icon: "info",
-                                msg: res.message,
-                                result: r => {
-                                    if (r) {
-                                        this.setState({ formDialogState: true }, ()=> {
-                                            this.openOrCloseFormDialog(true);
-                                            this.getData();
-                                        });
-                                    }
-                                }
-                            });
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
-                } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.sessionExpired();
-                        return;
-                    }
-                    this.messager.alert({
-                        title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                        icon: "error",
-                        msg: res.message,
-                        result: r => {
-                            if (r) {
-                                this.openOrCloseFormDialog(false);
-                            }
-                        }
-                    });
-                }
-            } catch(Error) {
-                //alert(Error.message);
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
-            }
-        }).catch((error) => {
-            this.props.loader("STOP");
-            this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
-            });
-        });
-    }
-
-    bulkActions(value) {
-        this.setState({
-            gridActionsValue: value
-        },() => {
-            if (value == "cancel") {
-                let data = this.dataGridMain.innerData;
-                let selected = [];
-                for (let i=0; i < data.length; i++) {
-                    if (data[i].selected) {
-                        selected.push(data[i]);
-                    }
-                }
-                
-                //Now submit Cancel Request
-                this.attemptToCancel(selected);
-
-                this.setState({
-                    gridActionsValue: "bulk_actions"
-                });
-            }
-        });
-    }
-
-
-    getError(name) {
-        const { errors } = this.state;
-        if (!errors){
-          return null;
-        }
-        return errors[name] && errors[name].length
-            ? errors[name][0]
-            : null;
-    }
-
-    handleRowCheck(row, checked) {
-        let data = this.state.data.slice();
-        let index = this.state.data.indexOf(row);
-        data.splice(index, 1, Object.assign({}, row, { selected: checked }));
-        let checkedRows = data.filter(row => row.selected);
-        this.setState({
-            allChecked: data.length === checkedRows.length,
-            rowClicked: true,
-            data: data
-        }, () => {
-            this.setState({ rowClicked: false })
-        });
-    }
-
-    handleAllCheck(checked) {
-        if (this.state.rowClicked) {
-            return;
-        }
-
-        let data = this.state.data.map(row => {
-            return Object.assign({}, row, { selected: checked })
-        });
-
-        this.setState({
-            allChecked: checked,
-            data: data
-        });
-    }
-
-    /*
-    * Set state to true to close otherwise false to oepn
-    */
-    openOrCloseFormDialog(state) {
-        this.setState({
-            formDialogStateOpened: state
-        });
-    }
-
-    openOrCloseStatementDialog(state) {
-        this.setState({
-            statementDialogStateOpened: state
-        });
-    }
-
-
-    paymentDetailsDialog() {
-        const { tx_details_row, detailedRecordTxDialogStateClosed } = this.state;
-        return (
-            <Dialog
-                title={"SMS Details: "}
-                closed={detailedRecordTxDialogStateClosed} 
-                style={{ width: 850, height: 510 }}
-                bodyCls="f-column"
-                modal
-                onClose={() => {
-                    //this.resetRecordTxForm(()=>{});
-                }}
-                ref={ref => this.dlgRowDetailsRecordTx = ref}>
-                <div className="f-full" style={{margin: "5px"}}>
-                    <table
-                        cellPadding={10} 
-                        style={{width: 800}}>
-                        
-                        <tr>
-                            <td><span className={styles.titleText}>SMS Content</span></td>
-                            <td style={{width: 500}}>
-                                <div    
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            tx_details_row.content ?
-                                            common.encodeHTML(tx_details_row.content).replace(/\n/g, "<BR/>") : ""
-                                        )
-                                    }}
-                                    className={styles.commonBlockText}>
-                                
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Total Recipients</span></td>
-                            <td>{tx_details_row.total_recipients}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Status</span></td>
-                            <td>{tx_details_row.status}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Rate</span></td>
-                            <td>{"UGX "+tx_details_row.charge}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Total</span></td>
-                            <td>{"UGX "+tx_details_row.total_amount}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Created By:</span></td>
-                            <td>{tx_details_row.created_on}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Sent On:</span></td>
-                            <td>{tx_details_row.send_time}</td>
-                        </tr>
-                        
-                    </table>
-                    <h3>Recipients</h3>
-                    <DataGrid
-                        ref={ref => this.datagridPaymentDetailsBeneficiaries = ref}
-                        style={{ height: 'auto', width:750 }}
-                        data={tx_details_row.recipients}>
-                        <GridColumn field="rn" align="center" width="30px"
-                                cellCss="datagrid-td-rownumber"
-                                render={({rowIndex}) => (
-                                <span>{rowIndex+1}</span>
-                                )}
-                            />
-                        
-                        <GridColumn field="msisdn" 
-                            title="Phone number"></GridColumn>
-
-                        <GridColumn field="content" 
-                            title="Content"></GridColumn>
-
-                    </DataGrid>
-                </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgRowDetailsRecordTx.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
-        );
-    }
-
-    returnPaymentAction(row) {
-
-        if (row.status == "DONE" || row.status == "STOPPED") {
-            return ("");
-        }
-
-        return (<ButtonGroup style={{marginLeft: 5}}>
-            <LinkButton onClick={() => {
-            this.attemptToStart(row);
-            }}>{
-                (row.status == "PENDING" ? "Start" 
-                : 
-                (row.status == "PROCESSING" ? "Pause" : "Start")
-                )
-            }</LinkButton> 
-
-            <LinkButton onClick={() => {
-                this.attemptToStop(row);
-            }}>{"Stop"}</LinkButton>
-        </ButtonGroup>);
-    }
-
-    recordTransactionRequest() {
-        this.props.loader("START");
-        let data = this.state.record_tx_data;
-
-        fetch(common.base_url+"/transactions/buySms", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(data) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
-            this.props.loader("STOP");
-            let res;
-            try {
-                res = JSON.parse(response_);
-                if (res.code === "000") {
-                    try {
-                        this.resetRecordTxForm(()=> {
-                            this.dlgRecordTx.close();
-                            this.messager.alert({
-                                title: "Success!",
-                                icon: "info",
-                                msg: res.message,
-                                result: r => {
-                                    if (r) {
-                                        this.getData();
-                                    }
-                                }
-                            });
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
-                } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.sessionExpired();
-                        return;
-                    } else if (res.code === "110") {
-                        this.accessNotAllowed(res.message);
-                        return;
-                    }
-
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
-                }
-            } catch(Error) {
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
-            }
-        }).catch((error) => {
-            this.props.loader("STOP");
-            this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
-            });
-        });
-    }
-
-    resetRecordTxForm(whenDone) {
-        this.setState({
-            record_tx_data: {
-                tx_type: "",
-                amount: "",
-                description: "",
-                balance_type: "",
-            },
-        }, () => {
-            whenDone();
-        });
-    }
-
-    recordTxSubmit() {
-        this.recordTxForm.validate(errors => {
-            if (errors != null) {
-                return;
-            }
-            
-            this.recordTransactionRequest();
-        });
-    }
-
-    handleRecordFormChange(name, value) {
-        let formd = Object.assign({}, this.state.record_tx_data);
-        formd[name] = value;
-        this.setState({ record_tx_data: formd });
-    }
-
-    recordSmsTxDialog() {
-        const { record_tx_data, record_tx_rules, formRecordTxDialogStateClosed, errors } = this.state;
-        return (
-            <Dialog
-                title={strings.buy_sms}
-                closed={formRecordTxDialogStateClosed} 
-                style={{ width: 500, height: 250 }}
-                bodyCls="f-column"
-                modal
-                onClose={() => {
-                    //this.resetRecordTxForm(()=>{});
-                }}
-                ref={ref => this.dlgRecordTx = ref}>
-                <div className="f-full" style={{margin: "5px"}}>
-                    <Form
-                        ref={ref => this.recordTxForm = ref}
-                        model={record_tx_data}
-                        rules={record_tx_rules}
-                        floatingLabel
-                        labelWidth={120}
-                        /*labelPosition="top"*/
-                        onChange={this.handleRecordFormChange.bind(this)}
-                        onValidate={(errors) => this.setState({ errors: errors })}>
-
-                        <FormField name="balance_type" label="Balance Type" >
-                            <ComboBox
-                                inputId="balance_type"
-                                name="balance_type"
-                                data={this.state.balance_type}
-                                value={this.state.record_tx_data.balance_type}
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}
-                                onChange={(value) => this.setState({ value: value })}
-                                />
-                        </FormField>
-                        <FormField name="amount" label="Amount">
-                            <TextBox 
-                                inputId="amount" 
-                                name="amount" 
-                                value={record_tx_data.amount} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                        </FormField>
-                    </Form>
-                </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 100 }} onClick={() => {
-                        this.recordTxSubmit();
-                    }}>{strings.buy_now}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgRecordTx.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
-        );
-    }
-
-
-    clearSearch_() {
-        let search_rules = Object.assign({}, this.state.search_rules);
-        search_rules.start_date = common.formatDate(common.getDateMonthsBefore(new Date(), 6));
-        search_rules.end_date = common.formatDate(new Date());
-        search_rules.start_date_val = common.getDateMonthsBefore(new Date(), 6);
-        search_rules.end_date_val = new Date();
-        search_rules.status = "";
-        search_rules.tx_type = "";
-        this.setState({ search_rules: search_rules });
-    }
-
-    handleSearchFormChange(name, value) {
-        let formd = Object.assign({}, this.state.search_rules);
-        if (name=="start_date" || name=="end_date") {
-            formd[name] = common.formatDate(value);
-            if (name=="start_date") {
-                formd["start_date_val"] = value;
-            } else if (name=="end_date") {
-                formd["end_date_val"] = value;
-            }
-        } else {
-            formd[name] = value;
-        }
-        this.setState({ search_rules: formd });
-    }
-
-    searchDialog() {
-        const { search_rules, rules, formSearchDialogStateClosed } = this.state;
-        return (
-            <Dialog
-                title="Search"
-                closed={formSearchDialogStateClosed} 
-                style={{ width: 450, height: 320 }}
-                bodyCls="f-column"
-                modal
-                ref={ref => this.dlgSearch = ref}>
-                
-                <div className="f-full" style={{margin: "5px"}}>
-                    <Form
-                        ref={ref => this.form = ref}
-                        model={search_rules}
-                        floatingLabel
-                        labelWidth={120}
-                        /*labelPosition="top"*/
-                        onChange={this.handleSearchFormChange.bind(this)}
-                        onValidate={(errors) => this.setState({ errors: errors })}>
-                    
-                        <FormField name="start_date" label="Start Date">
-                            <DateBox 
-                                format="yyyy-MM-dd"
-                                inputId="start_date" 
-                                name="start_date" 
-                                value={search_rules.start_date_val} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
-                        </FormField>
-                        <FormField name="end_date" label="End Date">
-                            <DateBox 
-                                format="yyyy-MM-dd"
-                                inputId="end_date" 
-                                name="end_date" 
-                                value={search_rules.end_date_val} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
-                        </FormField>
-
-                        <FormField name="status" label="Status">
-                            <TextBox 
-                                inputId="status" 
-                                name="status" 
-                                value={search_rules.status} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                        </FormField>
-                    </Form>
-                </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.getData();
-                    }}>{strings.go}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.clearSearch_();
-                    }}>{strings.clear}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgSearch.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
-        );
-    }
-
-
-    render () {
-        const {searchingValue, categories, windowHeight} = this.state;
-        
-        if (!this.state.hasAccess) {
-            return (<div>
-                <Messager ref={ref => this.messager = ref}></Messager>
-            </div>);
-        }
-
-        return (
-            <div>
-                <div>
-                    <Panel bodyStyle={{ padding: '5px'}}>
-                        <div style={{float:'left'}}>
-                            <span className="tw:text-base tw:mx-[5px] tw:my-[2px] tw:font-bold">Merchant SMS | </span>
-                            <ComboBox
-                                inputId="c1"
-                                data={this.state.gridActions}
-                                value={this.state.gridActionsValue}
-                                onChange={(value) => this.bulkActions(value)}/>
-
-                            <LinkButton 
-                                onClick={() => this.addNew()}
-                                className={styles.moduleToolBarButtons}
-                                iconCls="icon-add">{strings.send_sms}</LinkButton>
-
-                            <LinkButton 
-                                className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
-                                className={styles.moduleToolBarButtons}
-                                iconCls="icon-money" 
-                                onClick={() => {
-
-                                    this.dlgRecordTx.open();
-                                }}>{strings.buy_sms}</LinkButton>
-                            <span> | </span>
-                            <strong>
-                                {this.state.sms_balance}
-                            </strong>
-                        </div>
-                        <div  style={{float:'right'}}>
-                            <SearchBox
-                                style={{ width: 250, float:'right' }}
-                                placeholder={strings.search_merchant}
-                                value={searchingValue.value}
-                                onSearch={this.handleSearch.bind(this)}
-                                category={searchingValue.category}
-                                categories={categories}
-                                addonRight={() => (
-                                    <span 
-                                        className="textbox-icon icon-clear" 
-                                        title={strings.clear_value}
-                                        onClick={this.handleClear.bind(this)}></span>
-                                )}
-                                />
-                            <ButtonGroup>
-                                <LinkButton 
-                                    iconCls="icon-search" 
-                                    onClick={() => {
-                                        this.dlgSearch.open();
-                                    }}>{strings.search}</LinkButton>
-                                <Download data={this.state.data} />
-                            </ButtonGroup>
-                        </div>
-                        
-                    </Panel>
-                </div>
-                <DataGrid
-                    ref={ref => this.dataGridMain = ref}
-                    style={{ height: (windowHeight - common.toReduceGridHeight) }}
-                    selectionMode={"multiple"}
-                    class="f-full"
-                    pagination
-                    {...this.state}>
-                    <GridColumn width={50} align="center"
-                        field="ck"
-                        render={({ row }) => (
-                            <CheckBox checked={row.selected} onChange={(checked) => this.handleRowCheck(row, checked)}></CheckBox>
-                        )}
-                        header={() => (
-                            <CheckBox 
-                                checked={this.state.allChecked} 
-                                onChange={(checked) => this.handleAllCheck(checked)}></CheckBox>
-                        )}
-                        />
-                    <GridColumn width={150} field="created_on" title="Created On"></GridColumn>
-                    <GridColumn field="content" title="Content" ></GridColumn>
-                    <GridColumn width={100} field="status" title="status" align="left"></GridColumn>
-                    <GridColumn width={130} align="right" field="total_amount" title="Charge"></GridColumn>
-                    <GridColumn width={100} align="right" field="total_recipients" title="No."></GridColumn>
-                    <GridColumn width={130} field="note" title="Actions" align="center"
-                        render={({ row }) => (
-                            <div>
-                                <ButtonGroup>
-                                    <LinkButton onClick={() => {
-                                                this.setState({
-                                                    tx_details_row: row,
-                                                });
-                                                this.dlgRowDetailsRecordTx.open();
-                                            }}>{strings.details}</LinkButton>
-                                    {/*<LinkButton 
-                                        iconCls="icon-edit" 
-                                    onClick={() => this.editRow(row)}>Edit</LinkButton>*/}
-                                </ButtonGroup>
-
-                                {/*this.returnPaymentAction(row)*/}
-                            </div>
-                        )}>
-
-                    </GridColumn>
-                </DataGrid>
-                
-                <Messager ref={ref => this.messager = ref}></Messager>
-
-                <PaymentFormDialog 
-                    loader={this.props.loader}
-                    messager={this.messager}
-                    openOrCloseFormDialog={(state)=> this.openOrCloseFormDialog(state)}
-                    parentState={this.state}
-                    formd={this.state.formd}
-                    title={this.state.title}
-                    formDialogStateOpened={this.state.formDialogStateOpened}
-                    formdMode={this.state.formdMode}
-                    rules={this.state.rules}
-                    addFormAdminRow={() => this.addFormAdminRow(this)}
-                    saveRow={(data) => {
-                        this.saveRow(data);
-                    }}
-                    />
-                    {this.searchDialog()}
-                    {this.recordSmsTxDialog()}
-                    {this.paymentDetailsDialog()}
-            </div>
-        );
-    }
+const toOptions = (arr) => (Array.isArray(arr) ? arr.map((item) => ({ value: item.value, label: item.text })) : []);
+
+const SEARCH_CATEGORIES = [
+  { value: 'all', label: 'All Fields' },
+  { value: 'recipients', label: 'Recipient' },
+  { value: 'status', label: 'Status' },
+  { value: 'content', label: 'Content' },
+];
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'PENDING', label: 'PENDING' },
+  { value: 'PROCESSING', label: 'PROCESSING' },
+  { value: 'DONE', label: 'DONE' },
+  { value: 'STOPPED', label: 'STOPPED' },
+  { value: 'CANCELLED', label: 'CANCELLED' },
+];
+
+function defaultSearchRules() {
+  return {
+    start_date: common.formatDate(common.getDateMonthsBefore(new Date(), 6)),
+    end_date: common.formatDate(new Date()),
+    status: '',
+    tx_type: '',
+  };
 }
 
+function dateTimeToNative(value) {
+  if (!value) return '';
+  return String(value).replace(' ', 'T').slice(0, 16);
+}
 
-class PaymentFormDialog extends React.Component{
+function nativeToDateTime(value) {
+  if (!value) return '';
+  return `${value.replace('T', ' ')}:00`;
+}
 
-    constructor(props) {
-        super(props);
-        this.state = Object.assign({}, this.props);
-        this.state.clickToEdit = true;
-        this.state.status = [{ value: 'ACTIVE', text: "ACTIVE" },
-        { value: 'INACTIVE', text: "INACTIVE" },
-        { value: 'SUSPENDED', text: "SUSPENDED" }];
-        this.state.account_type = common.account_types;
-        this.state.all_fields_amount = "1000";
-        this.state.set_all_fields_amounts = false;
-        this.state.pageOptions = {
-            layout: ['list', 'sep', 'first', 'prev', 'next', 'last', 'sep', 'refresh', 'sep', 'manual', 'info']
-        }
-        this.state.ismultiple = false;
-        this.state.character_count = 0;
+function statusTone(status) {
+  if (status === 'DONE') return 'success';
+  if (status === 'STOPPED' || status === 'CANCELLED') return 'danger';
+  if (status === 'PROCESSING') return 'info';
+  if (status === 'PENDING') return 'warning';
+  return 'neutral';
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Invalid server response');
+  }
+}
+
+class MerchantModuleSmsC extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      total: 0,
+      pageSize: 50,
+      allChecked: false,
+      data: [],
+      formdMode: 'new',
+      formd: this.emptySmsForm(),
+      title: '',
+      formOpen: false,
+      searchingValue: { value: '', category: 'all' },
+      search_rules: defaultSearchRules(),
+      searchOpen: false,
+      hasAccess: false,
+      tx_details_row: {},
+      detailsOpen: false,
+      record_tx_data: { tx_type: 'SMS PURCHASE', amount: '', description: 'SMS purchase', balance_type: 'sms_balance' },
+      recordTxOpen: false,
+      recordTxErrors: {},
+      balance_type: toOptions(common.balance_type),
+      current_balances: [],
+      sms_balance: '',
+    };
+  }
+
+  componentDidMount() {
+    if (this.isUserAllowedAccess()) {
+      this.setState({ hasAccess: true }, () => this.getData());
+    } else {
+      this.messager.alert({ title: 'Access denied!', icon: 'info', msg: 'You are not allowed access to this section.' });
     }
+  }
 
-    componentDidMount() {
-        /*this.setState({
-            formd: this.props.formd
-        }, ()=> {
-            
-        });*/
+  emptySmsForm() {
+    return {
+      recipients: [],
+      id: '',
+      send_time: common.getDefaultDateTime(),
+      content: '',
+      status: 'PENDING',
+      ismultiple: false,
+    };
+  }
+
+  isUserAllowedAccess() {
+    const user = localStorage.getItem('merchantUser') != null ? JSON.parse(localStorage.getItem('merchantUser')) : {};
+    const allowed = new Set(['CREATE_BATCH_TX', 'APPROVE_BATCH_TX', 'DOWNLOAD_REPORTS', 'ACCESS_SMS_LOG', 'SEND_SMS', 'BUY_SMS']);
+    return Array.isArray(user.privileges) && user.privileges.some((item) => allowed.has(item.privilege));
+  }
+
+  getData() {
+    this.props.loader('START');
+    const searchData = {
+      search_rules: this.state.search_rules,
+      pageSize: this.state.pageSize,
+      searchingValue: this.state.searchingValue,
+      sort: 'asc',
+    };
+    fetch(common.base_url + '/transactions/getMerchantSms', {
+      method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+      body: JSON.stringify(searchData),
+    }).then((response) => response.text()).then((text) => {
+      this.props.loader('STOP');
+      const res = parseJson(text);
+      if (res.code === '000') {
+        const data = Array.isArray(res.data) ? res.data : [];
+        this.setState({ data, total: res.total ?? data.length, allChecked: false, current_balances: res.balances || [] }, () => {
+          this.generateBalanceTypesList(res.balances || []);
+        });
+        return;
+      }
+      if (res.code === '107') { this.sessionExpired(); return; }
+      if (res.code === '110') { this.accessNotAllowed(res.message); return; }
+      this.messager.alert({ title: 'Error ' + res.code, icon: 'error', msg: res.message });
+    }).catch((error) => {
+      this.props.loader('STOP');
+      if (this.messager) this.messager.alert({ title: 'Error', icon: 'error', msg: error.message });
+    });
+  }
+
+  generateBalanceTypesList(balances) {
+    const options = [];
+    let smsBalance = '';
+    for (let i = 0; i < balances.length; i += 1) {
+      options.push({ value: balances[i].balance_type, label: `${balances[i].code} (${common.formatNumber(balances[i].amount)})` });
+      if (balances[i].balance_type === 'sms_balance') {
+        smsBalance = `${balances[i].code} ${common.formatNumber(balances[i].amount)}`;
+      }
     }
+    this.setState({ balance_type: options.length ? options : toOptions(common.balance_type), sms_balance: smsBalance });
+  }
 
-    shouldComponentUpdate(nextProps, nextState) {
-        if (this.props.formd != nextProps.formd) {
-            if (this.props.formdMode == "new") {
-                this.resetForm(() => {});
-            }
-            this.setState({
-                formd: nextProps.formd
-            }, ()=> {
+  accessNotAllowed(msg) {
+    this.messager.alert({ title: 'Access denied!', icon: 'info', msg, result: () => this.setState({ hasAccess: false }) });
+  }
 
-            });
-        }
-        return true;
+  sessionExpired() {
+    const { history } = this.props;
+    this.messager.alert({ title: 'Session Expired!', icon: 'info', msg: 'Your session expired', result: () => history.push('/portal') });
+  }
+
+  addNew() {
+    this.setState({ title: strings.new_sms, formdMode: 'new', formOpen: true, formd: this.emptySmsForm() });
+  }
+
+  editRow(row) {
+    this.setState({ formdMode: 'edit', formOpen: true, formd: { ...row, recipients: row.recipients || [] }, title: 'Edit SMS' });
+  }
+
+  handleSearch(value) {
+    this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, value } }), () => this.getData());
+  }
+
+  handleSearchCategory(category) {
+    this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, category } }));
+  }
+
+  handleRowCheck(row, checked) {
+    const data = this.state.data.map((r) => (r === row ? { ...r, selected: checked } : r));
+    this.setState({ data, allChecked: data.length > 0 && data.every((r) => r.selected) });
+  }
+
+  handleAllCheck(checked) {
+    this.setState({ allChecked: checked, data: this.state.data.map((row) => ({ ...row, selected: checked })) });
+  }
+
+  saveRow(data) {
+    const payload = {
+      ...data,
+      recipients: (data.recipients || []).map((recipient) => ({
+        ...recipient,
+        phone: recipient.phone || recipient.msisdn || '',
+        content: recipient.content || data.content || '',
+        delete: Boolean(recipient.delete),
+      })),
+    };
+    this.props.loader('START');
+    fetch(common.base_url + '/transactions/saveSms', {
+      method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+      body: JSON.stringify(payload),
+    }).then((response) => response.text()).then((text) => {
+      this.props.loader('STOP');
+      const res = parseJson(text);
+      if (res.code === '000') {
+        this.messager.alert({
+          title: 'Success!', icon: 'info', msg: res.message,
+          result: (ok) => { if (ok) this.setState({ formOpen: false, formd: this.emptySmsForm() }, () => this.getData()); },
+        });
+        return;
+      }
+      if (res.code === '107') { this.sessionExpired(); return; }
+      this.messager.alert({ title: 'Error ' + (res.code ? res.code : `${res.status} ${res.error}`), icon: 'error', msg: res.message || res.error });
+    }).catch((error) => {
+      this.props.loader('STOP');
+      this.messager.alert({ title: 'Error', icon: 'error', msg: error.message });
+    });
+  }
+
+  attemptToCancel() {
+    const selected = this.state.data.filter((row) => row.selected);
+    if (selected.length === 0) {
+      this.messager.alert({ title: 'No SMS selected', icon: 'info', msg: 'Select at least one SMS batch to cancel.' });
+      return;
     }
-
-    addFormAdminRow() {
-        /*if (!this.datagrid.endEdit()) {
+    this.messager.confirm({
+      title: 'Cancel SMS', icon: 'info', msg: 'Are you sure you want to cancel selected SMS batch(es)?',
+      result: (ok) => {
+        if (!ok) return;
+        this.props.loader('START');
+        fetch(common.base_url + '/transactions/cancelSms', {
+          method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+          body: JSON.stringify(selected),
+        }).then((response) => response.text()).then((text) => {
+          this.props.loader('STOP');
+          const res = parseJson(text);
+          if (res.code === '000') {
+            this.messager.alert({ title: 'Success!', icon: 'info', msg: res.message, result: (r) => { if (r) this.getData(); } });
             return;
-        }*/
-
-        let new_row = {
-            phone: "",
-            status: "PENDING",
-            conent: "",
-            delete: false,
-            id: ""
-        };
-
-        let formd_ = Object.assign({}, this.state.formd);
-        let new_array = [];
-
-        let data = formd_.recipients.slice();
-        data.push(new_row);
-        //data.unshift({ status: false, _new: true });
-
-        formd_.recipients = data
-        this.setState({
-            formd: formd_,
-        }, () => {
-            let last_row = formd_.recipients[(formd_.recipients.length-1)];
-            this.datagrid.beginEdit(last_row);
+          }
+          if (res.code === '107') { this.sessionExpired(); return; }
+          this.messager.alert({ title: 'Error ' + (res.code || res.error || ''), icon: 'error', msg: res.message || res.error });
+        }).catch((error) => {
+          this.props.loader('STOP');
+          this.messager.alert({ title: 'Error', icon: 'error', msg: error.message });
         });
+      },
+    });
+  }
+
+  recordTransactionRequest() {
+    this.props.loader('START');
+    fetch(common.base_url + '/transactions/buySms', {
+      method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+      body: JSON.stringify(this.state.record_tx_data),
+    }).then((response) => response.text()).then((text) => {
+      this.props.loader('STOP');
+      const res = parseJson(text);
+      if (res.code === '000') {
+        this.resetRecordTxForm(() => {
+          this.setState({ recordTxOpen: false });
+          this.messager.alert({ title: 'Success!', icon: 'info', msg: res.message, result: (ok) => { if (ok) this.getData(); } });
+        });
+        return;
+      }
+      if (res.code === '107') { this.sessionExpired(); return; }
+      this.messager.alert({ title: 'Error ' + (res.code || res.error || ''), icon: 'error', msg: res.message || res.error });
+    }).catch((error) => {
+      this.props.loader('STOP');
+      this.messager.alert({ title: 'Error', icon: 'error', msg: error.message });
+    });
+  }
+
+  resetRecordTxForm(whenDone) {
+    this.setState({
+      record_tx_data: { tx_type: 'SMS PURCHASE', amount: '', description: 'SMS purchase', balance_type: 'sms_balance' },
+      recordTxErrors: {},
+    }, whenDone);
+  }
+
+  recordTxSubmit() {
+    const f = this.state.record_tx_data;
+    const errors = {};
+    if (!f.balance_type) errors.balance_type = 'Balance type is required';
+    if (f.amount === '' || Number.isNaN(Number(f.amount))) errors.amount = 'Enter a valid amount';
+    this.setState({ recordTxErrors: errors });
+    if (Object.keys(errors).length === 0) this.recordTransactionRequest();
+  }
+
+  handleRecordFormChange(name, value) {
+    this.setState((prev) => ({ record_tx_data: { ...prev.record_tx_data, [name]: value } }));
+  }
+
+  clearSearch() {
+    this.setState({ search_rules: defaultSearchRules() });
+  }
+
+  handleSearchFormChange(name, value) {
+    this.setState((prev) => ({ search_rules: { ...prev.search_rules, [name]: value } }));
+  }
+
+  detailRow(label, value) {
+    return (
+      <div style={{ display: 'flex', gap: 'var(--ios-space-4)', padding: '8px 0', borderBottom: '0.5px solid var(--ios-separator)' }}>
+        <span style={{ minWidth: 140, color: 'var(--ios-text-secondary)', fontSize: 'var(--ios-fs-footnote)' }}>{label}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>{value}</span>
+      </div>
+    );
+  }
+
+  detailsSheet() {
+    const row = this.state.tx_details_row || {};
+    const recipients = row.recipients || [];
+    const columns = [
+      { key: 'rn', header: '#', width: 44, render: (r, i) => i + 1 },
+      { key: 'msisdn', header: 'Phone number', accessor: (r) => r.msisdn || r.phone },
+      { key: 'content', header: 'Content', accessor: (r) => r.content },
+    ];
+    return (
+      <Sheet
+        open={this.state.detailsOpen}
+        onClose={() => this.setState({ detailsOpen: false })}
+        title="SMS Details"
+        size="lg"
+        footer={<Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ detailsOpen: false })}>{strings.close}</Button>}
+      >
+        {this.detailRow('Content', <span style={{ whiteSpace: 'pre-wrap' }}>{row.content || ''}</span>)}
+        {this.detailRow('Recipients', row.total_recipients)}
+        {this.detailRow('Status', <Badge tone={statusTone(row.status)}>{row.status}</Badge>)}
+        {this.detailRow('Charge', `UGX ${row.charge || 0}`)}
+        {this.detailRow('Total Amount', `UGX ${row.total_amount || 0}`)}
+        {this.detailRow('Created On', row.created_on)}
+        {this.detailRow('Send Time', row.send_time)}
+        <h3 className="ios-section-title" style={{ marginTop: 'var(--ios-space-5)' }}>Recipients</h3>
+        <Table columns={columns} rows={recipients} rowKey={(r, i) => r.id || r.msisdn || r.phone || i} emptyText="No recipients to display." />
+      </Sheet>
+    );
+  }
+
+  searchSheet() {
+    const s = this.state.search_rules;
+    return (
+      <Sheet
+        open={this.state.searchOpen}
+        onClose={() => this.setState({ searchOpen: false })}
+        title="Search SMS"
+        size="sm"
+        footer={<>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.clearSearch()}>{strings.clear}</Button>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: false })}>{strings.close}</Button>
+          <Button variant="primary" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: false }, () => this.getData())}>{strings.go}</Button>
+        </>}
+      >
+        <div className="ios-form">
+          <DateField id="sms-start" label="Start Date" kind="date" value={s.start_date || ''} onValueChange={(v) => this.handleSearchFormChange('start_date', v)} />
+          <DateField id="sms-end" label="End Date" kind="date" value={s.end_date || ''} onValueChange={(v) => this.handleSearchFormChange('end_date', v)} />
+          <Select id="sms-status-filter" label="Status" value={s.status || ''} options={STATUS_OPTIONS} onValueChange={(v) => this.handleSearchFormChange('status', v)} />
+        </div>
+      </Sheet>
+    );
+  }
+
+  recordSmsTxSheet() {
+    const { record_tx_data: f, recordTxErrors: e } = this.state;
+    return (
+      <Sheet
+        open={this.state.recordTxOpen}
+        onClose={() => this.resetRecordTxForm(() => this.setState({ recordTxOpen: false }))}
+        title={strings.buy_sms}
+        size="sm"
+        footer={<>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.resetRecordTxForm(() => this.setState({ recordTxOpen: false }))}>{strings.close}</Button>
+          <Button variant="primary" className="ios-btn--sm" onClick={() => this.recordTxSubmit()}>{strings.buy_now || 'Buy Now'}</Button>
+        </>}
+      >
+        <div className="ios-form">
+          <Select id="sms-buy-balance" label="Balance Type" value={f.balance_type} options={this.state.balance_type} onValueChange={(v) => this.handleRecordFormChange('balance_type', v)} invalid={Boolean(e.balance_type)} />
+          {e.balance_type ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.balance_type}</span> : null}
+          <TextField id="sms-buy-amount" label="Amount" value={f.amount} onValueChange={(v) => this.handleRecordFormChange('amount', v)} invalid={Boolean(e.amount)} />
+          {e.amount ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.amount}</span> : null}
+        </div>
+      </Sheet>
+    );
+  }
+
+  render() {
+    if (!this.state.hasAccess) {
+      return <div><Messager ref={ref => this.messager = ref}></Messager></div>;
     }
 
-    async addFormRowItem(new_row) {
-        /*if (!this.datagrid.endEdit()) {
-            return;
-        }*/
+    const { searchingValue, data, allChecked } = this.state;
+    const columns = [
+      {
+        key: 'ck', width: 44,
+        header: <Checkbox checked={allChecked} onCheckedChange={(checked) => this.handleAllCheck(checked)} />,
+        render: (row) => <Checkbox checked={Boolean(row.selected)} onCheckedChange={(checked) => this.handleRowCheck(row, checked)} />,
+      },
+      { key: 'created_on', header: 'Created On', accessor: (row) => row.created_on, sortable: true, sortValue: (row) => row.created_on || '' },
+      { key: 'send_time', header: 'Send Time', accessor: (row) => row.send_time, sortable: true, sortValue: (row) => row.send_time || '' },
+      { key: 'recipients_string', header: 'Recipients', accessor: (row) => row.recipients_string },
+      { key: 'status', header: 'Status', render: (row) => <Badge tone={statusTone(row.status)}>{row.status}</Badge>, sortable: true, sortValue: (row) => row.status || '' },
+      { key: 'content', header: 'Content', accessor: (row) => row.content },
+      { key: 'charge', header: 'Charge', numeric: true, accessor: (row) => row.charge },
+      { key: 'total_recipients', header: 'No.', numeric: true, accessor: (row) => row.total_recipients },
+      {
+        key: 'actions', header: 'Actions', align: 'center',
+        render: (row) => (
+          <span className="ios-cell-actions">
+            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ tx_details_row: row, detailsOpen: true })}>{strings.details}</Button>
+          </span>
+        ),
+      },
+    ];
 
-        //let new_row = item;
-        let formd_ = Object.assign({}, this.state.formd);
-        let new_array = [];
+    return (
+      <Card flush>
+        <div style={{ padding: 'var(--ios-space-4)' }}>
+          <Toolbar>
+            <Button variant="primary" className="ios-btn--sm" onClick={() => this.addNew()}>
+              <Icons.SmsIcon size={16} />{strings.send_sms}
+            </Button>
+            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ recordTxOpen: true })}>
+              <Icons.PaymentsIcon size={16} />{strings.buy_sms}
+            </Button>
+            <Button variant="danger" className="ios-btn--sm" onClick={() => this.attemptToCancel()}>Cancel Selected</Button>
+            {this.state.sms_balance ? <Badge tone="info">SMS Balance: {this.state.sms_balance}</Badge> : null}
+            <Toolbar.Spacer />
+            <div style={{ minWidth: 150 }}>
+              <Select id="sms-category" value={searchingValue.category} options={SEARCH_CATEGORIES} onValueChange={(v) => this.handleSearchCategory(v)} />
+            </div>
+            <SearchField
+              value={searchingValue.value}
+              onValueChange={(v) => this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, value: v } }))}
+              onSubmit={(v) => this.handleSearch(v)}
+              placeholder={strings.search_merchant}
+            />
+            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: true })}>
+              <Icons.SearchIcon size={16} />{strings.search}
+            </Button>
+            <Download data={data} />
+          </Toolbar>
+        </div>
+        <Table
+          columns={columns}
+          rows={data}
+          rowKey={(row, i) => row.id || row.batch_id || row.created_on || i}
+          pageSize={this.state.pageSize}
+          isRowSelected={(row) => Boolean(row.selected)}
+          emptyText="No SMS batches to display."
+        />
+        <PaymentFormDialog
+          open={this.state.formOpen}
+          loader={this.props.loader}
+          getMessager={() => this.messager}
+          onClose={() => this.setState({ formOpen: false })}
+          formd={this.state.formd}
+          title={this.state.title}
+          saveRow={(payload) => this.saveRow(payload)}
+        />
+        {this.searchSheet()}
+        {this.recordSmsTxSheet()}
+        {this.detailsSheet()}
+        <Messager ref={ref => this.messager = ref}></Messager>
+      </Card>
+    );
+  }
+}
 
-        let data = formd_.recipients.slice();
-        data.push(new_row);
-        //data.unshift({ status: false, _new: true });
+class PaymentFormDialog extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { formd: props.formd, errors: {}, character_count: (props.formd.content || '').length };
+  }
 
-        formd_.recipients = data
-        await this.setState({
-            formd: formd_,
-        }, () => { });
-        let last_row = formd_.recipients[(formd_.recipients.length-1)];
-        this.datagrid.beginEdit(last_row);
+  componentDidUpdate(prevProps) {
+    if (prevProps.formd !== this.props.formd) {
+      this.setState({ formd: this.props.formd, errors: {}, character_count: (this.props.formd.content || '').length });
     }
+  }
 
-    removeFormAdminRow() {
-        let formd_ = Object.assign({}, this.state.formd);
-        let recipients = formd_.recipients;
-        //this.datagrid.endEdit();
-        if (recipients.length > 0) {
-            formd_.recipients = recipients.splice(0, (recipients.length-1));
-            this.setState({
-                formd: formd_
-            }, () => {
-                this.datagrid.cancelEdit(); 
-            });
+  setField(name, value) {
+    this.setState((prev) => ({
+      formd: { ...prev.formd, [name]: value },
+      character_count: name === 'content' ? value.length : prev.character_count,
+    }));
+  }
+
+  updateRecipient(index, field, value) {
+    this.setState((prev) => ({
+      formd: {
+        ...prev.formd,
+        recipients: (prev.formd.recipients || []).map((recipient, i) => (i === index ? { ...recipient, [field]: value } : recipient)),
+      },
+    }));
+  }
+
+  addRecipient() {
+    this.setState((prev) => ({
+      formd: {
+        ...prev.formd,
+        recipients: [...(prev.formd.recipients || []), { phone: '', content: prev.formd.content || '', delete: false, id: '' }],
+      },
+    }));
+  }
+
+  removeLastRecipient() {
+    this.setState((prev) => ({ formd: { ...prev.formd, recipients: (prev.formd.recipients || []).slice(0, -1) } }));
+  }
+
+  removeAllRecipients() {
+    this.setState((prev) => ({ formd: { ...prev.formd, recipients: [] } }));
+  }
+
+  applyContentToRecipients() {
+    this.setState((prev) => ({
+      formd: {
+        ...prev.formd,
+        recipients: (prev.formd.recipients || []).map((recipient) => ({ ...recipient, content: prev.formd.content || '' })),
+      },
+    }));
+  }
+
+  uploadRecipients(files) {
+    const form = new FormData();
+    for (let i = 0; i < files.length; i += 1) form.append('file', files[i]);
+    this.props.loader('START');
+    fetch(common.base_url + '/transactions/uploadSmsRecipientsFile', { method: 'POST', mode: 'cors', credentials: 'include', body: form })
+      .then((response) => response.text()).then((text) => {
+        this.props.loader('STOP');
+        const messager = this.props.getMessager();
+        let res;
+        try { res = JSON.parse(text); } catch { if (messager) messager.alert({ title: 'Error', icon: 'error', msg: 'Invalid upload response' }); return; }
+        if (res.state === 'ERROR') {
+          if (messager) messager.alert({ title: 'Error', icon: 'error', msg: res.message });
+          return;
         }
+        if (res.state === 'OK') {
+          this.setState((prev) => {
+            const content = prev.formd.content || '';
+            const rows = (res.data || []).map((item) => {
+              let rowContent = content;
+              if (prev.formd.ismultiple) {
+                rowContent = replaceSmsColumnToken(rowContent, 'COLB', item.cellB);
+                rowContent = replaceSmsColumnToken(rowContent, 'COLC', item.cellC);
+                rowContent = replaceSmsColumnToken(rowContent, 'COLD', item.cellD);
+                rowContent = replaceSmsColumnToken(rowContent, 'COLE', item.cellE);
+                rowContent = replaceSmsColumnToken(rowContent, 'COLF', item.cellF);
+              }
+              return { ...item, phone: String(item.phone || item.msisdn || ''), content: item.content || rowContent, delete: Boolean(item.delete), id: item.id || '' };
+            });
+            return { formd: { ...prev.formd, recipients: [...(prev.formd.recipients || []), ...rows] } };
+          });
+        }
+      }).catch((error) => {
+        this.props.loader('STOP');
+        const messager = this.props.getMessager();
+        if (messager) messager.alert({ title: 'Error', icon: 'error', msg: error.message });
+      });
+  }
+
+  validate() {
+    const errors = {};
+    const f = this.state.formd || {};
+    const activeRecipients = (f.recipients || []).filter((recipient) => !recipient.delete);
+    if (!f.content) errors.content = 'SMS content is required';
+    if (!f.send_time) errors.send_time = 'Send time is required';
+    if (activeRecipients.length === 0) errors.recipients = 'Add at least one phone number';
+    for (let i = 0; i < activeRecipients.length; i += 1) {
+      if (!activeRecipients[i].phone && !activeRecipients[i].msisdn) errors.recipients = 'Every recipient needs a phone number';
+      if (!activeRecipients[i].content) errors.recipients = 'Every recipient needs content';
     }
+    this.setState({ errors });
+    return Object.keys(errors).length === 0;
+  }
 
-    saveRow() {
-        let formd_ = Object.assign({}, this.state.formd);
-        this.props.saveRow(formd_);
-    }
+  submit() {
+    if (!this.validate()) return;
+    this.props.saveRow(this.state.formd);
+  }
 
-    resetForm(whenDone) {
-        let formd_ = Object.assign({}, this.state.formd);
-        let new_array = [];
+  close() {
+    this.setState({ formd: { recipients: [], content: '', send_time: common.getDefaultDateTime(), ismultiple: false }, errors: {}, character_count: 0 }, () => this.props.onClose());
+  }
 
-        let data = formd_.recipients.slice();
-        //data.push(new_row);
-        formd_ = {
-            recipients: new_array,
-            content: "",
-            send_time: common.getDefaultDateTime(),
-            ismultiple: false,
-            delete: false,
-        };
+  render() {
+    const row = this.state.formd || { recipients: [] };
+    const recipients = row.recipients || [];
+    const errors = this.state.errors;
+    const recipientColumns = [
+      { key: 'rn', header: '#', width: 40, render: (r, i) => i + 1 },
+      { key: 'phone', header: 'Phone', render: (r, i) => <TextField id={`sms-phone-${i}`} label="" value={r.phone || r.msisdn || ''} onValueChange={(v) => this.updateRecipient(i, 'phone', v)} /> },
+      { key: 'content', header: 'Content', render: (r, i) => <TextField id={`sms-content-${i}`} label="" value={r.content || ''} onValueChange={(v) => this.updateRecipient(i, 'content', v)} /> },
+      { key: 'delete', header: strings.delete, align: 'center', render: (r, i) => <Checkbox checked={Boolean(r.delete)} onCheckedChange={(checked) => this.updateRecipient(i, 'delete', checked)} /> },
+    ];
 
-        this.setState({
-            formd: formd_
-        }, ()=> {
-            whenDone();
-        });
-        
-    }
-
-    removeFormAllRows() {
-        let formd_ = Object.assign({}, this.state.formd);
-        let new_array = [];
-        formd_.recipients = new_array
-        this.setState({
-            formd: formd_,
-        }, () => { 
-            let last_row = formd_.recipients[(formd_.recipients.length-1)];
-            this.datagrid.beginEdit(last_row);
-        });
-    }
-
-    handleFormChange(name, value) {
-        let formd = Object.assign({}, this.state.formd);
-        formd[name] = value;
-        this.setState({ formd: formd })
-    }
-
-    onSelectBenFile() {
-
-    }
-
-    generateFileUploadButton() {
-        return (
-            <FileButton 
-                autoUpload={true}
-                onSelect={(files)=>{
-                    
-                    this.props.loader("START");
-                }}
-                multiple={false}
-                onSuccess={(xhr,files) => {
-
-                    let r = JSON.parse(xhr.xhr.responseText);
-                    if (r.state == "ERROR") {
-                        this.props.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: r.message
-                        });
-                    } else if (r.state == "OK") {
-                        var content = this.state.formd.content;
-                        for(let i=0; i < r.data.length; i++) {
-                            r.data[i].phone = r.data[i].phone+"";
-                            if (this.state.ismultiple) {
-                                var content_ = content;
-                                content_ = replaceSmsColumnToken(content_, 'COLB', r.data[i].cellB);
-                                content_ = replaceSmsColumnToken(content_, 'COLC', r.data[i].cellC);
-                                content_ = replaceSmsColumnToken(content_, 'COLD', r.data[i].cellD);
-                                content_ = replaceSmsColumnToken(content_, 'COLE', r.data[i].cellE);
-                                content_ = replaceSmsColumnToken(content_, 'COLF', r.data[i].cellF);
-                                
-                                r.data[i].content = content_;
-                            } else {
-                                r.data[i].content = content;
-                            }
-                            this.addFormRowItem(r.data[i]);
-                        }
-                    }
-                    this.props.loader("STOP");
-                }}
-                onError={(xhr,files) => {
-                    this.props.loader("STOP");
-
-                    let r = JSON.parse(xhr.xhr.responseText);
-                    if (r.state == "ERROR") {
-                        this.props.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: r.message
-                        });
-                    }
-                }}
-                multiple={false}
-                url={common.base_url+"/transactions/uploadSmsRecipientsFile"}
-                onClick={() => {
-                this.onSelectBenFile.bind(this)
-                }}>{strings.upload_phones_file}</FileButton>
-        );
-    }
-
-    render() {
-
-        const row = this.state.formd;
-        const { title, formDialogStateOpened, rules } = this.props;
-        
-        return (
-            <Dialog modal 
-                title={title} 
-                closed={formDialogStateOpened} 
-                style={styles.dim.formDialogLargeWidth} className={styles.formDialogLargeWidth}
-                borderType="none"
-                onClose={() => this.props.openOrCloseFormDialog(true)}>
-                    <Layout style={{ width: 800, height:'100%', border: '0px #FFFFFF' }}>
-                        <LayoutPanel 
-                            region="north" 
-                            split={false}
-                            style={{ height: 320, border: '0px #FFFFFF' }}>
-                            
-                            <div className={styles.formDialogContainer}>
-                                <Form
-                                    style={{ width: 700 }}
-                                    ref={ref => this.form = ref}
-                                    model={row}
-                                    rules={rules}
-                                    floatingLabel
-                                    labelWidth={300}
-                                    /*labelPosition="top"*/
-                                    onChange={this.handleFormChange.bind(this)}
-                                    onValidate={(errors) => this.setState({ errors: errors })}>
-                                    
-                                    <FormField name="content" label="SMS Content">
-                                        <TextBox 
-                                            multiline
-                                            inputId="content" 
-                                            name="content" 
-                                            value={row.content} 
-                                            onChange={(text) => {
-                                                if (text == null) {
-                                                    return;
-                                                }
-                                                
-                                                let count_ = text.length;
-                                                this.setState({
-                                                    character_count: count_
-                                                })
-                                            }}
-                                            style={{width:380, height: 80}}></TextBox>
-                                            
-                                            <div style={{margin:"5px"}} width="25px">
-                                                <strong>Count: 
-                                                    <span style={{color:"#024275"}}>{this.state.character_count}</span>
-                                                </strong>
-                                            </div>
-                                    </FormField>
-                                    
-                                    <FormField name="multiple" label="Is Personalised?">
-                                        <CheckBox 
-                                            multiline
-                                            inputId="multiple" 
-                                            name="multiple" 
-                                            value={this.state.ismultiple} 
-                                            onChange={(checked)=> {
-                                                this.setState({
-                                                    ismultiple: checked
-                                                });
-                                            }}
-                                            ></CheckBox>
-                                    </FormField>
-
-                                    <FormField name="send_time" label="Send Time">
-                                        <DatetimePicker 
-                                            inputId="send_time" 
-                                            name="send_time" 
-                                            value={row.send_time} 
-                                            onValueSelected={(value) => {
-
-                                                this.handleFormChange('send_time', value);
-                                            }}
-                                            ></DatetimePicker>
-                                    </FormField>
-                                    
-                                    <h3>Phone Numbers</h3>
-                                    <div className={styles.formDialogLargeWidthAddButtons}>
-                                        <ButtonGroup>
-                                            <LinkButton onClick={() => {
-                                                this.addFormAdminRow();
-                                            }}>{strings.add_phone}</LinkButton>
-                                            <LinkButton onClick={() => {
-                                                this.removeFormAdminRow();
-                                                }}>{strings.remove_phone}</LinkButton>
-                                            <LinkButton onClick={() => {
-                                                this.removeFormAllRows();
-                                                }}>{strings.remove_all_rows}</LinkButton>
-                                            {this.generateFileUploadButton()}
-                                        </ButtonGroup>
-                                    </div>
-
-                                    <DataGrid
-                                        ref={ref => this.datagrid = ref}
-                                        style={{ height: 150, width:750 }}
-                                        data={row.recipients}
-                                        clickToEdit={this.state.clickToEdit}
-                                        pagination
-                                        pageSize={50}
-                                        pagePosition={"bottom"}
-                                        pageOptions={this.state.pageOptions}
-                                        editMode="row">
-                                        <GridColumn field="rn" align="center" width="30px"
-                                                cellCss="datagrid-td-rownumber"
-                                                render={({rowIndex}) => (
-                                                <span>{rowIndex+1}</span>
-                                                )}
-                                            />
-
-                                        <GridColumn field="phone" 
-                                            title="Phone" 
-                                            width="15%"
-                                            editRules={{'required':true, "phoneValidation":common.phoneValidation}}
-                                            editor={({ row, error }) => (
-                                                <Tooltip content={error} tracking>
-                                                    <TextBox value={row.phone}></TextBox>
-                                                </Tooltip>
-                                            )}
-                                            editable></GridColumn>
-
-                                        <GridColumn field="content"
-                                            width="70%"
-                                            title="Content" 
-                                            editRules={{'required':true}}
-                                            editor={({ row, error }) => (
-                                                <Tooltip content={error} tracking>
-                                                    <TextBox value={row.content}></TextBox>
-                                                </Tooltip>
-                                            )}
-                                            editable></GridColumn>
-
-                                        <GridColumn field="delete" 
-                                            title={strings.delete} 
-                                            align="center"
-                                            editable
-                                            editor={({ row }) => (
-                                                <CheckBox checked={row.delete}></CheckBox>
-                                            )}
-                                            render={({ row }) => (      
-                                                <span>{row.delete ? "Yes" : "No"}</span>
-                                            )}
-                                        />
-
-                                    </DataGrid>
-
-                                    <div className={styles.formDialogLargeWidthAddButtons}>
-                                        <ButtonGroup>
-                                            <LinkButton onClick={() => {
-                                                this.addFormAdminRow();
-                                            }}>{strings.add_phone}</LinkButton>
-                                            <LinkButton onClick={() => {
-                                                this.removeFormAdminRow();
-                                                }}>{strings.remove_phone}</LinkButton>
-                                        </ButtonGroup>
-                                    </div>
-                                </Form>
-                            </div>
-                        </LayoutPanel>
-                        <LayoutPanel region="south" style={{ height: 48 }}>
-                            <div className="dialog-button">
-                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
-                                    iconCls="icon-save" style={{ width: 80 }} 
-                                            onClick={() => this.saveRow()}>{strings.submit}</LinkButton>
-                                <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
-                                    onClick={() => {
-                                        this.resetForm(() => {
-                                            this.props.openOrCloseFormDialog(true);
-                                        });
-                                    }}>Close</LinkButton>
-                            </div>
-                        </LayoutPanel>
-                    </Layout>
-            </Dialog>
-        );
-    }
+    return (
+      <Sheet
+        open={this.props.open}
+        onClose={() => this.close()}
+        title={this.props.title}
+        size="xl"
+        footer={<>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.close()}>{strings.close}</Button>
+          <Button variant="primary" className="ios-btn--sm" onClick={() => this.submit()}>{strings.submit}</Button>
+        </>}
+      >
+        <div className="ios-form">
+          <TextArea id="sms-content-main" label="SMS Content" rows={4} value={row.content || ''} onValueChange={(v) => this.setField('content', v)} invalid={Boolean(errors.content)} />
+          {errors.content ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{errors.content}</span> : null}
+          <div style={{ color: 'var(--ios-text-secondary)', fontSize: 'var(--ios-fs-footnote)' }}>Count: <strong>{this.state.character_count}</strong></div>
+          <Checkbox checked={Boolean(row.ismultiple)} onCheckedChange={(checked) => this.setField('ismultiple', checked)} label="Personalised SMS" />
+          <DateField id="sms-send-time" label="Send Time" kind="datetime-local" value={dateTimeToNative(row.send_time)} onValueChange={(v) => this.setField('send_time', nativeToDateTime(v))} invalid={Boolean(errors.send_time)} />
+          {errors.send_time ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{errors.send_time}</span> : null}
+        </div>
+        <h3 className="ios-section-title" style={{ marginTop: 'var(--ios-space-5)' }}>Phone Numbers</h3>
+        <Toolbar>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.addRecipient()}>{strings.add_phone}</Button>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.removeLastRecipient()}>{strings.remove_phone}</Button>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.removeAllRecipients()}>{strings.remove_all_rows}</Button>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.applyContentToRecipients()}>Apply Content</Button>
+          <FileButton accept=".xls,.xlsx,.csv" onFiles={(files) => this.uploadRecipients(files)}>{strings.upload_phones_file}</FileButton>
+        </Toolbar>
+        {errors.recipients ? <p style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{errors.recipients}</p> : null}
+        <div style={{ marginTop: 'var(--ios-space-3)' }}>
+          <Table columns={recipientColumns} rows={recipients} rowKey={(r, i) => r.id || r.phone || i} pageSize={50} emptyText="No recipients yet - add or import phone numbers." />
+        </div>
+      </Sheet>
+    );
+  }
 }
 
 class Download extends React.Component {
-    render() {
-        return (
-            <ExcelFile 
-                filename="Sms_Log"
-                ref={ref => this.excelRef = ref}
-                element={<LinkButton 
-                    onClick={() => {
-                        this.excelRef.download();
-                    }}
-                    iconCls="icon-excel">{strings.download}</LinkButton>}>
-                <ExcelSheet data={this.props.data} name="SMS">
-                    <ExcelColumn label="Created On" value="created_on"/>
-                    <ExcelColumn label="Sent on" value="send_time"/>
-                    <ExcelColumn label="Recipients" value="recipients_string"/>
-                    <ExcelColumn label="Status" value="status"/>
-                    <ExcelColumn label="Content" value="content"/>
-                    <ExcelColumn label="Charges" value="charge"/>
-                    <ExcelColumn label="Total Amount" value="total_amount"/>
-                </ExcelSheet>
-            </ExcelFile>
-        );
-    }
+  render() {
+    return (
+      <ExcelFile
+        filename="Sms_Log"
+        ref={ref => this.excelRef = ref}
+        element={
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.excelRef.download()}>
+            <Icons.DownloadIcon size={16} />{strings.download}
+          </Button>
+        }>
+        <ExcelSheet data={this.props.data} name="SMS">
+          <ExcelColumn label="Created On" value="created_on" />
+          <ExcelColumn label="Sent on" value="send_time" />
+          <ExcelColumn label="Recipients" value="recipients_string" />
+          <ExcelColumn label="Status" value="status" />
+          <ExcelColumn label="Content" value="content" />
+          <ExcelColumn label="Charges" value="charge" />
+          <ExcelColumn label="Total Amount" value="total_amount" />
+        </ExcelSheet>
+      </ExcelFile>
+    );
+  }
 }
 
 const MerchantModuleSms = withRouter(MerchantModuleSmsC);

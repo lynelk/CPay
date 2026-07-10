@@ -1,60 +1,38 @@
 import React from 'react';
-import { ProgressBar,Dialog } from 'rc-easyui';
+import { ProgressOverlay } from '../ui';
 
+/**
+ * "Please wait…" overlay. Now backed by the iOS ProgressOverlay primitive
+ * (replaces rc-easyui ProgressBar + Dialog). Keeps the incrementing bar
+ * behaviour while a loader is active.
+ */
 class Progress extends React.Component {
-    
-    constructor(props) {
-      super(props);
-      this.state = {
-        progressValue: (this.props.progressValue ? this.props.progressValue : 0),
-        disabled: false
-      }
-      this.timeIntervalFunc = null;
-    }
-
-
-    componentDidMount() {
-        this.showLoader();
-    } 
-    
-
-    showLoader() {
-        let timeout = 800;
-        this.timeIntervalFunc = setInterval(() => {
-            let value = this.state.progressValue;
-            value += 10;
-            this.setState({ progressValue: value }, ()=> {
-                if (value > 100) {
-                    this.setState({ progressValue: 0});
-                } else {
-                    //this.showLoader();
-                }
-            });
-        }, timeout);
-    }
-
-    render() {
-        if (!this.props.loaderState) {
-            //clearInterval(this.timeIntervalFunc);
-            return (<div></div>);
-        } else {
-            //this.showLoader();
-            return (
-                <div>
-                    <Dialog 
-                        style={{width:'400px',height:'100px'}}
-                        closable={false}
-                        borderType="none" modal>
-                        <div style={{ margin: '20px' }} align="center">
-                            <span>Please wait...</span>
-                            <ProgressBar style={{width:'100'}} value={this.state.progressValue}>
-                            </ProgressBar>
-                        </div>
-                    </Dialog>
-                </div>
-            );
-        }
-    }
+  constructor(props) {
+    super(props);
+    this.state = { progressValue: this.props.progressValue || 0 };
+    this.timeIntervalFunc = null;
   }
-   
-  export default Progress;
+
+  componentDidMount() {
+    this.startTicker();
+  }
+
+  componentWillUnmount() {
+    if (this.timeIntervalFunc) clearInterval(this.timeIntervalFunc);
+  }
+
+  startTicker() {
+    this.timeIntervalFunc = setInterval(() => {
+      this.setState((prev) => ({ progressValue: prev.progressValue >= 100 ? 0 : prev.progressValue + 10 }));
+    }, 800);
+  }
+
+  render() {
+    if (!this.props.loaderState) {
+      return null;
+    }
+    return <ProgressOverlay open message="Please wait…" value={this.state.progressValue} />;
+  }
+}
+
+export default Progress;

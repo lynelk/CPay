@@ -4,29 +4,29 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
-jest.mock('./components/Login', () => function MockLogin() {
+vi.mock('./components/Login', () => ({ default: function MockLogin() {
   return <div>Admin login</div>;
-});
+} }));
 
-jest.mock('./components/LoginMerchant', () => function MockLoginMerchant() {
+vi.mock('./components/LoginMerchant', () => ({ default: function MockLoginMerchant() {
   return <div>Merchant login</div>;
-});
+} }));
 
-jest.mock('./components/MerchantSignup', () => function MockMerchantSignup() {
+vi.mock('./components/MerchantSignup', () => ({ default: function MockMerchantSignup() {
   return <div>Merchant signup</div>;
-});
+} }));
 
-jest.mock('./components/Layout', () => function MockLayout() {
+vi.mock('./components/Layout', () => ({ default: function MockLayout() {
   return <div>Admin layout</div>;
-});
+} }));
 
-jest.mock('./components/LayoutMerchant', () => function MockLayoutMerchant() {
+vi.mock('./components/LayoutMerchant', () => ({ default: function MockLayoutMerchant() {
   return <div>Merchant layout</div>;
-});
+} }));
 
-jest.mock('./features/OperationsConsole', () => function MockOperationsConsole() {
+vi.mock('./features/OperationsConsole', () => ({ default: function MockOperationsConsole() {
   return <div>Operations console</div>;
-});
+} }));
 
 it('renders without crashing', () => {
   const div = document.createElement('div');

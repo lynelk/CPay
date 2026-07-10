@@ -34,7 +34,7 @@ afterEach(() => {
 
 describe('StableMessager', () => {
   test('closes alert and invokes result when Ok is clicked', () => {
-    const result = jest.fn();
+    const result = vi.fn();
     renderMessager();
 
     act(() => {
@@ -58,7 +58,7 @@ describe('StableMessager', () => {
   });
 
   test('returns false when Cancel is clicked on a confirmation dialog', () => {
-    const result = jest.fn();
+    const result = vi.fn();
     renderMessager();
 
     act(() => {
