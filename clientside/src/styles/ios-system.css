@@ -308,3 +308,36 @@ select.ios-input { padding-right: 36px; }
   .ios-shell--nav-open::after { content: ''; position: fixed; inset: 0; z-index: 30; background: var(--ios-scrim); }
   .ios-page { padding: var(--ios-space-4); }
 }
+
+/* ==== Dark-mode bridge for legacy .cpay-* surfaces =========================
+ * The shell/screens migrated to .ios-* consume the tokens above. Screens still
+ * on legacy .cpay-* classes (dashboards, rc-easyui overrides) read the
+ * --cpay-fuse-* tokens defined in index.css, which are light-only. Re-point
+ * those tokens under dark so the WHOLE app — including not-yet-rewritten
+ * screens — renders coherently in dark mode and matches the iOS palette. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --cpay-fuse-bg: #0B0F14;
+    --cpay-fuse-sidebar: rgba(22, 24, 28, 0.72);
+    --cpay-fuse-surface: #1C1C1E;
+    --cpay-fuse-surface-soft: #2C2C2E;
+    --cpay-fuse-line: rgba(235, 235, 245, 0.16);
+    --cpay-fuse-line-strong: rgba(235, 235, 245, 0.28);
+    --cpay-fuse-text: #F5F7FA;
+    --cpay-fuse-muted: rgba(235, 235, 245, 0.62);
+    --cpay-fuse-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 36px rgba(0, 0, 0, 0.5);
+    --cpay-fuse-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-theme='dark'] {
+  --cpay-fuse-bg: #0B0F14;
+  --cpay-fuse-sidebar: rgba(22, 24, 28, 0.72);
+  --cpay-fuse-surface: #1C1C1E;
+  --cpay-fuse-surface-soft: #2C2C2E;
+  --cpay-fuse-line: rgba(235, 235, 245, 0.16);
+  --cpay-fuse-line-strong: rgba(235, 235, 245, 0.28);
+  --cpay-fuse-text: #F5F7FA;
+  --cpay-fuse-muted: rgba(235, 235, 245, 0.62);
+  --cpay-fuse-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 36px rgba(0, 0, 0, 0.5);
+  --cpay-fuse-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
