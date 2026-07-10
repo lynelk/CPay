@@ -8,10 +8,8 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.7",
-    "antd": "^5.20.6",
     "chart.js": "^4.4.3",
     "prop-types": "^15.8.1",
-    "rc-easyui": "^1.0.39",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-localization": "^1.0.15",

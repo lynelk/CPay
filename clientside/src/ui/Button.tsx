@@ -1,7 +1,7 @@
 import React from 'react';
 import { Spinner } from './Spinner';
 
-type Variant = 'primary' | 'secondary' | 'link';
+type Variant = 'primary' | 'secondary' | 'link' | 'ghost' | 'danger';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;

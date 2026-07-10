@@ -104,7 +104,7 @@ class LayoutWithOutRouter extends React.Component {
       await this.setState({ loader: false, progressValue: 0 });
       const res = await response.json();
       return res.code === "000" && res.message === "true";
-    } catch (Error) {
+    } catch {
       this.setState({ loader: false, progressValue: 0 });
       return false;
     }

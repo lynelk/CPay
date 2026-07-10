@@ -4,8 +4,7 @@
  * Run with: npm test -- --testPathPattern=Common.test.js
  */
 
-const commonModule = require('./Common');
-const common = commonModule.default || commonModule;
+import common from './Common';
 
 // ---------------------------------------------------------------------------
 // emailValidation

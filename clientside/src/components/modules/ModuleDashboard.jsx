@@ -110,7 +110,7 @@ class ModuleDashboardC extends React.Component {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             return sanitizeSnapshotCards(saved ? JSON.parse(saved) : defaultSnapshotCards);
-        } catch (error) {
+        } catch {
             return defaultSnapshotCards;
         }
     }
@@ -118,7 +118,7 @@ class ModuleDashboardC extends React.Component {
     saveSnapshotCards(cards) {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-        } catch (error) {
+        } catch {
             // Local storage is optional; the dashboard still works without persistence.
         }
     }
@@ -156,7 +156,7 @@ class ModuleDashboardC extends React.Component {
 
     getData(chartType, api) {
         this.props.loader("START");
-        let searchData = {
+        const searchData = {
             pageSize: this.state.pageSize,
             searchingValue: this.state.searchingValue,
             sort: 'asc'

@@ -1,402 +1,128 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Dialog } from 'rc-easyui';
-import Messager from './StableMessager';
-import PropTypes from "prop-types";
-import { useHistory, withRouter } from '../shared/router/compat';
 import common from './Common';
-import Progress from './Progress';
+import { Alert, Button, PasswordField, ProgressOverlay, Sheet, TextField } from '../ui';
 
-/*
-* HANDLE FORGOT PASSWORD
-*/
-class ForgotPasswordMerchant extends React.Component{
-    constructor(props) {
-        super(props);
-        this.state = {
-          loader: false,
-          progressValue: 0,
-          user: {
-              merchant_number: "",
-              email:"",
-              account_found: false,
-          },
-          account_found: false
-      };
-    }
-
-    submit() {
-        this.form.validate(errors => {
-            if (errors !== null) {
-              return;
-            }
-            let body = {
-                email: this.state.user.email,
-                merchant_number: this.state.user.merchant_number
-            }
-            this.setState({loader: true}, () => {
-                fetch(common.base_url+"/auth/requestMerchantUserResetPassword", {
-                    method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                    mode: 'cors', // no-cors, *cors, same-origin
-                    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                    credentials: 'include', // include, *same-origin, omit
-                    headers: {
-                    'Content-Type': 'application/json',
-                    },
-                    redirect: 'follow', // manual, *follow, error
-                    referrer: 'no-referrer', // no-referrer, *client
-                    body: JSON.stringify(body) // body data type must match "Content-Type" header
-                }).then ((response)=>{
-                    return response.text();
-                }).then((response_) => {
-                    let res;
-                    try {
-                        res = JSON.parse(response_);
-                        this.setState({loader: false}, ()=> {
-                            if (res.code === "000") {
-                                try {
-                                    //history.push("/dashboard");
-                                    this.messager.alert({
-                                        title: "Email Sent",
-                                        icon: "info",
-                                        msg: res.message,
-                                        result: (r )=> {
-                                            this.setState({
-                                                account_found: true,
-                                            });
-                                        }
-                                    });
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                if (res.code) {
-                                    this.messager.alert({title: "Error "+res.code,
-                                        icon: "error",
-                                        msg: res.message
-                                    });
-                                } else {
-                                    this.messager.alert({title: "Error "+res.error,
-                                        icon: "error",
-                                        msg: res.message
-                                    });
-                                }
-                            }
-                        });
-                    } catch(Error) {
-                        this.setState({loader: false}, ()=> {
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
-                            });
-                        });
-                        return;
-                    }
-                }).catch((error) => {
-                    this.setState({loader: false}, ()=> {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: error.message
-                        });
-                    });
-                });
-            });
-        });
-    }
-
-    handleChange(name, value) {
-        let user = Object.assign({}, this.state.user);
-        user[name] = value;
-        this.setState({ user: user })
-    }
-
-    componentDidMount() {
-        
-    }
-
-    shouldComponentUpdate(nextProps, nextState) {
-        
-        if (nextProps.merchantNumber != this.props.merchantNumber) {
-            this.state.user.merchant_number = this.props.merchantNumber;
-            this.setState({
-                user: this.state.user
-            }, () => {
-
-            });
-            return true;
-        }
-        return true;
-    }
-
-    componentWillUpdate() {
-        
-    }
-
-    clearForm() {
-        this.setState({
-            user: {
-                email: "",
-                account_found: false,
-                merchant_number: "",
-            },
-            account_found: false
-        }, ()=> {
-        });
-    }
-
-    closeThisDialog() {
-        this.clearForm();
-        this.dialog.close();
-        this.props.onCloseDialog();
-    }
-  
-    render() {
-        const { user } = this.state;
-        if (!this.props.showForgotPassword) {
-            return (<div></div>);
-        }
-
-        return (
-            
-        <div>
-          <Dialog 
-            style={{width: 400}}
-            ref={ref => this.dialog = ref}
-            borderType="none" modal>
-            <div style={{ padding: '0 20px' }}>
-            <Form
-                ref={ref => this.form = ref}
-                style={{ maxWidth: 500, marginTop:5 }}
-                model={user}
-                labelWidth={120}
-                labelAlign="right"
-                rules={{
-                        email: ["required"],
-                        merchant_number: ['required']
-                    }
-                }
-                onChange={this.handleChange.bind(this)}>
-
-                    <h3>Confirm your Merchang Mumber and Email</h3>
-
-                    <div className="mytext">
-                        <p>Merchant Number</p>
-                    </div>
-                    <FormField name="merchant_number" label="">
-                        <TextBox value={this.state.user.merchant_number}></TextBox>
-                    </FormField>
-
-                    <div className="mytext">
-                        <p>Please enter your email address.</p>
-                    </div>
-
-                    <FormField name="email" label="">
-                        <TextBox value={this.state.user.email}></TextBox>
-                    </FormField>
-                    
-                </Form>
-            </div>
-            <div className="dialog-button">
-                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" onClick={this.submit.bind(this)} style={{ width: 80}}>Submit</LinkButton>
-                <LinkButton onClick={() => {this.closeThisDialog()}} style={{ width: 80 }}>Cancel</LinkButton>
-            </div>
-          </Dialog>
-          <ResetPasswordMerchantN 
-            closeThisDialog={this.closeThisDialog.bind(this)}
-            accountFound={this.state.account_found} 
-            email={this.state.user.email}
-            merchantNumber={this.state.user.merchant_number} />
-          <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
-          <Messager ref={ref => this.messager = ref}></Messager>
-        </div>
-      );
-    }
+function initialState(merchantNumber = '') {
+  return {
+    step: 'request',
+    merchant_number: merchantNumber || '',
+    email: '',
+    verification_code: '',
+    new_password: '',
+    confirm_password: '',
+    loading: false,
+    error: '',
+    message: '',
+  };
 }
 
-class ResetPasswordMerchantN extends React.Component{
-    constructor(props) {
-        super(props);
-        this.state = {
-            user: {
-                verification_code:"",
-                new_password: "",
-                confirm_password: ""
-            },
-            loader: false,
-            progressValue: 0
-        };
+function ForgotPasswordMerchant({ merchantNumber = '', showForgotPassword, onCloseDialog }) {
+  const [state, setState] = React.useState(() => initialState(merchantNumber));
+
+  React.useEffect(() => {
+    if (showForgotPassword) {
+      setState((prev) => ({ ...prev, merchant_number: merchantNumber || prev.merchant_number || '' }));
     }
+  }, [merchantNumber, showForgotPassword]);
 
-    handleChange(name, value) {
-        let user = Object.assign({}, this.state.user);
-        user[name] = value;
-        this.setState({ user: user })
+  function patch(values) {
+    setState((prev) => ({ ...prev, ...values }));
+  }
+
+  function close() {
+    setState(initialState(merchantNumber));
+    onCloseDialog();
+  }
+
+  async function requestReset(event) {
+    event.preventDefault();
+    if (!state.merchant_number || !state.email) {
+      patch({ error: 'Merchant number and email are required.', message: '' });
+      return;
     }
-
-    componentWillReceiveProps() {
-        //alert(JSON.stringify(this.props));
-        if (!this.props.accountFound) {
-            if (this.dialog != null) {
-                this.dialog.open();
-            }
-        }
+    patch({ loading: true, error: '', message: '' });
+    try {
+      const response = await fetch(common.base_url + '/auth/requestMerchantUserResetPassword', {
+        method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrerPolicy: 'no-referrer',
+        body: JSON.stringify({ email: state.email, merchant_number: state.merchant_number }),
+      });
+      const res = JSON.parse(await response.text());
+      if (res.code === '000') {
+        patch({ step: 'reset', message: res.message || 'Verification code sent.', loading: false });
+      } else {
+        patch({ error: res.message || res.error || 'Unable to request password reset.', loading: false });
+      }
+    } catch (error) {
+      patch({ error: error.message, loading: false });
     }
+  }
 
-    submit() {
-        this.form.validate(errors => {
-            if (errors !== null) {
-              return;
-            }
-
-            if (this.state.user.new_password !== this.state.user.confirm_password) {
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: "The new password does not match with confirm password."
-                });
-                return;
-            }   
-
-            let body = {
-                email: this.props.email,
-                verification_code: this.state.user.verification_code,
-                new_password: this.state.user.new_password,
-                merchant_number: this.props.merchantNumber,
-            }
-            this.setState({loader: true}, () => {
-                fetch(common.base_url+"/auth/resetPasswordMerchant", {
-                    method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                    mode: 'cors', // no-cors, *cors, same-origin
-                    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                    credentials: 'include', // include, *same-origin, omit
-                    headers: {
-                    'Content-Type': 'application/json',
-                    },
-                    redirect: 'follow', // manual, *follow, error
-                    referrer: 'no-referrer', // no-referrer, *client
-                    body: JSON.stringify(body) // body data type must match "Content-Type" header
-                }).then ((response)=>{
-                    return response.text();
-                }).then((response_) => {
-                    let res;
-                    try {
-                        res = JSON.parse(response_);
-                        this.setState({loader: false}, ()=> {
-                            if (res.code === "000") {
-                                try {
-                                    this.messager.alert({
-                                        title: "Success!",
-                                        icon: "info",
-                                        msg: res.message,
-                                        result: (r )=> {
-                                            this.props.closeThisDialog();
-                                            this.dialog.close();
-                                        }
-                                    });
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                if (res.code) {
-                                    this.messager.alert({title: "Error "+res.code,
-                                        icon: "error",
-                                        msg: res.message
-                                    });
-                                } else {
-                                    this.messager.alert({title: "Error "+res.error,
-                                        icon: "error",
-                                        msg: res.message
-                                    });
-                                }
-                            }
-                        });
-                    } catch(Error) {
-                        this.setState({loader: false}, ()=> {
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
-                            });
-                        });
-                        return;
-                    }
-                }).catch((error) => {
-                    this.setState({loader: false}, ()=> {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: error.message
-                        });
-                    });
-                });
-            });
-        });
+  async function resetPassword(event) {
+    event.preventDefault();
+    if (!state.verification_code || !state.new_password || !state.confirm_password) {
+      patch({ error: 'Verification code and new password are required.', message: '' });
+      return;
     }
-
-    render() {
-        const { user } = this.state;
-        if (!this.props.accountFound) {
-            return (<div></div>);
-        }
-
-        return (
-          <div>
-            <Dialog 
-                style={{width: 600}}
-                ref={ref => this.dialog = ref}
-                borderType="none" modal>
-                <div style={{ padding: '20px 20px' }}>
-                    <h2 align="center">Complete Password Reset</h2>
-                    <div align="center">
-                        <p>Provide here the verificaiton code we have sent to your email address.</p>
-                    </div>
-                    <Form
-                        ref={ref => this.form = ref}
-                        style={{ marginTop:5 }}
-                        model={user}
-                        labelWidth={200}
-                        labelAlign="left"
-                        rules={{
-                                verification_code: ["required"],
-                                new_password: ["required"],
-                                confirm_password: ["required"]
-                            }
-                        }
-                        onChange={this.handleChange.bind(this)}>
-                            <FormField name="verification_code" label="Verification Code:">
-                                <TextBox value={this.state.user.verification_code}></TextBox>
-                            </FormField>
-
-                            <FormField name="new_password" label="Password:">
-                                <PasswordBox value={this.state.user.new_password}  placeholder="Password" iconCls="icon-lock"></PasswordBox>
-                            </FormField>
-
-                            <FormField name="confirm_password" label="Confirm new Password:">
-                                <PasswordBox value={this.state.user.confirm_password}  placeholder="Confirm new Password" iconCls="icon-lock"></PasswordBox>
-                            </FormField>
-                    </Form>
-                </div>
-                <div className="dialog-button">
-                    <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" onClick={this.submit.bind(this)} style={{ width: 80 }}>Submit</LinkButton>
-                    <LinkButton onClick={() => {this.dialog.close()}} style={{ width: 80 }}>Cancel</LinkButton>
-                </div>
-            </Dialog>
-            <Progress loaderState={this.state.loader} progressValue={this.state.progressValue} />
-            <Messager ref={ref => this.messager = ref}></Messager>
-          </div>
-        );
+    if (state.new_password !== state.confirm_password) {
+      patch({ error: 'The new password does not match the confirmation.', message: '' });
+      return;
     }
+    patch({ loading: true, error: '', message: '' });
+    try {
+      const response = await fetch(common.base_url + '/auth/resetPasswordMerchant', {
+        method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrerPolicy: 'no-referrer',
+        body: JSON.stringify({
+          email: state.email,
+          merchant_number: state.merchant_number,
+          verification_code: state.verification_code,
+          new_password: state.new_password,
+        }),
+      });
+      const res = JSON.parse(await response.text());
+      if (res.code === '000') {
+        patch({ message: res.message || 'Password reset complete.', loading: false });
+        close();
+      } else {
+        patch({ error: res.message || res.error || 'Unable to reset password.', loading: false });
+      }
+    } catch (error) {
+      patch({ error: error.message, loading: false });
+    }
+  }
+
+  return (
+    <>
+      <Sheet
+        open={Boolean(showForgotPassword)}
+        onClose={close}
+        title={state.step === 'request' ? 'Reset merchant password' : 'Complete password reset'}
+        size="sm"
+        footer={<>
+          <Button variant="ghost" className="ios-btn--sm" type="button" onClick={close}>Cancel</Button>
+          <Button variant="primary" className="ios-btn--sm" type="submit" form={state.step === 'request' ? 'forgot-merchant-request' : 'forgot-merchant-reset'} loading={state.loading}>Submit</Button>
+        </>}
+      >
+        {state.error ? <Alert variant="error">{state.error}</Alert> : null}
+        {state.message ? <Alert variant="success">{state.message}</Alert> : null}
+        {state.step === 'request' ? (
+          <form id="forgot-merchant-request" className="ios-form" onSubmit={requestReset} noValidate>
+            <p style={{ color: 'var(--ios-text-secondary)', marginTop: 0 }}>Confirm your merchant account and email address.</p>
+            <TextField id="forgot-merchant-number" label="Merchant Number" value={state.merchant_number} onValueChange={(value) => patch({ merchant_number: value })} autoComplete="off" />
+            <TextField id="forgot-merchant-email" label="Email" value={state.email} onValueChange={(value) => patch({ email: value })} autoComplete="email" />
+          </form>
+        ) : (
+          <form id="forgot-merchant-reset" className="ios-form" onSubmit={resetPassword} noValidate>
+            <TextField id="forgot-merchant-code" label="Verification Code" value={state.verification_code} onValueChange={(value) => patch({ verification_code: value })} />
+            <PasswordField id="forgot-merchant-new-password" label="New Password" value={state.new_password} onValueChange={(value) => patch({ new_password: value })} autoComplete="new-password" />
+            <PasswordField id="forgot-merchant-confirm-password" label="Confirm Password" value={state.confirm_password} onValueChange={(value) => patch({ confirm_password: value })} autoComplete="new-password" />
+          </form>
+        )}
+      </Sheet>
+      <ProgressOverlay open={state.loading} message="Please wait" />
+    </>
+  );
 }
-
 
 export default ForgotPasswordMerchant;

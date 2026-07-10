@@ -341,3 +341,48 @@ select.ios-input { padding-right: 36px; }
   --cpay-fuse-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 36px rgba(0, 0, 0, 0.5);
   --cpay-fuse-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
+
+/* ==== Payment channel setup ============================================== */
+.ios-channel-page { display: grid; gap: var(--ios-space-4); }
+.ios-channel-subtitle { margin: 4px 0 0; color: var(--ios-text-secondary); font-size: var(--ios-fs-footnote); }
+.ios-channel-message {
+  border: 0.5px solid var(--ios-separator);
+  border-radius: var(--ios-r-md);
+  background: var(--ios-elevated);
+  color: var(--ios-text);
+  padding: var(--ios-space-3) var(--ios-space-4);
+  font-size: var(--ios-fs-subhead);
+}
+.ios-channel-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: var(--ios-space-4);
+  align-items: start;
+}
+.ios-channel-list { display: grid; gap: var(--ios-space-2); }
+.ios-channel-option {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 0.5px solid var(--ios-separator);
+  border-radius: var(--ios-r-lg);
+  background: var(--ios-surface-solid);
+  color: var(--ios-text);
+  cursor: pointer;
+  padding: var(--ios-space-4);
+  text-align: left;
+  transition: background-color var(--ios-dur-fast), border-color var(--ios-dur-fast), transform var(--ios-dur-fast) var(--ios-ease-out);
+}
+.ios-channel-option:hover { border-color: color-mix(in srgb, var(--ios-accent) 40%, var(--ios-separator)); background: var(--ios-row-hover); }
+.ios-channel-option:active { transform: scale(0.99); }
+.ios-channel-option--active { border-color: var(--ios-accent); background: color-mix(in srgb, var(--ios-accent) 10%, var(--ios-surface-solid)); }
+.ios-channel-option strong { font-size: var(--ios-fs-subhead); font-weight: 700; }
+.ios-channel-option span { color: var(--ios-text-secondary); font-size: var(--ios-fs-caption); }
+.ios-channel-detail { min-width: 0; }
+.ios-channel-panel, .ios-channel-empty { display: grid; gap: var(--ios-space-4); }
+.ios-channel-empty p { margin: 0; color: var(--ios-text-secondary); }
+.ios-channel-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--ios-space-4); }
+
+@media (max-width: 760px) {
+  .ios-channel-layout { grid-template-columns: 1fr; }
+}

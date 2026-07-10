@@ -56,7 +56,7 @@ class MerchantModuleDashboardC extends React.Component {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             return sanitizeSnapshotCards(saved ? JSON.parse(saved) : merchantDefaultSnapshotCards);
-        } catch (error) {
+        } catch {
             return merchantDefaultSnapshotCards;
         }
     }
@@ -64,7 +64,7 @@ class MerchantModuleDashboardC extends React.Component {
     saveSnapshotCards(cards) {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-        } catch (error) {
+        } catch {
             // Dashboard snapshots are optional; the dashboard still works without persistence.
         }
     }

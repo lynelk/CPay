@@ -10,7 +10,6 @@ interface ImportMeta {
 
 // Allow importing legacy JS modules that have no type declarations.
 declare module '*.svg';
-declare module 'rc-easyui';
 declare module 'react-localization';
 
 // Minimal ambient for the build-time-replaced CRA fallback in shared/config.ts.

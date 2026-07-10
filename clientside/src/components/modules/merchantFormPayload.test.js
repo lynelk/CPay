@@ -1,7 +1,7 @@
 import { buildMerchantPayload, emptyMerchantForm } from './merchantFormPayload';
 
 describe('merchant form payload helpers', () => {
-  test('normalizes rc-easyui combo values before submitting a merchant', () => {
+  test('normalizes legacy combo-shaped values before submitting a merchant', () => {
     const payload = buildMerchantPayload({
       name: 'Test Merchant',
       short_name: 'TEST',
