@@ -8,7 +8,7 @@ describe('settings security cleanup', () => {
     const settings = read('components/modules/ModuleSettings.jsx');
 
     expect(settings).toContain('isSensitiveSetting');
-    expect(settings).toContain('<PasswordBox');
+    expect(settings).toContain('<PasswordField');
     expect(settings).toContain('maskedSettingValue');
   });
 
@@ -16,7 +16,7 @@ describe('settings security cleanup', () => {
     const settings = read('components/modules/merchant/MerchantModuleSettings.jsx');
 
     expect(settings).toContain('isSensitiveSetting');
-    expect(settings).toContain('<PasswordBox');
+    expect(settings).toContain('<PasswordField');
     expect(settings).toContain('maskedSettingValue');
   });
 });
