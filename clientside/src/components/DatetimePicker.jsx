@@ -1,98 +1,58 @@
 import React from 'react';
-import { DateBox, TimeSpinner } from 'rc-easyui';
-import common from "./Common";
+import { DateField } from '../ui';
+
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * Combined date + time picker built on native iOS-styled inputs (replaces
+ * rc-easyui DateBox + TimeSpinner). Emits "yyyy-MM-dd HH:mm:ss" via
+ * onValueSelected, matching the previous contract.
+ */
 class DatetimePicker extends React.Component {
-    constructor(props) {
-      super(props);
-      this.state = {
-            value: "",
-            dateValue: "",
-            dateV: new Date(),
-            timeValue: this.getDefaultTime(),
-            inputStyle: {
-                textAlign: "center",
-                marginLeft: "5px",
-                width: "60px",
-                float: "left"
-            }
-      }
-    }
-  
-    componentDidUpdate() {
-        
-    }
+  constructor(props) {
+    super(props);
+    const now = new Date();
+    this.state = {
+      dateValue: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+      timeValue: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    };
+  }
 
-    shouldComponentUpdate(nextProps, nextState) {
-      return true;
-    }
-  
-    componentDidMount() {
-        this.setState({
-            value : this.props.value
-        });
-    }
-
-    handleTimeChange(time) {
-        let formated_date = common.formatDate(this.state.dateV);
-        this.setState({ 
-            timeValue: time,
-            value: formated_date+" "+time+":00"
-        }, () => {
-            this.props.onValueSelected(this.state.value);
-        });
-    }
-
-    formatDate(date) {
-        if (date == null) {
-            date = new Date();
-        }
-        let y = date.getFullYear();
-        let m = date.getMonth() + 1;
-        let d = date.getDate();
-        return [y, m, d].join('-');
-    }
-
-    getDefaultTime() {
-        let date = new Date();
-        return date.getHours()+":"+date.getMinutes()
-    }
-
-    handleDateChange(date) {
-        let formated_date = common.formatDate(date);
-        this.setState({ 
-            dateValue: formated_date,
-            value: formated_date+" "+this.state.timeValue+":00",
-            dateV: date,
-        }, () => {
-            this.props.onValueSelected(this.state.value);
-        });
-    }
-  
-    render() {
-        const { timeValue, inputStyle } = this.state;
-        const tsProps = {
-            inputStyle: inputStyle,
-            value: timeValue,
-            onChange: this.handleTimeChange.bind(this)
-        }
-        return (
-            <div>
-                <div style={{ marginBottom: 20 }}>
-                    <DateBox 
-                        format="yyyy-MM-dd"
-                        panelStyle={{width:250,height:300}}
-                        value={this.state.dateV} 
-                        onChange={this.handleDateChange.bind(this)}
-                        style={{
-                            float: "left"
-                        }}
-                        />
-                    <TimeSpinner 
-                        spinAlign="horizontal" {...tsProps}></TimeSpinner>
-                </div>
-            </div>
-        );
+  emit(next) {
+    const { dateValue, timeValue } = { ...this.state, ...next };
+    if (dateValue && timeValue && this.props.onValueSelected) {
+      this.props.onValueSelected(`${dateValue} ${timeValue}:00`);
     }
   }
 
-  export default DatetimePicker;
+  handleDateChange(dateValue) {
+    this.setState({ dateValue }, () => this.emit({ dateValue }));
+  }
+
+  handleTimeChange(timeValue) {
+    this.setState({ timeValue }, () => this.emit({ timeValue }));
+  }
+
+  render() {
+    return (
+      <div style={{ display: 'flex', gap: 'var(--ios-space-3)', flexWrap: 'wrap' }}>
+        <DateField
+          id="dtp-date"
+          kind="date"
+          value={this.state.dateValue}
+          onValueChange={(v) => this.handleDateChange(v)}
+        />
+        <DateField
+          id="dtp-time"
+          kind="time"
+          value={this.state.timeValue}
+          onValueChange={(v) => this.handleTimeChange(v)}
+        />
+      </div>
+    );
+  }
+}
+
+export default DatetimePicker;
