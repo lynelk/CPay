@@ -1,21 +1,37 @@
 import React from 'react';
-import { Form, FormField, TextBox, CheckBox, ComboBox, LinkButton, PasswordBox } from 'rc-easyui';
-import { Panel, Layout, LayoutPanel, Menu, MenuItem, SwitchButton, DateBox } from 'rc-easyui';
 import Messager from '../../StableMessager';
-import { DataGrid, GridColumn, Label, ButtonGroup, SearchBox, Dialog, Tooltip } from 'rc-easyui';
-import PropTypes from "prop-types";
-import { useHistory, withRouter } from '../../../shared/router/compat';
-import MainMenu from "../../MainMenu";
+import { withRouter } from '../../../shared/router/compat';
 import common from "../../Common";
-import Progress from "../../Progress";
-import LinearChart from './LinearChart';
-import styles from '../../styles';
 import strings from '../../locale';
 import ReactExport from "../../../shared/export/ExcelExport";
+import {
+  Card, Toolbar, Table, Select, SearchField, Checkbox, Badge, Sheet, Button,
+  TextField, TextArea, DateField, Icons,
+} from '../../../ui';
 
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
 const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
+
+const SEARCH_CATEGORIES = [
+  { value: 'all', label: 'All Fields' },
+  { value: 'tx_type', label: 'Type' },
+  { value: 'status', label: 'Status' },
+  { value: 'original_amount', label: 'Amount' },
+];
+
+function statusTone(s) {
+  if (s === 'SUCCESSFUL') return 'success';
+  if (s === 'FAILED') return 'danger';
+  if (s === 'PENDING') return 'warning';
+  return 'neutral';
+}
+
+const traceHtml = (value, pre) => ({
+  __html: pre
+    ? "<pre>" + common.encodeHTML(value || "") + "</pre>"
+    : (value ? common.encodeHTML(value).replace(/\n/g, "<br/>") : ""),
+});
 
 class MerchantModuleTransactionsC extends React.Component {
     constructor(props) {
@@ -24,904 +40,323 @@ class MerchantModuleTransactionsC extends React.Component {
             total: 0,
             pageSize: 50,
             allChecked: false,
-            rowClicked: false,
-            data:[],
-            pageOptions: {
-                layout: ['list', 'sep', 'first', 'prev', 'next', 'last', 'sep', 'refresh', 'sep', 'manual', 'info']
-            },
-            gridActions: [{ value: "bulk_actions", text: "Bulk Actions" },
-            { value: "all", text: "Select All" },
-            { value: "clear", text: "Clear Selection" }],
-            gridActionsValue: "bulk_actions",
-            formdMode: 'new',//Can be set to edit
-            formd: {
-                id:"",
-                name: "",
-                status: "ACTIVE",
-                account_type: "personal",
-                admins:[],
-                status: { value: 'ACTIVE', text: "ACTIVE" },
-                generate_password: false
-            },
-            privileges: common.privileges,
-            status: [{ value: 'ACTIVE', text: "ACTIVE" },
-                { value: 'INACTIVE', text: "INACTIVE" },
-                { value: 'SUSPENDED', text: "SUSPENDED" }],
-            account_types: [
-                { value: 'personal', text: "PERSONAL" },
-                { value: 'business', text: "BUSINESS" },
-            ],
-            rules: {
-                'name': 'required',
-                'status': ['required'],
-                "email": {"required":true,"emailValidation":common.emailValidation},
-                "phone": {'required':true, "phoneValidation":common.phoneValidation}
-            },
-            errors: {},
-            title: '',
-            formDialogStateOpened: true,
-            searchingValue: {
-                value: "",
-                category: ""
-            },
+            data: [],
+            searchingValue: { value: "", category: "all" },
             search_rules: {
                 start_date: common.formatDate(common.getDateMonthsBefore(new Date(), 6)),
                 end_date: common.formatDate(new Date()),
-                start_date_val : common.getDateMonthsBefore(new Date(), 6),
-                end_date_val :new Date(),
                 status: "",
-                tx_type: ""
+                tx_type: "",
             },
-            formSearchDialogStateClosed: true,
-            search_categories: [
-                {value:'all',text:'All Fields',iconCls:'icon-ok'},
-                {value:'tx_type',text:'Type', iconCls:'icon-settings'},
-                {value:'status',text:'Status', iconCls:'icon-settings'},
-                {value:'original_amount',text:'Amount', iconCls:'icon-man'}
-            ],
+            searchOpen: false,
             hasAccess: false,
-            tx_details_row:{}, 
-            detailedRecordTxDialogStateClosed: true,
-            windowHeight: window.innerHeight
+            tx_details_row: {},
+            detailsOpen: false,
+            payInOpen: false,
+            payInForm: { account: "", tx_description: "", amount: "0" },
+            payInErrors: {},
         };
     }
 
-    handleResize(e) {
-        this.setState({ windowHeight: window.innerHeight });
-
-    }
-
-    componentWillMount() {
-        window.addEventListener("resize", this.handleResize);
-    }
-
     componentDidMount() {
-
-        window.addEventListener("resize", this.handleResize);
-        
         if (this.isUserAllowedAccess()) {
-            this.setState({
-                hasAccess:true,
-            }, ()=> {
-                this.getData();
-            });
+            this.setState({ hasAccess: true }, () => this.getData());
         } else {
-            this.messager.alert({
-                title: "Access denied!",
-                icon: "info",
-                msg: "You are not allowed access to this section.",
-                result: (r) => {}
-            });
+            this.messager.alert({ title: "Access denied!", icon: "info", msg: "You are not allowed access to this section." });
         }
     }
 
     isUserAllowedAccess() {
-        let user = localStorage.getItem("merchantUser") != null ? 
-            JSON.parse(localStorage.getItem("merchantUser")) : {};
-
-        let isPrivilegeExists = false;
-
+        const user = localStorage.getItem("merchantUser") != null ? JSON.parse(localStorage.getItem("merchantUser")) : {};
         if (user.privileges) {
-            for (let i=0; i < user.privileges.length; i++) {
-                if (user.privileges[i].privilege == "ACCESS_TRANSACTION_LOG") {
-                    isPrivilegeExists = true;
-                }
+            for (let i = 0; i < user.privileges.length; i++) {
+                if (user.privileges[i].privilege === "ACCESS_TRANSACTION_LOG") return true;
             }
         }
-        
-        return isPrivilegeExists;
-    }
-
-    resetForm(after) {
-        this.setState({
-            formd: {
-                name: "",
-                account_type: "personal",
-                admins:[],
-                status: 'ACTIVE',
-            }
-        }, ()=> {
-            after();
-        });
+        return false;
     }
 
     getData() {
         this.props.loader("START");
-        let searchData = {
+        const searchData = {
             search_rules: this.state.search_rules,
             pageSize: this.state.pageSize,
             searchingValue: this.state.searchingValue,
             sort: 'asc'
-        }
-        fetch(common.base_url+"/transactions/getMerchantTransactions", {
-            method: 'POST', // *GET, POST, PUT, DELETE, etc.
-            mode: 'cors', // no-cors, *cors, same-origin
-            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-            credentials: 'include', // include, *same-origin, omit
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow', // manual, *follow, error
-            referrer: 'no-referrer', // no-referrer, *client
-            body: JSON.stringify(searchData) // body data type must match "Content-Type" header
-        }).then ((response)=>{
-            return response.text();
-        }).then((response_) => {
+        };
+        fetch(common.base_url + "/transactions/getMerchantTransactions", {
+            method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+            body: JSON.stringify(searchData)
+        }).then((response) => response.text()).then((response_) => {
             this.props.loader("STOP");
             let res;
             try {
                 res = JSON.parse(response_);
                 if (res.code === "000") {
-                    try {
-                        this.setState({
-                            data: res.data,
-                            total: res.total
-                        });
-                    } catch (ex) {
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: ex.message
-                        });
-                    }
+                    this.setState({ data: res.data, total: res.total, allChecked: false });
                 } else {
-                    //If session timed out
-                    if (res.code === "107") {
-                        this.sessionExpired();
-                        return;
-                    } else if (res.code === "110") {
-                        this.accessNotAllowed(res.message);
-                        return;
-                    }
-
-                    this.messager.alert({
-                        title: "Error "+res.code,
-                        icon: "error",
-                        msg: res.message
-                    });
+                    if (res.code === "107") { this.sessionExpired(); return; }
+                    if (res.code === "110") { this.accessNotAllowed(res.message); return; }
+                    this.messager.alert({ title: "Error " + res.code, icon: "error", msg: res.message });
                 }
-            } catch(Error) {
-                //alert(Error.message);
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-                return;
+            } catch (Error) {
+                this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
             }
         }).catch((error) => {
             this.props.loader("STOP");
-            if (this.messager != null) {
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: error.message
-                });
-            } else {
-                alert(error);
-            }
+            if (this.messager != null) this.messager.alert({ title: "Error", icon: "error", msg: error.message });
+            else alert(error);
         });
     }
 
     accessNotAllowed(msg) {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Access denied!",
-            icon: "info",
-            msg: msg,
-            result: (r) => {
-                this.setState({
-                    hasAccess: false
-                });
-                //history.goBack();
-            }
-        });
+        this.messager.alert({ title: "Access denied!", icon: "info", msg, result: () => this.setState({ hasAccess: false }) });
     }
 
     sessionExpired() {
-        const {history } = this.props;
-        this.messager.alert({
-            title: "Session Expired!",
-            icon: "info",
-            msg: "Your are session expired",
-            result: (r) => {
-                history.push("/");
-            }
-        });
+        const { history } = this.props;
+        this.messager.alert({ title: "Session Expired!", icon: "info", msg: "Your session expired", result: () => history.push("/") });
     }
 
     submitPayment(data) {
         this.messager.confirm({
-            title: "Confirm to Initiate inbound Payment",
-            icon: "info",
-            msg: "Are you sure you want to continue to initiate a mobile money payment on "+data.account+"?",
+            title: "Confirm to Initiate inbound Payment", icon: "info",
+            msg: "Are you sure you want to continue to initiate a mobile money payment on " + data.account + "?",
             result: (r) => {
-                //Continue to submit the form
-                if (r) {
-                    this.props.loader("START");
-                    fetch(common.base_url+"/transactions/addPayInTransaction", {
-                        method: 'POST', // *GET, POST, PUT, DELETE, etc.
-                        mode: 'cors', // no-cors, *cors, same-origin
-                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                        credentials: 'include', // include, *same-origin, omit
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        redirect: 'follow', // manual, *follow, error
-                        referrer: 'no-referrer', // no-referrer, *client
-                        body: JSON.stringify(data) // body data type must match "Content-Type" header
-                    }).then ((response)=>{
-                        return response.text();
-                    }).then((response_) => {
-                        this.props.loader("STOP");
-                        let res;
-                        try {
-                            res = JSON.parse(response_);
-                            if (res.code === "000") {
-                                try {
-                                    this.resetForm(()=> {
-                                        this.setState({ formDialogStateOpened: true }, ()=> {
-                                            this.messager.alert({
-                                                title: "Success!",
-                                                icon: "info",
-                                                msg: res.message,
-                                                result: r => {
-                                                    if (r) {
-                                                        this.getData();
-                                                    }
-                                                }
-                                            });
-                                        });
-                                    });
-                                } catch (ex) {
-                                    this.messager.alert({
-                                        title: "Error",
-                                        icon: "error",
-                                        msg: ex.message
-                                    });
-                                }
-                            } else {
-                                //If session timed out
-                                if (res.code === "107") {
-                                    this.sessionExpired();
-                                    return;
-                                }
-
+                if (!r) return;
+                this.props.loader("START");
+                fetch(common.base_url + "/transactions/addPayInTransaction", {
+                    method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
+                    body: JSON.stringify(data)
+                }).then((response) => response.text()).then((response_) => {
+                    this.props.loader("STOP");
+                    let res;
+                    try {
+                        res = JSON.parse(response_);
+                        if (res.code === "000") {
+                            this.setState({ payInOpen: false, payInForm: { account: "", tx_description: "", amount: "0" } }, () => {
                                 this.messager.alert({
-                                    title: "Error "+(res.code ? res.code : res.status+" "+res.error),
-                                    icon: "error",
-                                    msg: res.message+". Error: "+res.error,
-                                    result: (r) => {
-                                        
-                                    }
+                                    title: "Success!", icon: "info", msg: res.message,
+                                    result: (ok) => { if (ok) this.getData(); }
                                 });
-                            }
-                        } catch(Error) {
-                            //alert(Error.message);
-                            this.messager.alert({
-                                title: "Error",
-                                icon: "error",
-                                msg: Error.message
                             });
-                            return;
+                        } else {
+                            if (res.code === "107") { this.sessionExpired(); return; }
+                            this.messager.alert({ title: "Error " + (res.code ? res.code : res.status + " " + res.error), icon: "error", msg: res.message + ". Error: " + res.error });
                         }
-                    }).catch((error) => {
-                        this.props.loader("STOP");
-                        this.messager.alert({
-                            title: "Error",
-                            icon: "error",
-                            msg: error.message
-                        });
-                    });
-                }
+                    } catch (Error) {
+                        this.messager.alert({ title: "Error", icon: "error", msg: Error.message });
+                    }
+                }).catch((error) => {
+                    this.props.loader("STOP");
+                    this.messager.alert({ title: "Error", icon: "error", msg: error.message });
+                });
             }
         });
     }
 
-    resolve(row) {
-        row.generate_password = false;
-        let formd = Object.assign({}, row);
-        this.setState({ 
-            formdMode: 'edit',
-            formd: formd,
-            formDialogStateOpened: false,
-            title: "Edit Merchant ("+row.name+")"
-        });
-    }
-
-    handleSearch(searchingValue) {
-        this.setState({
-            searchingValue: searchingValue
-        }, () => {
-            this.getData();
-        });
-    }
-
-    handleClear() {
-
-    }
-
-    bulkActions(value) {
-        this.setState({
-            gridActionsValue: value
-        },() => {
-            if (value == "all") {
-                this.dataGrid.selectRow(0);
-            }
-        });
-    }
-
-
-    getError(name) {
-        const { errors } = this.state;
-        if (!errors){
-          return null;
-        }
-        return errors[name] && errors[name].length
-            ? errors[name][0]
-            : null;
-    }
-
-    handleRowCheck(row, checked) {
-        let data = this.state.data.slice();
-        let index = this.state.data.indexOf(row);
-        data.splice(index, 1, Object.assign({}, row, { selected: checked }));
-        let checkedRows = data.filter(row => row.selected);
-        this.setState({
-            allChecked: data.length === checkedRows.length,
-            rowClicked: true,
-            data: data
-        }, () => {
-            this.setState({ rowClicked: false })
-        });
-    }
-
-    handleAllCheck(checked) {
-        if (this.state.rowClicked) {
-            return;
-        }
-        let data = this.state.data.map(row => {
-            return Object.assign({}, row, { selected: checked })
-        });
-        this.setState({
-            allChecked: checked,
-            data: data
-        });
-    }
-
-    /*
-    * Set state to true to close otherwise false to oepn
-    */
-    openOrCloseFormDialog(state) {
-        this.setState({
-            formDialogStateOpened: state
-        });
-    }
-
-    recordTxDetailsDialog() {
-        const { tx_details_row, detailedRecordTxDialogStateClosed } = this.state;
-        return (
-            <Dialog
-                title={"Transaction Details: "+tx_details_row.merchant_name}
-                closed={detailedRecordTxDialogStateClosed} 
-                style={{ width: 850, height: 510 }}
-                bodyCls="f-column"
-                modal
-                onClose={() => {
-                    //this.resetRecordTxForm(()=>{});
-                }}
-                ref={ref => this.dlgRowDetailsRecordTx = ref}>
-                <div className="f-full" style={{margin: "5px"}}>
-                    <table
-                        cellPadding={10} 
-                        style={{width: 800}}>
-                        <tr>
-                            <td><span className={styles.titleText}>Merchant Name</span></td>
-                            <td>{tx_details_row.merchant_name}</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <span className={styles.titleText}>Merchant number</span>
-                            </td>
-                            <td>{tx_details_row.merchant_number}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Gateway ID</span></td>
-                            <td>{tx_details_row.gateway_id}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Status</span></td>
-                            <td>{tx_details_row.status}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Amount</span></td>
-                            <td>{"UGX "+tx_details_row.original_amount_formatted}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Merchant Reference:</span></td>
-                            <td>{tx_details_row.tx_merchant_ref}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Network Ref:</span></td>
-                            <td>{tx_details_row.tx_gateway_ref}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Payer/Payee Number:</span></td>
-                            <td>{tx_details_row.payer_number}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Merchant Description:</span></td>
-                            <td>
-                                <div    
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            tx_details_row.tx_merchant_description ?
-                                            common.encodeHTML(tx_details_row.tx_merchant_description).replace(/\n/g, "<BR/>") : ""
-                                        )
-                                    }}
-                                    className={styles.commonBlockText}>
-
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Our Description:</span></td>
-                            <td>
-                                <div
-                                    style={{width: "100%", overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            tx_details_row.tx_description ?
-                                            common.encodeHTML(tx_details_row.tx_description).replace(/\n/g, "<BR/>") : ""
-                                        )
-                                    }}
-                                    className={styles.commonBlockText}>
-                                
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Charges:</span></td>
-                            <td>{"UGX "+tx_details_row.charges_formatted}</td>
-                        </tr>
-                        <tr>
-                            <td><span className={styles.titleText}>Created On</span></td>
-                            <td>{tx_details_row.created_on}</td>
-                        </tr>
-                        
-                        
-                        <tr>
-                            <td><span className={styles.titleText}>Callback Trace</span></td>
-                            <td style={{width:500}}>
-                                <div style={{width: '100%', overflow: "auto"}}
-                                    dangerouslySetInnerHTML={{
-                                        __html: (
-                                            "<PRE>"+
-                                            common.encodeHTML(tx_details_row.callback_trace ?
-                                            tx_details_row.callback_trace : "")
-                                            +"</PRE>"
-                                        )
-                                    }}
-                                    className={styles.commonBlockText}>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgRowDetailsRecordTx.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
-        );
-    }
-
-    addPayIn() {
-        this.setState({
-            title: strings.add_payin,
-            formdMode: 'new',
-            formDialogStateOpened: false,
-            formd: {
-                id:"",
-                account: "",
-                description: "",
-                amount: "",
-            }
-        });
-    }
-
-    clearSearch_() {
-        let search_rules = Object.assign({}, this.state.search_rules);
-        search_rules.start_date = common.formatDate(common.getDateMonthsBefore(new Date(), 6));
-        search_rules.end_date = common.formatDate(new Date());
-        search_rules.start_date_val = common.getDateMonthsBefore(new Date(), 6);
-        search_rules.end_date_val = new Date();
-        search_rules.status = "";
-        search_rules.tx_type = "";
-        this.setState({ search_rules: search_rules });
+    handleSearch(value) {
+        this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, value } }), () => this.getData());
     }
 
     handleSearchFormChange(name, value) {
-        let formd = Object.assign({}, this.state.search_rules);
-        if (name=="start_date" || name=="end_date") {
-            formd[name] = common.formatDate(value);
-            if (name=="start_date") {
-                formd["start_date_val"] = value;
-            } else if (name=="end_date") {
-                formd["end_date_val"] = value;
+        this.setState((prev) => ({ search_rules: { ...prev.search_rules, [name]: value } }));
+    }
+
+    clearSearch() {
+        this.setState({
+            search_rules: {
+                start_date: common.formatDate(common.getDateMonthsBefore(new Date(), 6)),
+                end_date: common.formatDate(new Date()),
+                status: "",
+                tx_type: "",
             }
-        } else {
-            formd[name] = value;
-        }
-        this.setState({ search_rules: formd });
+        });
+    }
+
+    handleRowCheck(row, checked) {
+        const data = this.state.data.map((r) => (r === row ? { ...r, selected: checked } : r));
+        this.setState({ data, allChecked: data.every((r) => r.selected) });
+    }
+
+    handleAllCheck(checked) {
+        this.setState({ allChecked: checked, data: this.state.data.map((r) => ({ ...r, selected: checked })) });
+    }
+
+    openPayIn() {
+        this.setState({ payInOpen: true, payInErrors: {}, payInForm: { account: "", tx_description: "", amount: "0" } });
+    }
+
+    payInChange(name, value) {
+        this.setState((prev) => ({ payInForm: { ...prev.payInForm, [name]: value } }));
+    }
+
+    savePayIn() {
+        const f = this.state.payInForm;
+        const errors = {};
+        if (!f.account) errors.account = 'Account is required';
+        if (!f.tx_description) errors.tx_description = 'Description is required';
+        if (f.amount === '' || Number.isNaN(Number(f.amount))) errors.amount = 'Enter a valid amount';
+        this.setState({ payInErrors: errors });
+        if (Object.keys(errors).length === 0) this.submitPayment(f);
     }
 
     searchDialog() {
-        const { search_rules, rules, formSearchDialogStateClosed } = this.state;
+        const s = this.state.search_rules;
         return (
-            <Dialog
+            <Sheet
+                open={this.state.searchOpen}
+                onClose={() => this.setState({ searchOpen: false })}
                 title="Search"
-                closed={formSearchDialogStateClosed} 
-                style={{ width: 450, height: 320 }}
-                bodyCls="f-column"
-                modal
-                ref={ref => this.dlgSearch = ref}>
-                
-                <div className="f-full" style={{margin: "5px"}}>
-                    <Form
-                        ref={ref => this.form = ref}
-                        model={search_rules}
-                        floatingLabel
-                        labelWidth={120}
-                        /*labelPosition="top"*/
-                        onChange={this.handleSearchFormChange.bind(this)}
-                        onValidate={(errors) => this.setState({ errors: errors })}>
-                    
-                        <FormField name="start_date" label="Start Date">
-                            <DateBox 
-                                format="yyyy-MM-dd"
-                                inputId="start_date" 
-                                name="start_date" 
-                                value={search_rules.start_date_val} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
-                        </FormField>
-                        <FormField name="end_date" label="End Date">
-                            <DateBox 
-                                format="yyyy-MM-dd"
-                                inputId="end_date" 
-                                name="end_date" 
-                                value={search_rules.end_date_val} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></DateBox>
-                        </FormField>
-
-                        <FormField name="status" label="Status">
-                            <TextBox 
-                                inputId="status" 
-                                name="status" 
-                                value={search_rules.status} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                        </FormField>
-                        <FormField name="tx_type" label="Type">
-                            <TextBox 
-                                inputId="tx_type" 
-                                name="tx_type" 
-                                value={search_rules.tx_type} 
-                                style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                        </FormField>
-                    </Form>
+                size="sm"
+                footer={<>
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.clearSearch()}>{strings.clear}</Button>
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: false })}>{strings.close}</Button>
+                    <Button variant="primary" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: false }, () => this.getData())}>{strings.go}</Button>
+                </>}
+            >
+                <div className="ios-form">
+                    <DateField id="tx-start" label="Start Date" kind="date" value={s.start_date} onValueChange={(v) => this.handleSearchFormChange('start_date', v)} />
+                    <DateField id="tx-end" label="End Date" kind="date" value={s.end_date} onValueChange={(v) => this.handleSearchFormChange('end_date', v)} />
+                    <TextField id="tx-status" label="Status" value={s.status} onValueChange={(v) => this.handleSearchFormChange('status', v)} />
+                    <TextField id="tx-type" label="Type" value={s.tx_type} onValueChange={(v) => this.handleSearchFormChange('tx_type', v)} />
                 </div>
-                <div className="dialog-button">
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.getData();
-                    }}>{strings.go}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.clearSearch_();
-                    }}>{strings.clear}</LinkButton>
-                    <LinkButton style={{ width: 80 }} onClick={() => {
-                        this.dlgSearch.close();
-                    }}>{strings.close}</LinkButton>
-                </div>
-            </Dialog>
+            </Sheet>
         );
     }
 
-
-    render () {
-        const {searchingValue, search_categories, windowHeight} = this.state;
-        
-        if (!this.state.hasAccess) {
-            return (<div>
-                <Messager ref={ref => this.messager = ref}></Messager>
-            </div>);
-        }
-
+    detailRow(label, value) {
         return (
-            <div>
-                <div>
-                    <Panel bodyStyle={{ padding: '5px'}}>
-                        <div style={{float:'left'}}>
-                            <span className="tw:text-base tw:mx-[5px] tw:my-[2px] tw:font-bold">Transactions | </span>
-                            <ComboBox
-                                inputId="c1"
-                                data={this.state.gridActions}
-                                value={this.state.gridActionsValue}
-                                onChange={(value) => this.bulkActions(value)}/>
-
-                            <LinkButton 
-                                onClick={() => this.addPayIn()}
-                                className={styles.moduleToolBarButtons}
-                                iconCls="icon-add">{strings.add_payin}</LinkButton>
-
-                        </div>
-                        
-                        <div  style={{float:'right'}}>
-                            <SearchBox
-                                style={{ width: 300, float:'right' }}
-                                placeholder={strings.search_merchant}
-                                value={searchingValue.value}
-                                onSearch={this.handleSearch.bind(this)}
-                                category={searchingValue.category}
-                                categories={search_categories}
-                                addonRight={() => (
-                                    <span 
-                                        className="textbox-icon icon-clear" 
-                                        title={strings.clear_value}
-                                        onClick={this.handleClear.bind(this)}></span>
-                                )}
-                                />
-                            <ButtonGroup>
-                                <LinkButton 
-                                    iconCls="icon-search" 
-                                    onClick={() => {
-                                        this.dlgSearch.open();
-                                    }}>{strings.search}</LinkButton>
-                                <Download data={this.state.data} />
-                                
-                            </ButtonGroup>
-                        </div>
-                    </Panel>
-                </div>
-                <DataGrid
-                    onRowClick={(row)=> {
-
-                    }}
-                    ref={ref => this.dataGrid = ref}
-                    style={{ height: (windowHeight - common.toReduceGridHeight) }}
-                    selectionMode={"multiple"}
-                    pagination={true}
-                    total={this.state.total}
-                    pageSize={this.state.pageSize}
-                    allChecked={this.state.allChecked}
-                    rowClicked={this.state.rowClicked}
-                    data={this.state.data}
-                    pageOptions={this.state.pageOptions}
-                    >
-                    <GridColumn width={50} align="center"
-                        field="ck"
-                        render={({ row }) => (
-                            <CheckBox checked={row.selected} onChange={(checked) => this.handleRowCheck(row, checked)}></CheckBox>
-                        )}
-                        header={() => (
-                            <CheckBox checked={this.state.allChecked} onChange={(checked) => this.handleAllCheck(checked)}></CheckBox>
-                        )}
-                        />
-                    <GridColumn field="created_on" title="Created on"></GridColumn>
-                    <GridColumn field="merchant_id" title="Network ID" 
-                        render={({ row }) => (
-                            <span>
-                                {row.tx_gateway_ref}
-                            </span>
-                        )}></GridColumn>
-                    <GridColumn field="payer_number" title="Payer Number" ></GridColumn>
-                    <GridColumn field="status" title="Status" ></GridColumn>
-                    <GridColumn field="tx_type" title="Type" align="left"></GridColumn>
-                    <GridColumn field="original_amount_formatted" title="Amount" align="right"></GridColumn>
-                    <GridColumn field="original_amount" title="Actions" align="center"
-                        render={({ row }) => (
-                            <div>
-                                <ButtonGroup>
-                                    <LinkButton iconCls="icon-report" onClick={() => {
-                                            //this.resolve(row);
-                                            this.setState({
-                                                tx_details_row: row, 
-                                                /*detailedRecordTxDialogStateClosed: false*/
-                                            });
-                                            this.dlgRowDetailsRecordTx.open();
-                                        }}>Details</LinkButton>
-                                </ButtonGroup>
-                            </div>
-                        )}>
-
-                    </GridColumn>
-                </DataGrid>
-                {this.searchDialog()}
-                {this.recordTxDetailsDialog()}
-                <PaymentFormDialog 
-                    openOrCloseFormDialog={(state)=> this.openOrCloseFormDialog(state)}
-                    parentState={this.state}
-                    formd={this.state.formd}
-                    title={this.state.title}
-                    formDialogStateOpened={this.state.formDialogStateOpened}
-                    formdMode={this.state.formdMode}
-                    rules={this.state.rules}
-                    submitPayment={(data) => {
-                        this.submitPayment(data);
-                    }}
-                    />
-                <Messager ref={ref => this.messager = ref}></Messager>
+            <div style={{ display: 'flex', gap: 'var(--ios-space-4)', padding: '8px 0', borderBottom: '0.5px solid var(--ios-separator)' }}>
+                <span style={{ minWidth: 180, color: 'var(--ios-text-secondary)', fontSize: 'var(--ios-fs-footnote)' }}>{label}</span>
+                <span style={{ flex: 1 }}>{value}</span>
             </div>
         );
     }
-}
 
-
-
-class PaymentFormDialog extends React.Component{
-
-    constructor(props) {
-        super(props);
-        this.state = Object.assign({}, this.props);
-        this.state.rules = {
-            'account': ['required'],
-            'tx_description': ['required'],
-            "amount": {"required":true,"numericValidation":common.numericValidation},
-        };
-
-        this.state.formd = {
-            account: "",
-            tx_description: "",
-            amount: "0",
-        };
-        this.state.errors = null;
+    traceBlock(value, pre) {
+        return (
+            <div
+                style={{ width: '100%', overflow: 'auto', background: 'var(--ios-elevated)', borderRadius: 'var(--ios-r-sm)', padding: '10px', fontFamily: 'monospace', fontSize: 12 }}
+                dangerouslySetInnerHTML={traceHtml(value, pre)}
+            />
+        );
     }
 
-    componentDidMount() {
-        
+    recordTxDetailsDialog() {
+        const r = this.state.tx_details_row;
+        return (
+            <Sheet
+                open={this.state.detailsOpen}
+                onClose={() => this.setState({ detailsOpen: false })}
+                title={"Transaction Details: " + (r.merchant_name || '')}
+                size="lg"
+                footer={<Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ detailsOpen: false })}>{strings.close}</Button>}
+            >
+                {this.detailRow('Merchant Name', r.merchant_name)}
+                {this.detailRow('Merchant number', r.merchant_number)}
+                {this.detailRow('Gateway ID', r.gateway_id)}
+                {this.detailRow('Status', <Badge tone={statusTone(r.status)}>{r.status}</Badge>)}
+                {this.detailRow('Amount', "UGX " + (r.original_amount_formatted || ''))}
+                {this.detailRow('Merchant Reference', r.tx_merchant_ref)}
+                {this.detailRow('Network Ref', r.tx_gateway_ref)}
+                {this.detailRow('Payer/Payee Number', r.payer_number)}
+                {this.detailRow('Merchant Description', this.traceBlock(r.tx_merchant_description, false))}
+                {this.detailRow('Our Description', this.traceBlock(r.tx_description, false))}
+                {this.detailRow('Charges', "UGX " + (r.charges_formatted || ''))}
+                {this.detailRow('Created On', r.created_on)}
+                {this.detailRow('Callback Trace', this.traceBlock(r.callback_trace, true))}
+            </Sheet>
+        );
     }
 
-    shouldComponentUpdate(nextProps, nextState) {
-        if (this.props.formd != nextProps.formd) {
-            if (this.props.formdMode == "new") {
-                this.resetForm(() => {});
-            }
-            this.setState({
-                formd: nextProps.formd
-            }, ()=> {
-
-            });
-        }
-        return true;
-    }
-
-    
-
-    saveRow() {
-        let formd_ = Object.assign({}, this.state.formd);
-        this.form.validate(errors => {
-            if (errors != null) {
-                return;
-            }
-            this.props.submitPayment(formd_);
-        });
-    }
-
-    resetForm(whenDone) {
-        let formd_ = Object.assign({}, this.state.formd);
-        //data.push(new_row);
-        formd_ = {
-            account: "",
-            tx_description: "",
-            amount: "0",
-        };
-
-        this.setState({
-            formd: formd_
-        }, ()=> {
-            whenDone();
-        });
-        
-    }
-
-    handleFormChange(name, value) {
-        let formd = Object.assign({}, this.state.formd);
-        formd[name] = value;
-        this.setState({ formd: formd })
+    payInDialog() {
+        const { payInForm: f, payInErrors: e } = this.state;
+        return (
+            <Sheet
+                open={this.state.payInOpen}
+                onClose={() => this.setState({ payInOpen: false })}
+                title={strings.add_payin}
+                size="sm"
+                footer={<>
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ payInOpen: false })}>Close</Button>
+                    <Button variant="primary" className="ios-btn--sm" onClick={() => this.savePayIn()}>{strings.submit}</Button>
+                </>}
+            >
+                <div className="ios-form">
+                    <TextField id="payin-account" label="Account (e.g 256772123456)" value={f.account} invalid={Boolean(e.account)} onValueChange={(v) => this.payInChange('account', v)} />
+                    {e.account ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.account}</span> : null}
+                    <TextField id="payin-amount" label="Amount" value={f.amount} invalid={Boolean(e.amount)} onValueChange={(v) => this.payInChange('amount', v)} />
+                    {e.amount ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.amount}</span> : null}
+                    <TextArea id="payin-desc" label="Description" rows={3} value={f.tx_description} invalid={Boolean(e.tx_description)} onValueChange={(v) => this.payInChange('tx_description', v)} />
+                    {e.tx_description ? <span style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{e.tx_description}</span> : null}
+                </div>
+            </Sheet>
+        );
     }
 
     render() {
+        const { searchingValue, data, allChecked } = this.state;
+        if (!this.state.hasAccess) {
+            return <div><Messager ref={ref => this.messager = ref}></Messager></div>;
+        }
 
-        //const row = this.state.formd;
-        const { title, formDialogStateOpened } = this.props;
-        const {rules, formd } = this.state;
-        
+        const columns = [
+            {
+                key: 'ck', width: 44,
+                header: <Checkbox checked={allChecked} onCheckedChange={(c) => this.handleAllCheck(c)} />,
+                render: (row) => <Checkbox checked={Boolean(row.selected)} onCheckedChange={(c) => this.handleRowCheck(row, c)} />,
+            },
+            { key: 'created_on', header: 'Created On', accessor: (r) => r.created_on, sortable: true, sortValue: (r) => r.created_on || '' },
+            { key: 'merchant_id', header: 'Network ID', render: (r) => r.tx_gateway_ref },
+            { key: 'payer_number', header: 'Payer Number', accessor: (r) => r.payer_number },
+            { key: 'status', header: 'Status', render: (r) => <Badge tone={statusTone(r.status)}>{r.status}</Badge>, sortable: true, sortValue: (r) => r.status || '' },
+            { key: 'tx_type', header: 'Type', accessor: (r) => r.tx_type },
+            { key: 'original_amount_formatted', header: 'Amount', numeric: true, render: (r) => "UGX " + (r.original_amount_formatted || ''), sortable: true, sortValue: (r) => Number(r.original_amount) || 0 },
+            {
+                key: 'actions', header: 'Actions', align: 'center',
+                render: (row) => <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ tx_details_row: row, detailsOpen: true })}>Details</Button>,
+            },
+        ];
+
         return (
-            <Dialog modal 
-                title={title} 
-                closed={formDialogStateOpened} 
-                style={styles.dim.formDialog} className={styles.formDialog}
-                borderType="none"
-                onClose={() => this.props.openOrCloseFormDialog(true)}>
-                    <Layout style={{ width: 500, height:'100%', border: '0px #FFFFFF' }}>
-                        <LayoutPanel 
-                            region="north" 
-                            split={false}
-                            style={{ height: 320, border: '0px #FFFFFF' }}>
-                            
-                            <div className={styles.formDialogContainer}>
-                                <Form
-                                    style={{ width: 400 }}
-                                    ref={ref => this.form = ref}
-                                    model={formd}
-                                    rules={rules}
-                                    floatingLabel
-                                    labelWidth={300}
-                                    labelPosition="top"
-                                    onChange={this.handleFormChange.bind(this)}
-                                    onValidate={(errors) => this.setState({ errors: errors })}>
-                                    
-                                    <FormField name="account" label="Account (e.g 256772123456)">
-                                        <TextBox 
-                                            inputId="account" 
-                                            name="account" 
-                                            value={formd.account} 
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                                    </FormField>
-                                    <FormField name="amount" label="Amount">
-                                        <TextBox 
-                                            inputId="amount" 
-                                            name="amount" 
-                                            value={formd.amount} 
-                                            style={styles.dim.formDialogFields} className={styles.formDialogFields}></TextBox>
-                                    </FormField>
-                                    <FormField name="tx_description" label="Description">
-                                        <TextBox 
-                                            multiline
-                                            inputId="tx_description" 
-                                            name="tx_description" 
-                                            value={formd.tx_description} 
-                                            style={{width:290, height: 60}}></TextBox>
-                                    </FormField>
-                                
-                                </Form>
-                            </div>
-                        </LayoutPanel>
-                        <LayoutPanel region="south" style={{ height: 48 }}>
-                            <div className="dialog-button">
-                                <LinkButton className="tw:bg-[#d93e23] tw:border tw:border-[#d14c1f] tw:text-white" 
-                                    iconCls="icon-save" style={{ width: 80 }} 
-                                            onClick={() => this.saveRow()}>{strings.submit}</LinkButton>
-                                <LinkButton iconCls="icon-cancel" style={{ width: 80 }} 
-                                    onClick={() => {
-                                        this.resetForm(() => {
-                                            this.props.openOrCloseFormDialog(true);
-                                        });
-                                    }}>Close</LinkButton>
-                            </div>
-                        </LayoutPanel>
-                    </Layout>
-            </Dialog>
+            <Card flush>
+                <div style={{ padding: 'var(--ios-space-4)' }}>
+                    <Toolbar>
+                        <Button variant="primary" className="ios-btn--sm" onClick={() => this.openPayIn()}>
+                            <Icons.PlusIcon size={16} />{strings.add_payin}
+                        </Button>
+                        <Toolbar.Spacer />
+                        <div style={{ minWidth: 150 }}>
+                            <Select id="mtx-category" value={searchingValue.category} options={SEARCH_CATEGORIES} onValueChange={(v) => this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, category: v } }))} />
+                        </div>
+                        <SearchField
+                            value={searchingValue.value}
+                            onValueChange={(v) => this.setState((prev) => ({ searchingValue: { ...prev.searchingValue, value: v } }))}
+                            onSubmit={(v) => this.handleSearch(v)}
+                            placeholder={strings.search_merchant}
+                        />
+                        <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: true })}>
+                            <Icons.SearchIcon size={16} />{strings.search}
+                        </Button>
+                        <Download data={data} />
+                    </Toolbar>
+                </div>
+                <Table
+                    columns={columns}
+                    rows={data}
+                    rowKey={(row, i) => row.id ?? `${row.tx_gateway_ref}-${i}`}
+                    pageSize={this.state.pageSize}
+                    isRowSelected={(row) => Boolean(row.selected)}
+                    emptyText="No transactions to display."
+                />
+                {this.searchDialog()}
+                {this.recordTxDetailsDialog()}
+                {this.payInDialog()}
+                <Messager ref={ref => this.messager = ref}></Messager>
+            </Card>
         );
     }
 }
@@ -929,24 +364,24 @@ class PaymentFormDialog extends React.Component{
 class Download extends React.Component {
     render() {
         return (
-            <ExcelFile 
+            <ExcelFile
                 filename="Account_Transactions"
                 ref={ref => this.excelRef = ref}
-                element={<LinkButton 
-                    onClick={() => {
-                        this.excelRef.download();
-                    }}
-                    iconCls="icon-excel">{strings.download}</LinkButton>}>
+                element={
+                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.excelRef.download()}>
+                        <Icons.DownloadIcon size={16} />{strings.download}
+                    </Button>
+                }>
                 <ExcelSheet data={this.props.data} name="Transactions">
-                    <ExcelColumn label="Date time" value="created_on"/>
-                    <ExcelColumn label="Network ID" value="tx_gateway_ref"/>
-                    <ExcelColumn label="Payer Number" value="payer_number"/>
-                    <ExcelColumn label="Status" value="status"/>
-                    <ExcelColumn label="Type" value={"tx_type"}/>
-                    <ExcelColumn label="Merchant Reference" value="tx_merchant_ref"/>
-                    <ExcelColumn label="Description" value="tx_merchant_description"/>
-                    <ExcelColumn label="Amount" value="original_amount"/>
-                    <ExcelColumn label="Charges" value="charges"/>
+                    <ExcelColumn label="Date time" value="created_on" />
+                    <ExcelColumn label="Network ID" value="tx_gateway_ref" />
+                    <ExcelColumn label="Payer Number" value="payer_number" />
+                    <ExcelColumn label="Status" value="status" />
+                    <ExcelColumn label="Type" value={"tx_type"} />
+                    <ExcelColumn label="Merchant Reference" value="tx_merchant_ref" />
+                    <ExcelColumn label="Description" value="tx_merchant_description" />
+                    <ExcelColumn label="Amount" value="original_amount" />
+                    <ExcelColumn label="Charges" value="charges" />
                 </ExcelSheet>
             </ExcelFile>
         );
