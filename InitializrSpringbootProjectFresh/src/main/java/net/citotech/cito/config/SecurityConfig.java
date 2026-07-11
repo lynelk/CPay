@@ -8,6 +8,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +19,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -34,36 +38,58 @@ public class SecurityConfig {
     @Value("${actuator.password}")
     private String actuatorPassword;
 
-    @Value("${admin.api.username:${actuator.username}}")
+    @Value("${admin.api.username}")
     private String adminUsername;
 
-    @Value("${admin.api.password:${actuator.password}}")
+    @Value("${admin.api.password}")
     private String adminPassword;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        // Legacy SPA/session endpoints do not yet exchange CSRF tokens. Keep
-        // current route behavior while avoiding a global CSRF disable.
+    public SecurityFilterChain filterChain(HttpSecurity http, LegacySessionAuthorizationFilter legacySessionAuthorizationFilter) throws Exception {
+        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
+
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.ignoringRequestMatchers(
-                "/api/**",
-                "/api/v1/**",
-                "/api/v2/**",
-                "/auth/**",
-                "/admins/**",
-                "/audittrail/**",
-                "/merchants/**",
-                "/settings/**",
-                "/status/**",
-                "/transactions/**"
-            ))
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(csrfRequestHandler)
+                .ignoringRequestMatchers(
+                    "/api/v1/**",
+                    "/api/do*",
+                    "/api/test*",
+                    "/api/v2/admin/**",
+                    "/api/v2/balances",
+                    "/api/v2/channels",
+                    "/api/v2/health",
+                    "/api/v2/merchant/**",
+                    "/api/v2/native/**",
+                    "/api/v2/payments/**",
+                    "/actuator/**",
+                    "/status/**"
+                )
+            )
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/v2/admin/**").hasRole("ADMIN")
                 .requestMatchers("/actuator/**").hasRole("ACTUATOR")
-                .anyRequest().permitAll()
+                .requestMatchers(
+                    "/",
+                    "/dashboard",
+                    "/dashboardMerchant",
+                    "/portal",
+                    "/api/**",
+                    "/auth/**",
+                    "/admins/**",
+                    "/audittrail/**",
+                    "/merchants/**",
+                    "/settings/**",
+                    "/status/**",
+                    "/transactions/**"
+                ).permitAll()
+                .anyRequest().denyAll()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+            .addFilterBefore(legacySessionAuthorizationFilter, AuthorizationFilter.class)
             .httpBasic(httpBasic -> {});
         return http.build();
     }

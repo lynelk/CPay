@@ -214,16 +214,20 @@ npm run build
 | `MAIL_PORT` | SMTP port. |
 | `MAIL_USERNAME` | SMTP username. |
 | `MAIL_PASSWORD` | SMTP password. |
-| `GATEWAY_STATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
+| `CUSTOM_GATEWAYSTATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
+| `CUSTOM_SSL_SKIP_VERIFY` | Explicitly controls non-production SSL verification bypasses. |
 | `CORS_ALLOWED_ORIGINS` | Trusted merchant and admin portal origins. |
 | `APP_BASE_URL` | Public application URL used in generated links. |
 | `HTTP_PORT` | Backend HTTP port. |
-| `LOCK_FILE_DIR` | Scheduler lock-file directory. |
+| `CUSTOM_LOCKFILEDIRECTORY` | Scheduler lock-file directory. |
 | `ACTUATOR_USERNAME` | Monitoring username. |
 | `ACTUATOR_PASSWORD` | Monitoring password. |
+| `SPRINGDOC_API_DOCS_ENABLED` | Enables `/v3/api-docs`; defaults to `false`. |
+| `SPRINGDOC_SWAGGER_UI_ENABLED` | Enables Swagger UI; defaults to `false`. |
 | `ADMIN_API_USERNAME` | Admin API username. |
 | `ADMIN_API_PASSWORD` | Admin API password. |
 | `CALLBACK_SIGNING_SECRET` | Fallback value used for callback signing where merchant-specific values are not configured. |
+| `MERCHANT_CHANNEL_ENCRYPTION_KEY` | Encryption key used for merchant channel credentials at rest. |
 
 ## Testing and quality checks
 

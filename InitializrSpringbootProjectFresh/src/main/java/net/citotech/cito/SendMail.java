@@ -7,12 +7,10 @@ package net.citotech.cito;
 
 import java.util.Properties;
 import net.citotech.cito.Model.Setting;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,9 +19,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SendMail implements EmailService {
-    @Autowired
-    public JavaMailSender emailSender;
-    
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
     
@@ -38,11 +33,6 @@ public class SendMail implements EmailService {
         message.setSubject(subject);
         message.setText(text);
         mailSender.send(message);
-    }
-
-    @Bean
-    public JavaMailSender getJavaMailSender() {
-        return buildMailSender();
     }
 
     private JavaMailSenderImpl buildMailSender() {
