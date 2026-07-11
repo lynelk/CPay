@@ -5,7 +5,7 @@
     * 
     */
 
-    $base_url = "https://cpay.citotech.net/api/";
+    $base_url = "https://cpay.coresynergi.es/api/";
     //$merchant_number = "1000003";
     $merchant_number = "1000009";
     $amount = "500";
