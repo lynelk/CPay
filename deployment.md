@@ -137,6 +137,32 @@ Build the frontend from `clientside` and deploy `clientside/build` behind HTTPS.
 
 For local testing, Vite runs on `http://localhost:3000` and proxies backend routes to `http://localhost:8081`. Production should use the public HTTPS origin and a reverse proxy/load balancer.
 
+## GitHub Deployment Pipeline
+
+The repository includes a manual GitHub Actions workflow at `.github/workflows/deploy-cpay.yml`. It connects to the server over SSH and runs `deployment/scripts/deploy-server.sh`.
+
+The server deployment script is idempotent. It installs the required CentOS/RHEL packages, ensures MySQL is running on the server, creates `/etc/cpay/.env` if it does not already exist, pulls the selected branch into `/opt/cpay/source`, builds the Vite frontend and Spring Boot backend, writes the systemd and Nginx configuration, restarts the services, and verifies `/status/health`.
+
+Required repository secrets:
+
+| Secret | Purpose |
+|---|---|
+| `CPAY_DEPLOY_HOST` | Server IP or hostname. |
+| `CPAY_DEPLOY_USER` | SSH user, usually `root` for first setup. |
+| `CPAY_DEPLOY_SSH_KEY` | Private SSH key accepted by the server. |
+| `CPAY_DEPLOY_PORT` | SSH port; use `22` unless changed. |
+| `CPAY_DOMAIN` | Public domain, for example `cpay.coresynergi.es`. |
+
+Optional repository secrets:
+
+| Secret | Default |
+|---|---|
+| `CPAY_APP_ROOT` | `/opt/cpay` |
+| `CPAY_REPO_URL` | `https://github.com/lynelk/CPay.git` |
+| `CPAY_MYSQL_ROOT_PASSWORD` | Empty; set only if the server's local MySQL root account requires a password |
+
+The current workflow is manually triggered from GitHub Actions. Use the `branch` input to deploy a specific branch. The server-side script performs a hard reset to `origin/<branch>`, so production-only edits should live in `/etc/cpay/.env`, not inside the repository checkout.
+
 ## Health and Smoke Checks
 
 After deployment, verify:
