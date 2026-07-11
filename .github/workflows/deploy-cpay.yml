@@ -1,0 +1,65 @@
+name: Deploy CPay
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to deploy
+        required: false
+        default: frontend/ios-design-system
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          CPAY_DEPLOY_SSH_KEY: ${{ secrets.CPAY_DEPLOY_SSH_KEY }}
+          CPAY_DEPLOY_HOST: ${{ secrets.CPAY_DEPLOY_HOST }}
+          CPAY_DEPLOY_PORT: ${{ secrets.CPAY_DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CPAY_DEPLOY_SSH_KEY}" ]; then
+            echo "Missing CPAY_DEPLOY_SSH_KEY secret" >&2
+            exit 1
+          fi
+          if [ -z "${CPAY_DEPLOY_HOST}" ]; then
+            echo "Missing CPAY_DEPLOY_HOST secret" >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${CPAY_DEPLOY_SSH_KEY}" > ~/.ssh/cpay_deploy_key
+          chmod 600 ~/.ssh/cpay_deploy_key
+          ssh-keyscan -p "${CPAY_DEPLOY_PORT:-22}" "${CPAY_DEPLOY_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Run server deployment
+        env:
+          CPAY_DEPLOY_HOST: ${{ secrets.CPAY_DEPLOY_HOST }}
+          CPAY_DEPLOY_PORT: ${{ secrets.CPAY_DEPLOY_PORT }}
+          CPAY_DEPLOY_USER: ${{ secrets.CPAY_DEPLOY_USER }}
+          CPAY_DOMAIN: ${{ secrets.CPAY_DOMAIN }}
+          CPAY_APP_ROOT: ${{ secrets.CPAY_APP_ROOT }}
+          CPAY_REPO_URL: ${{ secrets.CPAY_REPO_URL }}
+          CPAY_MYSQL_ROOT_PASSWORD: ${{ secrets.CPAY_MYSQL_ROOT_PASSWORD }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+          DEPLOY_USER="${CPAY_DEPLOY_USER:-root}"
+          DEPLOY_PORT="${CPAY_DEPLOY_PORT:-22}"
+          DEPLOY_BRANCH="${INPUT_BRANCH:-frontend/ios-design-system}"
+          DEPLOY_DOMAIN="${CPAY_DOMAIN:-cpay.coresynergi.es}"
+          DEPLOY_ROOT="${CPAY_APP_ROOT:-/opt/cpay}"
+          DEPLOY_REPO="${CPAY_REPO_URL:-https://github.com/lynelk/CPay.git}"
+          MYSQL_ROOT_SECRET="${CPAY_MYSQL_ROOT_PASSWORD:-}"
+
+          remote_env="CPAY_BRANCH=$(printf '%q' "${DEPLOY_BRANCH}") CPAY_DOMAIN=$(printf '%q' "${DEPLOY_DOMAIN}") CPAY_APP_ROOT=$(printf '%q' "${DEPLOY_ROOT}") CPAY_REPO_URL=$(printf '%q' "${DEPLOY_REPO}") MYSQL_ROOT_PASSWORD=$(printf '%q' "${MYSQL_ROOT_SECRET}")"
+          ssh -i ~/.ssh/cpay_deploy_key -p "${DEPLOY_PORT}" -o IdentitiesOnly=yes "${DEPLOY_USER}@${CPAY_DEPLOY_HOST}" "${remote_env} bash -s" < deployment/scripts/deploy-server.sh
