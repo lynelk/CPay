@@ -28,8 +28,8 @@ This document is for:
 
 | Area | Main purpose |
 |---|---|
-| `InitializrSpringbootProject/` | Spring Boot backend, APIs, payment gateway services, migrations, and tests. |
-| `clientside/` | React admin and merchant portal. |
+| `InitializrSpringbootProjectFresh/` | Spring Boot 4.1 backend, APIs, payment gateway services, migrations, and tests. |
+| `clientside/` | React 18, Vite 8 admin and merchant portal with the CPay iOS-style design system. |
 | `integrations/citoconnect/` | JavaScript reference client and integration assets. |
 | `docs/` | API documentation, architecture notes, readiness gates, production controls, and runbooks. |
 
@@ -41,6 +41,8 @@ Before making changes:
 2. Read `INSTALLATION.md` if you need to run the project locally.
 3. Check the relevant documents under `docs/`.
 4. Confirm whether your change affects merchant APIs, admin APIs, finance operations, provider integrations, callback processing, scaling, or security.
+
+Use `C:\Dev\CPay` as the local working copy on Windows. Do not do package installs, Maven builds, generated-output work, or repository updates from a Google Drive or OneDrive synced checkout.
 
 If the change affects payment behavior, reconciliation, callbacks, balances, provider communication, or operating-control records, plan the change carefully. Payment bugs have a talent for becoming finance meetings, which nobody deserves.
 
@@ -72,8 +74,9 @@ For backend changes:
 - keep payment and finance calculations precise
 - avoid floating-point arithmetic for money where possible
 - keep provider-specific logic inside adapters or dedicated provider services
-- do not bypass request signing, nonce checks, idempotency, merchant validation, channel readiness checks, or operating-control records
+- do not bypass request signing, nonce checks, idempotency, CSRF protection for browser routes, merchant validation, channel readiness checks, or operating-control records
 - keep `/api/v1` behavior stable unless a migration plan exists
+- keep `/api/v2/native/payments/*` adapter-backed behavior aligned with merchant channel credentials and the selected `CUSTOM_GATEWAYSTATE`
 - use claim-based processing for callback workers where concurrency matters
 - add tests for service logic, request signing, parsing, callbacks, reconciliation, provider endpoint handling, or money calculations where relevant
 
@@ -104,7 +107,7 @@ Run the most relevant checks before submitting a pull request.
 Backend:
 
 ```bash
-cd InitializrSpringbootProject
+cd InitializrSpringbootProjectFresh
 mvn test
 mvn verify
 ```
@@ -114,6 +117,8 @@ Frontend:
 ```bash
 cd clientside
 npm install
+npm run typecheck
+npm test
 npm run build
 ```
 
@@ -123,7 +128,7 @@ For documentation-only changes, a build may not be required, but the changed doc
 
 If your change requires a database update:
 
-- add a Flyway migration under `InitializrSpringbootProject/src/main/resources/db/migration`
+- add a Flyway migration under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`
 - use a unique migration version number
 - avoid destructive schema changes unless there is a rollback or migration plan
 - document any data backfill, cutover, or manual verification step
@@ -141,6 +146,8 @@ Treat the following as sensitive:
 - callback signing values
 - database access values
 - CORS configuration
+- CSRF configuration and `/auth/csrf`
+- Spring Session JDBC tables and session timeout behavior
 - actuator access
 - audit logs
 - operating-control records

@@ -23,23 +23,31 @@ Confirm the purpose of the installation:
 
 Do not use local development settings for production.
 
+For Windows development, keep the working copy in a local, non-synced folder such as:
+
+```text
+C:\Dev\CPay
+```
+
+Avoid running installs, Maven builds, or generated output from a cloud-synced checkout such as Google Drive or OneDrive. Those folders can interfere with dependency extraction, lock files, and generated build artifacts.
+
 ## 2. System requirements
 
 Install the following tools:
 
 | Tool | Recommended version | Purpose |
 |---|---|---|
-| Java | 11 or later | Runs the Spring Boot backend. |
+| Java | 21 | Runs the Spring Boot 4.1 backend. |
 | Maven | Latest stable | Builds and tests the backend. |
 | MySQL | 8 or compatible | Stores transactions, merchants, callbacks, balances, reconciliation, channel setup, rate limits, and operations records. |
-| Node.js | 18 or later | Builds the React frontend. |
+| Node.js | 20.19.0 or later | Builds the Vite 8 React frontend. |
 | npm | Comes with Node.js | Installs frontend dependencies. |
 | Git | Latest stable | Clones and manages the repository. |
 
 ## 3. Repository structure
 
 ```text
-InitializrSpringbootProject/   Backend service
+InitializrSpringbootProjectFresh/   Backend service
 clientside/                    Frontend portal
 integrations/citoconnect/      JavaScript integration assets
 docs/                          API, readiness, security, and operations documentation
@@ -66,7 +74,7 @@ clientside/db/
 Database changes are kept under Flyway migrations in:
 
 ```text
-InitializrSpringbootProject/src/main/resources/db/migration
+InitializrSpringbootProjectFresh/src/main/resources/db/migration
 ```
 
 Recent production-control migrations include:
@@ -94,16 +102,21 @@ Never commit `.env` files or real access values to the repository.
 | `MAIL_PORT` | SMTP server port. |
 | `MAIL_USERNAME` | SMTP username. |
 | `MAIL_PASSWORD` | SMTP password. |
-| `GATEWAY_STATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
+| `CUSTOM_GATEWAYSTATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
+| `CUSTOM_SSL_SKIP_VERIFY` | Explicit SSL verification bypass flag; keep `false` outside controlled local/sandbox testing. |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated trusted browser origins for the merchant and admin portals. |
 | `APP_BASE_URL` | Public application URL used in generated links. |
 | `HTTP_PORT` | Backend HTTP port. |
-| `LOCK_FILE_DIR` | Directory used by schedulers for lock files. |
+| `CUSTOM_LOCKFILEDIRECTORY` | Directory used by schedulers for lock files. |
 | `ACTUATOR_USERNAME` | Username for monitoring endpoints. |
 | `ACTUATOR_PASSWORD` | Password for monitoring endpoints. |
+| `SPRINGDOC_API_DOCS_ENABLED` | Enables `/v3/api-docs`; defaults to `false`. |
+| `SPRINGDOC_SWAGGER_UI_ENABLED` | Enables Swagger UI; defaults to `false`. |
+| `CPAY_SECURITY_NONCE_STORE` | Set to `jdbc` for shared v2 replay protection in clustered environments; local default is in-memory. |
 | `ADMIN_API_USERNAME` | Username for admin API access. |
 | `ADMIN_API_PASSWORD` | Password for admin API access. |
 | `CALLBACK_SIGNING_SECRET` | Fallback value for signing merchant callbacks where merchant-specific values are not configured. |
+| `MERCHANT_CHANNEL_ENCRYPTION_KEY` | Encryption key used for merchant channel credentials at rest. |
 
 Example local-only values:
 
@@ -111,16 +124,21 @@ Example local-only values:
 DB_URL=jdbc:mysql://localhost:3306/cpayadmin
 DB_USERNAME=cpay_user
 DB_PASSWORD=change_me
-GATEWAY_STATE=SANDBOX
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:2019
-APP_BASE_URL=http://localhost:8080
-HTTP_PORT=8080
-LOCK_FILE_DIR=/tmp/cpay/locks
+CUSTOM_GATEWAYSTATE=SANDBOX
+CUSTOM_SSL_SKIP_VERIFY=false
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+APP_BASE_URL=http://localhost:8081
+HTTP_PORT=8081
+CUSTOM_LOCKFILEDIRECTORY=C:\Dev\CPay\.codex-smoke\locks
 ACTUATOR_USERNAME=local-actuator
 ACTUATOR_PASSWORD=change_me
+SPRINGDOC_API_DOCS_ENABLED=false
+SPRINGDOC_SWAGGER_UI_ENABLED=false
+CPAY_SECURITY_NONCE_STORE=memory
 ADMIN_API_USERNAME=local-admin
 ADMIN_API_PASSWORD=change_me
 CALLBACK_SIGNING_SECRET=change_me
+MERCHANT_CHANNEL_ENCRYPTION_KEY=change_me_to_32_or_more_random_chars
 ```
 
 Use stronger values outside local development. `change_me` is not a strategy, it is a future incident report.
@@ -130,15 +148,15 @@ Use stronger values outside local development. `change_me` is not a strategy, it
 From the repository root:
 
 ```bash
-cd InitializrSpringbootProject
+cd InitializrSpringbootProjectFresh
 mvn clean package
-java -jar target/cito-0.0.1-SNAPSHOT.jar
+java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 ```
 
 For development testing:
 
 ```bash
-cd InitializrSpringbootProject
+cd InitializrSpringbootProjectFresh
 mvn test
 mvn verify
 ```
@@ -159,10 +177,11 @@ From the repository root:
 ```bash
 cd clientside
 npm install
+npm run dev
 npm run build
 ```
 
-For local frontend development, use the start command defined in `clientside/package.json` if available.
+For local frontend development, `npm run dev` starts Vite on `http://localhost:3000` and proxies `/api`, `/auth`, `/admins`, `/merchants`, `/settings`, `/audittrail`, `/transactions`, and `/actuator` to the backend on `http://localhost:8081`.
 
 If the frontend build fails, check:
 
@@ -280,7 +299,7 @@ Before a release is considered ready for production:
 | Problem | What to check |
 |---|---|
 | Backend does not start | Database URL, missing environment variables, port conflicts, migration errors. |
-| Login/admin access fails | Admin username/password, trusted origins, browser origin. |
+| Login/admin access fails | Admin username/password, trusted origins, browser origin, CSRF token fetch from `/auth/csrf`, and JDBC session tables. |
 | API request is rejected | Signature headers, timestamp, nonce, merchant number, request body. |
 | Provider call is rejected | Merchant channel setup, endpoint URLs, gateway mode, provider sandbox status. |
 | Callback does not deliver | Callback URL, queue status, claim records, parked callbacks, merchant receiver logs. |

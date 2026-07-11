@@ -11,10 +11,10 @@ the application layer was several years behind and still carried Create React Ap
 React Router v5 API, introduced TypeScript and TanStack Query incrementally, moved
 tests to Vitest, and added code-splitting — all on a **React 18.3 baseline**.
 
-Verification gates (all green):
+Latest verification gates:
 
 - `npm run build` — production build succeeds (Vite 8 / Rolldown)
-- `npm test` — 14 test files, 129 tests pass (Vitest)
+- `npm test` — 14 test files, 130 tests pass (Vitest)
 - `npm run typecheck` — `tsc --noEmit` clean
 
 ## What changed
@@ -69,34 +69,31 @@ Verification gates (all green):
   loaded. Initial (login) chunk dropped from ~1,198 kB to ~776 kB; admin/merchant
   bundles now load on demand.
 
-## Deferred — and why (the React 19 gate)
+## Current UI state
 
-Three recommendations are **intentionally not done yet** because they share a hard
-blocker: **`rc-easyui@1.0.39`**. It is a 2018-era library (published under Node 10,
-no declared peer deps) and the entire auth + data-grid UI is built on it. React 19
-removed `findDOMNode`, legacy context, and string refs — APIs a library of that
-vintage relies on — so bumping React would compile but crash the UI at runtime.
+The runtime package set no longer includes `rc-easyui` or `antd`. Auth, admin,
+merchant, dashboard, settings, payments, SMS, audit, transactions, and merchant
+account surfaces use the CPay iOS-style primitives in `src/ui`, brand tokens in
+`src/index.css`, and shared helpers such as `DateField`, `DatetimePicker`,
+`FileButton`, `ProgressOverlay`, `Sheet`, `Table`, and typed HTTP utilities.
 
-Blocked until `rc-easyui` is replaced:
+The remaining `rc-easyui` references in source comments and tests document the
+replacement path and protect against regressions. They are not package imports.
 
-1. **React 18 → 19.**
-2. **React Router v7 → v8** (v8's baseline requires React 19).
-3. **UI-kit consolidation** (retire `rc-easyui`; standardize on one system —
-   recommended: shadcn/ui + Radix on Tailwind v4 for the dark Stripe/Brex/Mercury
-   aesthetic, replacing the mixed `rc-easyui` + `antd` setup).
+## Deferred — React 19 gate
 
-Recommended sequence for the next pass: replace `rc-easyui` surface-by-surface
-(auth screens first, then each data-grid module), then bump React 19 → Router v8,
-then drop the `react-router-dom` package in favor of `react-router` + `react-router/dom`
-(the v8 packaging change).
+React remains on **18.3** intentionally. The next major frontend platform move is
+React 19 plus the corresponding router/package update. Do that as a separate
+upgrade after one more browser smoke pass over admin login, merchant login,
+merchant signup, dialogs, editable tables, file uploads, dashboard cards, and
+payment-channel setup.
 
 ## Other known follow-ups (not blocking)
-- Migrate the large monolithic modules' `fetch` calls onto TanStack Query hooks.
+- Continue moving the large monolithic modules' `fetch` calls onto TanStack Query hooks.
 - Convert `.jsx` modules to `.tsx` incrementally now that `allowJs` is in place.
 - Move the `localStorage` user/role reads behind a single `shared/auth` helper;
-  ensure the **backend** enforces authorization on legacy routes (currently
-  `anyRequest().permitAll()` at the Spring Security layer — tracked in the backend
-  workstream).
+  the backend now has a legacy session authorization filter for protected portal
+  routes, but frontend state should still be centralized.
 
 ## Slice 1 — iOS auth screens (rc-easyui proof of pattern)
 
@@ -108,9 +105,9 @@ First surface migrated off `rc-easyui`, establishing the design-system seed.
 
 **Screens rewritten** (class → typed function components, on the primitives):
 - `Login.tsx`, `LoginMerchant.tsx`, `MerchantSignup.tsx` — all backend contracts preserved verbatim (`/auth/authenticate`, `/auth/authenticateMerchantUser`, `/auth/isLoggedIn`, `/auth/isMerchantUserLoggedIn`, `/api/v2/merchant-self-service/signup`, the `user`/`merchantUser` `localStorage` keys, all redirects, the `uiportal` query redirect). Enter-to-submit now via native `<form onSubmit>`; errors shown inline via `Alert` instead of the rc-easyui-adjacent modal; loading shown via the button spinner instead of the rc-easyui `Progress` dialog.
-- All three now use native `useNavigate` (dropped the `withRouter`/`useHistory` compat shim); shim consumers fell from 24 to 21.
+- All three now use native `useNavigate` (dropped the `withRouter`/`useHistory` compat shim for these screens).
 
-**Still on rc-easyui (next slice):** the forgot-password modals `LoginForgotPassword` / `LoginForgotPasswordMerchant`, which `Login`/`LoginMerchant` still open. `MerchantSignup` is fully rc-easyui-free.
+**Follow-on slices completed:** forgot-password screens, dashboard cards, admin and merchant settings, transactions, audit trail, administrators, merchant account, payments, SMS, file upload controls, and reusable iOS dialogs/tables have been migrated to the current design primitives.
 
 **Aesthetic:** brand-consistent iOS — teal accent (`#1198C4`) + SF-first font stack, frosted translucent card, spring press feedback, automatic light/dark via `prefers-color-scheme`.
 

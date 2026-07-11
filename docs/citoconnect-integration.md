@@ -12,7 +12,7 @@ contract between the two systems.
 | **CPay** | Engine: channel routing, provider gateways, signed REST surface, provider callback handling, and network balance checks |
 
 CitoConnect's `cpay` base44 function is the primary caller of CPay's
-`/api/v1` endpoints in the CitoTech stack. It signs outbound requests
+`/api/v1` endpoints. It signs outbound requests
 with its merchant private key (PKCS#8 RSA, SHA256withRSA) and CPay
 verifies them with the merchant's registered public key.
 
@@ -66,12 +66,9 @@ Example collect signing string:
 The reference client at `integrations/citoconnect/cpay-client.js` implements
 this contract and should be treated as the source of truth for Node/JS callers.
 
-## Recommended next signature version
+## v2 migration path
 
-When CPay introduces `/api/v2`, migrate to a safer canonical string that includes
-field names, request timestamp, nonce, and request body hash. That migration
-should support both contracts temporarily so existing merchants are not broken
-for sport, which is apparently frowned upon in financial systems.
+CPay now exposes `/api/v2` and `/api/v2/native/payments/*` routes with a safer canonical signature string that includes method, path, query, timestamp, nonce, and request body hash. Existing CitoConnect calls can remain on `/api/v1` while the v2 migration is staged. New merchant integrations should prefer the documented v2 signing contract in `docs/api-v2-signing.md`.
 
 ## Webhook envelope back to CitoConnect
 
@@ -96,7 +93,7 @@ the canonical status field.
 
 Set the following secrets in the base44 environment for CitoConnect:
 
-- `CPAY_BASE_URL` – e.g. `https://cpay.example.com`
+- `CPAY_BASE_URL` – e.g. `https://cpay.coresynergi.es`
 - `CPAY_MERCHANT_NUMBER` – the merchant identifier issued by CPay
 - `CPAY_SIGNING_KEY_PEM` – PKCS#8 RSA private key used for signing
 - `CPAY_PUBLIC_KEY_PEM` – CPay's RSA public key used for callback verification

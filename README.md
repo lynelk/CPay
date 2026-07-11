@@ -47,7 +47,7 @@ New providers should be added through the gateway adapter pattern described in `
 ## Main components
 
 ```text
-InitializrSpringbootProject/   Spring Boot backend and payment gateway services
+InitializrSpringbootProjectFresh/   Spring Boot 4.1 backend and payment gateway services
 clientside/                    React-based admin and merchant portal
 integrations/citoconnect/      JavaScript reference client and integration bundle
 docs/                          API, architecture, readiness, and operations documentation
@@ -70,10 +70,12 @@ The v1 API is the legacy merchant API. It is useful for existing integrations an
 
 ### v2 API
 
-The v2 API is the newer, more structured API. It introduces explicit fields for channel, country, currency, versioned request signing, idempotency, and clearer error responses.
+The v2 API is the newer, more structured API. It introduces explicit fields for channel, country, currency, versioned request signing, idempotency, and clearer error responses. The compatibility `/api/v2/payments/*` routes remain available, while `/api/v2/native/payments/*` routes execute through the adapter-backed gateway flow.
 
 | Operation | Endpoint |
 |---|---|
+| Collect | `POST /api/v2/payments/collect` |
+| Payout | `POST /api/v2/payments/payout` |
 | Native collect | `POST /api/v2/native/payments/collect` |
 | Native payout | `POST /api/v2/native/payments/payout` |
 | List channels | `GET /api/v2/channels` |
@@ -161,6 +163,8 @@ Manual signoff is still required for real provider sandbox certification, stagin
 | Timestamp and nonce checks | Helps prevent replay of old API requests. |
 | Idempotency keys | Helps merchants safely retry payment submissions without creating duplicates. |
 | Signup rate limiting | Reduces repeated automated merchant registration attempts. |
+| JDBC-backed sessions | Stores admin and merchant portal sessions in the database for multi-worker operation. |
+| CSRF token endpoint | Provides browser CSRF tokens through `GET /auth/csrf`; legacy API groups are exempted route-by-route instead of globally disabling CSRF. |
 | Admin route protection | Restricts internal operations to authorized administrators. |
 | Trusted-origin API access | Limits browser access to configured origins. |
 | Signed callbacks | Allows merchants to verify that callback messages came from CPay. |
@@ -173,26 +177,26 @@ Never commit `.env` files, provider access values, production URLs, private keys
 
 To run the project locally, you will need:
 
-- Java 11 or later
+- Java 21
 - Maven
 - MySQL 8 or compatible database
-- Node.js 18 or later
+- Node.js 20.19.0 or later
 - npm
 
 ## Local setup
 
 1. Create a local database, for example `cpayadmin`.
 2. Copy `.env.example` to `.env` and provide local values.
-3. Import the baseline SQL files under `clientside/db/` if your local environment still needs the legacy schema setup.
-4. Start the backend from `InitializrSpringbootProject`.
+3. Use the Flyway migrations under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`; import legacy baseline SQL only when rebuilding an older local database that has not yet been reconciled.
+4. Start the backend from `InitializrSpringbootProjectFresh`.
 5. Start or build the frontend from `clientside`.
 
 Backend:
 
 ```bash
-cd InitializrSpringbootProject
+cd InitializrSpringbootProjectFresh
 mvn clean package
-java -jar target/cito-0.0.1-SNAPSHOT.jar
+java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 ```
 
 Frontend:
@@ -200,6 +204,7 @@ Frontend:
 ```bash
 cd clientside
 npm install
+npm run dev
 npm run build
 ```
 
@@ -224,6 +229,7 @@ npm run build
 | `ACTUATOR_PASSWORD` | Monitoring password. |
 | `SPRINGDOC_API_DOCS_ENABLED` | Enables `/v3/api-docs`; defaults to `false`. |
 | `SPRINGDOC_SWAGGER_UI_ENABLED` | Enables Swagger UI; defaults to `false`. |
+| `CPAY_SECURITY_NONCE_STORE` | Set to `jdbc` for shared v2 replay protection in clustered environments; local default is in-memory. |
 | `ADMIN_API_USERNAME` | Admin API username. |
 | `ADMIN_API_PASSWORD` | Admin API password. |
 | `CALLBACK_SIGNING_SECRET` | Fallback value used for callback signing where merchant-specific values are not configured. |
@@ -234,7 +240,7 @@ npm run build
 Typical local checks:
 
 ```bash
-cd InitializrSpringbootProject
+cd InitializrSpringbootProjectFresh
 mvn test
 mvn verify
 ```
@@ -242,6 +248,8 @@ mvn verify
 ```bash
 cd clientside
 npm install
+npm run typecheck
+npm test
 npm run build
 ```
 

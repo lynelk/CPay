@@ -13,9 +13,12 @@ These controls improve the software posture of CPay. They do not replace legal r
 | Provider connection | Adapter-backed channels can call configured provider endpoint URLs through `ProviderEndpointClient`. |
 | Merchant channel setup | Channel setup now requires endpoint URLs and channel-specific setup values before readiness can be marked. |
 | Native v2 processing | Native v2 requests load merchant channel setup values into adapter metadata. |
+| Production credential isolation | `CUSTOM_GATEWAYSTATE=PRODUCTION` loads active `PRODUCTION` merchant channel credentials rather than sandbox credentials. |
 | Callback scaling | Callback delivery uses `callback_task_claims` so workers claim tasks before processing. |
 | Signup protection | Merchant signup uses database-backed request-window tracking through `api_rate_limits`. |
 | Origin control | API routes use configured trusted origins. |
+| Browser request protection | Browser routes use CSRF tokens from `/auth/csrf`; legacy/API route groups are exempted specifically where integration compatibility requires it. |
+| Session resilience | Admin and merchant portal sessions are stored through Spring Session JDBC. |
 | Operating oversight | Admin users can review open operating-control counts through `/api/v2/admin/operating-controls/summary`. |
 
 ## Provider endpoint execution
@@ -27,6 +30,7 @@ Provider adapters for MTN, Airtel, Airtel OpenAPI, and Safaricom now call `Provi
 - sends a structured JSON request
 - records the HTTP status in the gateway response
 - rejects missing endpoint URLs in production mode
+- selects production merchant channel credentials when the gateway runs in production mode
 
 Real provider sandbox and production certification are still required before live traffic.
 
