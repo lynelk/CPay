@@ -6,7 +6,7 @@ This guide defines the preferred way to add new gateways and channels to CPay wi
 
 New channels should be added as adapters that describe their capabilities and implement a common contract for collections, payouts, balance checks, status checks, and callbacks.
 
-The legacy `DoPayGateway` class still supports the current native integrations, but new work should move toward the `net.citotech.cito.gateway` package.
+The legacy `DoPayGateway` class still supports the current v1 integrations, but new work should move toward the `net.citotech.cito.gateway` package and the `/api/v2/native/payments/*` execution flow.
 
 ## Adapter contract
 
@@ -94,7 +94,12 @@ For each new channel, add tests for:
 
 1. Create adapters for MTN, Airtel, and Safaricom that wrap the existing gateway classes.
 2. Add read-only capability discovery using `PaymentChannelRegistry`.
-3. Add `/api/v2/payments/collect` and `/api/v2/payments/payout` using adapters.
+3. Add `/api/v2/native/payments/collect` and `/api/v2/native/payments/payout` using adapters.
 4. Keep `/api/v1` endpoints unchanged for backwards compatibility.
-5. Move charges and route preferences into structured channel tables.
-6. Retire hardcoded balance columns after a ledger migration.
+5. Keep the compatibility `/api/v2/payments/collect` and `/api/v2/payments/payout` routes stable while merchant integrations migrate.
+6. Move charges and route preferences into structured channel tables.
+7. Retire hardcoded balance columns after a ledger migration.
+
+## Runtime notes
+
+`GatewayExecutionService` executes the selected adapter. In `CUSTOM_GATEWAYSTATE=PRODUCTION`, native v2 requests must load merchant channel credentials for the `PRODUCTION` environment and the channel must be active. Sandbox mode uses sandbox channel setup for controlled certification work.

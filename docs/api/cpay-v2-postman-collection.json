@@ -4,7 +4,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "https://cpaytest.citotech.net:8443" },
+    { "key": "baseUrl", "value": "https://cpaytest.coresynergi.es:8443" },
     { "key": "merchantNumber", "value": "1000000" }
   ],
   "item": [

@@ -4,11 +4,15 @@
 
 - Added `/api/v2/payments/collect`.
 - Added `/api/v2/payments/payout`.
+- Added `/api/v2/native/payments/collect`.
+- Added `/api/v2/native/payments/payout`.
 - Added `/api/v2/channels`.
 - Added versioned request signing helpers.
 - Added in-memory nonce protection for single-node deployments.
 - Added orchestration service boundary.
 - Added adapter wrappers for existing native channels.
+- Added adapter-native execution with production merchant channel credential selection.
+- Added Flyway baseline migrations and Spring Session JDBC runtime support.
 - Added amount parsing utility that uses `BigDecimal` before handing off to legacy `Double` paths.
 - Added docs for signing, examples, schema target, and architecture.
 
@@ -20,7 +24,6 @@
 
 ## Still recommended after review
 
-- Enable Flyway only after baseline schema reconciliation.
-- Move nonce storage to Redis or database for clustered deployment.
+- Use JDBC or Redis-backed nonce storage for clustered deployment.
 - Migrate fixed gateway balances to normalized channel balances.
 - Create a full v2 status service backed by a transaction repository.

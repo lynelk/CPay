@@ -81,7 +81,7 @@ Native v2 payments check whether the merchant has configured and tested the sele
 
 When a native v2 request is processed, the gateway loads the merchant channel setup values and passes them into adapter execution metadata. Adapter-backed channels can then call the configured endpoint URLs through `ProviderEndpointClient`.
 
-In production mode, missing endpoint URLs are rejected. In sandbox mode, the channel can still be used for controlled setup and certification preparation.
+In production mode, missing endpoint URLs are rejected and the gateway loads active `PRODUCTION` merchant channel credentials. In sandbox mode, the channel can still be used for controlled setup and certification preparation with sandbox channel setup.
 
 ## Security and control measures
 

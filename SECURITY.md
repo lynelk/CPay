@@ -22,11 +22,15 @@ CPay uses several controls to support safe operation:
 - merchant signup rate limiting
 - protected admin routes under `/api/v2/admin/**`
 - protected monitoring routes under `/actuator/**`
+- JDBC-backed admin and merchant portal sessions with a 15 minute timeout
+- CSRF tokens for browser routes through `GET /auth/csrf`
+- route-specific CSRF exemptions for legacy/API integration routes instead of a global CSRF disable
 - restricted trusted origins for API access
 - signed callback messages
 - claim-based callback processing for scaled workers
 - encrypted merchant channel setup values
 - masked display values in the merchant portal
+- disabled-by-default OpenAPI and Swagger UI endpoints
 - operational and readiness records
 
 ## Reporting concerns
@@ -53,7 +57,9 @@ Do not commit the following to the repository:
 - provider access values
 - merchant signing values
 - callback signing values
+- merchant channel encryption keys
 - admin usernames or passwords
+- actuator usernames or passwords
 - production-only configuration values
 
 Use environment variables or approved managed storage instead.
@@ -72,7 +78,7 @@ Each configured channel should include endpoint URLs and the required channel-sp
 
 ## Admin API expectations
 
-Admin APIs are internal operational APIs. Production admin access should use strong access controls, restricted network access where possible, and audit records for important actions.
+Admin APIs are internal operational APIs. Production admin access should use strong access controls, restricted network access where possible, and audit records for important actions. Admin browser flows should obtain a CSRF token from `/auth/csrf`; integration API route groups are exempted individually where backward compatibility requires it.
 
 High-risk admin actions include:
 
@@ -101,6 +107,9 @@ Before production launch, confirm that:
 - callback verification has been tested
 - database access is restricted
 - CORS settings are limited to approved origins
+- `CUSTOM_SSL_SKIP_VERIFY` is `false`
+- `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED` remain `false` unless a controlled environment explicitly enables them
+- clustered deployments use shared nonce storage such as `CPAY_SECURITY_NONCE_STORE=jdbc`
 - dependency and code checks pass or have documented exceptions
 - operating-control review is available to administrators
 - security, finance, compliance, and business owners have approved launch readiness

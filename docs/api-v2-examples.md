@@ -2,6 +2,12 @@
 
 ## Collect
 
+Adapter-native route:
+
+`POST /api/v2/native/payments/collect`
+
+Compatibility route:
+
 `POST /api/v2/payments/collect`
 
 ```json
@@ -22,6 +28,12 @@
 ```
 
 ## Payout
+
+Adapter-native route:
+
+`POST /api/v2/native/payments/payout`
+
+Compatibility route:
 
 `POST /api/v2/payments/payout`
 

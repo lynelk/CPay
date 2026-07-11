@@ -3,6 +3,8 @@
 React 18 SPA built with **Vite 8** and **TypeScript**, talking to the CPay
 Spring Boot backend over a cookie-based session (`credentials: 'include'`).
 
+Requires Node.js **20.19.0 or later**.
+
 ## Stack
 
 - **Vite 8** (Rolldown) + `@vitejs/plugin-react` 6
@@ -12,7 +14,7 @@ Spring Boot backend over a cookie-based session (`credentials: 'include'`).
 - **Tailwind CSS v4** (Vite plugin)
 - **TypeScript 5.7** — incremental, `allowJs` (legacy `.jsx` coexists)
 - **Vitest** + Testing Library
-- UI: `antd` 5 and (legacy) `rc-easyui` — consolidation pending, see `MIGRATION.md`
+- UI: CPay iOS-style component primitives in `src/ui`, brand tokens in `src/index.css`, and modernized legacy module surfaces. The migration away from `rc-easyui` is tracked in `MIGRATION.md`.
 
 ## Scripts
 
@@ -21,10 +23,10 @@ Spring Boot backend over a cookie-based session (`credentials: 'include'`).
 | `npm run dev` | Start the dev server on http://localhost:3000 (proxies `/api`, `/auth`, … to `localhost:8081`). |
 | `npm run build` | Production build to `build/`. |
 | `npm run preview` | Preview the production build. |
+| `npm run typecheck` | `tsc --noEmit`. |
 | `npm test` | Run the test suite once (Vitest). |
 | `npm run test:watch` | Watch mode. |
 | `npm run test:coverage` | Coverage report. |
-| `npm run typecheck` | `tsc --noEmit`. |
 | `npm run lint` | ESLint (flat config). |
 
 ## Configuration

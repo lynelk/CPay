@@ -18,7 +18,7 @@ clients) need in order to call CPay as the Core Payments Service Engine.
 4. Configure environment variables on the merchant side:
 
    ```
-   CPAY_BASE_URL=https://cpay.citotech.net
+   CPAY_BASE_URL=https://cpay.coresynergi.es
    CPAY_MERCHANT_NUMBER=256770000000
    CPAY_SIGNING_KEY_PEM="-----BEGIN PRIVATE KEY-----…"
    CPAY_PUBLIC_KEY_PEM="-----BEGIN PUBLIC KEY-----…"
