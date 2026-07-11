@@ -6,6 +6,8 @@
 -- ------------------------------------------------------
 -- Server version	8.0.31
 
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS;
+SET FOREIGN_KEY_CHECKS=0;
 
 --
 -- Table structure for table `accounts_register`
@@ -432,4 +434,5 @@ CREATE TABLE IF NOT EXISTS `SPRING_SESSION_ATTRIBUTES` (
 
 
 -- Dump completed on 2026-07-04 17:40:05
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 

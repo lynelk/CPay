@@ -68,6 +68,9 @@ INSERT IGNORE INTO `db_changes` (`query_id`, `sql_text`, `roll_back`) VALUES (
 );
 
 -- 17: Indexes on hot query paths
+ALTER TABLE `merchant_transactions_log`
+    ADD COLUMN IF NOT EXISTS `network_reference` VARCHAR(255) NULL;
+
 -- callback_status is scanned by CallbackRetryScheduler every minute
 CREATE INDEX IF NOT EXISTS `idx_mtl_callback_status`
     ON `merchant_transactions_log` (`callback_status`);

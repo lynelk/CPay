@@ -51,6 +51,7 @@ CALL add_column_if_missing('merchant_transactions_log', 'callback_status', 'VARC
 CALL add_column_if_missing('merchant_transactions_log', 'callback_retry_count', 'INT NOT NULL DEFAULT 0');
 CALL add_column_if_missing('merchant_transactions_log', 'callback_next_retry', 'DATETIME NULL');
 CALL add_column_if_missing('merchant_transactions_log', 'currency', 'VARCHAR(10) NOT NULL DEFAULT ''UGX''');
+CALL add_column_if_missing('merchant_transactions_log', 'network_reference', 'VARCHAR(255) NULL');
 CALL add_column_if_missing('merchants', 'hmac_secret', 'TEXT NULL');
 CALL add_column_if_missing('merchant_statement', 'currency', 'VARCHAR(10) NOT NULL DEFAULT ''UGX''');
 
