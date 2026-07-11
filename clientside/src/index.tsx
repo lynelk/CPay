@@ -5,9 +5,11 @@ import './index.css';
 import './styles/ios.css';
 import './styles/ios-system.css';
 import App from './App';
+import { installCsrfFetch } from './shared/csrfFetch';
 import { queryClient } from './shared/queryClient';
 import { initTheme } from './shared/theme';
 
+installCsrfFetch();
 initTheme();
 
 const container = document.getElementById('root');

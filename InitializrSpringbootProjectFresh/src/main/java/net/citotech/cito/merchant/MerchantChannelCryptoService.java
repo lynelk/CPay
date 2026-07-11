@@ -19,7 +19,10 @@ public class MerchantChannelCryptoService {
     private final SecureRandom random = new SecureRandom();
     private final SecretKeySpec keySpec;
 
-    public MerchantChannelCryptoService(@Value("${merchant.channel.encryption.key:${callback.signing.secret:development-only-merchant-channel-key}}") String key) {
+    public MerchantChannelCryptoService(@Value("${merchant.channel.encryption.key}") String key) {
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalStateException("MERCHANT_CHANNEL_ENCRYPTION_KEY must be set");
+        }
         this.keySpec = new SecretKeySpec(deriveKey(key), "AES");
     }
 

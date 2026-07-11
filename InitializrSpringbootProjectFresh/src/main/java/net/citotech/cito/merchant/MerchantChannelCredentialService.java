@@ -104,13 +104,26 @@ public class MerchantChannelCredentialService {
     }
 
     public void ensureChannelReady(Merchant merchant, String channelCode) {
+        ensureChannelReady(merchant, channelCode, "SANDBOX");
+    }
+
+    public void ensureChannelReady(Merchant merchant, String channelCode, String environment) {
         if (merchant == null) throw new PaymentGatewayException("Merchant is required");
-        String sql = "SELECT COUNT(*) FROM merchant_channel_credentials WHERE merchant_id=:merchant_id AND channel_code=:channel_code AND status IN ('SANDBOX_TESTED','SUBMITTED_FOR_APPROVAL','ACTIVE')";
+        String normalizedEnvironment = normalizedEnvironment(environment);
+        String allowedStatuses = "PRODUCTION".equals(normalizedEnvironment)
+            ? "('ACTIVE')"
+            : "('SANDBOX_TESTED','SUBMITTED_FOR_APPROVAL','ACTIVE')";
+        String sql = "SELECT COUNT(*) FROM merchant_channel_credentials "
+                + "WHERE merchant_id=:merchant_id AND channel_code=:channel_code "
+                + "AND environment=:environment AND status IN " + allowedStatuses;
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchant_id", merchant.getId());
         p.addValue("channel_code", channelCode);
+        p.addValue("environment", normalizedEnvironment);
         Integer count = jdbcTemplate.queryForObject(sql, p, Integer.class);
-        if (count == null || count < 1) throw new PaymentGatewayException("Merchant has not configured and tested channel " + channelCode);
+        if (count == null || count < 1) {
+            throw new PaymentGatewayException("Merchant has not configured and approved channel " + channelCode + " for " + normalizedEnvironment);
+        }
     }
 
     public Map<String, Object> loadDecrypted(Merchant merchant, String channelCode, String environment) {

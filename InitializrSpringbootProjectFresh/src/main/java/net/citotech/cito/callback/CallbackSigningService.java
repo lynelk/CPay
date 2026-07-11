@@ -18,7 +18,7 @@ public class CallbackSigningService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public CallbackSigningService(NamedParameterJdbcTemplate jdbcTemplate,
-                                  @Value("${callback.signing.secret:${actuator.password}}") String callbackSecret) {
+                                  @Value("${callback.signing.secret}") String callbackSecret) {
         this.jdbcTemplate = jdbcTemplate;
         this.callbackSecret = callbackSecret;
     }

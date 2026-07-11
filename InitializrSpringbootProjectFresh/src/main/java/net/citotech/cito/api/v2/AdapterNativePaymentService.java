@@ -9,6 +9,7 @@ import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
+import net.citotech.cito.gateway.GatewayExecutionService;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.gateway.PaymentGatewayRequest;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
@@ -20,13 +21,16 @@ import org.springframework.stereotype.Service;
 public class AdapterNativePaymentService {
     private final PaymentChannelRegistry registry;
     private final MerchantChannelCredentialService channelCredentialService;
+    private final GatewayExecutionService gatewayExecutionService;
     private final String gatewayState;
 
     public AdapterNativePaymentService(PaymentChannelRegistry registry,
                                        MerchantChannelCredentialService channelCredentialService,
+                                       GatewayExecutionService gatewayExecutionService,
                                        @Value("${custom.gatewaystate:SANDBOX}") String gatewayState) {
         this.registry = registry;
         this.channelCredentialService = channelCredentialService;
+        this.gatewayExecutionService = gatewayExecutionService;
         this.gatewayState = gatewayState;
     }
 
@@ -34,8 +38,10 @@ public class AdapterNativePaymentService {
         validate(request, merchant, true, Common.API_MOBILE_MONEY_PAYIN);
         String account = request.getPayer().getValue();
         PaymentChannelAdapter adapter = adapterFor(request, account);
-        channelCredentialService.ensureChannelReady(merchant, adapter.channelCode());
-        GateWayResponse response = adapter.collect(adapterRequest(request, account, merchant, adapter));
+        String environment = credentialEnvironment();
+        channelCredentialService.ensureChannelReady(merchant, adapter.channelCode(), environment);
+        PaymentGatewayRequest gatewayRequest = adapterRequest(request, account, merchant, adapter, environment);
+        GateWayResponse response = gatewayExecutionService.execute(() -> adapter.collect(gatewayRequest));
         return result(request, adapter, response);
     }
 
@@ -43,21 +49,28 @@ public class AdapterNativePaymentService {
         validate(request, merchant, false, Common.API_MOBILE_MONEY_PAYOUT);
         String account = request.getPayee().getValue();
         PaymentChannelAdapter adapter = adapterFor(request, account);
-        channelCredentialService.ensureChannelReady(merchant, adapter.channelCode());
-        GateWayResponse response = adapter.payout(adapterRequest(request, account, merchant, adapter));
+        String environment = credentialEnvironment();
+        channelCredentialService.ensureChannelReady(merchant, adapter.channelCode(), environment);
+        PaymentGatewayRequest gatewayRequest = adapterRequest(request, account, merchant, adapter, environment);
+        GateWayResponse response = gatewayExecutionService.execute(() -> adapter.payout(gatewayRequest));
         return result(request, adapter, response);
     }
 
-    private PaymentGatewayRequest adapterRequest(PaymentRequest request, String account, Merchant merchant, PaymentChannelAdapter adapter) {
+    private PaymentGatewayRequest adapterRequest(PaymentRequest request, String account, Merchant merchant, PaymentChannelAdapter adapter, String environment) {
         Map<String, String> metadata = new HashMap<>();
         metadata.put("currency", request.getCurrency());
         metadata.put("country", request.getCountry());
         metadata.put("gatewayState", gatewayState);
-        Map<String, Object> setup = channelCredentialService.loadDecrypted(merchant, adapter.channelCode(), "SANDBOX");
+        metadata.put("credentialEnvironment", environment);
+        Map<String, Object> setup = channelCredentialService.loadDecrypted(merchant, adapter.channelCode(), environment);
         for (Map.Entry<String, Object> entry : setup.entrySet()) {
             if (entry.getValue() != null) metadata.put(entry.getKey(), String.valueOf(entry.getValue()));
         }
         return new PaymentGatewayRequest(request.getMerchantNumber(), account, MoneyAmount.of(request.getAmount()).asLegacyDouble(), request.getReference(), request.getDescription(), request.getCallbackUrl(), metadata);
+    }
+
+    private String credentialEnvironment() {
+        return "PRODUCTION".equalsIgnoreCase(gatewayState) ? "PRODUCTION" : "SANDBOX";
     }
 
     private PaymentChannelAdapter adapterFor(PaymentRequest request, String account) {
