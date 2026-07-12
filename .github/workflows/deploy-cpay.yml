@@ -62,4 +62,5 @@ jobs:
           MYSQL_ROOT_SECRET="${CPAY_MYSQL_ROOT_PASSWORD:-}"
 
           remote_env="CPAY_BRANCH=$(printf '%q' "${DEPLOY_BRANCH}") CPAY_DOMAIN=$(printf '%q' "${DEPLOY_DOMAIN}") CPAY_APP_ROOT=$(printf '%q' "${DEPLOY_ROOT}") CPAY_REPO_URL=$(printf '%q' "${DEPLOY_REPO}") MYSQL_ROOT_PASSWORD=$(printf '%q' "${MYSQL_ROOT_SECRET}")"
-          ssh -i ~/.ssh/cpay_deploy_key -p "${DEPLOY_PORT}" -o IdentitiesOnly=yes "${DEPLOY_USER}@${CPAY_DEPLOY_HOST}" "${remote_env} bash -s" < deployment/scripts/deploy-server.sh
+          remote_command="if [ \"\$(id -u)\" -eq 0 ]; then env ${remote_env} bash -s; else sudo env ${remote_env} bash -s; fi"
+          ssh -i ~/.ssh/cpay_deploy_key -p "${DEPLOY_PORT}" -o IdentitiesOnly=yes "${DEPLOY_USER}@${CPAY_DEPLOY_HOST}" "${remote_command}" < deployment/scripts/deploy-server.sh
