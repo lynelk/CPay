@@ -148,7 +148,7 @@ Required repository secrets:
 | Secret | Purpose |
 |---|---|
 | `CPAY_DEPLOY_HOST` | Server IP or hostname. |
-| `CPAY_DEPLOY_USER` | SSH user, usually `root` for first setup. |
+| `CPAY_DEPLOY_USER` | SSH user with passwordless sudo, for example `opc` on Oracle Linux. |
 | `CPAY_DEPLOY_SSH_KEY` | Private SSH key accepted by the server. |
 | `CPAY_DEPLOY_PORT` | SSH port; use `22` unless changed. |
 | `CPAY_DOMAIN` | Public domain, for example `cpay.coresynergi.es`. |
