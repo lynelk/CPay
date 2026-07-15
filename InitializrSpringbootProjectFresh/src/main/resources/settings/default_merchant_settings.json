@@ -1,0 +1,30 @@
+[
+  {
+    "name": "api_allowed_ips",
+    "label": "API Allowed IPs",
+    "setting_value": "",
+    "setting_group": "Merchant",
+    "description": "Comma-separated IP allowlist for merchant API access."
+  },
+  {
+    "name": "daily_volume_limit",
+    "label": "Daily Volume Limit",
+    "setting_value": "",
+    "setting_group": "Merchant",
+    "description": "Daily transaction volume limit for the merchant; blank means no configured limit."
+  },
+  {
+    "name": "monthly_volume_limit",
+    "label": "Monthly Volume Limit",
+    "setting_value": "",
+    "setting_group": "Merchant",
+    "description": "Monthly transaction volume limit for the merchant; blank means no configured limit."
+  },
+  {
+    "name": "sms_customer_charge",
+    "label": "SMS Customer Charge",
+    "setting_value": "",
+    "setting_group": "Merchant",
+    "description": "Merchant-specific SMS customer charge override; blank uses the global SMS customer charge."
+  }
+]

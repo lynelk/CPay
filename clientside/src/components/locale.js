@@ -1,5 +1,11 @@
-import LocalizedStrings from 'react-localization';
-let strings = new LocalizedStrings({
+import LocalizedStringsModule from 'react-localization';
+
+const LocalizedStrings =
+    typeof LocalizedStringsModule === 'function'
+        ? LocalizedStringsModule
+        : LocalizedStringsModule.default;
+
+const strings = new LocalizedStrings({
     en:{
         add_admin:"Add Admin",
         edit_admin:"Edit Admin",

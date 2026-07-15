@@ -1,56 +1,33 @@
 #!/bin/bash
-DIR="/etc/init.d/cpayadmin/"
-INSTALLDIR="/opt/cpayadmin/"
-INSTALLDIRLOCKS="/opt/cpayadmin/locks/"
-JAR_FILE="../InitializrSpringbootProject/target/cito-0.0.1-SNAPSHOT.jar"
-REACT_APP_CODE="../clientside/."
-LOG_DIR="/var/log/cpayadmin/"
-REACT_FILE="/opt/cpayadmin/reactjs/"
+set -euo pipefail
 
-if [ -d "$DIR" ]; then
-    cp shutdown.sh /etc/init.d/cpayadmin/shutdown.sh
-    cp start.sh /etc/init.d/cpayadmin/start.sh
-    cp restart.sh /etc/init.d/cpayadmin/restart.sh
-else
-    ###  Now create thid drectory ###
-    mkdir -p "$DIR"
-    cp shutdown.sh /etc/init.d/cpayadmin/shutdown.sh
-    cp start.sh /etc/init.d/cpayadmin/start.sh
-    cp restart.sh /etc/init.d/cpayadmin/restart.sh
+APP_DIR="${CPAY_APP_DIR:-/opt/cpay}"
+BIN_DIR="$APP_DIR/bin"
+FRONTEND_DIR="$APP_DIR/frontend"
+LOCK_DIR="${CPAY_LOCK_DIR:-/var/opt/cpay/locks}"
+LOG_DIR="${CPAY_LOG_DIR:-/var/log/cpay}"
+INIT_DIR="${CPAY_INIT_DIR:-/etc/init.d/cpay}"
+BACKEND_JAR="../InitializrSpringbootProjectFresh/target/cito-fresh-0.0.1-SNAPSHOT.jar"
+FRONTEND_BUILD="../clientside/build"
+
+mkdir -p "$BIN_DIR" "$FRONTEND_DIR" "$LOCK_DIR" "$LOG_DIR" "$INIT_DIR"
+
+cp start.sh "$INIT_DIR/start.sh"
+cp shutdown.sh "$INIT_DIR/shutdown.sh"
+cp restart.sh "$INIT_DIR/restart.sh"
+chmod +x "$INIT_DIR/start.sh" "$INIT_DIR/shutdown.sh" "$INIT_DIR/restart.sh"
+
+if [ ! -f "$BACKEND_JAR" ]; then
+  echo "Backend jar not found at $BACKEND_JAR. Run: cd InitializrSpringbootProjectFresh && mvn clean package"
+  exit 1
 fi
 
-#if [ -d "$REACT_FILE" ]; then
-    ### Copy React App code ####
-#    cp -R -f "$REACT_APP_CODE" "$REACT_FILE"
-#else
-    ###  Now create react directory and copy react code ###
-#    mkdir -p "$REACT_FILE" "$REACT_FILE"
-    cp -R -f "$REACT_APP_CODE" "$REACT_FILE"
-#fi
+cp "$BACKEND_JAR" "$BIN_DIR/cito-fresh-0.0.1-SNAPSHOT.jar"
 
-
-if [ -d "$INSTALLDIR" ]; then
-    cp "$JAR_FILE" "$INSTALLDIR"
+if [ -d "$FRONTEND_BUILD" ]; then
+  cp -R -f "$FRONTEND_BUILD/." "$FRONTEND_DIR/"
 else
-    ###  Now create install dir and transfer the jar file there ###
-    mkdir -p "$INSTALLDIR" 
-    cp "$JAR_FILE" "$INSTALLDIR"
+  echo "Frontend build not found at $FRONTEND_BUILD. Run: cd clientside && npm install && npm run build"
 fi
 
-#Install the locks directory
-if [ -d "$INSTALLDIRLOCKS" ]; then
-    echo "$INSTALLDIRLOCKS was already created." 
-else
-    ###  Now create install director y ###
-    mkdir -p "$INSTALLDIRLOCKS"
-fi
-
-if [ -d "$LOG_DIR" ]; then
-    echo "$LOG_DIR already exists"
-else
-    ###  Now create install dir and transfer the jar file there ###
-    mkdir -p "$LOG_DIR" 
-fi
-
-echo "Installation Done!."
-exit 1
+echo "CPay files installed under $APP_DIR."

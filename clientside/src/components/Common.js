@@ -1,20 +1,8 @@
-/**
- * Number.prototype.format(n, x)
- *
- * @param integer n: length of decimal
- * @param integer x: length of sections
- */
-Number.prototype.format = (n, x) => {
-    var re = '\\d(?=(\\d{' + (x || 3) + '})+' + (n > 0 ? '\\.' : '$') + ')';
-    return this.toFixed(Math.max(0, ~~n)).replace(new RegExp(re, 'g'), '$&,');
-};
-
-
-let common = {
+const common = {
     base_url: "",
     emailValidation: {
         "validator": (value) => {
-            var emailExp = /^[\w\-\.\+]+\@[a-zA-Z0-9\.\-]+\.[a-zA-z0-9]{2,4}$/;
+            const emailExp = /^[\w.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]{2,4}$/;
             if (value.match(emailExp)){
                 return true;
             } else {
@@ -28,7 +16,7 @@ let common = {
     },
     phoneValidation: {
         "validator": (value) => {
-            var phoneExp = /^\d{1,3}\d{3}\d{6}/;
+            const phoneExp = /^\d{1,3}\d{3}\d{6}/;
             if (value.match(phoneExp)){
                 return true;
             } else {
@@ -42,8 +30,8 @@ let common = {
     },
     numericValidation: {
         "validator": (value) => {
-            //console.log(value);
-            var numericExp = /^\d+(\.\d+)?(\d+)?$/;
+
+            const numericExp = /^\d+(\.\d+)?(\d+)?$/;
             if (value.toString().match(numericExp)){
                 return true;
             } else {
@@ -59,12 +47,11 @@ let common = {
     toReduceGridHeight: 142, //The amount to reduce from the windowHeight
 
     formatDate(date) {
-        console.log(date);
         if (date == null || date == "") {
             return "";
         }
 
-        let y = date.getFullYear();
+        const y = date.getFullYear();
         let m = date.getMonth() + 1;
         if (m < 10) {
             m = "0"+m;
@@ -83,7 +70,7 @@ let common = {
      * @returns {Date} date before nofMonths months
      */
     getDateMonthsBefore(date,nofMonths) {
-        var thisMonth = date.getMonth();
+        const thisMonth = date.getMonth();
         // set the month index of the date by subtracting nofMonths from the current month index
         date.setMonth(thisMonth - nofMonths);
         // When trying to add or subtract months from a Javascript Date() Object which is any end date of a month,  
@@ -107,7 +94,7 @@ let common = {
      * @returns {Date} date after nofMonths 
      */
     getDateMonthsAfter(date,nofMonths) {
-        var thisMonth = date.getMonth();
+        const thisMonth = date.getMonth();
         // set the month index of the date by adding nofMonths to the current month index
         date.setMonth(thisMonth + nofMonths);
         // if the result of addition is greater than 11 and subtract nofMonths from the index and check if JS has auto advanced the date, 
@@ -122,8 +109,8 @@ let common = {
     },
 
     getDefaultDateTime() {
-        let date = new Date();
-        let y = date.getFullYear();
+        const date = new Date();
+        const y = date.getFullYear();
         let m = date.getMonth() + 1;
         if (m < 10) {
             m = "0"+m;
@@ -218,4 +205,4 @@ let common = {
     }
 };
 
-module.exports = common;
+export default common;

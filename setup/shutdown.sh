@@ -1,14 +1,19 @@
 #!/bin/bash
+set -euo pipefail
 
+PID_FILE="${CPAY_PID_FILE:-/var/run/cpay.pid}"
 
-####kill -KILL $(cat /var/run/cpayadmin-reactjs.pid)###
+if [ ! -f "$PID_FILE" ]; then
+  echo "CPay pid file not found; nothing to stop."
+  exit 0
+fi
 
-#echo "Stopping React App..."
+PID="$(cat "$PID_FILE")"
+if kill -0 "$PID" 2>/dev/null; then
+  kill "$PID"
+  echo "Stopped CPay backend with pid $PID."
+else
+  echo "CPay process $PID is not running."
+fi
 
-#for pid in $(ps aux | grep "react-app-rewired" | awk '{print $2}'); do kill -9 $pid; done
-
-#echo "Done stopping React App..."
-
-kill  -KILL $(cat /var/run/cpayadmin.pid)
-
-echo "Done shutting down Cpay Java App!"
+rm -f "$PID_FILE"

@@ -4,7 +4,7 @@
  * Run with: npm test -- --testPathPattern=Common.test.js
  */
 
-const common = require('./Common');
+import common from './Common';
 
 // ---------------------------------------------------------------------------
 // emailValidation
@@ -119,6 +119,13 @@ describe('formatDate', () => {
   test('formats a date as YYYY-MM-DD', () => {
     const date = new Date(2024, 0, 5); // Jan 5, 2024
     expect(common.formatDate(date)).toBe('2024-01-05');
+  });
+
+  test('does not write debug logs while formatting dates', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    common.formatDate(new Date(2024, 0, 5));
+    expect(logSpy).not.toHaveBeenCalled();
+    logSpy.mockRestore();
   });
 
   test('pads single-digit month and day', () => {

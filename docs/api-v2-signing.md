@@ -30,8 +30,10 @@ BODY_SHA256_HEX
 Example path:
 
 ```text
-/api/v2/payments/collect
+/api/v2/native/payments/collect
 ```
+
+The compatibility route `/api/v2/payments/collect` uses the same signing contract.
 
 For a request such as:
 
@@ -49,13 +51,13 @@ The body hash is the SHA-256 hex digest of the exact request body string sent ov
 
 ## Replay protection
 
-The default local implementation stores nonces in memory. Production deployments can switch to JDBC nonce storage with:
+The default local implementation stores nonces in memory. Production deployments should use shared nonce storage with:
 
 ```text
 cpay.security.nonce-store=jdbc
 ```
 
-Clustered production deployments should use the JDBC nonce table or a Redis-backed implementation so all application instances share replay state.
+Clustered production deployments should use the JDBC nonce table or a Redis-backed implementation so all application instances share replay state. Portal sessions are database-backed through Spring Session JDBC and should be treated separately from API nonce replay storage.
 
 ## Backward compatibility
 

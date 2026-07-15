@@ -1,68 +1,48 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# CPay — Client (Admin & Merchant Portal)
 
-## Available Scripts
+React 18 SPA built with **Vite 8** and **TypeScript**, talking to the CPay
+Spring Boot backend over a cookie-based session (`credentials: 'include'`).
 
-In the project directory, you can run:
+Requires Node.js **20.19.0 or later**.
 
-### `npm start`
+## Stack
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **Vite 8** (Rolldown) + `@vitejs/plugin-react` 6
+- **React 18.3** (see `MIGRATION.md` for the React 19 upgrade gate)
+- **React Router v7** (`react-router-dom`)
+- **TanStack Query v5** for server state
+- **Tailwind CSS v4** (Vite plugin)
+- **TypeScript 5.7** — incremental, `allowJs` (legacy `.jsx` coexists)
+- **Vitest** + Testing Library
+- UI: CPay iOS-style component primitives in `src/ui`, brand tokens in `src/index.css`, and modernized legacy module surfaces. The migration away from `rc-easyui` is tracked in `MIGRATION.md`.
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+## Scripts
 
-### `npm test`
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the dev server on http://localhost:3000 (proxies `/api`, `/auth`, … to `localhost:8081`). |
+| `npm run build` | Production build to `build/`. |
+| `npm run preview` | Preview the production build. |
+| `npm run typecheck` | `tsc --noEmit`. |
+| `npm test` | Run the test suite once (Vitest). |
+| `npm run test:watch` | Watch mode. |
+| `npm run test:coverage` | Coverage report. |
+| `npm run lint` | ESLint (flat config). |
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Configuration
 
-### `npm run build`
+Set the API base (optional; defaults to same-origin so the dev proxy works):
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```
+VITE_API_BASE=https://api.example.com
+```
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+Accessed via `src/shared/config.ts` (`API_BASE`, `apiUrl()`).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Conventions
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+- New HTTP calls go through `src/shared/api/httpClient.ts`; new server state uses
+  TanStack Query hooks (see `src/shared/api/hooks.ts`).
+- New routing code uses native React Router v7 hooks. Legacy class components use
+  the `withRouter`/`useHistory` compatibility shim in `src/shared/router/compat.tsx`
+  — do not import from it in new code.

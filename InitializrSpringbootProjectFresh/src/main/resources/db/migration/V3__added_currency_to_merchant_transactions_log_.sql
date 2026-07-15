@@ -1,0 +1,1 @@
+ALTER TABLE `merchant_transactions_log` ADD COLUMN currency VARCHAR(25) NOT NULL DEFAULT 'UGX';

@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Keep Unix helper scripts executable on Linux hosts.
+*.sh text eol=lf
