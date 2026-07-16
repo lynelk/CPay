@@ -548,7 +548,7 @@ public class MerchantsController {
                             }
                             
                             //Send an email with login details
-                            MerchantUser mU = getMerchantUserByEmail(userId+"", email);
+                            MerchantUser mU = getMerchantUserByEmail(merchantId+"", email);
                             if (mU != null) {
                                 //Send an email with user's credentials
                                 sendEmailOnUpdatingMerchantUserPassword(mU, password);
@@ -623,7 +623,7 @@ public class MerchantsController {
             String status = sObject.getString("status");
             String account_type = sObject.getString("account_type");
             String short_name = sObject.getString("short_name");
-            Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
+            Boolean generate_new_keys = sObject.optBoolean("generate_new_keys", false);
             JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
             //String[] allowed_apis = new String[allowed_apis_array.length()];
             /*for (int i=0; i < allowed_apis_array.length(); i++) {
@@ -710,7 +710,7 @@ public class MerchantsController {
                             privParams.addValue("merchant_id", merchantId);
                             privParams.addValue("name", usersObject.getString("name"));
                             privParams.addValue("phone", usersObject.getString("phone"));
-                            String email = usersObject.getString("name");
+                            String email = usersObject.getString("email");
                             privParams.addValue("email", email);
                             privParams.addValue("status", usersObject.getString("status"));
                             
@@ -732,7 +732,7 @@ public class MerchantsController {
                             }
                             
                             //Send an email with login details
-                            MerchantUser mU = getMerchantUserByEmail(userId+"", email);
+                            MerchantUser mU = getMerchantUserByEmail(merchantId+"", email);
                             if (mU != null) {
                                 //Send an email with user's credentials
                                 sendEmailOnUpdatingMerchantUserPassword(mU, password);

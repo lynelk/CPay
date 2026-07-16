@@ -207,9 +207,9 @@ class MerchantModulePaymentsC extends React.Component {
 
     detailRow(label, value) {
         return (
-            <div style={{ display: 'flex', gap: 'var(--ios-space-4)', padding: '8px 0', borderBottom: '0.5px solid var(--ios-separator)' }}>
-                <span style={{ minWidth: 160, color: 'var(--ios-text-secondary)', fontSize: 'var(--ios-fs-footnote)' }}>{label}</span>
-                <span style={{ flex: 1 }}>{value}</span>
+            <div className="cpay-detail-row">
+                <span className="cpay-detail-label">{label}</span>
+                <span className="cpay-detail-value">{value}</span>
             </div>
         );
     }
@@ -240,7 +240,7 @@ class MerchantModulePaymentsC extends React.Component {
                 {this.detailRow('Created By', r.created_by)}
                 {this.detailRow('Created On', r.created_on)}
                 {this.detailRow('Total Paid', `${r.total_paid}/${r.total_beneficiaries}`)}
-                <h3 className="ios-section-title" style={{ marginTop: 'var(--ios-space-5)' }}>Beneficiaries</h3>
+                <h3 className="cpay-sheet-section-title">Beneficiaries</h3>
                 <Table columns={benColumns} rows={beneficiaries} rowKey={(row, i) => row.id ?? i} emptyText="No beneficiaries." />
             </Sheet>
         );

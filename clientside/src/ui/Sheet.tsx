@@ -8,6 +8,7 @@ interface SheetProps {
   onClose: () => void;
   title?: React.ReactNode;
   size?: SheetSize;
+  className?: string;
   footer?: React.ReactNode;
   children: React.ReactNode;
   /** Disable close-on-overlay / Escape (e.g. required flows). */
@@ -24,6 +25,7 @@ export function Sheet({
   onClose,
   title,
   size = 'sm',
+  className = '',
   footer,
   children,
   dismissable = true,
@@ -51,7 +53,7 @@ export function Sheet({
         if (dismissable && e.target === e.currentTarget) onClose();
       }}
     >
-      <div className={`ios-sheet ios-sheet--${size}`} role="dialog" aria-modal="true">
+      <div className={`ios-sheet ios-sheet--${size} ${className}`.trim()} role="dialog" aria-modal="true">
         {(title || dismissable) && (
           <div className="ios-sheet__header">
             {title ? <h2 className="ios-sheet__title">{title}</h2> : <span />}
