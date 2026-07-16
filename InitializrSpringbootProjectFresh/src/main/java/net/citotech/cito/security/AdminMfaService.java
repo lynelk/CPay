@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -53,11 +54,19 @@ public class AdminMfaService {
     }
 
     public boolean isEnabled(long adminId) {
-        Integer count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM admin_mfa_totp WHERE admin_id=:admin_id AND enabled_flag='YES'",
-            new MapSqlParameterSource("admin_id", adminId),
-            Integer.class);
-        return count != null && count > 0;
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM admin_mfa_totp WHERE admin_id=:admin_id AND enabled_flag='YES'",
+                new MapSqlParameterSource("admin_id", adminId),
+                Integer.class);
+            return count != null && count > 0;
+        } catch (BadSqlGrammarException ex) {
+            if (isMissingMfaTable(ex)) {
+                // Legacy databases may be missing the MFA table until the next migration pass.
+                return false;
+            }
+            throw ex;
+        }
     }
 
     public boolean verifyAdminCode(long adminId, String code) {
@@ -91,5 +100,15 @@ public class AdminMfaService {
     }
 
     private record AdminIdentity(long id, String email) {
+    }
+
+    private boolean isMissingMfaTable(BadSqlGrammarException ex) {
+        Throwable cause = ex.getMostSpecificCause();
+        String sqlState = ex.getSQLException() != null ? ex.getSQLException().getSQLState() : null;
+        String message = cause != null ? cause.getMessage() : ex.getMessage();
+        return "42S02".equals(sqlState)
+            || (message != null
+                && message.toLowerCase().contains("admin_mfa_totp")
+                && message.toLowerCase().contains("doesn't exist"));
     }
 }
