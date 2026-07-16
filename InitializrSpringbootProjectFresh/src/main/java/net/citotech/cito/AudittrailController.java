@@ -182,8 +182,9 @@ public class AudittrailController {
             String pageSize = Common.jsonText(sObject, "pageSize", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
+            parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_AUDIT_TRAIL_MERCHANT+" "
-                    + " WHERE merchant_id='"+sessionUser.getMerchant_id()+"'";
+                    + " WHERE merchant_id=:merchant_id";
             
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {

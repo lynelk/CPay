@@ -12,6 +12,7 @@ import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.Iterator;
+import java.util.Set;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -38,6 +39,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StreamUtils;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,6 +57,57 @@ public class SettingsController {
         "password", "secret", "token", "pin", "user_key", "subscription_key",
         "consumer_key", "api_key", "passkey", "hmac"
     };
+    private static final Set<String> PUBLIC_LOGIN_APPEARANCE_SETTING_NAMES = Set.of(
+        "merchant_login_hero_image_url",
+        "merchant_login_hero_title",
+        "merchant_login_hero_copy",
+        "merchant_login_payments_title",
+        "merchant_login_payments_status",
+        "merchant_login_payments_detail",
+        "merchant_login_communication_title",
+        "merchant_login_communication_detail",
+        "merchant_login_verification_title",
+        "merchant_login_verification_detail",
+        "merchant_login_insights_title",
+        "merchant_login_insights_detail",
+        "merchant_login_support_title",
+        "merchant_login_support_detail",
+        "merchant_login_secure_title",
+        "merchant_login_secure_copy",
+        "merchant_login_benefit_insights_title",
+        "merchant_login_benefit_insights_copy",
+        "merchant_login_control_title",
+        "merchant_login_control_copy",
+        "merchant_login_automation_title",
+        "merchant_login_automation_copy",
+        "merchant_login_fast_title",
+        "merchant_login_fast_copy",
+        "merchant_login_reliable_title",
+        "merchant_login_reliable_copy",
+        "merchant_login_help_title",
+        "merchant_login_help_copy",
+        "admin_login_hero_image_url",
+        "admin_login_hero_title",
+        "admin_login_hero_copy",
+        "admin_login_approvals_title",
+        "admin_login_users_title",
+        "admin_login_analytics_title",
+        "admin_login_merchant_title",
+        "admin_login_security_title",
+        "admin_login_monitoring_title",
+        "admin_login_support_title",
+        "admin_login_system_title",
+        "admin_login_secure_title",
+        "admin_login_secure_copy",
+        "admin_login_insights_title",
+        "admin_login_insights_copy",
+        "admin_login_control_title",
+        "admin_login_control_copy",
+        "admin_login_automation_title",
+        "admin_login_automation_copy",
+        "admin_login_reliable_title",
+        "admin_login_reliable_copy"
+    );
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
     @Autowired
@@ -217,6 +270,41 @@ public class SettingsController {
         }
         return "success";
     }
+
+    @GetMapping(path="/public-login-appearance")
+    public String getPublicLoginAppearance(
+            HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            JSONArray defaultSettings = getDefaultSettings();
+            if (defaultSettings.length() == 0) {
+                return invalidSettingsCatalogError();
+            }
+
+            JSONObject settings = new JSONObject();
+            for (String settingName : PUBLIC_LOGIN_APPEARANCE_SETTING_NAMES) {
+                Setting currentSetting = getCurrentSettingsByName(settingName);
+                JSONObject defaultSetting = isInCurrentSettings(settingName, defaultSettings);
+                String defaultValue = defaultSetting == null
+                    ? ""
+                    : settingText(defaultSetting, "setting_value", "");
+                settings.put(settingName, currentSetting == null
+                    ? defaultValue
+                    : currentSetting.getSetting_value());
+            }
+
+            JSONObject resJson = new JSONObject();
+            resJson.put("code", "000");
+            resJson.put("message", "true");
+            resJson.put("settings", settings);
+            return resJson.toString();
+        } catch (JSONException ex) {
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, null, ex);
+            return GeneralException
+                    .getError("102", GeneralException.ERRORS_102);
+        }
+    }
+
     @PostMapping(path="/getSettings")
 
     public String getSettings (@RequestBody String requestBody, 
@@ -512,8 +600,9 @@ public class SettingsController {
     
     private List<Setting> getCurrentMerchantSettings(Long merchant_id) {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("merchant_id", merchant_id);
         String sqlSelect = "SELECT *  FROM "+Common.DB_MERCHANTS_SETTINGS+" "
-                + " WHERE merchant_id='"+merchant_id+"'";   
+                + " WHERE merchant_id=:merchant_id";
 
         RowMapper<Setting> rm = new RowMapper<Setting>() {
         public Setting mapRow(ResultSet rs, int rowNum) throws SQLException {

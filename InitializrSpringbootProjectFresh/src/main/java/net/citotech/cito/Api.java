@@ -633,32 +633,7 @@ public class Api {
             parameters.addValue("tx_merchant_ref", reference);
             parameters.addValue("merchant_id", merchant.getId());
             
-            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    Transaction t = new Transaction();
-                    t.setId(rs.getLong("id"));
-                    t.setCharging_method(rs.getString("charging_method"));
-                    t.setCharges(rs.getDouble("charges"));
-                    t.setOriginal_amount(rs.getDouble("original_amount"));
-                    t.setCreated_on(rs.getString("created_on"));
-                    t.setUpdated_on(rs.getString("updated_on"));
-                    t.setGateway_id(rs.getString("gateway_id"));
-                    t.setStatus(rs.getString("status"));
-                    t.setMerchant_id(rs.getString("merchant_id"));
-                    t.setTx_description(rs.getString("tx_description"));
-                    t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                    t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                    t.setTx_request_trace(rs.getString("tx_request_trace"));
-                    t.setTx_unique_id(rs.getString("tx_unique_id"));
-                    t.setTx_update_trace(rs.getString("tx_update_trace"));
-                    t.setPayer_number(rs.getString("payer_number"));
-                    t.setTx_type(rs.getString("tx_type"));
-                    t.setCallback_trace(rs.getString("callback_trace"));
-                    t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
-                    t.setOriginate_ip(rs.getString("originate_ip"));
-                    return t;
-                }
-            };
+            RowMapper<Transaction> rm = Common.getTransactionRowMapper();
             
             List<Transaction> listTransactions = jdbcTemplate.query(sql, parameters, rm);
             if (listTransactions.size() > 0) {

@@ -25,6 +25,9 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         "/api/v2/merchant-self-service/channels",
         "/api/v2/portal"
     );
+    private static final List<String> PUBLIC_SETTINGS_PATHS = List.of(
+        "/settings/public-login-appearance"
+    );
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -53,6 +56,9 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
             return false;
         }
         String path = request.getRequestURI();
+        if (HttpMethod.GET.matches(request.getMethod()) && PUBLIC_SETTINGS_PATHS.contains(path)) {
+            return false;
+        }
         return PORTAL_SESSION_PREFIXES.stream().anyMatch(path::startsWith);
     }
 }

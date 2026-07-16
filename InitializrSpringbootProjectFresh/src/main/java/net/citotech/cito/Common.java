@@ -612,27 +612,7 @@ public class Common {
         parameters.addValue("tx_merchant_ref", reference);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE merchant_id=:merchant_id AND tx_merchant_ref=:tx_merchant_ref";
-        RowMapper<Transaction> rm = (rs, rowNum) -> {
-                 Transaction t = new Transaction();
-                    t.setId(rs.getLong("id"));
-                    t.setCharging_method(rs.getString("charging_method"));
-                    t.setCharges(rs.getDouble("charges"));
-                    t.setOriginal_amount(rs.getDouble("original_amount"));
-                    t.setCreated_on(rs.getString("created_on"));
-                    t.setUpdated_on(rs.getString("updated_on"));
-                    t.setGateway_id(rs.getString("gateway_id"));
-                    t.setStatus(rs.getString("status"));
-                    t.setMerchant_id(rs.getString("merchant_id"));
-                    t.setTx_description(rs.getString("tx_request_trace"));
-                    t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                    t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                    t.setTx_request_trace(rs.getString("tx_request_trace"));
-                    t.setTx_unique_id(rs.getString("tx_unique_id"));
-                    t.setTx_update_trace(rs.getString("tx_update_trace"));
-                    t.setPayer_number(rs.getString("payer_number"));
-                    t.setTx_type(rs.getString("tx_type"));
-                return t;
-        };
+        RowMapper<Transaction> rm = Common.getTransactionRowMapper();
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
             return listTxs.get(0);
@@ -657,27 +637,7 @@ public class Common {
         parameters.addValue("tx_unique_id", reference);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE tx_unique_id=:tx_unique_id";
-        RowMapper<Transaction> rm = (rs, rowNum) -> {
-                Transaction t = new Transaction();
-                t.setId(rs.getLong("id"));
-                t.setCharging_method(rs.getString("charging_method"));
-                t.setCharges(rs.getDouble("charges"));
-                t.setOriginal_amount(rs.getDouble("original_amount"));
-                t.setCreated_on(rs.getString("created_on"));
-                t.setUpdated_on(rs.getString("updated_on"));
-                t.setGateway_id(rs.getString("gateway_id"));
-                t.setStatus(rs.getString("status"));
-                t.setMerchant_id(rs.getString("merchant_id"));
-                t.setTx_description(rs.getString("tx_request_trace"));
-                t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                t.setTx_request_trace(rs.getString("tx_request_trace"));
-                t.setTx_unique_id(rs.getString("tx_unique_id"));
-                t.setTx_update_trace(rs.getString("tx_update_trace"));
-                t.setPayer_number(rs.getString("payer_number"));
-                t.setTx_type(rs.getString("tx_type"));
-                return t;
-        };
+        RowMapper<Transaction> rm = Common.getTransactionRowMapper();
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
             return listTxs.get(0);
@@ -699,27 +659,7 @@ public class Common {
         parameters.addValue("tx_gateway_ref", networkRef);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE tx_gateway_ref=:tx_gateway_ref FOR UPDATE";
-        RowMapper<Transaction> rm = (rs, rowNum) -> {
-                Transaction t = new Transaction();
-                t.setId(rs.getLong("id"));
-                t.setCharging_method(rs.getString("charging_method"));
-                t.setCharges(rs.getDouble("charges"));
-                t.setOriginal_amount(rs.getDouble("original_amount"));
-                t.setCreated_on(rs.getString("created_on"));
-                t.setUpdated_on(rs.getString("updated_on"));
-                t.setGateway_id(rs.getString("gateway_id"));
-                t.setStatus(rs.getString("status"));
-                t.setMerchant_id(rs.getString("merchant_id"));
-                t.setTx_description(rs.getString("tx_request_trace"));
-                t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                t.setTx_request_trace(rs.getString("tx_request_trace"));
-                t.setTx_unique_id(rs.getString("tx_unique_id"));
-                t.setTx_update_trace(rs.getString("tx_update_trace"));
-                t.setPayer_number(rs.getString("payer_number"));
-                t.setTx_type(rs.getString("tx_type"));
-                return t;
-        };
+        RowMapper<Transaction> rm = Common.getTransactionRowMapper();
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
             return listTxs.get(0);
@@ -741,28 +681,7 @@ public class Common {
         parameters.addValue("safaricom_request_reference", networkRef);
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE safaricom_request_reference=:safaricom_request_reference FOR UPDATE";
-        RowMapper<Transaction> rm = (rs, rowNum) -> {
-                Transaction t = new Transaction();
-                t.setId(rs.getLong("id"));
-                t.setCharging_method(rs.getString("charging_method"));
-                t.setCharges(rs.getDouble("charges"));
-                t.setOriginal_amount(rs.getDouble("original_amount"));
-                t.setCreated_on(rs.getString("created_on"));
-                t.setUpdated_on(rs.getString("updated_on"));
-                t.setGateway_id(rs.getString("gateway_id"));
-                t.setStatus(rs.getString("status"));
-                t.setMerchant_id(rs.getString("merchant_id"));
-                t.setTx_description(rs.getString("tx_request_trace"));
-                t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                t.setTx_request_trace(rs.getString("tx_request_trace"));
-                t.setTx_unique_id(rs.getString("tx_unique_id"));
-                t.setTx_update_trace(rs.getString("tx_update_trace"));
-                t.setPayer_number(rs.getString("payer_number"));
-                t.setTx_type(rs.getString("tx_type"));
-                t.setSafaricomRequestReference(rs.getString("safaricom_request_reference"));
-                return t;
-        };
+        RowMapper<Transaction> rm = Common.getTransactionRowMapper();
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
             return listTxs.get(0);
@@ -789,27 +708,7 @@ public class Common {
                 + " WHERE beneficiary_id=:beneficiary_id "
                 + " AND merchant_batch_transactions_log_id=:batch_id ";
         
-        RowMapper<Transaction> rm = (rs, rowNum) -> {
-                 Transaction t = new Transaction();
-                    t.setId(rs.getLong("id"));
-                    t.setCharging_method(rs.getString("charging_method"));
-                    t.setCharges(rs.getDouble("charges"));
-                    t.setOriginal_amount(rs.getDouble("original_amount"));
-                    t.setCreated_on(rs.getString("created_on"));
-                    t.setUpdated_on(rs.getString("updated_on"));
-                    t.setGateway_id(rs.getString("gateway_id"));
-                    t.setStatus(rs.getString("status"));
-                    t.setMerchant_id(rs.getString("merchant_id"));
-                    t.setTx_description(rs.getString("tx_request_trace"));
-                    t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                    t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                    t.setTx_request_trace(rs.getString("tx_request_trace"));
-                    t.setTx_unique_id(rs.getString("tx_unique_id"));
-                    t.setTx_update_trace(rs.getString("tx_update_trace"));
-                    t.setPayer_number(rs.getString("payer_number"));
-                    t.setTx_type(rs.getString("tx_type"));
-                return t;
-        };
+        RowMapper<Transaction> rm = Common.getTransactionRowMapper();
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
             return listTxs.get(0);
@@ -1747,9 +1646,10 @@ public class Common {
                     newTx.setSafaricomRequestReference(pResponse.getSafaricomRequestReference());
                 }
 
-                String sql_update_final =  sql_update+sql_set+" WHERE id='"+newTx.getId()+"'";
+                String sql_update_final =  sql_update+sql_set+" WHERE id=:id";
 
                 //Update parameters
+                parameters.addValue("id", newTx.getId());
                 parameters.addValue("tx_request_trace", newTx.getTx_request_trace());
                 parameters.addValue("status", newTx.getStatus());
                 parameters.addValue("tx_gateway_ref", newTx.getTx_gateway_ref());
@@ -2151,9 +2051,10 @@ public class Common {
                 newTx.setTx_gateway_ref(pResponse.getNetworkId());
                 newTx.setSafaricomRequestReference(pResponse.getSafaricomRequestReference());
 
-                String sql_update_final =  sql_update+sql_set+" WHERE id='"+newTx.getId()+"'";
+                String sql_update_final =  sql_update+sql_set+" WHERE id=:id";
 
                 //Update parameters
+                parameters.addValue("id", newTx.getId());
                 parameters.addValue("safaricom_request_reference", newTx.getSafaricomRequestReference());
                 parameters.addValue("tx_request_trace", newTx.getTx_request_trace());
                 parameters.addValue("status", newTx.getStatus());
@@ -2432,6 +2333,12 @@ public class Common {
                     t.setTx_type(rs.getString("tx_type"));
                     t.setCallback_trace(rs.getString("callback_trace"));
                     t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
+                    t.setTx_cost(rs.getDouble("tx_cost"));
+                    t.setCallback_url(rs.getString("callback_url"));
+                    t.setSafaricomRequestReference(rs.getString("safaricom_request_reference"));
+                    t.setOriginate_ip(rs.getString("originate_ip"));
+                    t.setCurrency(rs.getString("currency"));
+                    t.setCallback_status(rs.getString("callback_status"));
                     return t;
             };
         return rm;
@@ -2453,7 +2360,7 @@ public class Common {
         String http_client_ip_addr = "";
         String wl_proxy_client_ip_addr = "";
         if(request != null){
-            remoteAdr = request.getHeader("X-FORWADED-FOR");
+            remoteAdr = request.getHeader("X-FORWARDED-FOR");
             if (remoteAdr == null || "".equals(remoteAdr)) {
                 remoteAdr = request.getRemoteAddr();
             }
@@ -2588,7 +2495,8 @@ public class Common {
             tx.setStatus(txUpdatedDetails.getTransactionStatus());
             tx.setTx_gateway_ref(txUpdatedDetails.getNetworkId());
 
-            final String sql_update_final =  sql_update+" WHERE id='"+tx.getId()+"'";
+            final String sql_update_final =  sql_update+" WHERE id=:id";
+            parameters_.addValue("id", tx.getId());
             parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
             parameters_.addValue("status", tx.getStatus());
             parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
@@ -2667,8 +2575,9 @@ public class Common {
                                     HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                                     if (rs != null) {
                                         String sql_update_final =  sql_update+", callback_trace=:callback_trace "
-                                                + " WHERE id='"+tx.getId()+"'";
+                                                + " WHERE id=:id";
                                         MapSqlParameterSource parameters_ = new MapSqlParameterSource();
+                                        parameters_.addValue("id", tx.getId());
                                         parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
                                         parameters_.addValue("status", tx.getStatus());
                                         parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
@@ -2899,8 +2808,9 @@ public class Common {
                                     HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                                     if (rs != null) {
                                         String sql_update_final = sql_update + ", callback_trace=:callback_trace "
-                                                + " WHERE id='" + tx.getId() + "'";
+                                                + " WHERE id=:id";
                                         MapSqlParameterSource parameters_ = new MapSqlParameterSource();
+                                        parameters_.addValue("id", tx.getId());
                                         parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
                                         parameters_.addValue("status", tx.getStatus());
                                         parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());

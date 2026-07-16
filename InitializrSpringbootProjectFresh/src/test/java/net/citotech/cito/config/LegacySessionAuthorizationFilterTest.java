@@ -51,4 +51,16 @@ class LegacySessionAuthorizationFilterTest {
         assertThat(response.getStatus()).isEqualTo(200);
         assertThat(chain.getRequest()).isSameAs(request);
     }
+
+    @Test
+    void publicLoginAppearanceSettingsBypassSessionGate() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/settings/public-login-appearance");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(chain.getRequest()).isSameAs(request);
+    }
 }

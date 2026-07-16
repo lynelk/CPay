@@ -160,31 +160,7 @@ public class TransactionsLogController {
                 sqlSelect += " LIMIT " + _limit;
             }
             
-            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    Transaction t = new Transaction();
-                    t.setId(rs.getLong("id"));
-                    t.setCharging_method(rs.getString("charging_method"));
-                    t.setCharges(rs.getDouble("charges"));
-                    t.setOriginal_amount(rs.getDouble("original_amount"));
-                    t.setCreated_on(rs.getString("created_on"));
-                    t.setUpdated_on(rs.getString("updated_on"));
-                    t.setGateway_id(rs.getString("gateway_id"));
-                    t.setStatus(rs.getString("status"));
-                    t.setMerchant_id(rs.getString("merchant_id"));
-                    t.setTx_description(rs.getString("tx_description"));
-                    t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                    t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                    t.setTx_request_trace(rs.getString("tx_request_trace"));
-                    t.setTx_unique_id(rs.getString("tx_unique_id"));
-                    t.setTx_update_trace(rs.getString("tx_update_trace"));
-                    t.setPayer_number(rs.getString("payer_number"));
-                    t.setTx_type(rs.getString("tx_type"));
-                    t.setCallback_trace(rs.getString("callback_trace"));
-                    t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
-                    return t;
-                }
-            };
+            RowMapper<Transaction> rm = Common.getTransactionRowMapper();
             
             //ResultSet rs; 
             List<Transaction> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -272,12 +248,13 @@ public class TransactionsLogController {
             int currentPage = sObject.isNull("currentPage") ? 0 : sObject.getInt("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
+            parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
-                    + " WHERE merchant_id = '"+sessionUser.getMerchant_id()+"'";
+                    + " WHERE merchant_id = :merchant_id";
             
             String sqlSelectTotal = "SELECT count(*) as total  "
                     + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
-                    + " WHERE merchant_id = '"+sessionUser.getMerchant_id()+"'";
+                    + " WHERE merchant_id = :merchant_id";
             
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
@@ -331,31 +308,7 @@ public class TransactionsLogController {
             };
             List<Long> listLong = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
             
-            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    Transaction t = new Transaction();
-                    t.setId(rs.getLong("id"));
-                    t.setCharging_method(rs.getString("charging_method"));
-                    t.setCharges(rs.getDouble("charges"));
-                    t.setOriginal_amount(rs.getDouble("original_amount"));
-                    t.setCreated_on(rs.getString("created_on"));
-                    t.setUpdated_on(rs.getString("updated_on"));
-                    t.setGateway_id(rs.getString("gateway_id"));
-                    t.setStatus(rs.getString("status"));
-                    t.setMerchant_id(rs.getString("merchant_id"));
-                    t.setTx_description(rs.getString("tx_description"));
-                    t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                    t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                    t.setTx_request_trace(rs.getString("tx_request_trace"));
-                    t.setTx_unique_id(rs.getString("tx_unique_id"));
-                    t.setTx_update_trace(rs.getString("tx_update_trace"));
-                    t.setPayer_number(rs.getString("payer_number"));
-                    t.setTx_type(rs.getString("tx_type"));
-                    t.setCallback_trace(rs.getString("callback_trace"));
-                    t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
-                    return t;
-                }
-            };
+            RowMapper<Transaction> rm = Common.getTransactionRowMapper();
             
             //ResultSet rs; 
             List<Transaction> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
@@ -412,7 +365,7 @@ public class TransactionsLogController {
                 + " FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" AS b "
                 + " LEFT JOIN "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" AS t "
                 + " ON b.id = t.beneficiary_id "
-                + " WHERE b.batch_id = '"+batch_id+"'";
+                + " WHERE b.batch_id = :batch_id";
         
         RowMapper<Beneficiary> rm = new RowMapper<Beneficiary>() {
             public Beneficiary mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -427,32 +380,17 @@ public class TransactionsLogController {
                     if (rs.getString("gateway_id") == null) {
                         t = null;
                     } else {
-                        t.setId(rs.getLong("id"));
-                        t.setCharging_method(rs.getString("charging_method"));
-                        t.setCharges(rs.getDouble("charges"));
-                        t.setOriginal_amount(rs.getDouble("original_amount"));
-                        t.setCreated_on(rs.getString("created_on"));
-                        t.setUpdated_on(rs.getString("updated_on"));
-                        t.setGateway_id(rs.getString("gateway_id"));
-                        t.setStatus(rs.getString("status"));
-                        t.setMerchant_id(rs.getString("merchant_id"));
-                        t.setTx_description(rs.getString("tx_description"));
-                        t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                        t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                        t.setTx_request_trace(rs.getString("tx_request_trace"));
-                        t.setTx_unique_id(rs.getString("tx_unique_id"));
-                        t.setTx_update_trace(rs.getString("tx_update_trace"));
-                        t.setPayer_number(rs.getString("payer_number"));
-                        t.setTx_type(rs.getString("tx_type"));
-                        t.setCallback_trace(rs.getString("callback_trace"));
-                        t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
+                        t = Common.getTransactionRowMapper().mapRow(rs, rowNum);
                     }
                     
                     b.setTransaciton(t);
                     return b;
                 }
             };
-        List<Beneficiary> blist = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
+        List<Beneficiary> blist = jdbcTemplate.query(
+                sqlSelect,
+                new MapSqlParameterSource("batch_id", batch_id),
+                rm);
         return blist;
     }
     
@@ -489,12 +427,13 @@ public class TransactionsLogController {
             int currentPage = sObject.isNull("currentPage") ? 0 : sObject.getInt("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
+            parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
-                    + " WHERE merchant_id = '"+sessionUser.getMerchant_id()+"'";
+                    + " WHERE merchant_id = :merchant_id";
             
             String sqlSelectTotal = "SELECT count(*) as total  "
                     + " FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
-                    + " WHERE merchant_id = '"+sessionUser.getMerchant_id()+"'";
+                    + " WHERE merchant_id = :merchant_id";
             
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
@@ -511,7 +450,9 @@ public class TransactionsLogController {
             sqlSelect += " ORDER BY id DESC ";
             
             if (pageSize != 0) {
-                sqlSelect += " LIMIT "+(currentPage*pageSize)+", "+pageSize+" ";
+                sqlSelect += " LIMIT :offset, :page_size ";
+                parameters.addValue("offset", currentPage * pageSize);
+                parameters.addValue("page_size", pageSize);
             }
             
             
@@ -658,8 +599,9 @@ public class TransactionsLogController {
             String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
             
+            parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_SMS+" "
-                    + " WHERE merchant_id = '"+sessionUser.getMerchant_id()+"'";
+                    + " WHERE merchant_id = :merchant_id";
             
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
@@ -2042,33 +1984,7 @@ public class TransactionsLogController {
             String sql_update = " UPDATE "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                     + " SET status=:status, tx_update_trace=:tx_update_trace, "
                     + " tx_gateway_ref=:tx_gateway_ref ";
-            RowMapper<Transaction> rm = new RowMapper<Transaction>() {
-                public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    Transaction t = new Transaction();
-                    t.setId(rs.getLong("id"));
-                    t.setCharging_method(rs.getString("charging_method"));
-                    t.setCharges(rs.getDouble("charges"));
-                    t.setOriginal_amount(rs.getDouble("original_amount"));
-                    t.setCreated_on(rs.getString("created_on"));
-                    t.setUpdated_on(rs.getString("updated_on"));
-                    t.setGateway_id(rs.getString("gateway_id"));
-                    t.setStatus(rs.getString("status"));
-                    t.setMerchant_id(rs.getString("merchant_id"));
-                    t.setTx_description(rs.getString("tx_description"));
-                    t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                    t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                    t.setTx_request_trace(rs.getString("tx_request_trace"));
-                    t.setTx_unique_id(rs.getString("tx_unique_id"));
-                    t.setTx_update_trace(rs.getString("tx_update_trace"));
-                    t.setPayer_number(rs.getString("payer_number"));
-                    t.setTx_type(rs.getString("tx_type"));
-                    t.setCallback_trace(rs.getString("callback_trace"));
-                    t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
-                    t.setCallback_url(rs.getString("callback_url"));
-                    t.setSafaricomRequestReference(rs.getString("safaricom_request_reference"));
-                    return t;
-                }
-            };
+            RowMapper<Transaction> rm = Common.getTransactionRowMapper();
             //ResultSet rs;
             List<Transaction> pendingTransactions = jdbcTemplate.query(sqlSelect, parameters, rm);
 
@@ -2120,7 +2036,8 @@ public class TransactionsLogController {
                     tx.setStatus(txUpdatedDetails.getTransactionStatus());
                     tx.setTx_gateway_ref(txUpdatedDetails.getNetworkId());
 
-                    final String sql_update_final =  sql_update+" WHERE id='"+tx.getId()+"'";
+                    final String sql_update_final =  sql_update+" WHERE id=:id";
+                    parameters_.addValue("id", tx.getId());
                     parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
                     parameters_.addValue("status", tx.getStatus());
                     parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
@@ -2356,8 +2273,9 @@ public class TransactionsLogController {
                                             HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                                             if (rs != null) {
                                                  String sql_update_final =  sql_update+", callback_trace=:callback_trace "
-                                                        + " WHERE id='"+tx.getId()+"'";
+                                                        + " WHERE id=:id";
                                                  MapSqlParameterSource parameters_ = new MapSqlParameterSource();
+                                                 parameters_.addValue("id", tx.getId());
                                                  parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
                                                  parameters_.addValue("status", tx.getStatus());
                                                  parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
@@ -3518,7 +3436,7 @@ public class TransactionsLogController {
     private Payment getPaymentById(long id) {
         
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
-                    + " WHERE id = '"+id+"'";
+                    + " WHERE id = :id";
         
         RowMapper<Payment> rm = new RowMapper<Payment>() {
         public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -3538,7 +3456,10 @@ public class TransactionsLogController {
             }
         };
         
-        List<Payment> blist = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
+        List<Payment> blist = jdbcTemplate.query(
+                sqlSelect,
+                new MapSqlParameterSource("id", id),
+                rm);
         if (blist.size() > 0) {
             return blist.get(0);
         } else {
@@ -4704,9 +4625,10 @@ public class TransactionsLogController {
                                         String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                                             +" SET `reason`=:reason, status=:status "
-                                            +" WHERE id='"+b.getId()+"'";
+                                            +" WHERE id=:id";
 
                                         MapSqlParameterSource updateBenparams = new MapSqlParameterSource();
+                                        updateBenparams.addValue("id", b.getId());
                                         updateBenparams.addValue("reason", e);
                                         updateBenparams.addValue("status", Transaction.BATCH_PAYMENT_FAILED);
 
@@ -4759,9 +4681,10 @@ public class TransactionsLogController {
                                         String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                                             +" SET `reason`=:reason "
-                                            +" WHERE id='"+b.getId()+"'";
+                                            +" WHERE id=:id";
 
                                         MapSqlParameterSource updateBenparams = new MapSqlParameterSource();
+                                        updateBenparams.addValue("id", b.getId());
                                         updateBenparams.addValue("reason", insufficient_b_error);
 
                                         jdbcTemplate.update(sqlUpdateBen, updateBenparams);
@@ -4798,9 +4721,10 @@ public class TransactionsLogController {
                                         String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                                             +" SET `status`=:status"
-                                            + " WHERE id='"+b.getId()+"'";
+                                            + " WHERE id=:id";
 
                                         MapSqlParameterSource updateBenparams = new MapSqlParameterSource();
+                                        updateBenparams.addValue("id", b.getId());
                                         updateBenparams.addValue("status", Transaction.BATCH_PAYMENT_INPROGRESS);
                                         updateBenparams.addValue("reason", rObject.getString("message"));
                                         jdbcTemplate.update(sqlUpdateBen, updateBenparams);
@@ -4809,9 +4733,10 @@ public class TransactionsLogController {
                                          String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                                             +" SET `status`=:status, reason=:reason"
-                                            +" WHERE id='"+b.getId()+"'";
+                                            +" WHERE id=:id";
 
                                         MapSqlParameterSource updateBenparams = new MapSqlParameterSource();
+                                        updateBenparams.addValue("id", b.getId());
                                         updateBenparams.addValue("status", Transaction.BATCH_PAYMENT_FAILED);
                                         updateBenparams.addValue("reason", rObject.getString("message"));
                                         jdbcTemplate.update(sqlUpdateBen, updateBenparams);
@@ -4825,9 +4750,10 @@ public class TransactionsLogController {
                                         String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                                             +" SET `status`=:status, reason=:reason"
-                                            +" WHERE id='"+b.getId()+"'";
+                                            +" WHERE id=:id";
 
                                         MapSqlParameterSource updateBenparams = new MapSqlParameterSource();
+                                        updateBenparams.addValue("id", b.getId());
                                         updateBenparams.addValue("status", Transaction.BATCH_PAYMENT_PAID);
                                         updateBenparams.addValue("reason", "");
                                         jdbcTemplate.update(sqlUpdateBen, updateBenparams);
@@ -4836,9 +4762,10 @@ public class TransactionsLogController {
                                         String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                                             +" SET `status`=:status, reason=:reason"
-                                            +" WHERE id='"+b.getId()+"'";
+                                            +" WHERE id=:id";
 
                                         MapSqlParameterSource updateBenparams = new MapSqlParameterSource();
+                                        updateBenparams.addValue("id", b.getId());
                                         updateBenparams.addValue("status", Transaction.BATCH_PAYMENT_FAILED);
                                         updateBenparams.addValue("reason", "Gateway error.");
                                         jdbcTemplate.update(sqlUpdateBen, updateBenparams);
@@ -4853,9 +4780,10 @@ public class TransactionsLogController {
                                 String sqlUpdatePaym = "UPDATE "
                                     + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                                     +" SET `status`=:status"
-                                    +" WHERE id='"+p.getId()+"'";
+                                    +" WHERE id=:id";
 
                                 MapSqlParameterSource updatePayparams = new MapSqlParameterSource();
+                                updatePayparams.addValue("id", p.getId());
                                 updatePayparams.addValue("status", Transaction.BATCH_PAYMENTS_DONE);
 
                                 jdbcTemplate.update(sqlUpdatePaym, updatePayparams);
@@ -5001,10 +4929,13 @@ public class TransactionsLogController {
             
                     //Check if this transaction exists
                     String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-                    sqlSelect += " WHERE id = '"+transactionId+"' FOR UPDATE";
+                    sqlSelect += " WHERE id = :id FOR UPDATE";
 
                     RowMapper<Transaction> rm = Common.getTransactionRowMapper();
-                    List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
+                    List<Transaction> listTxs = jdbcTemplate.query(
+                            sqlSelect,
+                            new MapSqlParameterSource("id", transactionId),
+                            rm);
                     if (listTxs.size() < 1) {
                         return GeneralException
                             .getError("109", String.format(GeneralException.ERRORS_109, "Transaciton"));
@@ -5335,35 +5266,13 @@ public class TransactionsLogController {
     
     private Transaction getTransactionById(long id) {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-        sqlSelect += " WHERE id = '"+id+"'";
+        sqlSelect += " WHERE id = :id";
         
-        RowMapper<Transaction> rm = new RowMapper<Transaction>() {
-            public Transaction mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    Transaction t = new Transaction();
-                    t.setId(rs.getLong("id"));
-                    t.setCharging_method(rs.getString("charging_method"));
-                    t.setCharges(rs.getDouble("charges"));
-                    t.setOriginal_amount(rs.getDouble("original_amount"));
-                    t.setCreated_on(rs.getString("created_on"));
-                    t.setUpdated_on(rs.getString("updated_on"));
-                    t.setGateway_id(rs.getString("gateway_id"));
-                    t.setStatus(rs.getString("status"));
-                    t.setMerchant_id(rs.getString("merchant_id"));
-                    t.setTx_description(rs.getString("tx_description"));
-                    t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                    t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                    t.setTx_request_trace(rs.getString("tx_request_trace"));
-                    t.setTx_unique_id(rs.getString("tx_unique_id"));
-                    t.setTx_update_trace(rs.getString("tx_update_trace"));
-                    t.setPayer_number(rs.getString("payer_number"));
-                    t.setTx_type(rs.getString("tx_type"));
-                    t.setCallback_trace(rs.getString("callback_trace"));
-                    t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
-                    return t;
-                }
-            };
-        
-        List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, new MapSqlParameterSource(), rm);
+        RowMapper<Transaction> rm = Common.getTransactionRowMapper();
+        List<Transaction> listTxs = jdbcTemplate.query(
+                sqlSelect,
+                new MapSqlParameterSource("id", id),
+                rm);
         if (listTxs.size() > 0) {
             return listTxs.get(0);
         } else {
@@ -5850,8 +5759,9 @@ public class TransactionsLogController {
                         
                         if (result.equals("success")) {
                             //Now update the SMS record
-                            String sql_update_ = sql_update +" WHERE id='"+tx.getId()+"'";
+                            String sql_update_ = sql_update +" WHERE id=:id";
                             parameters = new MapSqlParameterSource();
+                            parameters.addValue("id", tx.getId());
                             parameters.addValue("trace", "REQUEST FAILED");
                             parameters.addValue("gw_response", "");
                             parameters.addValue("status", "FAILED");
@@ -5861,8 +5771,9 @@ public class TransactionsLogController {
                         }
                         
                     } else {
-                        String sql_update_ = sql_update +" WHERE id='"+tx.getId()+"'";
+                        String sql_update_ = sql_update +" WHERE id=:id";
                         parameters = new MapSqlParameterSource();
+                        parameters.addValue("id", tx.getId());
                         parameters.addValue("trace", rs.toString());
                         parameters.addValue("gw_response", rs.getResponse());
                         parameters.addValue("status", "SENT");

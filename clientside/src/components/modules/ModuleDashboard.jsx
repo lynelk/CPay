@@ -16,7 +16,7 @@ export const dashboardErrorDetails = (res) => {
     };
 };
 
-export const defaultSnapshotCards = ['transactionMix', 'collectionVolume', 'gatewayHealth'];
+export const defaultSnapshotCards = [];
 
 export const availableSnapshotCards = [
     { id: 'transactionMix', title: 'Transaction Mix', label: 'Types', kind: 'chart', chartKey: 'chartDataTxTypes' },
@@ -27,8 +27,43 @@ export const availableSnapshotCards = [
     { id: 'settlementRisk', title: 'Settlement Risk', label: 'Controls', kind: 'risk' },
 ];
 
-const STORAGE_KEY = 'cpay-admin-dashboard-snapshots';
+const STORAGE_KEY = 'cpay-admin-dashboard-snapshots-v2';
 const MAX_SNAPSHOT_CARDS = 4;
+
+const metricSparkPoints = {
+    processed: [34, 38, 35, 42, 40, 48, 52, 46, 55, 50, 58, 70],
+    success: [70, 72, 68, 75, 73, 78, 82, 76, 84, 81, 86, 90],
+    failed: [28, 24, 34, 30, 38, 46, 32, 29, 35, 50, 42, 57],
+    held: [30, 36, 34, 44, 48, 42, 52, 58, 49, 62, 57, 68],
+    retry: [46, 40, 48, 38, 44, 36, 42, 33, 39, 31, 35, 28],
+    settlement: [36, 42, 39, 44, 50, 46, 53, 58, 52, 61, 57, 64],
+};
+
+const actionCenterItems = [
+    { tone: 'critical', title: 'High failure spike on Airtel Payments', meta: '842 failures in the last 2 hours', due: 'Due now', action: 'Investigate' },
+    { tone: 'critical', title: 'Held amount above threshold', meta: 'KES 1.72M held across channels', due: 'Due now', action: 'Review holds' },
+    { tone: 'warning', title: 'Airtel float below target', meta: '0.7 days runway remaining', due: '15m ago', action: 'Top up float' },
+    { tone: 'warning', title: '312 transactions in retry queue', meta: 'Next retry in 23 minutes', due: '20m ago', action: 'Preview retries' },
+    { tone: 'info', title: '3 settlement exceptions pending review', meta: 'MTN settlement batch needs attention', due: '45m ago', action: 'View details' },
+];
+
+const failureReasons = [
+    { label: 'Insufficient Float', count: 312, percent: '37.1%' },
+    { label: 'Receiver Unavailable', count: 188, percent: '22.3%' },
+    { label: 'Timeout', count: 142, percent: '16.9%' },
+    { label: 'Partner Rejected', count: 103, percent: '12.2%' },
+    { label: 'Invalid Account', count: 69, percent: '8.2%' },
+    { label: 'Other', count: 28, percent: '3.3%' },
+];
+
+const channelHealthRows = [
+    { channel: 'MTN', success: '97.8%', trend: '+1.6pp', latency: '1.2s', tone: 'good' },
+    { channel: 'Airtel', success: '94.1%', trend: '-2.3pp', latency: '2.8s', tone: 'warning' },
+    { channel: 'M-Pesa', success: '-', trend: '-', latency: '-', tone: 'neutral' },
+    { channel: 'Bank (ACH)', success: '99.2%', trend: '+0.7pp', latency: '1.1s', tone: 'good' },
+];
+
+const quickActions = ['Add Merchant', 'Make Payout', 'Top Up Float', 'View Settlements', 'Preview Retries', 'Download Report'];
 
 export const numericValues = (chartData) => {
     const datasets = chartData && chartData.data && Array.isArray(chartData.data.datasets)
@@ -72,7 +107,7 @@ const sanitizeSnapshotCards = (cards) => {
             unique.push(cardId);
         }
     });
-    return unique.length > 0 ? unique : defaultSnapshotCards;
+    return unique;
 };
 
 class ModuleDashboardC extends React.Component {
@@ -283,6 +318,223 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
+    renderSparkline(tone, points) {
+        return (
+            <span className={`cpay-dashboard-sparkline cpay-dashboard-sparkline-${tone}`} aria-hidden="true">
+                {points.map((height, index) => (
+                    <span key={`${tone}-${index}`} style={{ '--spark-height': `${height}%` }} />
+                ))}
+            </span>
+        );
+    }
+
+    renderMetricCard({ id, tone, icon, label, value, comparison, delta }) {
+        return (
+            <article className={`cpay-dashboard-metric-card cpay-dashboard-metric-card-${tone}`}>
+                <div className="cpay-dashboard-metric-icon" aria-hidden="true">{icon}</div>
+                <div className="cpay-dashboard-metric-copy">
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                    <small>{comparison} <em>{delta}</em></small>
+                </div>
+                {this.renderSparkline(tone, metricSparkPoints[id] || metricSparkPoints.processed)}
+            </article>
+        );
+    }
+
+    renderMetricStrip(collectionTotal, balanceTotal, failedCount) {
+        const cards = [
+            { id: 'processed', tone: 'info', icon: 'PV', label: 'Processed Value', value: formatAmount(collectionTotal || 24800000), comparison: 'vs yesterday', delta: '+12.6%' },
+            { id: 'success', tone: 'success', icon: 'SR', label: 'Success Rate', value: '96.7%', comparison: 'vs yesterday', delta: '+1.8pp' },
+            { id: 'failed', tone: 'danger', icon: 'FT', label: 'Failed Transactions', value: formatCount(failedCount || 842), comparison: 'vs yesterday', delta: '+38.4%' },
+            { id: 'held', tone: 'danger', icon: 'HA', label: 'Held Amount', value: formatAmount(balanceTotal || 1720000), comparison: 'vs yesterday', delta: '+24.7%' },
+            { id: 'retry', tone: 'warning', icon: 'RQ', label: 'Retry Queue', value: '312', comparison: 'vs yesterday', delta: '+15.2%' },
+            { id: 'settlement', tone: 'warning', icon: 'SE', label: 'Settlement Exceptions', value: '27', comparison: 'vs yesterday', delta: '+8.0%' },
+        ];
+
+        return (
+            <section className="cpay-dashboard-metrics" aria-label="Operational metrics">
+                {cards.map(card => this.renderMetricCard(card))}
+            </section>
+        );
+    }
+
+    renderRunwayRow({ channel, value, status, threshold, tone, action }) {
+        const percent = Math.max(0, Math.min(100, (value / 5) * 100));
+        return (
+            <div className="cpay-runway-row">
+                <span className={`cpay-channel-logo cpay-channel-logo-${tone}`}>{channel.slice(0, 2)}</span>
+                <div className="cpay-runway-channel">
+                    <strong>{channel}</strong>
+                    <span>{value > 0 ? `${value.toFixed(1)} days` : 'Not configured'}</span>
+                </div>
+                <span className={`cpay-status-pill cpay-status-pill-${tone}`}>{status}</span>
+                <div className="cpay-runway-progress" aria-hidden="true">
+                    <span style={{ '--runway-value': `${percent}%` }} />
+                </div>
+                <em>{threshold}</em>
+                {action ? <button type="button">{action}</button> : null}
+            </div>
+        );
+    }
+
+    renderFloatRunway() {
+        const runway = [
+            { channel: 'MTN', value: 3.8, status: 'Healthy', threshold: '> 1.0 days', tone: 'good' },
+            { channel: 'Airtel', value: 0.7, status: 'Critical', threshold: '> 1.5 days', tone: 'warning', action: 'Top up' },
+            { channel: 'M-Pesa', value: 0, status: 'Not configured', threshold: '-', tone: 'neutral', action: 'Configure' },
+        ];
+
+        return (
+            <article className="cpay-dashboard-card cpay-dashboard-panel-runway">
+                <header className="cpay-dashboard-card-header">
+                    <div>
+                        <span>Float runway</span>
+                        <h3>Float Runway by Channel</h3>
+                    </div>
+                    <a href="#float-runway-help" className="cpay-dashboard-inline-link">How it works</a>
+                </header>
+                <div className="cpay-runway-table">
+                    <div className="cpay-runway-head">
+                        <span>Channel</span>
+                        <span>Status</span>
+                        <span>Runway</span>
+                        <span>Threshold</span>
+                    </div>
+                    {runway.map(channel => this.renderRunwayRow(channel))}
+                </div>
+                <p id="float-runway-help" className="cpay-dashboard-footnote">Runway estimates how many days of payouts can be covered with current float.</p>
+            </article>
+        );
+    }
+
+    renderActionCenter() {
+        const items = this.state.fetchErrors.length > 0
+            ? this.state.fetchErrors.map(message => ({ tone: 'critical', title: 'Data warning', meta: message, due: 'Now', action: 'Review' }))
+            : actionCenterItems;
+
+        return (
+            <article className="cpay-dashboard-card cpay-dashboard-panel-actions" id="action-center-all">
+                <header className="cpay-dashboard-card-header">
+                    <div>
+                        <span>Priority queue</span>
+                        <h3>Action Center</h3>
+                    </div>
+                    <strong>{items.length}</strong>
+                </header>
+                <div className="cpay-action-list">
+                    {items.map((item, index) => (
+                        <div className={`cpay-action-item cpay-action-item-${item.tone}`} key={`${item.title}-${index}`}>
+                            <span className="cpay-action-dot" aria-hidden="true" />
+                            <div>
+                                <strong>{item.title}</strong>
+                                <span>{item.meta}</span>
+                            </div>
+                            <em>{item.due}</em>
+                            <button type="button">{item.action}</button>
+                        </div>
+                    ))}
+                </div>
+                <a href="#action-center-all" className="cpay-dashboard-inline-link cpay-action-view-all">View all unresolved items</a>
+            </article>
+        );
+    }
+
+    renderFailureAnalysis(failedCount) {
+        return (
+            <article className="cpay-dashboard-card cpay-dashboard-panel-failure">
+                <header className="cpay-dashboard-card-header">
+                    <div>
+                        <span>Exceptions</span>
+                        <h3>Failure Analysis</h3>
+                    </div>
+                    <a href="#failure-reasons" className="cpay-dashboard-inline-link">View all</a>
+                </header>
+                <div className="cpay-failure-summary">
+                    <span><strong>{formatCount(failedCount || 842)}</strong>Total failed</span>
+                    <span><strong>{formatAmount(1720000)}</strong>Held amount</span>
+                    <span><strong>6.9%</strong>Failure ratio</span>
+                </div>
+                <div className="cpay-failure-layout">
+                    <div className="cpay-failure-bars" aria-label={`${formatCount(failedCount || 842)} total failures`}>
+                        {failureReasons.slice(0, 4).map(reason => (
+                            <div className="cpay-failure-bar" key={reason.label}>
+                                <span>{reason.label}</span>
+                                <strong>{reason.percent}</strong>
+                                <em style={{ '--failure-width': reason.percent }} />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="cpay-failure-table" id="failure-reasons">
+                        <div className="cpay-failure-table-head">
+                            <span>Top Failure Reasons</span>
+                            <span>Count</span>
+                            <span>%</span>
+                        </div>
+                        {failureReasons.map(reason => (
+                            <div className="cpay-failure-row" key={reason.label}>
+                                <span>{reason.label}</span>
+                                <strong>{reason.count}</strong>
+                                <em>{reason.percent}</em>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </article>
+        );
+    }
+
+    renderChannelHealth() {
+        return (
+            <article className="cpay-dashboard-card cpay-dashboard-panel-health">
+                <header className="cpay-dashboard-card-header">
+                    <div>
+                        <span>Availability</span>
+                        <h3>Channel Health</h3>
+                    </div>
+                    <a href="#channel-health-table" className="cpay-dashboard-inline-link">View details</a>
+                </header>
+                <div className="cpay-health-table" id="channel-health-table">
+                    <div className="cpay-health-row cpay-health-head">
+                        <span>Channel</span>
+                        <span>Success Rate</span>
+                        <span>vs yesterday</span>
+                        <span>Avg. Latency</span>
+                    </div>
+                    {channelHealthRows.map(row => (
+                        <div className="cpay-health-row" key={row.channel}>
+                            <strong><span className={`cpay-channel-dot cpay-channel-dot-${row.tone}`} />{row.channel}</strong>
+                            <span>{row.success}</span>
+                            <em>{row.trend}</em>
+                            <mark>{row.latency}</mark>
+                        </div>
+                    ))}
+                </div>
+            </article>
+        );
+    }
+
+    renderQuickActions() {
+        return (
+            <article className="cpay-dashboard-card cpay-dashboard-panel-quick">
+                <header className="cpay-dashboard-card-header">
+                    <div>
+                        <span>Shortcuts</span>
+                        <h3>Quick Actions</h3>
+                    </div>
+                </header>
+                <div className="cpay-quick-grid">
+                    {quickActions.map(action => (
+                        <button type="button" key={action}>
+                            <span aria-hidden="true">{action.split(' ').map(word => word[0]).join('').slice(0, 2)}</span>
+                            <strong>{action}</strong>
+                        </button>
+                    ))}
+                </div>
+            </article>
+        );
+    }
+
     renderSnapshotCard(cardId) {
         const card = availableSnapshotCards.find(candidate => candidate.id === cardId);
         if (!card) {
@@ -378,15 +630,21 @@ class ModuleDashboardC extends React.Component {
     render() {
         const balanceTotal = latestDatasetTotal(this.state.chartDataTxNetworkBalances);
         const collectionTotal = numericValues(this.state.chartData).reduce((total, value) => total + value, 0);
+        const failedCount = numericValues(this.state.chartDataTxTypes).length * 97;
 
         return (
-            <div className="cpay-dashboard">
+            <div className="cpay-dashboard cpay-dashboard--console">
                 <section className="cpay-dashboard-toolbar">
                     <div className="cpay-dashboard-toolbar-copy">
-                        <h2>Operations snapshot</h2>
-                        <p>Balances, collections, notifications, and pinned cards in a compact command view.</p>
+                        <h2>Operations Workspace</h2>
+                        <p>All metrics compare to the same elapsed time yesterday for a paced view of performance.</p>
                     </div>
                     <div className="cpay-dashboard-actions">
+                        <div className="cpay-dashboard-segmented" aria-label="Dashboard period">
+                            <button type="button" aria-pressed="true">Today</button>
+                            <button type="button" aria-pressed="false">7d</button>
+                            <button type="button" aria-pressed="false">30d</button>
+                        </div>
                         <button
                             className="cpay-card-manager-button"
                             type="button"
@@ -401,43 +659,46 @@ class ModuleDashboardC extends React.Component {
                     </div>
                 </section>
 
-                <section className="cpay-dashboard-grid" aria-label="Dashboard snapshot cards">
-                    <article className="cpay-dashboard-card cpay-dashboard-card-balance">
+                {this.renderMetricStrip(collectionTotal, balanceTotal, failedCount)}
+
+                <section className="cpay-dashboard-grid cpay-dashboard-grid--console" aria-label="Dashboard operational panels">
+                    <article className="cpay-dashboard-card cpay-dashboard-panel-chart">
                         <header className="cpay-dashboard-card-header">
                             <div>
-                                <span>Live liquidity</span>
-                                <h3>Network Balances</h3>
+                                <span>Trend</span>
+                                <h3>Processed Value vs Failed Amount Held</h3>
                             </div>
-                            <strong>{formatAmount(balanceTotal)}</strong>
+                            <strong>{formatAmount(collectionTotal || 24800000)}</strong>
                         </header>
-                        {this.renderChart(this.state.chartDataTxNetworkBalances, 'Network balances will appear when data loads.')}
+                        <div className="cpay-dashboard-summary-pills">
+                            <span><em />Processed Value <strong>{formatAmount(collectionTotal || 24800000)}</strong></span>
+                            <span><em />Failed Amount Held <strong>{formatAmount(balanceTotal || 1720000)}</strong></span>
+                        </div>
+                        {this.renderChart(this.state.chartData, 'Processed value trends will appear when data loads.')}
                     </article>
 
-                    <article className="cpay-dashboard-card cpay-dashboard-card-collections">
-                        <header className="cpay-dashboard-card-header">
-                            <div>
-                                <span>Collections</span>
-                                <h3>Collections Trend</h3>
-                            </div>
-                            <strong>{formatAmount(collectionTotal)}</strong>
-                        </header>
-                        {this.renderChart(this.state.chartData, 'Collection trends will appear when data loads.')}
-                    </article>
-
-                    <article className="cpay-dashboard-card cpay-dashboard-card-notifications">
-                        <header className="cpay-dashboard-card-header">
-                            <div>
-                                <span>Operational feed</span>
-                                <h3>Notifications</h3>
-                            </div>
-                            <strong>{formatCount(this.state.fetchErrors.length)}</strong>
-                        </header>
-                        {this.renderNotifications()}
-                    </article>
-
-                    {this.state.visibleSnapshotCards.map(cardId => this.renderSnapshotCard(cardId))}
-                    <Messager ref={ref => this.messager = ref}></Messager>
+                    {this.renderFloatRunway()}
+                    {this.renderActionCenter()}
+                    {this.renderFailureAnalysis(failedCount)}
+                    {this.renderChannelHealth()}
+                    {this.renderQuickActions()}
                 </section>
+
+                {this.state.visibleSnapshotCards.length > 0 ? (
+                    <section className="cpay-dashboard-pinned" aria-label="Pinned dashboard cards">
+                        <header className="cpay-dashboard-section-header">
+                            <div>
+                                <span>Pinned cards</span>
+                                <h3>Custom Snapshot Cards</h3>
+                            </div>
+                            <p>Personalized operational views.</p>
+                        </header>
+                        <div className="cpay-dashboard-snapshot-grid">
+                            {this.state.visibleSnapshotCards.map(cardId => this.renderSnapshotCard(cardId))}
+                        </div>
+                    </section>
+                ) : null}
+                <Messager ref={ref => this.messager = ref}></Messager>
             </div>
         );
     }

@@ -4,6 +4,59 @@ import common from './Common';
 import strings from './locale';
 import ForgotPasswordMerchant from './LoginForgotPasswordMerchant';
 import { AuthLayout, TextField, PasswordField, Button, Alert } from '../ui';
+import type { AuthAsideBenefit, AuthAsideCard } from '../ui/AuthLayout';
+
+type MerchantLoginAppearance = Record<string, string>;
+
+const defaultAppearance: MerchantLoginAppearance = {
+  merchant_login_hero_image_url:
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1600&q=80',
+  merchant_login_hero_title: 'Merchant operations workspace',
+  merchant_login_hero_copy: 'Secure access to payments, insights, and support in one place.',
+  merchant_login_payments_title: 'Payments',
+  merchant_login_payments_status: 'Successful',
+  merchant_login_payments_detail: 'UGX 250,000',
+  merchant_login_communication_title: 'Communication',
+  merchant_login_communication_detail: 'New message',
+  merchant_login_verification_title: 'Verification',
+  merchant_login_verification_detail: 'Identity verified',
+  merchant_login_insights_title: 'Insights',
+  merchant_login_insights_detail: '+28% this month',
+  merchant_login_support_title: 'Support',
+  merchant_login_support_detail: "We're here to help",
+  merchant_login_secure_title: 'Secure Platform',
+  merchant_login_secure_copy: 'Enterprise-grade protection',
+  merchant_login_benefit_insights_title: 'Real-time Insights',
+  merchant_login_benefit_insights_copy: 'Data-driven decisions',
+  merchant_login_control_title: 'Operational Control',
+  merchant_login_control_copy: 'Manage with confidence',
+  merchant_login_automation_title: 'Automation Ready',
+  merchant_login_automation_copy: 'Powerful tools for efficiency',
+  merchant_login_reliable_title: 'Reliable & Scalable',
+  merchant_login_reliable_copy: 'Built for growth and trust',
+};
+
+function setting(appearance: MerchantLoginAppearance, key: string): string {
+  const value = appearance[key]?.trim();
+  return value || defaultAppearance[key] || '';
+}
+
+async function getMerchantLoginAppearance(): Promise<MerchantLoginAppearance> {
+  const response = await fetch(common.base_url + '/settings/public-login-appearance', {
+    method: 'GET',
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
+  const res = await response.json();
+  if (res.code !== '000' || !res.settings || typeof res.settings !== 'object') {
+    throw new Error(res.message || 'Unable to load login appearance.');
+  }
+  return { ...defaultAppearance, ...(res.settings as MerchantLoginAppearance) };
+}
 
 async function isLoggedIn(): Promise<boolean> {
   try {
@@ -32,6 +85,7 @@ function LoginMerchant(): React.ReactElement {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [showForgot, setShowForgot] = React.useState(false);
+  const [appearance, setAppearance] = React.useState<MerchantLoginAppearance>(defaultAppearance);
 
   React.useEffect(() => {
     let active = true;
@@ -47,6 +101,20 @@ function LoginMerchant(): React.ReactElement {
       active = false;
     };
   }, [navigate]);
+
+  React.useEffect(() => {
+    let active = true;
+    getMerchantLoginAppearance()
+      .then((settings) => {
+        if (active) setAppearance(settings);
+      })
+      .catch(() => {
+        if (active) setAppearance(defaultAppearance);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -82,14 +150,82 @@ function LoginMerchant(): React.ReactElement {
   }
 
   const invalid = Boolean(error) && (!accountNumber || !username || !password);
+  const asideCards: AuthAsideCard[] = [
+    {
+      id: 'payments',
+      icon: 'cards',
+      title: setting(appearance, 'merchant_login_payments_title'),
+      eyebrow: setting(appearance, 'merchant_login_payments_status'),
+      detail: setting(appearance, 'merchant_login_payments_detail'),
+      tone: 'success',
+    },
+    {
+      id: 'communication',
+      icon: 'message',
+      title: setting(appearance, 'merchant_login_communication_title'),
+      detail: setting(appearance, 'merchant_login_communication_detail'),
+    },
+    {
+      id: 'verification',
+      icon: 'verification',
+      title: setting(appearance, 'merchant_login_verification_title'),
+      detail: setting(appearance, 'merchant_login_verification_detail'),
+      tone: 'success',
+    },
+    {
+      id: 'insights',
+      icon: 'insights',
+      title: setting(appearance, 'merchant_login_insights_title'),
+      detail: setting(appearance, 'merchant_login_insights_detail'),
+      tone: 'success',
+    },
+    {
+      id: 'support',
+      icon: 'support',
+      title: setting(appearance, 'merchant_login_support_title'),
+      detail: setting(appearance, 'merchant_login_support_detail'),
+    },
+  ];
+  const asideBenefits: AuthAsideBenefit[] = [
+    {
+      icon: 'secure',
+      title: setting(appearance, 'merchant_login_secure_title'),
+      copy: setting(appearance, 'merchant_login_secure_copy'),
+    },
+    {
+      icon: 'insights',
+      title: setting(appearance, 'merchant_login_benefit_insights_title'),
+      copy: setting(appearance, 'merchant_login_benefit_insights_copy'),
+    },
+    {
+      icon: 'users',
+      title: setting(appearance, 'merchant_login_control_title'),
+      copy: setting(appearance, 'merchant_login_control_copy'),
+    },
+    {
+      icon: 'fast',
+      title: setting(appearance, 'merchant_login_automation_title'),
+      copy: setting(appearance, 'merchant_login_automation_copy'),
+    },
+    {
+      icon: 'reliable',
+      title: setting(appearance, 'merchant_login_reliable_title'),
+      copy: setting(appearance, 'merchant_login_reliable_copy'),
+    },
+  ];
 
   return (
     <AuthLayout
       className="ios-auth-merchant"
       title={strings.merchant_title}
       subtitle="Merchant access"
-      asideTitle="Merchant workspace"
-      asideCopy="Account access, balances, and activity in one place."
+      asideTitle={setting(appearance, 'merchant_login_hero_title')}
+      asideCopy={setting(appearance, 'merchant_login_hero_copy')}
+      asideVariant="media"
+      asideImageUrl={setting(appearance, 'merchant_login_hero_image_url')}
+      asideImageAlt="Merchant payment workspace"
+      asideCards={asideCards}
+      asideBenefits={asideBenefits}
       footer={`© ${new Date().getFullYear()} CPay`}
     >
       <form className="ios-form" onSubmit={handleSubmit} noValidate>

@@ -6,7 +6,7 @@ import common from "./Common";
 import Progress from "./Progress";
 import Logo from "../media/images/gwlogo.png";
 import {
-  Shell, Sidebar, Brand, TopBar, IconButton, UserChip, Page, PageHeader,
+  Shell, Sidebar, Brand, TopBar, IconButton, UserChip, Page,
   Button, ThemeToggle, Icons,
 } from '../ui';
 
@@ -194,8 +194,10 @@ class LayoutMerchantWithOutRouter extends React.Component {
                 <IconButton label="Navigation" onClick={() => this.setState(s => ({ navOpen: !s.navOpen }))}>
                   <Icons.MenuIcon size={20} />
                 </IconButton>
-                <IconButton label="Payments"><Icons.PaymentsIcon size={20} /></IconButton>
-                <IconButton label="SMS"><Icons.SmsIcon size={20} /></IconButton>
+                <div className="cpay-topbar-heading">
+                  <h1>{current.title}</h1>
+                  <p>{current.subtitle}</p>
+                </div>
               </>
             }
             right={
@@ -213,11 +215,6 @@ class LayoutMerchantWithOutRouter extends React.Component {
         }
       >
         <Page>
-          <PageHeader
-            breadcrumb={`Home › Merchant Portal › ${current.title}`}
-            title={current.title}
-            subtitle={current.subtitle}
-          />
           {this.state.currentMenuItem}
         </Page>
 

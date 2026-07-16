@@ -28,6 +28,349 @@
     "description": "Comma-separated IP allowlist for internal application access."
   },
   {
+    "name": "merchant_login_hero_image_url",
+    "label": "Customer Login Image URL",
+    "setting_value": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1600&q=80",
+    "setting_group": "Login Portal",
+    "description": "Image URL used on the customer login portal left panel."
+  },
+  {
+    "name": "merchant_login_hero_title",
+    "label": "Customer Login Hero Title",
+    "setting_value": "Merchant operations workspace",
+    "setting_group": "Login Portal",
+    "description": "Accessible title for the customer login portal image panel."
+  },
+  {
+    "name": "merchant_login_hero_copy",
+    "label": "Customer Login Hero Copy",
+    "setting_value": "Secure access to payments, insights, and support in one place.",
+    "setting_group": "Login Portal",
+    "description": "Accessible supporting text for the customer login portal image panel."
+  },
+  {
+    "name": "merchant_login_payments_title",
+    "label": "Customer Login Payments Card Title",
+    "setting_value": "Payments",
+    "setting_group": "Login Portal",
+    "description": "Title for the payments floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_payments_status",
+    "label": "Customer Login Payments Card Status",
+    "setting_value": "Successful",
+    "setting_group": "Login Portal",
+    "description": "Status line for the payments floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_payments_detail",
+    "label": "Customer Login Payments Card Detail",
+    "setting_value": "UGX 250,000",
+    "setting_group": "Login Portal",
+    "description": "Detail line for the payments floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_communication_title",
+    "label": "Customer Login Communication Card Title",
+    "setting_value": "Communication",
+    "setting_group": "Login Portal",
+    "description": "Title for the communication floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_communication_detail",
+    "label": "Customer Login Communication Card Detail",
+    "setting_value": "New message",
+    "setting_group": "Login Portal",
+    "description": "Detail line for the communication floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_verification_title",
+    "label": "Customer Login Verification Card Title",
+    "setting_value": "Verification",
+    "setting_group": "Login Portal",
+    "description": "Title for the verification floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_verification_detail",
+    "label": "Customer Login Verification Card Detail",
+    "setting_value": "Identity verified",
+    "setting_group": "Login Portal",
+    "description": "Detail line for the verification floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_insights_title",
+    "label": "Customer Login Insights Card Title",
+    "setting_value": "Insights",
+    "setting_group": "Login Portal",
+    "description": "Title for the insights floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_insights_detail",
+    "label": "Customer Login Insights Card Detail",
+    "setting_value": "+28% this month",
+    "setting_group": "Login Portal",
+    "description": "Detail line for the insights floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_support_title",
+    "label": "Customer Login Support Card Title",
+    "setting_value": "Support",
+    "setting_group": "Login Portal",
+    "description": "Title for the support floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_support_detail",
+    "label": "Customer Login Support Card Detail",
+    "setting_value": "We're here to help",
+    "setting_group": "Login Portal",
+    "description": "Detail line for the support floating card on the customer login portal."
+  },
+  {
+    "name": "merchant_login_secure_title",
+    "label": "Customer Login Secure Benefit Title",
+    "setting_value": "Secure Platform",
+    "setting_group": "Login Portal",
+    "description": "Title for the secure benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_secure_copy",
+    "label": "Customer Login Secure Benefit Copy",
+    "setting_value": "Enterprise-grade protection",
+    "setting_group": "Login Portal",
+    "description": "Copy for the secure benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_benefit_insights_title",
+    "label": "Customer Login Insights Benefit Title",
+    "setting_value": "Real-time Insights",
+    "setting_group": "Login Portal",
+    "description": "Title for the insights benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_benefit_insights_copy",
+    "label": "Customer Login Insights Benefit Copy",
+    "setting_value": "Data-driven decisions",
+    "setting_group": "Login Portal",
+    "description": "Copy for the insights benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_control_title",
+    "label": "Customer Login Control Benefit Title",
+    "setting_value": "Operational Control",
+    "setting_group": "Login Portal",
+    "description": "Title for the operational control benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_control_copy",
+    "label": "Customer Login Control Benefit Copy",
+    "setting_value": "Manage with confidence",
+    "setting_group": "Login Portal",
+    "description": "Copy for the operational control benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_automation_title",
+    "label": "Customer Login Automation Benefit Title",
+    "setting_value": "Automation Ready",
+    "setting_group": "Login Portal",
+    "description": "Title for the automation benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_automation_copy",
+    "label": "Customer Login Automation Benefit Copy",
+    "setting_value": "Powerful tools for efficiency",
+    "setting_group": "Login Portal",
+    "description": "Copy for the automation benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_fast_title",
+    "label": "Customer Login Fast Benefit Title",
+    "setting_value": "Fast",
+    "setting_group": "Login Portal",
+    "description": "Title for the fast benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_fast_copy",
+    "label": "Customer Login Fast Benefit Copy",
+    "setting_value": "Quick payments and settlements",
+    "setting_group": "Login Portal",
+    "description": "Copy for the fast benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_reliable_title",
+    "label": "Customer Login Reliable Benefit Title",
+    "setting_value": "Reliable & Scalable",
+    "setting_group": "Login Portal",
+    "description": "Title for the reliable benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_reliable_copy",
+    "label": "Customer Login Reliable Benefit Copy",
+    "setting_value": "Built for growth and trust",
+    "setting_group": "Login Portal",
+    "description": "Copy for the reliable benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_help_title",
+    "label": "Customer Login Help Benefit Title",
+    "setting_value": "Support",
+    "setting_group": "Login Portal",
+    "description": "Title for the support benefit tile on the customer login portal."
+  },
+  {
+    "name": "merchant_login_help_copy",
+    "label": "Customer Login Help Benefit Copy",
+    "setting_value": "We're here to help",
+    "setting_group": "Login Portal",
+    "description": "Copy for the support benefit tile on the customer login portal."
+  },
+  {
+    "name": "admin_login_hero_image_url",
+    "label": "Admin Login Image URL",
+    "setting_value": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80",
+    "setting_group": "Login Portal",
+    "description": "Image URL used on the admin login portal left panel."
+  },
+  {
+    "name": "admin_login_hero_title",
+    "label": "Admin Login Hero Title",
+    "setting_value": "Powerful control. Smarter operations.",
+    "setting_group": "Login Portal",
+    "description": "Accessible title for the admin login portal image panel."
+  },
+  {
+    "name": "admin_login_hero_copy",
+    "label": "Admin Login Hero Copy",
+    "setting_value": "Manage your platform, users, and transactions with confidence and clarity.",
+    "setting_group": "Login Portal",
+    "description": "Accessible supporting text for the admin login portal image panel."
+  },
+  {
+    "name": "admin_login_approvals_title",
+    "label": "Admin Login Approvals Card Title",
+    "setting_value": "Secure Platform",
+    "setting_group": "Login Portal",
+    "description": "Title for the approvals floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_users_title",
+    "label": "Admin Login User Management Card Title",
+    "setting_value": "User & Role Management",
+    "setting_group": "Login Portal",
+    "description": "Title for the user management floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_analytics_title",
+    "label": "Admin Login Analytics Card Title",
+    "setting_value": "Real-time Analytics",
+    "setting_group": "Login Portal",
+    "description": "Title for the analytics floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_merchant_title",
+    "label": "Admin Login Merchant Oversight Card Title",
+    "setting_value": "System Management",
+    "setting_group": "Login Portal",
+    "description": "Title for the merchant oversight floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_security_title",
+    "label": "Admin Login Security Card Title",
+    "setting_value": "Audit & Compliance",
+    "setting_group": "Login Portal",
+    "description": "Title for the security floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_monitoring_title",
+    "label": "Admin Login Payments Monitoring Card Title",
+    "setting_value": "Payments Monitoring",
+    "setting_group": "Login Portal",
+    "description": "Title for the payments monitoring floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_support_title",
+    "label": "Admin Login Support Card Title",
+    "setting_value": "Support",
+    "setting_group": "Login Portal",
+    "description": "Title for the support floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_system_title",
+    "label": "Admin Login System Settings Card Title",
+    "setting_value": "System Settings",
+    "setting_group": "Login Portal",
+    "description": "Title for the system settings floating card on the admin login portal."
+  },
+  {
+    "name": "admin_login_secure_title",
+    "label": "Admin Login Secure Benefit Title",
+    "setting_value": "Secure",
+    "setting_group": "Login Portal",
+    "description": "Title for the secure benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_secure_copy",
+    "label": "Admin Login Secure Benefit Copy",
+    "setting_value": "Protect platform and data",
+    "setting_group": "Login Portal",
+    "description": "Copy for the secure benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_insights_title",
+    "label": "Admin Login Insights Benefit Title",
+    "setting_value": "Reliable",
+    "setting_group": "Login Portal",
+    "description": "Title for the insights benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_insights_copy",
+    "label": "Admin Login Insights Benefit Copy",
+    "setting_value": "High availability and performance",
+    "setting_group": "Login Portal",
+    "description": "Copy for the insights benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_control_title",
+    "label": "Admin Login Control Benefit Title",
+    "setting_value": "Insightful",
+    "setting_group": "Login Portal",
+    "description": "Title for the control benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_control_copy",
+    "label": "Admin Login Control Benefit Copy",
+    "setting_value": "Real-time reports and analytics",
+    "setting_group": "Login Portal",
+    "description": "Copy for the control benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_automation_title",
+    "label": "Admin Login Automation Benefit Title",
+    "setting_value": "Efficient",
+    "setting_group": "Login Portal",
+    "description": "Title for the automation benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_automation_copy",
+    "label": "Admin Login Automation Benefit Copy",
+    "setting_value": "Automate and simplify operations",
+    "setting_group": "Login Portal",
+    "description": "Copy for the automation benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_reliable_title",
+    "label": "Admin Login Reliable Benefit Title",
+    "setting_value": "Compliant",
+    "setting_group": "Login Portal",
+    "description": "Title for the reliable benefit tile on the admin login portal."
+  },
+  {
+    "name": "admin_login_reliable_copy",
+    "label": "Admin Login Reliable Benefit Copy",
+    "setting_value": "Meet regulatory requirements",
+    "setting_group": "Login Portal",
+    "description": "Copy for the reliable benefit tile on the admin login portal."
+  },
+  {
     "name": "float_stock_account",
     "label": "Float Stock Account",
     "setting_value": "",

@@ -6,7 +6,7 @@ import common from "./Common";
 import Progress from "./Progress";
 import Logo from "../media/images/gwlogo.png";
 import {
-  Shell, Sidebar, Brand, TopBar, IconButton, UserChip, Page, PageHeader,
+  Shell, Sidebar, Brand, TopBar, IconButton, UserChip, Page,
   Button, ThemeToggle, Icons,
 } from '../ui';
 
@@ -210,8 +210,10 @@ class LayoutWithOutRouter extends React.Component {
                 <IconButton label="Navigation" onClick={() => this.setState(s => ({ navOpen: !s.navOpen }))}>
                   <Icons.MenuIcon size={20} />
                 </IconButton>
-                <IconButton label="Calendar"><Icons.CalendarIcon size={20} /></IconButton>
-                <IconButton label="Messages"><Icons.MailIcon size={20} /></IconButton>
+                <div className="cpay-topbar-heading">
+                  <h1>{current.title}</h1>
+                  <p>{current.subtitle}</p>
+                </div>
               </>
             }
             right={
@@ -226,11 +228,6 @@ class LayoutWithOutRouter extends React.Component {
         }
       >
         <Page>
-          <PageHeader
-            breadcrumb={`Home › Admin Portal › ${current.title}`}
-            title={current.title}
-            subtitle={current.subtitle}
-          />
           {this.state.currentMenuItem}
         </Page>
 

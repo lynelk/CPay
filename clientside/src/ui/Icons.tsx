@@ -43,6 +43,11 @@ export const SettingsIcon = (p: IconProps) => <Svg {...p}><circle cx="12" cy="12
 export const PaymentsIcon = (p: IconProps) => <Svg {...p}><path d="M12 3v18M16 7.5c-.7-.9-2-1.5-3.6-1.5-2 0-3.4 1-3.4 2.4 0 1.6 1.8 2.2 3.7 2.7 2 .6 3.8 1.2 3.8 3.2 0 1.5-1.5 2.7-3.8 2.7-1.9 0-3.5-.7-4.4-1.9" {...s} /></Svg>;
 export const CardsIcon = (p: IconProps) => <Svg {...p}><rect x="3" y="6" width="18" height="12" rx="3" {...s} /><path d="M3 10h18" {...s} /></Svg>;
 export const SmsIcon = (p: IconProps) => <Svg {...p}><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" {...s} /></Svg>;
+export const LockIcon = (p: IconProps) => <Svg {...p}><rect x="5" y="10" width="14" height="10" rx="2.5" {...s} /><path d="M8 10V8a4 4 0 0 1 8 0v2M12 14v2.5" {...s} /></Svg>;
+export const LightningIcon = (p: IconProps) => <Svg {...p}><path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z" {...s} /></Svg>;
+export const ShieldIcon = (p: IconProps) => <Svg {...p}><path d="M12 3 19 6v5.6c0 4-2.7 7.5-7 9.4-4.3-1.9-7-5.4-7-9.4V6l7-3Z" {...s} /><path d="m8.5 12 2.2 2.2 4.8-5" {...s} /></Svg>;
+export const HeadsetIcon = (p: IconProps) => <Svg {...p}><path d="M4 13a8 8 0 0 1 16 0" {...s} /><path d="M4 13v3a2 2 0 0 0 2 2h1v-7H6a2 2 0 0 0-2 2ZM20 13v3a2 2 0 0 1-2 2h-1v-7h1a2 2 0 0 1 2 2ZM17 18c0 1.7-1.3 3-3 3h-2" {...s} /></Svg>;
+export const BarChartIcon = (p: IconProps) => <Svg {...p}><path d="M5 19V9M12 19V5M19 19v-8" {...s} /><path d="M3 19h18" {...s} /></Svg>;
 export const LogoutIcon = (p: IconProps) => <Svg {...p}><path d="M15 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h9M12 12h9M18 9l3 3-3 3" {...s} /></Svg>;
 export const DownloadIcon = (p: IconProps) => <Svg {...p}><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" {...s} /></Svg>;
 export const UploadIcon = (p: IconProps) => <Svg {...p}><path d="M12 20V9m0 0 4 4m-4-4-4 4M5 5h14" {...s} /></Svg>;

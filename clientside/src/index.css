@@ -72,31 +72,31 @@ code {
 
 /* ─── CPay brand application shell ──────────────────────────────────────── */
 :root {
-  --cpay-brand-teal: #1198C4;
+  --cpay-brand-teal: #0E9BC3;
   --cpay-brand-gold: #F3B01B;
-  --cpay-brand-navy: #163B5C;
-  --cpay-brand-slate: #667085;
-  --cpay-brand-soft-gray: #F5F7FA;
+  --cpay-brand-navy: #102A43;
+  --cpay-brand-slate: #64748B;
+  --cpay-brand-soft-gray: #F4F8FB;
   --cpay-brand-white: #FFFFFF;
   --cpay-heading-font: Montserrat, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   --cpay-body-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   --cpay-fuse-bg: var(--cpay-brand-soft-gray);
-  --cpay-fuse-sidebar: rgba(245, 247, 250, 0.94);
+  --cpay-fuse-sidebar: #FFFFFF;
   --cpay-fuse-surface: var(--cpay-brand-white);
-  --cpay-fuse-surface-soft: #FAFCFD;
-  --cpay-fuse-line: #D6E3EA;
-  --cpay-fuse-line-strong: #B8C6D1;
+  --cpay-fuse-surface-soft: #F8FBFD;
+  --cpay-fuse-line: #DCE7EF;
+  --cpay-fuse-line-strong: #C8D7E3;
   --cpay-fuse-text: var(--cpay-brand-navy);
   --cpay-fuse-muted: var(--cpay-brand-slate);
   --cpay-fuse-blue: var(--cpay-brand-teal);
-  --cpay-fuse-blue-dark: #0E7FA5;
+  --cpay-fuse-blue-dark: #087EA4;
   --cpay-fuse-dark: var(--cpay-brand-navy);
   --cpay-fuse-danger: #ff3b30;
   --cpay-fuse-green: #30d158;
-  --cpay-fuse-radius: 16px;
-  --cpay-fuse-radius-sm: 12px;
-  --cpay-fuse-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
-  --cpay-fuse-shadow-soft: 0 1px 4px rgba(15, 23, 42, 0.05);
+  --cpay-fuse-radius: 12px;
+  --cpay-fuse-radius-sm: 8px;
+  --cpay-fuse-shadow: 0 10px 28px rgba(16, 42, 67, 0.08);
+  --cpay-fuse-shadow-soft: 0 8px 20px rgba(16, 42, 67, 0.06);
   --cpay-fuse-font: var(--cpay-body-font);
 }
 
@@ -134,7 +134,7 @@ select,
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background: linear-gradient(180deg, var(--cpay-brand-white) 0%, var(--cpay-fuse-bg) 48%, #EEF4F7 100%);
+  background: var(--cpay-fuse-bg);
   color: var(--cpay-fuse-text);
 }
 
@@ -143,12 +143,12 @@ select,
   top: 0;
   display: flex;
   flex-direction: column;
-  width: 268px;
-  min-width: 268px;
+  width: 248px;
+  min-width: 248px;
   height: 100vh;
   background: var(--cpay-fuse-sidebar);
   border-right: 1px solid var(--cpay-fuse-line);
-  backdrop-filter: blur(18px);
+  box-shadow: 1px 0 0 rgba(220, 231, 239, 0.58);
   overflow-y: auto;
 }
 
@@ -157,21 +157,25 @@ select,
   align-items: center;
   gap: 12px;
   min-height: 76px;
-  padding: 18px 18px 14px;
+  padding: 16px 18px 14px;
 }
 
 .cpay-brand-logo {
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(14, 155, 195, 0.18);
+  border-radius: 10px;
+  background: #F8FBFD;
   object-fit: contain;
+  padding: 5px;
 }
 
 .cpay-brand-name {
   color: var(--cpay-fuse-text);
   font-family: var(--cpay-heading-font);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .cpay-brand-product {
@@ -185,14 +189,14 @@ select,
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   padding: 10px 12px 16px;
 }
 
 .cpay-nav-group {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
 }
 
 .cpay-nav-group-bottom {
@@ -202,40 +206,41 @@ select,
 }
 
 .cpay-nav-group-title {
-  padding: 0 4px 6px;
-  color: var(--cpay-fuse-blue);
+  padding: 0 10px 4px;
+  color: #8090A4;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .cpay-nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 42px;
+  min-height: 46px;
   width: 100%;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--cpay-fuse-radius);
   background: transparent;
-  color: #1f2937;
+  color: #284461;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 650;
-  padding: 0 12px;
+  font-weight: 700;
+  padding: 0 14px;
   text-align: left;
-  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 .cpay-nav-item:hover {
-  background: rgba(17, 152, 196, 0.08);
+  background: rgba(14, 155, 195, 0.08);
   color: var(--cpay-fuse-blue-dark);
 }
 
 .cpay-nav-item-active {
-  background: rgba(17, 152, 196, 0.12);
-  color: var(--cpay-fuse-dark);
-  box-shadow: inset 3px 0 0 var(--cpay-fuse-blue);
-  font-weight: 700;
+  background: linear-gradient(180deg, #19AAD0 0%, var(--cpay-fuse-blue) 100%);
+  color: #FFFFFF;
+  box-shadow: 0 10px 20px rgba(14, 155, 195, 0.22);
+  font-weight: 800;
 }
 
 .cpay-nav-item-danger {
@@ -248,7 +253,12 @@ select,
   height: 18px;
   min-width: 18px;
   background-size: 16px 16px !important;
-  opacity: 0.78;
+  opacity: 0.86;
+}
+
+.cpay-nav-item-active .cpay-nav-icon {
+  opacity: 1;
+  filter: brightness(0) invert(1);
 }
 
 .cpay-main {
@@ -268,8 +278,9 @@ select,
   justify-content: space-between;
   min-height: 76px;
   padding: 0 clamp(18px, 2.2vw, 34px);
-  background: rgba(251, 253, 255, 0.82);
+  background: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--cpay-fuse-line);
+  box-shadow: 0 1px 0 rgba(220, 231, 239, 0.48);
   backdrop-filter: blur(14px);
 }
 
@@ -288,24 +299,34 @@ select,
   width: 40px;
   height: 40px;
   border: 1px solid var(--cpay-fuse-line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #334155;
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: #FFFFFF;
+  color: #456078;
   cursor: pointer;
   font-size: 15px;
   font-weight: 700;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(16, 42, 67, 0.04);
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .cpay-icon-button:hover {
-  border-color: rgba(17, 152, 196, 0.42);
+  border-color: rgba(14, 155, 195, 0.42);
   background: #ECF9FC;
   color: var(--cpay-fuse-blue-dark);
 }
 
 .cpay-icon-button:active {
   transform: translateY(1px);
+}
+
+.cpay-nav-item:focus-visible,
+.cpay-icon-button:focus-visible,
+.cpay-primary-button:focus-visible,
+.cpay-secondary-button:focus-visible,
+.l-btn:focus-visible,
+.textbox-focused {
+  outline: 3px solid rgba(14, 155, 195, 0.22);
+  outline-offset: 2px;
 }
 
 .cpay-icon-button svg,
@@ -323,7 +344,7 @@ select,
   align-items: center;
   justify-content: center;
   min-height: 42px;
-  border-radius: 14px;
+  border-radius: var(--cpay-fuse-radius);
   cursor: pointer;
   font-size: 14px;
   font-weight: 750;
@@ -332,9 +353,9 @@ select,
 
 .cpay-primary-button {
   border: 1px solid var(--cpay-fuse-blue-dark);
-  background: linear-gradient(180deg, #19A9D4 0%, var(--cpay-fuse-blue) 100%);
+  background: linear-gradient(180deg, #19AAD0 0%, var(--cpay-fuse-blue) 100%);
   color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 18px rgba(17, 152, 196, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 18px rgba(14, 155, 195, 0.18);
 }
 
 .cpay-secondary-button {
@@ -348,18 +369,20 @@ select,
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding-left: 10px;
-  border-left: 1px solid var(--cpay-fuse-line);
+  padding: 4px 8px 4px 4px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 999px;
+  background: #FFFFFF;
 }
 
 .cpay-user-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--cpay-brand-teal), var(--cpay-brand-gold));
+  background: var(--cpay-fuse-blue);
   color: #fff;
   font-size: 14px;
   font-weight: 800;
@@ -394,7 +417,7 @@ select,
 .cpay-page-heading {
   width: min(100%, 1380px);
   margin: 0 auto;
-  padding: 22px clamp(18px, 2.2vw, 34px) 14px;
+  padding: 22px clamp(18px, 2.2vw, 34px) 12px;
 }
 
 .cpay-breadcrumb {
@@ -403,7 +426,7 @@ select,
   gap: 8px;
   margin-bottom: 10px;
   border: 1px solid var(--cpay-fuse-line);
-  border-radius: 12px;
+  border-radius: var(--cpay-fuse-radius-sm);
   background: var(--cpay-fuse-surface);
   color: var(--cpay-fuse-muted);
   font-size: 12px;
@@ -419,8 +442,8 @@ select,
   color: var(--cpay-fuse-text);
   font-family: var(--cpay-heading-font);
   font-size: clamp(24px, 2vw, 30px);
-  font-weight: 800;
-  line-height: 1.08;
+  font-weight: 850;
+  line-height: 1.12;
 }
 
 .cpay-page-heading p {
@@ -562,12 +585,12 @@ select,
 .datagrid-header td,
 .datagrid-body td,
 .datagrid-footer td {
-  border-color: #edf2f7 !important;
+  border-color: var(--cpay-fuse-line) !important;
 }
 
 .datagrid-row {
   min-height: 38px;
-  color: #1f2937;
+  color: var(--cpay-fuse-text);
 }
 
 .datagrid-row-over,
@@ -595,7 +618,7 @@ select,
   border-color: var(--cpay-fuse-line-strong) !important;
   border-radius: var(--cpay-fuse-radius) !important;
   background: var(--cpay-fuse-surface) !important;
-  color: #1f2937 !important;
+  color: var(--cpay-fuse-text) !important;
   font-size: 13px !important;
   font-weight: 700 !important;
   box-shadow: none !important;
@@ -1346,25 +1369,25 @@ select,
 
 /* ─── Dashboard card canvas ──────────────────────────────────────────────── */
 .cpay-main-dashboard {
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow: visible;
+  background: var(--cpay-fuse-bg);
 }
 
 .cpay-main-dashboard .cpay-page-heading {
   flex: 0 0 auto;
-  padding: 18px clamp(18px, 2.2vw, 34px) 8px;
+  padding: 20px clamp(18px, 2.2vw, 34px) 10px;
 }
 
 .cpay-main-dashboard .cpay-page-heading h1 {
-  font-size: clamp(24px, 2vw, 29px);
+  font-size: clamp(24px, 2vw, 30px);
 }
 
 .cpay-main-dashboard .cpay-content {
-  display: flex;
-  flex: 1 1 auto;
+  display: block;
   min-height: 0;
-  overflow: hidden;
-  padding: 8px clamp(18px, 2.2vw, 34px) 16px;
+  overflow: visible;
+  padding: 8px clamp(18px, 2.2vw, 34px) 26px;
 }
 
 .cpay-main-dashboard .cpay-footer {
@@ -1374,11 +1397,10 @@ select,
 .cpay-dashboard {
   display: grid;
   width: 100%;
-  height: 100%;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
-  overflow: hidden;
+  grid-template-rows: auto auto;
+  gap: 16px;
+  overflow: visible;
 }
 
 .cpay-dashboard-toolbar {
@@ -1386,14 +1408,13 @@ select,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  min-height: 58px;
-  border: 1px solid rgba(214, 227, 234, 0.95);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: inset 4px 0 0 rgba(243, 176, 27, 0.88), var(--cpay-fuse-shadow-soft);
-  padding: 10px 12px 10px 16px;
-  backdrop-filter: blur(14px);
+  gap: 16px;
+  min-height: 68px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow-soft);
+  padding: 14px 16px;
 }
 
 .cpay-dashboard-toolbar-copy {
@@ -1404,16 +1425,16 @@ select,
   margin: 0;
   color: var(--cpay-fuse-text);
   font-family: var(--cpay-heading-font);
-  font-size: clamp(16px, 1.25vw, 18px);
+  font-size: clamp(17px, 1.25vw, 19px);
   font-weight: 850;
-  line-height: 1.12;
+  line-height: 1.18;
 }
 
 .cpay-dashboard-toolbar p {
-  margin: 3px 0 0;
+  margin: 4px 0 0;
   color: var(--cpay-fuse-muted);
-  font-size: 12px;
-  line-height: 1.28;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .cpay-dashboard-actions {
@@ -1430,15 +1451,15 @@ select,
   justify-content: center;
   gap: 8px;
   min-height: 42px;
-  border: 1px solid rgba(17, 152, 196, 0.42);
-  border-radius: 14px;
+  border: 1px solid rgba(14, 155, 195, 0.36);
+  border-radius: var(--cpay-fuse-radius-sm);
   background: linear-gradient(180deg, #FFFFFF 0%, #ECF9FC 100%);
   color: var(--cpay-fuse-blue-dark);
   cursor: pointer;
   font-size: 13px;
   font-weight: 850;
   padding: 0 12px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 2px rgba(16, 42, 67, 0.04);
   white-space: nowrap;
 }
 
@@ -1456,8 +1477,8 @@ select,
   min-width: 34px;
   height: 24px;
   border-radius: 999px;
-  background: rgba(243, 176, 27, 0.18);
-  color: #8D6100;
+  background: rgba(14, 155, 195, 0.12);
+  color: var(--cpay-fuse-blue-dark);
   font-size: 11px;
   font-style: normal;
   font-weight: 850;
@@ -1469,14 +1490,14 @@ select,
   right: 0;
   z-index: 40;
   display: grid;
-  width: min(330px, calc(100vw - 32px));
+  width: min(342px, calc(100vw - 32px));
   max-height: min(440px, calc(100vh - 140px));
   gap: 8px;
   overflow-y: auto;
-  border: 1px solid rgba(214, 227, 234, 0.95);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--cpay-fuse-shadow);
   padding: 12px;
   backdrop-filter: blur(20px);
 }
@@ -1506,10 +1527,10 @@ select,
   grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  min-height: 54px;
+  min-height: 56px;
   width: 100%;
   border: 1px solid var(--cpay-fuse-line);
-  border-radius: 14px;
+  border-radius: var(--cpay-fuse-radius-sm);
   background: var(--cpay-fuse-surface-soft);
   color: var(--cpay-fuse-text);
   cursor: pointer;
@@ -1518,7 +1539,7 @@ select,
 }
 
 .cpay-dashboard-picker-option:hover {
-  border-color: rgba(17, 152, 196, 0.42);
+  border-color: rgba(14, 155, 195, 0.42);
   background: #ECF9FC;
 }
 
@@ -1538,8 +1559,8 @@ select,
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 10px;
-  background: rgba(17, 152, 196, 0.1);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: rgba(14, 155, 195, 0.1);
   color: var(--cpay-fuse-blue-dark);
 }
 
@@ -1575,23 +1596,29 @@ select,
   display: grid;
   min-height: 0;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1.16fr) minmax(0, 0.94fr);
-  gap: 12px;
-  overflow: hidden;
+  grid-auto-rows: minmax(220px, auto);
+  gap: 16px;
+  overflow: visible;
 }
 
 .cpay-dashboard-card {
   display: flex;
   min-width: 0;
-  min-height: 0;
+  min-height: 220px;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(214, 227, 234, 0.95);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-surface);
   box-shadow: var(--cpay-fuse-shadow-soft);
-  padding: clamp(12px, 1vw, 16px);
-  backdrop-filter: blur(10px);
+  padding: clamp(14px, 1.1vw, 18px);
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.cpay-dashboard-card:hover {
+  border-color: rgba(14, 155, 195, 0.28);
+  box-shadow: var(--cpay-fuse-shadow);
+  transform: translateY(-1px);
 }
 
 .cpay-dashboard-card-balance {
@@ -1616,8 +1643,8 @@ select,
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  min-height: 42px;
-  margin-bottom: 8px;
+  min-height: 44px;
+  margin-bottom: 12px;
 }
 
 .cpay-dashboard-card-header > div {
@@ -1628,7 +1655,7 @@ select,
   display: block;
   overflow: hidden;
   color: var(--cpay-fuse-blue-dark);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0;
   line-height: 1.15;
@@ -1644,7 +1671,7 @@ select,
   overflow: hidden;
   color: var(--cpay-fuse-text);
   font-family: var(--cpay-heading-font);
-  font-size: clamp(15px, 1.2vw, 17px);
+  font-size: clamp(16px, 1.2vw, 18px);
   font-weight: 850;
   line-height: 1.12;
   -webkit-box-orient: vertical;
@@ -1654,7 +1681,7 @@ select,
 .cpay-dashboard-card-header strong,
 .cpay-dashboard-metric {
   color: var(--cpay-fuse-text);
-  font-size: clamp(14px, 1.15vw, 16px);
+  font-size: clamp(16px, 1.25vw, 19px);
   font-weight: 850;
   line-height: 1.2;
   white-space: nowrap;
@@ -1668,7 +1695,7 @@ select,
   height: 30px;
   min-width: 30px;
   border: 1px solid var(--cpay-fuse-line);
-  border-radius: 999px;
+  border-radius: var(--cpay-fuse-radius-sm);
   background: var(--cpay-fuse-surface-soft);
   color: var(--cpay-fuse-muted);
   cursor: pointer;
@@ -1692,9 +1719,11 @@ select,
 .cpay-dashboard-chart-shell {
   position: relative;
   flex: 1 1 auto;
-  min-height: 116px;
+  min-height: 180px;
   overflow: hidden;
-  border-radius: 14px;
+  border: 1px solid rgba(220, 231, 239, 0.68);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: linear-gradient(180deg, var(--cpay-fuse-surface) 0%, var(--cpay-fuse-surface-soft) 100%);
 }
 
 .cpay-dashboard-chart-shell canvas {
@@ -1710,7 +1739,7 @@ select,
   align-items: center;
   justify-content: center;
   border: 1px dashed var(--cpay-fuse-line-strong);
-  border-radius: 14px;
+  border-radius: var(--cpay-fuse-radius-sm);
   background: linear-gradient(180deg, #FFFFFF 0%, var(--cpay-brand-soft-gray) 100%);
   color: var(--cpay-fuse-muted);
   font-size: 12px;
@@ -1724,22 +1753,22 @@ select,
   display: grid;
   min-height: 0;
   flex: 1 1 auto;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(72px, auto));
   gap: 8px;
   margin: 0;
-  overflow: hidden;
+  overflow: auto;
   padding: 0;
 }
 
 .cpay-dashboard-notification {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--cpay-fuse-line);
-  border-radius: 14px;
+  border-radius: var(--cpay-fuse-radius-sm);
   background: var(--cpay-fuse-surface-soft);
-  padding: 8px 10px;
+  padding: 10px 12px;
 }
 
 .cpay-dashboard-notification strong {
@@ -1781,7 +1810,7 @@ select,
   display: grid;
   min-height: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
   margin-top: auto;
 }
 
@@ -1790,7 +1819,7 @@ select,
   gap: 4px;
   min-width: 0;
   border: 1px solid #b8efc8;
-  border-radius: 14px;
+  border-radius: var(--cpay-fuse-radius-sm);
   background: #f1fff6;
   color: #166534;
   padding: 10px;
@@ -1817,17 +1846,24 @@ select,
   display: flex;
   min-height: 0;
   flex: 1 1 auto;
-  align-items: center;
+  align-items: flex-start;
   margin: 0;
-  overflow: hidden;
+  overflow: auto;
   color: var(--cpay-fuse-muted);
-  font-size: 12px;
-  line-height: 1.42;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cpay-card-manager-button:focus-visible,
+.cpay-dashboard-picker-option:focus-visible,
+.cpay-dashboard-card-header button:focus-visible {
+  outline: 3px solid rgba(14, 155, 195, 0.22);
+  outline-offset: 2px;
 }
 
 @media (max-width: 1180px) {
   .cpay-dashboard-grid {
-    grid-template-rows: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: minmax(220px, auto);
   }
 
   .cpay-dashboard-card-balance,
@@ -1840,7 +1876,6 @@ select,
 
 @media (max-width: 920px) {
   .cpay-main-dashboard {
-    height: auto;
     min-height: 100vh;
     overflow: visible;
   }
@@ -1854,7 +1889,7 @@ select,
 
   .cpay-dashboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: none;
+    grid-auto-rows: minmax(220px, auto);
   }
 
   .cpay-dashboard-card-balance,
@@ -1862,7 +1897,7 @@ select,
   .cpay-dashboard-card-notifications,
   .cpay-dashboard-snapshot-card {
     grid-column: span 1;
-    min-height: 240px;
+    min-height: 220px;
   }
 
   .cpay-dashboard-card-collections {
@@ -1872,7 +1907,6 @@ select,
 
 @media (max-width: 760px) {
   .cpay-main-dashboard {
-    height: auto;
     min-height: 100vh;
     overflow: visible;
   }
@@ -1885,6 +1919,7 @@ select,
     align-items: stretch;
     flex-direction: column;
     min-height: 0;
+    padding: 14px;
   }
 
   .cpay-dashboard-actions,
@@ -1901,6 +1936,7 @@ select,
 
   .cpay-dashboard-grid {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .cpay-dashboard-card-balance,
@@ -1908,14 +1944,1466 @@ select,
   .cpay-dashboard-card-notifications,
   .cpay-dashboard-snapshot-card {
     grid-column: span 1;
-    min-height: 244px;
+    min-height: 220px;
   }
 
   .cpay-dashboard-card-notifications {
-    min-height: 260px;
+    min-height: 252px;
   }
 
   .cpay-dashboard-chart-shell {
-    min-height: 150px;
+    min-height: 170px;
+  }
+}
+
+/* Modern operations dashboard composition. The JSX keeps existing data flows;
+   this layer controls layout, density, and responsive behavior. */
+.cpay-dashboard--console {
+  gap: 14px;
+}
+
+.cpay-dashboard--console .cpay-dashboard-toolbar {
+  min-height: 58px;
+  padding: 12px 14px;
+}
+
+.cpay-dashboard--console .cpay-dashboard-toolbar h2 {
+  font-size: 18px;
+}
+
+.cpay-dashboard-segmented {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(48px, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: var(--cpay-fuse-surface-soft);
+}
+
+.cpay-dashboard-segmented button {
+  min-height: 36px;
+  border: 0;
+  border-right: 1px solid var(--cpay-fuse-line);
+  background: transparent;
+  color: var(--cpay-fuse-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  padding: 0 12px;
+}
+
+.cpay-dashboard-segmented button:last-child {
+  border-right: 0;
+}
+
+.cpay-dashboard-segmented button[aria-pressed="true"] {
+  background: linear-gradient(180deg, #19AAD0 0%, var(--cpay-fuse-blue) 100%);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.cpay-dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(136px, 1fr));
+  gap: 10px;
+}
+
+.cpay-dashboard-metric-card {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 6px 9px;
+  min-height: 92px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow-soft);
+  padding: 12px;
+}
+
+.cpay-dashboard-metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(14, 155, 195, 0.12);
+  color: var(--cpay-fuse-blue-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.cpay-dashboard-metric-card-success .cpay-dashboard-metric-icon {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+
+.cpay-dashboard-metric-card-danger .cpay-dashboard-metric-icon {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.cpay-dashboard-metric-card-warning .cpay-dashboard-metric-icon {
+  background: rgba(249, 115, 22, 0.14);
+  color: #c2410c;
+}
+
+.cpay-dashboard-metric-copy {
+  min-width: 0;
+}
+
+.cpay-dashboard-metric-copy span,
+.cpay-dashboard-card-header span,
+.cpay-dashboard-section-header span {
+  letter-spacing: 0;
+}
+
+.cpay-dashboard-metric-copy span {
+  display: block;
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.cpay-dashboard-metric-copy strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.cpay-dashboard-metric-copy small {
+  display: block;
+  margin-top: 4px;
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.cpay-dashboard-metric-copy em {
+  color: #0f9f4f;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.cpay-dashboard-metric-card-danger .cpay-dashboard-metric-copy em,
+.cpay-dashboard-metric-card-warning .cpay-dashboard-metric-copy em {
+  color: #ef4444;
+}
+
+.cpay-dashboard-sparkline {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 20px;
+  min-width: 0;
+}
+
+.cpay-dashboard-sparkline span {
+  flex: 1 1 0;
+  height: var(--spark-height);
+  min-width: 3px;
+  border-radius: 999px 999px 0 0;
+  background: rgba(14, 155, 195, 0.24);
+}
+
+.cpay-dashboard-sparkline-success span {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.cpay-dashboard-sparkline-danger span {
+  background: rgba(239, 68, 68, 0.24);
+}
+
+.cpay-dashboard-sparkline-warning span {
+  background: rgba(249, 115, 22, 0.25);
+}
+
+.cpay-dashboard-grid--console {
+  grid-auto-rows: minmax(128px, auto);
+  gap: 10px;
+}
+
+.cpay-dashboard-grid--console .cpay-dashboard-card {
+  min-height: 0;
+  padding: 12px;
+}
+
+.cpay-dashboard-panel-chart {
+  grid-column: span 5;
+  min-height: 300px;
+}
+
+.cpay-dashboard-panel-runway {
+  grid-column: span 4;
+  min-height: 300px;
+}
+
+.cpay-dashboard-panel-actions {
+  grid-column: span 3;
+  min-height: 300px;
+}
+
+.cpay-dashboard-panel-failure {
+  grid-column: span 4;
+  min-height: 236px;
+}
+
+.cpay-dashboard-panel-health {
+  grid-column: span 5;
+  min-height: 236px;
+}
+
+.cpay-dashboard-panel-quick {
+  grid-column: span 3;
+  min-height: 236px;
+}
+
+.cpay-dashboard-panel-chart .cpay-dashboard-chart-shell {
+  min-height: 184px;
+}
+
+.cpay-dashboard-inline-link {
+  color: var(--cpay-fuse-blue-dark);
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cpay-dashboard-inline-link:hover {
+  text-decoration: underline;
+}
+
+.cpay-dashboard-summary-pills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.cpay-dashboard-summary-pills span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 10px;
+}
+
+.cpay-dashboard-summary-pills strong {
+  color: var(--cpay-fuse-text);
+  font-size: 15px;
+}
+
+.cpay-dashboard-summary-pills em {
+  width: 4px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--cpay-fuse-blue);
+}
+
+.cpay-dashboard-summary-pills span:nth-child(2) em {
+  background: #ef4444;
+}
+
+.cpay-runway-table {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.cpay-runway-head,
+.cpay-runway-row {
+  display: grid;
+  grid-template-columns: 28px minmax(72px, 1fr) 88px minmax(70px, 1fr) 74px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.cpay-runway-head {
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 900;
+  padding: 0 0 8px;
+}
+
+.cpay-runway-head span:first-child {
+  grid-column: 1 / 3;
+}
+
+.cpay-runway-head span:nth-child(2) {
+  grid-column: 3;
+}
+
+.cpay-runway-head span:nth-child(3) {
+  grid-column: 4;
+}
+
+.cpay-runway-head span:nth-child(4) {
+  grid-column: 5;
+}
+
+.cpay-runway-row {
+  min-height: 46px;
+  border-top: 1px solid var(--cpay-fuse-line);
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 760;
+  padding: 8px 0;
+}
+
+.cpay-channel-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.cpay-channel-logo-good { background: #22c55e; }
+.cpay-channel-logo-warning { background: #ef4444; }
+.cpay-channel-logo-neutral { background: #94a3b8; }
+
+.cpay-runway-channel {
+  display: grid;
+  gap: 2px;
+  align-items: center;
+  min-width: 0;
+}
+
+.cpay-runway-channel strong,
+.cpay-runway-channel span {
+  min-width: 0;
+}
+
+.cpay-runway-channel strong {
+  color: var(--cpay-fuse-text);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.cpay-runway-channel span {
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.cpay-status-pill {
+  justify-self: start;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 6px 9px;
+}
+
+.cpay-status-pill-good {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.cpay-status-pill-warning {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.cpay-status-pill-neutral {
+  border-color: var(--cpay-fuse-line);
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-muted);
+}
+
+.cpay-runway-progress {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--cpay-fuse-line);
+}
+
+.cpay-runway-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--runway-value);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #19AAD0 0%, var(--cpay-fuse-blue) 100%);
+}
+
+.cpay-runway-row em,
+.cpay-dashboard-footnote {
+  border-radius: 999px;
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  padding: 5px 10px;
+}
+
+.cpay-runway-row button,
+.cpay-action-item button {
+  min-height: 28px;
+  border: 1px solid rgba(14, 155, 195, 0.28);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: var(--cpay-fuse-surface);
+  color: var(--cpay-fuse-blue-dark);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 0 9px;
+}
+
+.cpay-dashboard-footnote {
+  margin: auto 0 0;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius-sm);
+}
+
+.cpay-action-list {
+  display: grid;
+  gap: 0;
+}
+
+.cpay-action-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--cpay-fuse-line);
+  padding: 8px 0;
+}
+
+.cpay-action-item:last-child {
+  border-bottom: 0;
+}
+
+.cpay-action-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--action-color);
+}
+
+.cpay-action-item strong {
+  display: block;
+  color: var(--cpay-fuse-text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.cpay-action-item span {
+  display: block;
+  margin-top: 3px;
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.cpay-action-item em {
+  color: var(--action-color);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.cpay-action-item button {
+  grid-column: 3;
+  justify-self: end;
+  min-height: 28px;
+  border: 1px solid rgba(14, 155, 195, 0.34);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: var(--cpay-fuse-surface);
+  color: var(--cpay-fuse-blue-dark);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 850;
+  padding: 0 10px;
+}
+
+.cpay-action-view-all {
+  align-self: start;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.cpay-action-item-critical { --action-color: #ef4444; }
+.cpay-action-item-warning { --action-color: #f97316; }
+.cpay-action-item-info { --action-color: var(--cpay-fuse-blue); }
+
+.cpay-failure-layout {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.cpay-failure-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cpay-failure-summary span {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 780;
+  padding: 8px 10px;
+}
+
+.cpay-failure-summary strong {
+  color: var(--cpay-fuse-text);
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.cpay-failure-bars {
+  display: grid;
+  gap: 9px;
+}
+
+.cpay-failure-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cpay-failure-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cpay-failure-bar strong {
+  color: var(--cpay-fuse-text);
+  font-size: 11px;
+}
+
+.cpay-failure-bar em {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--cpay-fuse-line);
+}
+
+.cpay-failure-bar em::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--failure-width);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
+}
+
+.cpay-failure-table {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cpay-failure-table-head,
+.cpay-failure-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px 48px;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.cpay-failure-table-head {
+  color: var(--cpay-fuse-text);
+  font-weight: 900;
+}
+
+.cpay-failure-row {
+  color: var(--cpay-fuse-muted);
+  font-weight: 750;
+}
+
+.cpay-failure-row strong {
+  color: var(--cpay-fuse-text);
+  font-weight: 900;
+}
+
+.cpay-failure-row em {
+  font-style: normal;
+}
+
+.cpay-health-table {
+  display: grid;
+  gap: 2px;
+}
+
+.cpay-health-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) 84px 84px 70px;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--cpay-fuse-line);
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 34px;
+}
+
+.cpay-health-row:last-child {
+  border-bottom: 0;
+}
+
+.cpay-health-head {
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.cpay-health-row strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cpay-fuse-text);
+}
+
+.cpay-health-row mark {
+  border-radius: 8px;
+  background: #EAF8EF;
+  color: #166534;
+  font-weight: 900;
+  padding: 4px 8px;
+}
+
+.cpay-channel-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--channel-color);
+}
+
+.cpay-channel-dot-good { --channel-color: #22c55e; }
+.cpay-channel-dot-warning { --channel-color: #ef4444; }
+.cpay-channel-dot-neutral { --channel-color: #94a3b8; }
+
+.cpay-quick-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.cpay-quick-grid button {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--cpay-fuse-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 10px;
+  text-align: left;
+}
+
+.cpay-quick-grid button:first-child {
+  border-top-width: 1px;
+}
+
+.cpay-quick-grid button:last-child {
+  border-bottom: 0;
+}
+
+.cpay-quick-grid button:hover,
+.cpay-runway-row button:hover,
+.cpay-action-item button:hover {
+  border-color: rgba(14, 155, 195, 0.42);
+  background: rgba(14, 155, 195, 0.1);
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-quick-grid button span {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(14, 155, 195, 0.1);
+  color: var(--cpay-fuse-blue-dark);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.cpay-quick-grid button strong {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.cpay-dashboard-pinned {
+  display: grid;
+  gap: 12px;
+}
+
+.cpay-dashboard-section-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cpay-dashboard-section-header span {
+  color: var(--cpay-fuse-blue-dark);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cpay-dashboard-section-header h3 {
+  margin: 3px 0 0;
+  color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.cpay-dashboard-section-header p {
+  margin: 0;
+  max-width: 420px;
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.cpay-dashboard-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cpay-dashboard-snapshot-grid .cpay-dashboard-card {
+  min-height: 188px;
+}
+
+.cpay-dashboard-snapshot-grid .cpay-dashboard-card-balance,
+.cpay-dashboard-snapshot-grid .cpay-dashboard-card-collections,
+.cpay-dashboard-snapshot-grid .cpay-dashboard-card-notifications,
+.cpay-dashboard-snapshot-grid .cpay-dashboard-snapshot-card {
+  grid-column: span 3;
+}
+
+.cpay-dashboard-segmented button:focus-visible,
+.cpay-action-item button:focus-visible,
+.cpay-quick-grid button:focus-visible,
+.cpay-dashboard-inline-link:focus-visible {
+  outline: 3px solid rgba(14, 155, 195, 0.22);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1280px) {
+  .cpay-dashboard-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cpay-dashboard-panel-chart,
+  .cpay-dashboard-panel-runway,
+  .cpay-dashboard-panel-actions,
+  .cpay-dashboard-panel-failure,
+  .cpay-dashboard-panel-health,
+  .cpay-dashboard-panel-quick {
+    grid-column: span 6;
+    grid-row: auto;
+  }
+
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-card-balance,
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-card-collections,
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-card-notifications,
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-snapshot-card {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 920px) {
+  .cpay-dashboard-grid--console {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .cpay-dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cpay-dashboard-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cpay-dashboard-actions {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 760px) {
+  .cpay-dashboard-metrics,
+  .cpay-dashboard-grid--console,
+  .cpay-dashboard-snapshot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-dashboard-panel-chart,
+  .cpay-dashboard-panel-runway,
+  .cpay-dashboard-panel-actions,
+  .cpay-dashboard-panel-failure,
+  .cpay-dashboard-panel-health,
+  .cpay-dashboard-panel-quick,
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-card-balance,
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-card-collections,
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-card-notifications,
+  .cpay-dashboard-snapshot-grid .cpay-dashboard-snapshot-card {
+    grid-column: span 1;
+  }
+
+  .cpay-dashboard-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-dashboard-segmented {
+    width: 100%;
+  }
+
+  .cpay-dashboard-summary-pills,
+  .cpay-failure-summary,
+  .cpay-failure-layout,
+  .cpay-quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-runway-head {
+    display: none;
+  }
+
+  .cpay-runway-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+
+  .cpay-runway-progress,
+  .cpay-runway-row em,
+  .cpay-runway-row button {
+    grid-column: 2 / -1;
+  }
+
+  .cpay-runway-row button {
+    justify-self: start;
+  }
+
+  .cpay-dashboard-section-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .cpay-health-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cpay-health-head {
+    display: none;
+  }
+}
+
+/* ==== Settings workspace ================================================== */
+.cpay-settings-workspace {
+  display: grid;
+  gap: 16px;
+  min-height: 100%;
+  padding-bottom: 72px;
+}
+
+.cpay-settings-header,
+.cpay-settings-layout,
+.cpay-settings-status-grid button,
+.cpay-settings-provider-hero,
+.cpay-settings-card,
+.cpay-settings-savebar,
+.cpay-merchant-form-section {
+  border: 1px solid var(--cpay-fuse-line);
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow-soft);
+}
+
+.cpay-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-radius: var(--cpay-fuse-radius);
+  padding: 16px 18px;
+}
+
+.cpay-settings-header h2,
+.cpay-settings-section-title h2,
+.cpay-settings-card h3,
+.cpay-settings-provider-hero h3,
+.cpay-merchant-form-section-header h3 {
+  margin: 0;
+  color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.cpay-settings-header h2 {
+  font-size: 24px;
+}
+
+.cpay-settings-header p,
+.cpay-settings-card-header p,
+.cpay-settings-provider-hero p,
+.cpay-settings-field p,
+.cpay-merchant-form-section-header p,
+.cpay-merchant-form-toggle p {
+  margin: 0;
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.cpay-settings-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.cpay-settings-header-actions .ios-search {
+  width: min(280px, 32vw);
+}
+
+.cpay-settings-header-actions .ios-select__wrap {
+  min-width: 158px;
+}
+
+.cpay-settings-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cpay-settings-status-grid button {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 4px 12px;
+  min-height: 96px;
+  border-radius: var(--cpay-fuse-radius);
+  color: var(--cpay-fuse-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 16px;
+  text-align: left;
+}
+
+.cpay-settings-status-grid button > span {
+  grid-row: span 3;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(14, 155, 195, 0.12);
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-settings-status-grid strong {
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.cpay-settings-status-grid em {
+  color: var(--cpay-fuse-text);
+  font-style: normal;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.cpay-settings-status-grid small {
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cpay-settings-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  border-radius: var(--cpay-fuse-radius);
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.cpay-settings-nav {
+  position: sticky;
+  top: 72px;
+  display: grid;
+  gap: 6px;
+  max-height: calc(100vh - 104px);
+  overflow: auto;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius);
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow-soft);
+  padding: 10px;
+}
+
+.cpay-settings-nav button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: transparent;
+  color: var(--cpay-fuse-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 10px;
+  text-align: left;
+}
+
+.cpay-settings-nav button:hover {
+  background: rgba(14, 155, 195, 0.08);
+}
+
+.cpay-settings-nav button svg {
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-settings-nav button em {
+  display: inline-flex;
+  min-width: 24px;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  padding: 2px 6px;
+}
+
+.cpay-settings-nav .cpay-settings-nav-active {
+  background: linear-gradient(180deg, #19AAD0 0%, var(--cpay-fuse-blue) 100%);
+  color: #FFFFFF;
+  box-shadow: 0 10px 20px rgba(14, 155, 195, 0.2);
+}
+
+.cpay-settings-nav .cpay-settings-nav-active svg,
+.cpay-settings-nav .cpay-settings-nav-active em {
+  color: #FFFFFF;
+}
+
+.cpay-settings-nav .cpay-settings-nav-active em {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.cpay-settings-content {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.cpay-settings-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cpay-settings-section-title span,
+.cpay-settings-card-header span {
+  color: var(--cpay-fuse-blue-dark);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cpay-settings-section-title h2 {
+  margin-top: 2px;
+  font-size: 18px;
+}
+
+.cpay-settings-provider-hero {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) minmax(230px, 0.8fr) auto;
+  gap: 14px;
+  align-items: center;
+  border-radius: var(--cpay-fuse-radius);
+  padding: 16px;
+}
+
+.cpay-settings-provider-logo {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FDE047, #FACC15);
+  color: #143A5C;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.cpay-settings-provider-hero h3,
+.cpay-settings-card h3,
+.cpay-merchant-form-section-header h3 {
+  font-size: 15px;
+}
+
+.cpay-settings-provider-hero dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.cpay-settings-provider-hero div {
+  min-width: 0;
+}
+
+.cpay-settings-provider-hero dt,
+.cpay-settings-provider-hero dd {
+  display: inline;
+  margin: 0;
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.cpay-settings-provider-hero dd {
+  color: var(--cpay-fuse-text);
+  font-weight: 900;
+}
+
+.cpay-settings-provider-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cpay-settings-card {
+  display: grid;
+  gap: 16px;
+  border-radius: var(--cpay-fuse-radius);
+  padding: 18px;
+}
+
+.cpay-settings-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cpay-settings-card-header h3 {
+  margin-top: 3px;
+}
+
+.cpay-settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.cpay-settings-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cpay-settings-field--full {
+  grid-column: 1 / -1;
+}
+
+.cpay-settings-field--sm {
+  max-width: 220px;
+}
+
+.cpay-settings-field--md {
+  max-width: 420px;
+}
+
+.cpay-settings-secret-note,
+.cpay-settings-validation {
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.cpay-settings-validation {
+  color: #dc2626;
+}
+
+.cpay-settings-field--missing .ios-input {
+  border-color: rgba(239, 68, 68, 0.46);
+}
+
+.cpay-settings-empty {
+  min-height: 160px;
+  place-items: center;
+  text-align: center;
+}
+
+.cpay-settings-savebar {
+  position: sticky;
+  z-index: 12;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-radius: var(--cpay-fuse-radius) var(--cpay-fuse-radius) 0 0;
+  padding: 12px 16px;
+}
+
+.cpay-settings-savebar > span {
+  color: var(--cpay-fuse-muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.cpay-settings-savebar > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ==== Merchant creation sheet ============================================ */
+.cpay-merchant-form {
+  display: grid;
+  gap: 10px;
+}
+
+.cpay-merchant-form-section {
+  display: grid;
+  gap: 14px;
+  border-radius: var(--cpay-fuse-radius);
+  padding: 16px;
+}
+
+.cpay-merchant-form-section-header {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.cpay-merchant-form-section-header > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(14, 155, 195, 0.12);
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-merchant-form-section-header-actions {
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.cpay-merchant-form-section-header-actions > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cpay-merchant-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.cpay-merchant-form-toggle {
+  display: grid;
+  gap: 3px;
+  align-content: end;
+}
+
+.cpay-api-access-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cpay-api-access-option {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: var(--cpay-fuse-surface-soft);
+  padding: 0 10px;
+}
+
+.cpay-api-access-option-active {
+  border-color: rgba(14, 155, 195, 0.44);
+  background: rgba(14, 155, 195, 0.1);
+}
+
+.cpay-api-access-option .ios-checkbox {
+  width: 100%;
+  color: var(--cpay-fuse-text);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.cpay-merchant-admin-table {
+  overflow: auto;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius-sm);
+}
+
+.cpay-merchant-admin-table .ios-table-wrap {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.cpay-form-error {
+  margin: 0;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 850;
+  padding: 10px 12px;
+}
+
+@media (max-width: 1180px) {
+  .cpay-settings-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cpay-settings-provider-hero {
+    grid-template-columns: 46px minmax(0, 1fr);
+  }
+
+  .cpay-settings-provider-hero dl,
+  .cpay-settings-provider-actions {
+    grid-column: 2;
+  }
+
+  .cpay-api-access-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 920px) {
+  .cpay-settings-header,
+  .cpay-settings-savebar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cpay-settings-header-actions,
+  .cpay-settings-savebar > div {
+    justify-content: stretch;
+  }
+
+  .cpay-settings-header-actions .ios-search,
+  .cpay-settings-header-actions .ios-select__wrap {
+    width: 100%;
+  }
+
+  .cpay-settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-settings-nav {
+    position: static;
+    display: flex;
+    overflow-x: auto;
+    max-height: none;
+  }
+
+  .cpay-settings-nav button {
+    min-width: 180px;
+  }
+
+  .cpay-settings-form-grid,
+  .cpay-merchant-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-settings-field--sm,
+  .cpay-settings-field--md {
+    max-width: none;
+  }
+
+  .cpay-merchant-form-section-header-actions {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .cpay-merchant-form-section-header-actions > div:last-child {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .cpay-settings-status-grid,
+  .cpay-api-access-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-settings-provider-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-settings-provider-hero dl,
+  .cpay-settings-provider-actions {
+    grid-column: auto;
   }
 }

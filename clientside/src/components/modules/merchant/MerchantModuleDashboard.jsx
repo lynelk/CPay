@@ -6,7 +6,7 @@ import { CardsIcon, CheckIcon, CloseIcon } from "../../ShellIcons";
 import LinearChart from './LinearChart';
 import { dashboardErrorDetails, formatAmount, formatCount, numericValues } from '../ModuleDashboard';
 
-const merchantDefaultSnapshotCards = ['transactionTypes', 'gatewaySplit', 'apiReadiness'];
+const merchantDefaultSnapshotCards = [];
 
 const merchantSnapshotCards = [
     { id: 'transactionTypes', title: 'Transaction Types', label: 'Mix', kind: 'chart', chartKey: 'chartDataTxTypes' },
@@ -17,7 +17,7 @@ const merchantSnapshotCards = [
     { id: 'payoutControls', title: 'Payout Controls', label: 'Risk', kind: 'risk' },
 ];
 
-const STORAGE_KEY = 'cpay-merchant-dashboard-snapshots';
+const STORAGE_KEY = 'cpay-merchant-dashboard-snapshots-v2';
 const MAX_SNAPSHOT_CARDS = 4;
 
 const sanitizeSnapshotCards = (cards) => {
@@ -28,7 +28,7 @@ const sanitizeSnapshotCards = (cards) => {
             unique.push(cardId);
         }
     });
-    return unique.length > 0 ? unique : merchantDefaultSnapshotCards;
+    return unique;
 };
 
 class MerchantModuleDashboardC extends React.Component {

@@ -444,40 +444,86 @@ class MerchantFormDialog extends React.Component {
         size="xl"
         footer={<>
           <Button variant="ghost" className="ios-btn--sm" onClick={() => this.close()}>{strings.close}</Button>
-          <Button variant="primary" className="ios-btn--sm" onClick={() => this.saveRow()}>{strings.save}</Button>
+          <Button variant="primary" className="ios-btn--sm" onClick={() => this.saveRow()}>
+            <Icons.SettingsIcon size={15} />Save Merchant
+          </Button>
         </>}
       >
-        <div className="ios-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--ios-space-4)' }}>
-          <TextField id="merchant-name" label="Name" value={row.name || ''} onValueChange={(value) => this.setField('name', value)} invalid={Boolean(errors.name)} />
-          <TextField id="merchant-short-name" label="Short Name" value={row.short_name || ''} onValueChange={(value) => this.setField('short_name', value)} invalid={Boolean(errors.short_name)} />
-          <Select id="merchant-status" label="Status" value={row.status || 'ACTIVE'} options={STATUS_OPTIONS} onValueChange={(value) => this.setField('status', value)} invalid={Boolean(errors.status)} />
-          <Select id="merchant-account-type" label="Account Type" value={row.account_type || 'personal'} options={ACCOUNT_TYPE_OPTIONS} onValueChange={(value) => this.setField('account_type', value)} invalid={Boolean(errors.account_type)} />
-          <Checkbox checked={Boolean(row.generate_new_keys)} onCheckedChange={(value) => this.setField('generate_new_keys', value)} label="Generate New Keys" />
-        </div>
-        {Object.values(errors).length ? <p style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{Object.values(errors)[0]}</p> : null}
+        <div className="cpay-merchant-form">
+          {Object.values(errors).length ? <p className="cpay-form-error">{Object.values(errors)[0]}</p> : null}
 
-        <h3 className="ios-section-title" style={{ marginTop: 'var(--ios-space-5)' }}>Allowed APIs Access</h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: 'var(--ios-space-4)' }}>
-          {common.allowed_apis.map((api) => (
-            <Checkbox key={api.value} checked={allowedApis.includes(api.value)} onCheckedChange={(checked) => this.setAllowedApi(api.value, checked)} label={api.text} />
-          ))}
-        </div>
+          <section className="cpay-merchant-form-section">
+            <header className="cpay-merchant-form-section-header">
+              <span><Icons.StoreIcon size={17} /></span>
+              <div>
+                <h3>Merchant Details</h3>
+                <p>Core account profile and operating status.</p>
+              </div>
+            </header>
+            <div className="cpay-merchant-form-grid">
+              <TextField id="merchant-name" label="Name" value={row.name || ''} onValueChange={(value) => this.setField('name', value)} invalid={Boolean(errors.name)} />
+              <TextField id="merchant-short-name" label="Short Name" value={row.short_name || ''} onValueChange={(value) => this.setField('short_name', value)} invalid={Boolean(errors.short_name)} />
+              <Select id="merchant-status" label="Status" value={row.status || 'ACTIVE'} options={STATUS_OPTIONS} onValueChange={(value) => this.setField('status', value)} invalid={Boolean(errors.status)} />
+              <Select id="merchant-account-type" label="Account Type" value={row.account_type || 'personal'} options={ACCOUNT_TYPE_OPTIONS} onValueChange={(value) => this.setField('account_type', value)} invalid={Boolean(errors.account_type)} />
+              <div className="cpay-merchant-form-toggle">
+                <Checkbox checked={Boolean(row.generate_new_keys)} onCheckedChange={(value) => this.setField('generate_new_keys', value)} label="Generate New Keys" />
+                <p>Automatically generate API keys for this merchant.</p>
+              </div>
+            </div>
+          </section>
 
-        {(row.private_key || row.public_key) ? (
-          <div className="ios-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--ios-space-4)' }}>
-            <TextArea id="merchant-public-key" label="Public Key" rows={3} value={row.public_key || ''} onValueChange={(value) => this.setField('public_key', value)} />
-            <TextArea id="merchant-private-key" label="Private Key" rows={3} value={row.private_key || ''} onValueChange={(value) => this.setField('private_key', value)} />
-          </div>
-        ) : null}
+          <section className="cpay-merchant-form-section">
+            <header className="cpay-merchant-form-section-header">
+              <span><Icons.LockIcon size={17} /></span>
+              <div>
+                <h3>API Access</h3>
+                <p>Select the products this merchant can use.</p>
+              </div>
+            </header>
+            <div className="cpay-api-access-grid">
+              {common.allowed_apis.map((api) => (
+                <div className={`cpay-api-access-option ${allowedApis.includes(api.value) ? 'cpay-api-access-option-active' : ''}`.trim()} key={api.value}>
+                  <Checkbox checked={allowedApis.includes(api.value)} onCheckedChange={(checked) => this.setAllowedApi(api.value, checked)} label={api.text} />
+                </div>
+              ))}
+            </div>
+          </section>
 
-        <h3 className="ios-section-title" style={{ marginTop: 'var(--ios-space-5)' }}>Merchant Admins</h3>
-        <Toolbar>
-          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.addAdmin()}>{strings.add_admin || 'Add Admin'}</Button>
-          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.removeLastAdmin()}>Remove Admin</Button>
-        </Toolbar>
-        {errors.admins ? <p style={{ color: 'var(--ios-danger)', fontSize: 'var(--ios-fs-caption)' }}>{errors.admins}</p> : null}
-        <div style={{ marginTop: 'var(--ios-space-3)' }}>
-          <Table columns={adminColumns} rows={admins} rowKey={(admin, index) => admin.id || admin.email || index} pageSize={50} emptyText="No merchant admins yet." />
+          {(row.private_key || row.public_key) ? (
+            <section className="cpay-merchant-form-section">
+              <header className="cpay-merchant-form-section-header">
+                <span><Icons.ShieldIcon size={17} /></span>
+                <div>
+                  <h3>Merchant Keys</h3>
+                  <p>Existing public/private key material for this merchant.</p>
+                </div>
+              </header>
+              <div className="cpay-merchant-form-grid">
+                <TextArea id="merchant-public-key" label="Public Key" rows={3} value={row.public_key || ''} onValueChange={(value) => this.setField('public_key', value)} />
+                <TextArea id="merchant-private-key" label="Private Key" rows={3} value={row.private_key || ''} onValueChange={(value) => this.setField('private_key', value)} />
+              </div>
+            </section>
+          ) : null}
+
+          <section className="cpay-merchant-form-section">
+            <header className="cpay-merchant-form-section-header cpay-merchant-form-section-header-actions">
+              <span><Icons.UsersIcon size={17} /></span>
+              <div>
+                <h3>Merchant Admins</h3>
+                <p>Add the people who can administer this merchant.</p>
+              </div>
+              <div>
+                <Button variant="primary" className="ios-btn--sm" onClick={() => this.addAdmin()}>
+                  <Icons.PlusIcon size={15} />{strings.add_admin || 'Add Admin'}
+                </Button>
+                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.removeLastAdmin()}>Remove Admin</Button>
+              </div>
+            </header>
+            {errors.admins ? <p className="cpay-form-error">{errors.admins}</p> : null}
+            <div className="cpay-merchant-admin-table">
+              <Table columns={adminColumns} rows={admins} rowKey={(admin, index) => admin.id || admin.email || index} pageSize={50} emptyText="No merchant admins added yet." />
+            </div>
+          </section>
         </div>
       </Sheet>
     );

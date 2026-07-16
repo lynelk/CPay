@@ -84,6 +84,27 @@ class SettingsControllerTest {
     }
 
     @Test
+    void defaultSettingsCatalogContainsAdminLoginAppearanceSettings() throws Exception {
+        JSONArray settings = readSettingsCatalog(Common.CLASS_PATH_DEFAULT_SETTINGS);
+
+        assertThat(names(settings)).contains(
+            "merchant_login_hero_image_url",
+            "merchant_login_benefit_insights_title",
+            "merchant_login_control_title",
+            "merchant_login_automation_title",
+            "admin_login_hero_image_url",
+            "admin_login_approvals_title",
+            "admin_login_users_title",
+            "admin_login_reliable_copy");
+
+        JSONObject byName = byName(settings);
+        assertThat(byName.getJSONObject("merchant_login_hero_image_url").getString("setting_value"))
+            .contains("photo-1573496359142-b8d87734a5a2");
+        assertThat(byName.getJSONObject("admin_login_hero_image_url").getString("setting_value"))
+            .contains("photo-1551288049-bebda4e38f71");
+    }
+
+    @Test
     void legacyObjectSettingsCanBeConvertedToGridRows() {
         JSONArray settings = SettingsController.parseSettingsCatalog(
             "{\"mail.smtp.host\":\"localhost\"}",
@@ -143,6 +164,15 @@ class SettingsControllerTest {
             names.add(settings.getJSONObject(i).getString("name"));
         }
         return names;
+    }
+
+    private JSONObject byName(JSONArray settings) {
+        JSONObject result = new JSONObject();
+        for (int i = 0; i < settings.length(); i++) {
+            JSONObject setting = settings.getJSONObject(i);
+            result.put(setting.getString("name"), setting);
+        }
+        return result;
     }
 
     private void assertCatalogRowsHaveRequiredFields(JSONArray settings) {

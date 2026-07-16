@@ -4,6 +4,56 @@ import common from './Common';
 import strings from './locale';
 import ForgotPassword from './LoginForgotPassword';
 import { AuthLayout, TextField, PasswordField, Button, Alert } from '../ui';
+import type { AuthAsideBenefit, AuthAsideCard } from '../ui/AuthLayout';
+
+type AdminLoginAppearance = Record<string, string>;
+
+const defaultAppearance: AdminLoginAppearance = {
+  admin_login_hero_image_url:
+    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80',
+  admin_login_hero_title: 'Powerful control. Smarter operations.',
+  admin_login_hero_copy: 'Manage your platform, users, and transactions with confidence and clarity.',
+  admin_login_approvals_title: 'Secure Platform',
+  admin_login_users_title: 'User & Role Management',
+  admin_login_analytics_title: 'Real-time Analytics',
+  admin_login_merchant_title: 'System Management',
+  admin_login_security_title: 'Audit & Compliance',
+  admin_login_monitoring_title: 'Payments Monitoring',
+  admin_login_support_title: 'Support',
+  admin_login_system_title: 'System Settings',
+  admin_login_secure_title: 'Secure',
+  admin_login_secure_copy: 'Protect platform and data',
+  admin_login_insights_title: 'Reliable',
+  admin_login_insights_copy: 'High availability and performance',
+  admin_login_control_title: 'Insightful',
+  admin_login_control_copy: 'Real-time reports and analytics',
+  admin_login_automation_title: 'Efficient',
+  admin_login_automation_copy: 'Automate and simplify operations',
+  admin_login_reliable_title: 'Compliant',
+  admin_login_reliable_copy: 'Meet regulatory requirements',
+};
+
+function setting(appearance: AdminLoginAppearance, key: string): string {
+  const value = appearance[key]?.trim();
+  return value || defaultAppearance[key] || '';
+}
+
+async function getAdminLoginAppearance(): Promise<AdminLoginAppearance> {
+  const response = await fetch(common.base_url + '/settings/public-login-appearance', {
+    method: 'GET',
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
+  const res = await response.json();
+  if (res.code !== '000' || !res.settings || typeof res.settings !== 'object') {
+    throw new Error(res.message || 'Unable to load login appearance.');
+  }
+  return { ...defaultAppearance, ...(res.settings as AdminLoginAppearance) };
+}
 
 async function isLoggedIn(): Promise<boolean> {
   try {
@@ -31,6 +81,7 @@ function Login(): React.ReactElement {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [showForgot, setShowForgot] = React.useState(false);
+  const [appearance, setAppearance] = React.useState<AdminLoginAppearance>(defaultAppearance);
 
   React.useEffect(() => {
     let active = true;
@@ -41,6 +92,20 @@ function Login(): React.ReactElement {
       active = false;
     };
   }, [navigate]);
+
+  React.useEffect(() => {
+    let active = true;
+    getAdminLoginAppearance()
+      .then((settings) => {
+        if (active) setAppearance(settings);
+      })
+      .catch(() => {
+        if (active) setAppearance(defaultAppearance);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -76,14 +141,33 @@ function Login(): React.ReactElement {
   }
 
   const invalid = Boolean(error) && (!username || !password);
+  const asideCards: AuthAsideCard[] = [
+    { id: 'users', icon: 'users', title: setting(appearance, 'admin_login_users_title') },
+    { id: 'approvals', icon: 'secure', title: setting(appearance, 'admin_login_approvals_title'), tone: 'success' },
+    { id: 'analytics', icon: 'insights', title: setting(appearance, 'admin_login_analytics_title') },
+    { id: 'system', icon: 'settings', title: setting(appearance, 'admin_login_merchant_title') },
+    { id: 'security', icon: 'verification', title: setting(appearance, 'admin_login_security_title') },
+  ];
+  const asideBenefits: AuthAsideBenefit[] = [
+    { icon: 'secure', title: setting(appearance, 'admin_login_secure_title'), copy: setting(appearance, 'admin_login_secure_copy') },
+    { icon: 'insights', title: setting(appearance, 'admin_login_insights_title'), copy: setting(appearance, 'admin_login_insights_copy') },
+    { icon: 'users', title: setting(appearance, 'admin_login_control_title'), copy: setting(appearance, 'admin_login_control_copy') },
+    { icon: 'fast', title: setting(appearance, 'admin_login_automation_title'), copy: setting(appearance, 'admin_login_automation_copy') },
+    { icon: 'reliable', title: setting(appearance, 'admin_login_reliable_title'), copy: setting(appearance, 'admin_login_reliable_copy') },
+  ];
 
   return (
     <AuthLayout
-      className="ios-auth-admin"
+      className="ios-auth-merchant ios-auth-admin"
       title={strings.portal_title}
       subtitle="Administrator access"
-      asideTitle="Admin workspace"
-      asideCopy="Operations, configuration, and reporting in one place."
+      asideTitle={setting(appearance, 'admin_login_hero_title')}
+      asideCopy={setting(appearance, 'admin_login_hero_copy')}
+      asideVariant="media"
+      asideImageUrl={setting(appearance, 'admin_login_hero_image_url')}
+      asideImageAlt="Admin operations workspace"
+      asideCards={asideCards}
+      asideBenefits={asideBenefits}
       footer={`© ${new Date().getFullYear()} CPay`}
     >
       <form className="ios-form" onSubmit={handleSubmit} noValidate>

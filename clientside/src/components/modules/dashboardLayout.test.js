@@ -18,22 +18,39 @@ describe('admin dashboard card layout', () => {
     expect(dashboard).not.toContain('dashboardChartPanel');
   });
 
-  test('defines the requested balance, notification, collection, and addable snapshot surfaces', () => {
+  test('defines the compact operational surfaces and optional snapshot library', () => {
     const dashboard = read('components/modules/ModuleDashboard.jsx');
 
-    expect(dashboard).toContain('Network Balances');
-    expect(dashboard).toContain('Collections Trend');
-    expect(dashboard).toContain('Notifications');
+    expect(dashboard).toContain('Processed Value vs Failed Amount Held');
+    expect(dashboard).toContain('Float Runway by Channel');
+    expect(dashboard).toContain('Action Center');
+    expect(dashboard).toContain('Failure Analysis');
+    expect(dashboard).toContain('Channel Health');
+    expect(dashboard).toContain('Quick Actions');
     expect(dashboard).toContain('availableSnapshotCards');
   });
 
-  test('keeps the dashboard inside the viewport without page scrolling', () => {
+  test('keeps custom snapshot cards closed by default until users add them', () => {
+    const dashboard = read('components/modules/ModuleDashboard.jsx');
+
+    expect(dashboard).toContain('export const defaultSnapshotCards = []');
+    expect(dashboard).toContain('cpay-admin-dashboard-snapshots-v2');
+    expect(dashboard).toContain('this.state.visibleSnapshotCards.length > 0');
+    expect(dashboard).toContain('visibleSnapshotCards.map(cardId => this.renderSnapshotCard(cardId))');
+  });
+
+  test('uses an adaptive dashboard canvas with scroll-safe cards', () => {
     const css = read('index.css');
 
-    expect(css).toMatch(/\.cpay-main-dashboard\s*\{[^}]*height:\s*100vh;[^}]*overflow:\s*hidden;/s);
-    expect(css).toMatch(/\.cpay-dashboard\s*\{[^}]*height:\s*100%;[^}]*overflow:\s*hidden;/s);
-    expect(css).toMatch(/\.cpay-dashboard-grid\s*\{[^}]*grid-template-columns:\s*repeat\(12, minmax\(0, 1fr\)\);[^}]*overflow:\s*hidden;/s);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.cpay-main-dashboard\s*\{[\s\S]*height:\s*auto;/);
+    expect(css).toMatch(/\.cpay-main-dashboard\s*\{[^}]*min-height:\s*100vh;[^}]*overflow:\s*visible;/s);
+    expect(css).toMatch(/\.cpay-dashboard\s*\{[^}]*grid-template-rows:\s*auto auto;[^}]*overflow:\s*visible;/s);
+    expect(css).toMatch(/\.cpay-dashboard-grid\s*\{[^}]*grid-template-columns:\s*repeat\(12, minmax\(0, 1fr\)\);[^}]*grid-auto-rows:\s*minmax\(220px, auto\);[^}]*overflow:\s*visible;/s);
+    expect(css).toMatch(/\.cpay-dashboard-panel-chart\s*\{[^}]*grid-column:\s*span 5;[^}]*min-height:\s*300px;/s);
+    expect(css).toMatch(/\.cpay-dashboard-panel-runway\s*\{[^}]*grid-column:\s*span 4;[^}]*min-height:\s*300px;/s);
+    expect(css).toMatch(/\.cpay-dashboard-panel-actions\s*\{[^}]*grid-column:\s*span 3;[^}]*min-height:\s*300px;/s);
+    expect(css).toContain('.cpay-runway-table');
+    expect(css).toContain('.cpay-failure-summary');
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.cpay-dashboard-grid\s*\{[\s\S]*grid-template-columns:\s*1fr;/);
     expect(css).toMatch(/\.cpay-dashboard-chart-shell\s*\{[\s\S]*overflow:\s*hidden;/);
   });
 
@@ -65,5 +82,28 @@ describe('merchant dashboard card layout', () => {
     expect(dashboard).toContain('toggleSnapshotCard');
     expect(dashboard).not.toMatch(/<Panel\b/);
     expect(dashboard).not.toContain('dashboardChartPanel');
+  });
+
+  test('merchant custom snapshots are also closed by default', () => {
+    const dashboard = read('components/modules/merchant/MerchantModuleDashboard.jsx');
+
+    expect(dashboard).toContain('const merchantDefaultSnapshotCards = []');
+    expect(dashboard).toContain('cpay-merchant-dashboard-snapshots-v2');
+  });
+});
+
+describe('application shell layout', () => {
+  test('admin and merchant layouts use compact topbar headings instead of duplicate page headers', () => {
+    const adminLayout = read('components/Layout.jsx');
+    const merchantLayout = read('components/LayoutMerchant.jsx');
+    const shellCss = read('styles/ios-system.css');
+
+    expect(adminLayout).toContain('cpay-topbar-heading');
+    expect(merchantLayout).toContain('cpay-topbar-heading');
+    expect(adminLayout).not.toContain('<PageHeader');
+    expect(merchantLayout).not.toContain('<PageHeader');
+    expect(shellCss).toContain('.cpay-topbar-heading');
+    expect(shellCss).toMatch(/\.ios-sidebar\s*\{[^}]*width:\s*196px;/s);
+    expect(shellCss).toMatch(/\.ios-topbar\s*\{[^}]*min-height:\s*56px;/s);
   });
 });
