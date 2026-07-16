@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.HttpRequestResponse;
+import net.citotech.cito.metrics.GatewayMetrics;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,11 +15,13 @@ public class CallbackTaskService {
     private final CallbackTaskRepository repository;
     private final CallbackClaimRepository claimRepository;
     private final CallbackSigningService signingService;
+    private final GatewayMetrics metrics;
 
-    public CallbackTaskService(CallbackTaskRepository repository, CallbackClaimRepository claimRepository, CallbackSigningService signingService) {
+    public CallbackTaskService(CallbackTaskRepository repository, CallbackClaimRepository claimRepository, CallbackSigningService signingService, GatewayMetrics metrics) {
         this.repository = repository;
         this.claimRepository = claimRepository;
         this.signingService = signingService;
+        this.metrics = metrics;
     }
 
     public void enqueue(long merchantId, String transactionId, String referenceValue, String targetUrl, String requestBody) {
@@ -49,13 +52,20 @@ public class CallbackTaskService {
             headers.put("X-CPay-Timestamp", signed.timestamp);
             HttpRequestResponse response = Common.doHttpRequest("POST", task.targetUrl, task.requestBody, headers);
             if (response != null && response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+                metrics.incrementCallbackDelivery("DONE");
                 repository.markDone(task.id);
             } else {
+                metrics.incrementCallbackDelivery(nextStatus(task.attemptCount, task.attemptLimit));
                 repository.markNext(task.id, task.attemptCount, task.attemptLimit, nextRun(task.attemptCount), response == null ? "No response" : response.toString());
             }
         } catch (Exception e) {
+            metrics.incrementCallbackDelivery(nextStatus(task.attemptCount, task.attemptLimit));
             repository.markNext(task.id, task.attemptCount, task.attemptLimit, nextRun(task.attemptCount), e.getMessage());
         }
+    }
+
+    private String nextStatus(int attempts, int attemptLimit) {
+        return attempts + 1 >= attemptLimit ? "PARKED" : "RETRY";
     }
 
     private Instant nextRun(int attempts) {

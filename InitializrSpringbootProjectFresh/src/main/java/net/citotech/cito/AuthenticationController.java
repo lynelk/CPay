@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 //import jdk.nashorn.internal.objects.Global;
 import net.citotech.cito.Model.User;
+import net.citotech.cito.security.AdminMfaService;
 import net.citotech.cito.security.LoginRateLimiter;
 import net.citotech.cito.security.PasswordUtils;
 
@@ -66,6 +67,9 @@ public class AuthenticationController {
     @Autowired
     LoginRateLimiter rateLimiter;
 
+    @Autowired(required = false)
+    AdminMfaService adminMfaService;
+
     @PostMapping(path="/authenticate")
     public String authenticatedUser (@RequestBody Map<String, String> requestBody,
             HttpServletRequest request, HttpServletResponse response) {
@@ -107,6 +111,19 @@ public class AuthenticationController {
             //Check if the user's account is suspended
             if (u.getStatus().equals("SUSPENDED")) {
                 return GeneralException.getError("137", GeneralException.ERRORS_137);
+            }
+
+            if (adminMfaService != null && adminMfaService.isEnabled(u.getId())) {
+                String mfaCode = requestBody.get("mfa_code");
+                if (mfaCode == null || mfaCode.trim().isEmpty()) {
+                    JSONObject resJson = new JSONObject();
+                    resJson.put("code", "MFA_REQUIRED");
+                    resJson.put("message", "MFA code is required");
+                    return resJson.toString();
+                }
+                if (!adminMfaService.verifyAdminCode(u.getId(), mfaCode)) {
+                    return GeneralException.getError("139", "Invalid MFA code.");
+                }
             }
 
             // Session fixation protection: invalidate old session, create a fresh one
@@ -921,4 +938,3 @@ public class AuthenticationController {
         }
     }
 }
-

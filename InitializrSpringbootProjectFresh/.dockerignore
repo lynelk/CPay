@@ -1,0 +1,5 @@
+.git
+target
+*.log
+hs_err_pid*.log
+src/main/resources/application-local.properties

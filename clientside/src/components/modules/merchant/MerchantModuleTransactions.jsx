@@ -229,9 +229,9 @@ class MerchantModuleTransactionsC extends React.Component {
 
     detailRow(label, value) {
         return (
-            <div style={{ display: 'flex', gap: 'var(--ios-space-4)', padding: '8px 0', borderBottom: '0.5px solid var(--ios-separator)' }}>
-                <span style={{ minWidth: 180, color: 'var(--ios-text-secondary)', fontSize: 'var(--ios-fs-footnote)' }}>{label}</span>
-                <span style={{ flex: 1 }}>{value}</span>
+            <div className="cpay-detail-row">
+                <span className="cpay-detail-label">{label}</span>
+                <span className="cpay-detail-value">{value}</span>
             </div>
         );
     }
@@ -239,7 +239,7 @@ class MerchantModuleTransactionsC extends React.Component {
     traceBlock(value, pre) {
         return (
             <div
-                style={{ width: '100%', overflow: 'auto', background: 'var(--ios-elevated)', borderRadius: 'var(--ios-r-sm)', padding: '10px', fontFamily: 'monospace', fontSize: 12 }}
+                className="cpay-trace-block"
                 dangerouslySetInnerHTML={traceHtml(value, pre)}
             />
         );

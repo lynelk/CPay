@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
@@ -67,6 +68,24 @@ public class SecurityConfig {
                     "/actuator/**",
                     "/status/**"
                 )
+            )
+            .headers(headers -> headers
+                .contentTypeOptions(contentType -> {})
+                .frameOptions(frame -> frame.sameOrigin())
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN))
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000))
+                .contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; "
+                    + "script-src 'self' 'unsafe-inline'; "
+                    + "style-src 'self' 'unsafe-inline'; "
+                    + "img-src 'self' data: https:; "
+                    + "font-src 'self' data:; "
+                    + "connect-src 'self' http://localhost:8081 http://127.0.0.1:8081; "
+                    + "frame-ancestors 'self'; "
+                    + "base-uri 'self'; "
+                    + "form-action 'self'"))
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -126,7 +145,24 @@ public class SecurityConfig {
         CorsConfiguration trustedConfig = new CorsConfiguration();
         trustedConfig.setAllowedOrigins(expandLoopbackAliases(allowedOrigins));
         trustedConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        trustedConfig.setAllowedHeaders(List.of("*"));
+        trustedConfig.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "X-CSRF-TOKEN",
+            "X-CPay-Merchant",
+            "X-CPay-Signature",
+            "X-CPay-Timestamp",
+            "X-CPay-Nonce",
+            "X-Idempotency-Key",
+            "Idempotency-Key",
+            "X-Request-ID"
+        ));
+        trustedConfig.setExposedHeaders(List.of(
+            "X-Request-ID",
+            "Deprecation",
+            "Sunset",
+            "Link"
+        ));
         trustedConfig.setAllowCredentials(true);
         trustedConfig.setMaxAge(3600L);
 

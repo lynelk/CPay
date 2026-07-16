@@ -54,9 +54,9 @@ public class GatewayMetrics {
                 .increment();
     }
 
-    public void incrementRateLimitHit(String merchantNumber) {
+    public void incrementRateLimitHit(String limiterName) {
         Counter.builder("cpay.rate_limit.exceeded")
-                .tag("merchant", merchantNumber)
+                .tag("limiter", limiterName)
                 .description("Rate limit exceeded events")
                 .register(meterRegistry)
                 .increment();

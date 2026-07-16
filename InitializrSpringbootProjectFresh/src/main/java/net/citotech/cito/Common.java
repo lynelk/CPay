@@ -165,6 +165,7 @@ public class Common {
     public static final String API_TRANSACTION_CHECKSTATUS = "TRANSACTION_CHECKSTATUS";
     public static final String API_BALANCE_CHECK = "BALANCE_CHECK";
     public static final String API_ACCOUNT_VALIDATION = "ACCOUNT_VALIDATION";
+    public static final String API_STATEMENT_EXPORT = "STATEMENT_EXPORT";
     public static final String API_SEND_SMS = "API_SEND_SMS";
     
     /*
@@ -533,7 +534,7 @@ public class Common {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.reset();
             digest.update(data.getBytes("utf8"));
-            String sha256 = String.format("%040x", new BigInteger(1, digest.digest()));
+            String sha256 = String.format("%064x", new BigInteger(1, digest.digest()));
             return sha256;
         } catch (Exception e){
             Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
@@ -2354,37 +2355,25 @@ public class Common {
     }
     
     public static String getIpAddress(HttpServletRequest request) {
-        String remoteAdr = "";
-        String remoteProxyClient = "";
-        String http_x_forwarded_for = "";
-        String http_client_ip_addr = "";
-        String wl_proxy_client_ip_addr = "";
-        if(request != null){
-            remoteAdr = request.getHeader("X-FORWARDED-FOR");
-            if (remoteAdr == null || "".equals(remoteAdr)) {
-                remoteAdr = request.getRemoteAddr();
+        if (request != null) {
+            String forwardedFor = firstHeaderValue(request.getHeader("X-Forwarded-For"));
+            if (forwardedFor != null && !forwardedFor.isEmpty()) {
+                return forwardedFor;
             }
-            remoteProxyClient = request.getHeader("Proxy-Client-IP");
-            if (remoteProxyClient == null) {
-                remoteAdr += "<==>"+remoteProxyClient;
+            String realIp = firstHeaderValue(request.getHeader("X-Real-IP"));
+            if (realIp != null && !realIp.isEmpty()) {
+                return realIp;
             }
-            
-            http_x_forwarded_for = request.getHeader("HTTP_X_FORWARDED_FOR");
-            if (http_x_forwarded_for == null) {
-                remoteAdr += "<==>"+http_x_forwarded_for;
-            }
-            
-            http_client_ip_addr = request.getHeader("HTTP_CLIENT_IP");
-            if (http_client_ip_addr == null) {
-                remoteAdr += "<==>"+http_client_ip_addr;
-            }
-            
-            wl_proxy_client_ip_addr = request.getHeader("WL-Proxy-Client-IP");
-            if (wl_proxy_client_ip_addr == null) {
-                remoteAdr += "<==>"+wl_proxy_client_ip_addr;
-            }
+            return request.getRemoteAddr();
         }
-        return remoteAdr;
+        return "";
+    }
+
+    private static String firstHeaderValue(String headerValue) {
+        if (headerValue == null || headerValue.trim().isEmpty()) {
+            return "";
+        }
+        return headerValue.split(",")[0].trim();
     }
     
     

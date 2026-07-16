@@ -17,6 +17,7 @@ interface SignupResult {
   accountNumber?: string;
   merchantStatus?: string;
   message?: string;
+  code?: string;
 }
 
 const emptyForm: SignupForm = {
@@ -28,6 +29,18 @@ const emptyForm: SignupForm = {
   phone: '',
   password: '',
 };
+
+async function readJsonResponse(response: Response): Promise<SignupResult> {
+  const text = await response.text();
+  if (!text.trim()) {
+    return { code: 'EMPTY_RESPONSE', message: 'The server did not return a registration response.' };
+  }
+  try {
+    return JSON.parse(text) as SignupResult;
+  } catch {
+    return { code: 'INVALID_RESPONSE', message: 'The server returned an invalid registration response.' };
+  }
+}
 
 function MerchantSignup(): React.ReactElement {
   const navigate = useNavigate();
@@ -53,7 +66,7 @@ function MerchantSignup(): React.ReactElement {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok || data.code !== '000') {
         setMessage(data.message || 'Signup could not be completed.');
         return;

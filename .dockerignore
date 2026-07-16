@@ -1,0 +1,11 @@
+.git
+.github
+.local-mysql
+.runtime-logs
+logs
+target
+InitializrSpringbootProjectFresh/target
+clientside/node_modules
+clientside/dist
+*.log
+hs_err_pid*.log

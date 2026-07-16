@@ -96,6 +96,9 @@ import java.math.RoundingMode;
 @RestController 
 @RequestMapping(path="/transactions", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class TransactionsLogController {
+    private static final long MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+    private static final int MAX_UPLOAD_ROWS = 5000;
+
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
     @Autowired
@@ -5290,6 +5293,10 @@ public class TransactionsLogController {
             return GeneralException.getError("107", GeneralException.ERRORS_107);
         }
         try {
+            String validationError = validateSpreadsheetUpload(file);
+            if (validationError != null) {
+                return validationError;
+            }
             /*File directory = new File(fileDestination);
             
             if (!directory.exists()) {
@@ -5314,11 +5321,15 @@ public class TransactionsLogController {
             }
             
             //FileInputStream file = new FileInputStream(new File(fileLocation));
-            Workbook workbook = new XSSFWorkbook(file.getInputStream());
-            Sheet sheet = workbook.getSheetAt(0);
             JSONArray bens = new JSONArray();
-            
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+                Sheet sheet = workbook.getSheetAt(0);
+                if (sheet.getLastRowNum() > MAX_UPLOAD_ROWS) {
+                    return GeneralException
+                        .getError("131", "Uploaded file has too many rows. Maximum allowed rows: " + MAX_UPLOAD_ROWS + ".");
+                }
+
+                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 JSONObject jObject = new JSONObject();
                 Row row = sheet.getRow(i);
                 //Row is null, then continue to next one.
@@ -5365,8 +5376,8 @@ public class TransactionsLogController {
                 jObject.put("id", "");
                  
                 
-                bens.put(jObject);
-               
+                    bens.put(jObject);
+                }
             }
             
             JSONObject resJson = new JSONObject();
@@ -5397,6 +5408,10 @@ public class TransactionsLogController {
                     .log(Level.SEVERE, "Params:", "");
         
         try {
+            String validationError = validateSpreadsheetUpload(file);
+            if (validationError != null) {
+                return validationError;
+            }
            
             
             //Now process the file.
@@ -5408,11 +5423,15 @@ public class TransactionsLogController {
             }
             
             //FileInputStream file = new FileInputStream(new File(fileLocation));
-            Workbook workbook = new XSSFWorkbook(file.getInputStream());
-            Sheet sheet = workbook.getSheetAt(0);
             JSONArray bens = new JSONArray();
-            
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+                Sheet sheet = workbook.getSheetAt(0);
+                if (sheet.getLastRowNum() > MAX_UPLOAD_ROWS) {
+                    return GeneralException
+                        .getError("131", "Uploaded file has too many rows. Maximum allowed rows: " + MAX_UPLOAD_ROWS + ".");
+                }
+
+                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 JSONObject jObject = new JSONObject();
                 Row row = sheet.getRow(i);
                 Cell phoneCell = row.getCell(0);
@@ -5445,8 +5464,8 @@ public class TransactionsLogController {
                 jObject.put("delete", false);
                 jObject.put("id", "");
                 
-                bens.put(jObject);
-               
+                    bens.put(jObject);
+                }
             }
             
             JSONObject resJson = new JSONObject();
@@ -5478,15 +5497,47 @@ public class TransactionsLogController {
     }
     
     private boolean isSupportedExceExtension(String ext) {
-        if (ext.equals("xlsx")) {
+        if (ext == null) {
+            return false;
+        }
+        if (ext.equalsIgnoreCase("xlsx")) {
             return true;
         }
-        else if (ext.equals("xls")) {
+        else if (ext.equalsIgnoreCase("xls")) {
             return true;
         }
         else {
             return false;
         }
+    }
+
+    private String validateSpreadsheetUpload(MultipartFile file) {
+        String originalName = file == null ? "" : StringUtils.cleanPath(String.valueOf(file.getOriginalFilename()));
+        if (file == null || file.isEmpty()) {
+            return GeneralException.getError("131", "Uploaded file is empty.");
+        }
+        if (file.getSize() > MAX_UPLOAD_BYTES) {
+            return GeneralException.getError("131", "Uploaded file exceeds the 2 MB limit.");
+        }
+        String ext = Common.getExtensionByStringHandling(originalName);
+        if (!isSupportedExceExtension(ext)) {
+            return GeneralException
+                .getError("132", String.format(GeneralException.ERRORS_132, originalName + " Extension: " + ext));
+        }
+        String contentType = file.getContentType();
+        if (!isAllowedSpreadsheetContentType(contentType)) {
+            return GeneralException.getError("132", "Unsupported upload content type: " + contentType + ".");
+        }
+        return null;
+    }
+
+    private boolean isAllowedSpreadsheetContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return true;
+        }
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".equalsIgnoreCase(contentType)
+            || "application/vnd.ms-excel".equalsIgnoreCase(contentType)
+            || "application/octet-stream".equalsIgnoreCase(contentType);
     }
     
     

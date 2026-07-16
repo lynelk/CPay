@@ -16,9 +16,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProviderEndpointExecutionService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final ProviderTokenStoreService tokenStoreService;
 
-    public ProviderEndpointExecutionService(NamedParameterJdbcTemplate jdbcTemplate) {
+    public ProviderEndpointExecutionService(NamedParameterJdbcTemplate jdbcTemplate,
+                                            ProviderTokenStoreService tokenStoreService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.tokenStoreService = tokenStoreService;
     }
 
     public GateWayResponse execute(String channelCode, String displayName, String operation, PaymentGatewayRequest request) {
@@ -43,6 +46,8 @@ public class ProviderEndpointExecutionService {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("X-CPay-Channel", channelCode);
             connection.setRequestProperty("X-CPay-Reference", request.getReference());
+            tokenStoreService.findValid(channelCode, operation, gatewayState)
+                .ifPresent(token -> connection.setRequestProperty("Authorization", "Bearer " + token.getTokenValue()));
             String headerName = request.getMetadata().get("authHeaderName");
             String headerValue = request.getMetadata().get("authHeaderValue");
             if (!isBlank(headerName) && !isBlank(headerValue)) {

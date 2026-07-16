@@ -72,11 +72,11 @@ code {
 
 /* ─── CPay brand application shell ──────────────────────────────────────── */
 :root {
-  --cpay-brand-teal: #0E9BC3;
+  --cpay-brand-teal: #1198C4;
   --cpay-brand-gold: #F3B01B;
-  --cpay-brand-navy: #102A43;
-  --cpay-brand-slate: #64748B;
-  --cpay-brand-soft-gray: #F4F8FB;
+  --cpay-brand-navy: #163B5C;
+  --cpay-brand-slate: #667085;
+  --cpay-brand-soft-gray: #F5F7FA;
   --cpay-brand-white: #FFFFFF;
   --cpay-heading-font: Montserrat, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   --cpay-body-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -89,7 +89,7 @@ code {
   --cpay-fuse-text: var(--cpay-brand-navy);
   --cpay-fuse-muted: var(--cpay-brand-slate);
   --cpay-fuse-blue: var(--cpay-brand-teal);
-  --cpay-fuse-blue-dark: #087EA4;
+  --cpay-fuse-blue-dark: #0E7FA5;
   --cpay-fuse-dark: var(--cpay-brand-navy);
   --cpay-fuse-danger: #ff3b30;
   --cpay-fuse-green: #30d158;
@@ -3321,6 +3321,525 @@ select,
   padding: 10px 12px;
 }
 
+.cpay-merchant-sheet.ios-sheet {
+  width: min(1380px, calc(100vw - 28px));
+  max-width: none;
+  max-height: calc(100vh - 28px);
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.cpay-merchant-sheet .ios-sheet__header {
+  align-items: flex-start;
+  min-height: 74px;
+  padding: 18px 24px;
+  background: linear-gradient(180deg, rgba(248, 251, 253, 0.98) 0%, #FFFFFF 100%);
+}
+
+.cpay-merchant-sheet .ios-sheet__body {
+  padding: 0;
+}
+
+.cpay-merchant-sheet .ios-sheet__footer {
+  align-items: center;
+  padding: 14px 24px;
+  background: rgba(248, 251, 253, 0.92);
+}
+
+.cpay-merchant-sheet-title {
+  display: grid;
+  gap: 5px;
+}
+
+.cpay-merchant-sheet-title strong {
+  color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.cpay-merchant-sheet-title small {
+  color: var(--cpay-fuse-muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.cpay-merchant-footer-spacer {
+  flex: 1 1 auto;
+}
+
+.cpay-merchant-wizard {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 360px;
+  min-height: min(720px, calc(100vh - 178px));
+  background:
+    linear-gradient(90deg, rgba(14, 155, 195, 0.05) 0, transparent 260px),
+    var(--cpay-fuse-surface);
+}
+
+.cpay-merchant-wizard-rail {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  border-right: 1px solid var(--cpay-fuse-line);
+  background: linear-gradient(180deg, #F8FBFD 0%, #FFFFFF 100%);
+  padding: 24px 16px;
+}
+
+.cpay-merchant-rail-steps {
+  display: grid;
+  gap: 10px;
+}
+
+.cpay-merchant-step {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 18px;
+  gap: 12px;
+  align-items: center;
+  min-height: 78px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cpay-fuse-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+}
+
+.cpay-merchant-step:hover {
+  border-color: rgba(14, 155, 195, 0.18);
+  background: rgba(14, 155, 195, 0.07);
+}
+
+.cpay-merchant-step-active {
+  border-color: rgba(14, 155, 195, 0.34);
+  background: linear-gradient(180deg, rgba(14, 155, 195, 0.13) 0%, rgba(14, 155, 195, 0.06) 100%);
+  box-shadow: inset 3px 0 0 var(--cpay-fuse-blue);
+}
+
+.cpay-merchant-step-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(14, 155, 195, 0.12);
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-merchant-step strong {
+  display: block;
+  color: var(--cpay-fuse-text);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.cpay-merchant-step small {
+  display: block;
+  margin-top: 3px;
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.cpay-merchant-step-complete > svg {
+  color: #16a34a;
+}
+
+.cpay-merchant-help-card {
+  display: grid;
+  gap: 9px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 8px;
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow-soft);
+  padding: 14px;
+}
+
+.cpay-merchant-help-card svg {
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-merchant-help-card strong {
+  color: var(--cpay-fuse-text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.cpay-merchant-help-card button {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: var(--cpay-fuse-blue-dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  padding: 0;
+  text-align: left;
+}
+
+.cpay-merchant-wizard-main {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+}
+
+.cpay-merchant-panel,
+.cpay-merchant-side-panel {
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 8px;
+  background: var(--cpay-fuse-surface);
+  box-shadow: var(--cpay-fuse-shadow-soft);
+}
+
+.cpay-merchant-panel {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.cpay-merchant-panel-fill {
+  min-height: 460px;
+}
+
+.cpay-merchant-panel-header,
+.cpay-merchant-panel-header-actions,
+.cpay-merchant-side-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.cpay-merchant-panel-header {
+  justify-content: flex-start;
+}
+
+.cpay-merchant-panel-header > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(14, 155, 195, 0.12);
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-merchant-panel-header h3,
+.cpay-merchant-side-header h3,
+.cpay-merchant-side-section h4,
+.cpay-merchant-empty-state h4,
+.cpay-merchant-permission-title h4 {
+  margin: 0;
+  color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.cpay-merchant-panel-header h3,
+.cpay-merchant-side-header h3 {
+  font-size: 18px;
+}
+
+.cpay-merchant-panel-header p,
+.cpay-merchant-side-header p,
+.cpay-merchant-empty-state p {
+  margin: 4px 0 0;
+  color: var(--cpay-fuse-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.cpay-merchant-keys {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cpay-merchant-admin-list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 8px;
+}
+
+.cpay-merchant-admin-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(130px, 0.6fr) auto auto auto;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--cpay-fuse-line);
+  padding: 12px 14px;
+}
+
+.cpay-merchant-admin-row:last-child {
+  border-bottom: 0;
+}
+
+.cpay-merchant-admin-row-active {
+  background: rgba(14, 155, 195, 0.06);
+}
+
+.cpay-merchant-admin-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.cpay-merchant-admin-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(14, 155, 195, 0.12);
+  color: var(--cpay-fuse-blue-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.cpay-merchant-admin-main strong,
+.cpay-merchant-summary strong {
+  display: block;
+  overflow: hidden;
+  color: var(--cpay-fuse-text);
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cpay-merchant-admin-main small,
+.cpay-merchant-admin-role,
+.cpay-merchant-admin-count,
+.cpay-merchant-summary span {
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.cpay-merchant-empty-state,
+.cpay-merchant-side-empty {
+  display: grid;
+  min-height: 280px;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.cpay-merchant-empty-state > span,
+.cpay-merchant-side-empty svg {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-blue-dark);
+}
+
+.cpay-merchant-side-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.cpay-merchant-side-header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--cpay-fuse-line);
+  padding: 18px 20px;
+}
+
+.cpay-merchant-side-close {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cpay-fuse-muted);
+  cursor: pointer;
+}
+
+.cpay-merchant-side-close:hover {
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-text);
+}
+
+.cpay-merchant-side-scroll {
+  display: grid;
+  gap: 18px;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px;
+}
+
+.cpay-merchant-side-section {
+  display: grid;
+  gap: 12px;
+}
+
+.cpay-merchant-side-section h4,
+.cpay-merchant-permission-title h4 {
+  font-size: 13px;
+}
+
+.cpay-merchant-side-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cpay-merchant-permission-title,
+.cpay-permission-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cpay-permission-group {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 8px;
+  background: var(--cpay-fuse-surface-soft);
+  padding: 12px;
+}
+
+.cpay-permission-group strong {
+  color: var(--cpay-fuse-text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.cpay-permission-group .ios-checkbox {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cpay-permission-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.cpay-permission-group-blue { border-left: 3px solid var(--cpay-fuse-blue); }
+.cpay-permission-group-green { border-left: 3px solid #16a34a; }
+.cpay-permission-group-purple { border-left: 3px solid #8b5cf6; }
+.cpay-permission-group-orange { border-left: 3px solid #f97316; }
+
+.cpay-merchant-summary {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px 0;
+}
+
+.cpay-merchant-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--cpay-fuse-line);
+  padding-bottom: 10px;
+}
+
+.cpay-merchant-summary > div:last-child {
+  border-bottom: 0;
+}
+
+.cpay-merchant-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px 18px;
+}
+
+.cpay-detail-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  border-bottom: 1px solid var(--cpay-fuse-line);
+  padding: 10px 0;
+}
+
+.cpay-detail-row:first-child {
+  padding-top: 0;
+}
+
+.cpay-detail-row:last-of-type {
+  border-bottom: 0;
+}
+
+.cpay-detail-label {
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.cpay-detail-value {
+  min-width: 0;
+  color: var(--cpay-fuse-text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.cpay-trace-block {
+  width: 100%;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: 8px;
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px;
+}
+
+.cpay-sheet-section-title {
+  margin: 20px 0 10px;
+  color: var(--cpay-fuse-text);
+  font-family: var(--cpay-heading-font);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
 @media (max-width: 1180px) {
   .cpay-settings-status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3337,6 +3856,16 @@ select,
 
   .cpay-api-access-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cpay-merchant-wizard {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .cpay-merchant-side-panel {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--cpay-fuse-line);
+    border-left: 0;
   }
 }
 
@@ -3390,6 +3919,42 @@ select,
     grid-column: 1 / -1;
     justify-content: flex-start;
   }
+
+  .cpay-merchant-wizard {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-merchant-wizard-rail {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-right: 0;
+    border-bottom: 1px solid var(--cpay-fuse-line);
+    padding: 12px;
+  }
+
+  .cpay-merchant-rail-steps {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .cpay-merchant-step {
+    min-width: 220px;
+  }
+
+  .cpay-merchant-help-card {
+    display: none;
+  }
+
+  .cpay-merchant-admin-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cpay-merchant-admin-role,
+  .cpay-merchant-admin-count,
+  .cpay-merchant-admin-row .ios-badge {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3405,5 +3970,38 @@ select,
   .cpay-settings-provider-hero dl,
   .cpay-settings-provider-actions {
     grid-column: auto;
+  }
+
+  .cpay-merchant-sheet.ios-sheet {
+    width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .cpay-merchant-sheet .ios-sheet__header,
+  .cpay-merchant-sheet .ios-sheet__footer,
+  .cpay-merchant-wizard-main,
+  .cpay-merchant-side-header,
+  .cpay-merchant-side-scroll {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .cpay-merchant-keys,
+  .cpay-merchant-side-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-merchant-sheet .ios-sheet__footer {
+    flex-wrap: wrap;
+  }
+
+  .cpay-merchant-footer-spacer {
+    display: none;
+  }
+
+  .cpay-detail-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }

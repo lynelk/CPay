@@ -1,0 +1,44 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: cpay-local
+      MYSQL_DATABASE: cpayadmin
+      MYSQL_USER: cpay
+      MYSQL_PASSWORD: cpay-local
+    ports:
+      - "3307:3306"
+    volumes:
+      - cpay_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ucpay", "-pcpay-local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./InitializrSpringbootProjectFresh
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      HTTP_PORT: 8081
+      DB_URL: jdbc:mysql://mysql:3306/cpayadmin
+      DB_USERNAME: cpay
+      DB_PASSWORD: cpay-local
+      ACTUATOR_USERNAME: actuator
+      ACTUATOR_PASSWORD: actuator-local-change-me
+      ADMIN_API_USERNAME: admin
+      ADMIN_API_PASSWORD: admin-local-change-me
+      CALLBACK_SIGNING_SECRET: local-callback-secret-change-me
+      MERCHANT_CHANNEL_ENCRYPTION_KEY: local-dev-32-byte-secret-change!
+      CPAY_SECURITY_NONCE_STORE: jdbc
+      CPAY_LEGACY_DBCHANGES_ENABLED: "false"
+      CUSTOM_GATEWAYSTATE: SANDBOX
+      CUSTOM_SSL_SKIP_VERIFY: "false"
+    ports:
+      - "8081:8081"
+
+volumes:
+  cpay_mysql:

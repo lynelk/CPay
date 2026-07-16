@@ -145,13 +145,32 @@ The codebase now includes software controls for:
 Readiness documentation is available in:
 
 - `docs/production-code-controls.md`
+- `docs/observability.md`
+- `docs/data-retention.md`
+- `docs/schema/README.md`
+- `docs/api-versioning-deprecation.md`
+- `docs/error-catalog.md`
+- `docs/pagination.md`
+- `docs/webhook-events.md`
+- `docs/developer-experience.md`
+- `docs/provider-integration-roadmap.md`
+- `docs/security-authentication-roadmap.md`
+- `docs/testing-strategy.md`
+- `docs/money-ledger-and-orchestration-roadmap.md`
+- `docs/process-flow-controls.md`
+- `docs/reliability-scale-runbook.md`
+- `docs/merchant-facing-features-roadmap.md`
+- `docs/compliance-risk-controls.md`
 - `docs/readiness/market-readiness-gates.md`
 - `docs/runbooks/production-incident-response.md`
+- `docs/runbooks/operations-alerts.md`
 - `docs/runbooks/provider-certification-checklist.md`
 - `docs/runbooks/security-and-access-control.md`
 - `docs/runbooks/callback-security-and-requeue.md`
 - `docs/runbooks/reconciliation-finance-daily-close.md`
 - `docs/runbooks/provider-sandbox-and-statement-validation.md`
+
+Architecture decisions are recorded in `docs/adr/`, and release notes are tracked in `CHANGELOG.md`.
 
 Manual signoff is still required for real provider sandbox certification, staging migration validation, merchant callback verification, finance signoff, security review, production monitoring setup, and regulatory or compliance approval. Code can support evidence. It cannot issue approvals, because apparently institutions remain stubbornly human.
 
@@ -271,9 +290,22 @@ The CI pipeline is expected to cover:
 | `docs/api/cpay-v2-postman-collection.json` | Starter Postman collection for v2. |
 | `docs/api-v2-signing.md` | v2 request-signing rules. |
 | `docs/api-v2-examples.md` | Example v2 API requests. |
+| `docs/api-versioning-deprecation.md` | Versioning rules and legacy deprecation headers. |
+| `docs/error-catalog.md` | Stable public error code catalog. |
+| `docs/pagination.md` | Cursor pagination convention for list APIs. |
+| `docs/webhook-events.md` | Versioned webhook event registry. |
+| `docs/developer-experience.md` | SDK and docs portal expectations. |
 | `docs/merchant-self-service.md` | Merchant signup and payment-channel setup guide. |
 | `docs/production-code-controls.md` | Production-control code summary. |
 | `docs/gateway-adapter-guide.md` | How to add or maintain provider adapters. |
+| `docs/provider-integration-roadmap.md` | Provider adapter migration plan. |
+| `docs/security-authentication-roadmap.md` | Authentication and security-control roadmap. |
+| `docs/testing-strategy.md` | Money-movement and provider testing plan. |
+| `docs/money-ledger-and-orchestration-roadmap.md` | Target ledger and payment state-machine design. |
+| `docs/process-flow-controls.md` | Payin, payout, callback, signup, SMS, and recon controls. |
+| `docs/reliability-scale-runbook.md` | Scaling, backup, shutdown, and job-safety runbook. |
+| `docs/merchant-facing-features-roadmap.md` | Merchant product gap roadmap and new v2 endpoints. |
+| `docs/compliance-risk-controls.md` | EAC-context risk, KYC, AML, retention, and reporting controls. |
 | `docs/readiness/market-readiness-gates.md` | Launch-readiness checklist. |
 | `docs/runbooks/` | Operational procedures for production support. |
 

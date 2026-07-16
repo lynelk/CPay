@@ -101,9 +101,17 @@ public class StartupApplicationListener {
 
     @Value("classpath:dbchanges/*.xml")
     private Resource[] resources = new Resource[0];
+
+    @Value("${cpay.legacy-dbchanges.enabled:false}")
+    private boolean legacyDbChangesEnabled;
     
     public String updateDb() {
         try {
+            if (!legacyDbChangesEnabled) {
+                java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
+                    .log(Level.INFO, "Legacy DB change XML runner disabled; Flyway is the canonical migration path.");
+                return "Disabled";
+            }
             if (resources == null || resources.length == 0) {
                 java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
                     .log(Level.INFO, "No DB change XML resources found; skipping startup DB application.");
@@ -182,7 +190,9 @@ public class StartupApplicationListener {
                 //Select to see if this query was executed.
                 if (nQuery.getQuery_id() != null && !nQuery.getQuery_id().isEmpty()) {
                     String checkSql = "SELECT * FROM `"+Common.DB_TABLE_DB_CHANGES+"` "
-                        + "WHERE query_id='"+nQuery.getQuery_id()+"'";
+                        + "WHERE query_id=:query_id";
+                    MapSqlParameterSource checkParams = new MapSqlParameterSource();
+                    checkParams.addValue("query_id", nQuery.getQuery_id());
                     RowMapper<QueryUpdate> rm = new RowMapper<QueryUpdate>() {
                     public QueryUpdate mapRow(ResultSet rs, int rowNum) throws SQLException {
                             QueryUpdate t = new QueryUpdate();
@@ -195,7 +205,7 @@ public class StartupApplicationListener {
                         }
                     };
                     List<QueryUpdate> listQueries = jdbcTemplate.query(checkSql, 
-                            new MapSqlParameterSource(), 
+                            checkParams,
                             rm);
                     if (listQueries.size()>0) {
                         java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())

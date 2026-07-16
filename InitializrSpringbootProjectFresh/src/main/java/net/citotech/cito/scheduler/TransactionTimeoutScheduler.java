@@ -5,6 +5,7 @@ import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.Model.TxCallback;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,7 +26,6 @@ import java.util.logging.Logger;
 public class TransactionTimeoutScheduler {
 
     private static final Logger logger = Logger.getLogger(TransactionTimeoutScheduler.class.getName());
-    private static final int DEFAULT_TIMEOUT_MINUTES = 30;
 
     @Autowired
     private NamedParameterJdbcTemplate jdbcTemplate;
@@ -33,10 +33,13 @@ public class TransactionTimeoutScheduler {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Value("${cpay.transactions.timeout.default-minutes:30}")
+    private int defaultTimeoutMinutes;
+
     /**
      * Runs every 5 minutes to find and timeout stuck PENDING transactions.
      */
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${cpay.transactions.timeout.scan-delay-ms:300000}")
     public void timeoutStalePendingTransactions() {
         try {
             String sql = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
@@ -45,7 +48,7 @@ public class TransactionTimeoutScheduler {
                     + " LIMIT 100";
 
             MapSqlParameterSource params = new MapSqlParameterSource();
-            params.addValue("timeout_minutes", DEFAULT_TIMEOUT_MINUTES);
+            params.addValue("timeout_minutes", defaultTimeoutMinutes);
 
             List<Transaction> staleTxs = jdbcTemplate.query(sql, params, (rs, rowNum) -> {
                 Transaction t = new Transaction();
@@ -81,7 +84,7 @@ public class TransactionTimeoutScheduler {
         template.execute((TransactionStatus status) -> {
             try {
                 tx.setStatus("FAILED");
-                tx.setTx_update_trace("AUTO_TIMEOUT: Transaction exceeded " + DEFAULT_TIMEOUT_MINUTES + " minute pending limit");
+                tx.setTx_update_trace("AUTO_TIMEOUT: Transaction exceeded " + defaultTimeoutMinutes + " minute pending limit");
                 tx.setResolved_by("SYSTEM_TIMEOUT");
 
                 String sql = "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG

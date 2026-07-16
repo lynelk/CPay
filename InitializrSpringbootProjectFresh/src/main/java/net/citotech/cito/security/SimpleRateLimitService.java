@@ -3,6 +3,7 @@ package net.citotech.cito.security;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import net.citotech.cito.metrics.GatewayMetrics;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -10,9 +11,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class SimpleRateLimitService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final GatewayMetrics metrics;
 
-    public SimpleRateLimitService(NamedParameterJdbcTemplate jdbcTemplate) {
+    public SimpleRateLimitService(NamedParameterJdbcTemplate jdbcTemplate, GatewayMetrics metrics) {
         this.jdbcTemplate = jdbcTemplate;
+        this.metrics = metrics;
     }
 
     public boolean allow(String key, int maxRequestsPerMinute) {
@@ -26,7 +29,11 @@ public class SimpleRateLimitService {
         } catch (Exception ignored) {
             jdbcTemplate.update("UPDATE api_rate_limits SET request_count=request_count+1 WHERE rate_key=:rate_key AND window_start=:window_start", p);
             Integer count = jdbcTemplate.queryForObject("SELECT request_count FROM api_rate_limits WHERE rate_key=:rate_key AND window_start=:window_start", p, Integer.class);
-            return count == null || count <= maxRequestsPerMinute;
+            boolean allowed = count == null || count <= maxRequestsPerMinute;
+            if (!allowed) {
+                metrics.incrementRateLimitHit("database_window");
+            }
+            return allowed;
         }
     }
 }

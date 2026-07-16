@@ -30,6 +30,59 @@ const ACCOUNT_TYPE_OPTIONS = [
   { value: 'business', label: 'BUSINESS' },
 ];
 
+const ADMIN_ROLE_OPTIONS = [
+  { value: 'Owner', label: 'Owner' },
+  { value: 'Finance Administrator', label: 'Finance Administrator' },
+  { value: 'Operations User', label: 'Operations User' },
+  { value: 'Reporting User', label: 'Reporting User' },
+  { value: 'Developer', label: 'Developer' },
+];
+
+const ADMIN_PRIVILEGE_GROUPS = [
+  { label: 'Transactions', tone: 'blue', values: ['CREATE_BATCH_TX', 'APPROVE_BATCH_TX', 'ACCESS_TRANSACTION_LOG', 'DOWNLOAD_REPORTS'] },
+  { label: 'Administration', tone: 'green', values: ['CREATE_ADMIN', 'UPDATE_ADMIN', 'DELETE_ADMIN', 'ACCESS_ADMIN'] },
+  { label: 'Settings', tone: 'purple', values: ['ACCESS_SETTINGS', 'UPDATE_SETTINGS'] },
+  { label: 'Reporting & Audit', tone: 'orange', values: ['ACCESS_AUDITTRAIL', 'ACCESS_SMS_LOG', 'SEND_SMS', 'BUY_SMS'] },
+];
+
+const MERCHANT_FORM_STEPS = [
+  { key: 'details', number: 1, title: 'Merchant Details', copy: 'Business and contact information', icon: Icons.StoreIcon },
+  { key: 'access', number: 2, title: 'API Access', copy: 'Available services', icon: Icons.LockIcon },
+  { key: 'admins', number: 3, title: 'Merchant Administrators', copy: 'People and permissions', icon: Icons.UsersIcon },
+];
+
+function defaultAdmin() {
+  return {
+    name: '',
+    email: '',
+    phone: '',
+    status: 'ACTIVE',
+    role: 'Finance Administrator',
+    privileges: [],
+    generate_pw: false,
+    delete: false,
+    id: '',
+  };
+}
+
+function selectedPrivileges(admin) {
+  return Array.isArray(admin?.privileges) ? admin.privileges : [];
+}
+
+function adminInitials(admin) {
+  const source = admin?.name || admin?.email || 'New Admin';
+  return source
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'NA';
+}
+
+function privilegeLabel(value) {
+  return common.merchant_privileges.find((privilege) => privilege.value === value)?.text || value;
+}
+
 function statusTone(status) {
   if (status === 'ACTIVE') return 'success';
   if (status === 'SUSPENDED') return 'warning';
@@ -37,11 +90,19 @@ function statusTone(status) {
   return 'neutral';
 }
 
-function parseJson(text) {
+function parseJson(text, fallbackMessage = 'The server did not return a readable response.') {
+  const trimmed = (text || '').trim();
+  if (!trimmed) {
+    return { code: 'EMPTY_RESPONSE', message: fallbackMessage };
+  }
   try {
-    return JSON.parse(text);
+    return JSON.parse(trimmed);
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : 'Invalid server response');
+    return {
+      code: 'INVALID_RESPONSE',
+      message: 'The server returned an invalid response. Please retry the action.',
+      raw: trimmed,
+    };
   }
 }
 
@@ -320,12 +381,22 @@ class ModuleMerchantsC extends React.Component {
 class MerchantFormDialog extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { formd: props.formd, errors: {} };
+    this.state = {
+      formd: props.formd,
+      errors: {},
+      selectedStep: 'details',
+      activeAdminIndex: null,
+    };
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.formd !== this.props.formd) {
-      this.setState({ formd: this.props.formd, errors: {} });
+      this.setState({
+        formd: this.props.formd,
+        errors: {},
+        selectedStep: 'details',
+        activeAdminIndex: null,
+      });
     }
   }
 
@@ -342,16 +413,22 @@ class MerchantFormDialog extends React.Component {
   }
 
   addAdmin() {
-    this.setState((prev) => ({
-      formd: {
-        ...prev.formd,
-        admins: [...(prev.formd.admins || []), { name: '', email: '', phone: '', status: 'ACTIVE', privileges: [], generate_pw: false, delete: false, id: '' }],
-      },
-    }));
+    this.setState((prev) => {
+      const admins = [...(prev.formd.admins || []), defaultAdmin()];
+      return {
+        formd: { ...prev.formd, admins },
+        selectedStep: 'admins',
+        activeAdminIndex: admins.length - 1,
+      };
+    });
   }
 
-  removeLastAdmin() {
-    this.setState((prev) => ({ formd: { ...prev.formd, admins: (prev.formd.admins || []).slice(0, -1) } }));
+  removeAdmin(index) {
+    this.setState((prev) => {
+      const admins = (prev.formd.admins || []).filter((admin, i) => i !== index);
+      const nextIndex = admins.length === 0 ? null : Math.min(index, admins.length - 1);
+      return { formd: { ...prev.formd, admins }, activeAdminIndex: nextIndex };
+    });
   }
 
   updateAdmin(index, field, value) {
@@ -369,12 +446,32 @@ class MerchantFormDialog extends React.Component {
         ...prev.formd,
         admins: (prev.formd.admins || []).map((admin, i) => {
           if (i !== index) return admin;
-          const current = Array.isArray(admin.privileges) ? admin.privileges : [];
+          const current = selectedPrivileges(admin);
           const next = checked ? [...new Set([...current, privilege])] : current.filter((item) => item !== privilege);
           return { ...admin, privileges: next };
         }),
       },
     }));
+  }
+
+  toggleAdminPrivilegeGroup(index, privileges, checked) {
+    this.setState((prev) => ({
+      formd: {
+        ...prev.formd,
+        admins: (prev.formd.admins || []).map((admin, i) => {
+          if (i !== index) return admin;
+          const current = selectedPrivileges(admin);
+          const next = checked
+            ? [...new Set([...current, ...privileges])]
+            : current.filter((item) => !privileges.includes(item));
+          return { ...admin, privileges: next };
+        }),
+      },
+    }));
+  }
+
+  selectAllAdminPrivileges(index, checked) {
+    this.toggleAdminPrivilegeGroup(index, common.merchant_privileges.map((privilege) => privilege.value), checked);
   }
 
   validate() {
@@ -391,7 +488,7 @@ class MerchantFormDialog extends React.Component {
         break;
       }
     }
-    this.setState({ errors });
+    this.setState({ errors, selectedStep: errors.admins ? 'admins' : this.state.selectedStep });
     return Object.keys(errors).length === 0;
   }
 
@@ -401,129 +498,358 @@ class MerchantFormDialog extends React.Component {
   }
 
   close() {
-    this.setState({ formd: emptyMerchantForm(), errors: {} }, () => this.props.onClose());
+    this.setState({
+      formd: emptyMerchantForm(),
+      errors: {},
+      selectedStep: 'details',
+      activeAdminIndex: null,
+    }, () => this.props.onClose());
   }
 
-  renderPrivilegeSelector(admin, index) {
-    const selected = Array.isArray(admin.privileges) ? admin.privileges : [];
+  stepComplete(key, row) {
+    if (key === 'details') return Boolean(row.name && row.short_name && row.status && row.account_type);
+    if (key === 'access') return Array.isArray(row.allowed_apis) && row.allowed_apis.length > 0;
+    if (key === 'admins') {
+      const admins = (row.admins || []).filter((admin) => !admin.delete);
+      return admins.length > 0 && admins.every((admin) => admin.name && admin.email && admin.phone);
+    }
+    return false;
+  }
+
+  renderStepRail(row) {
     return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-        {common.merchant_privileges.map((privilege) => (
+      <aside className="cpay-merchant-wizard-rail" aria-label="Merchant setup steps">
+        <div className="cpay-merchant-rail-steps">
+          {MERCHANT_FORM_STEPS.map((step) => {
+            const StepIcon = step.icon;
+            const active = this.state.selectedStep === step.key;
+            const complete = this.stepComplete(step.key, row);
+            return (
+              <button
+                key={step.key}
+                type="button"
+                className={`cpay-merchant-step ${active ? 'cpay-merchant-step-active' : ''} ${complete ? 'cpay-merchant-step-complete' : ''}`.trim()}
+                onClick={() => this.setState({ selectedStep: step.key })}
+              >
+                <span className="cpay-merchant-step-icon"><StepIcon size={17} /></span>
+                <span>
+                  <strong>{step.number}. {step.title}</strong>
+                  <small>{step.copy}</small>
+                </span>
+                {complete ? <Icons.CheckIcon size={16} /> : <i aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="cpay-merchant-help-card">
+          <Icons.HeadsetIcon size={18} />
+          <strong>Need help?</strong>
+          <button type="button">View documentation</button>
+          <button type="button">Contact support</button>
+        </div>
+      </aside>
+    );
+  }
+
+  renderDetails(row, errors) {
+    return (
+      <section className="cpay-merchant-panel">
+        <header className="cpay-merchant-panel-header">
+          <span><Icons.StoreIcon size={18} /></span>
+          <div>
+            <h3>Merchant Details</h3>
+            <p>Business profile, account type, and operating status.</p>
+          </div>
+        </header>
+        <div className="cpay-merchant-form-grid">
+          <TextField id="merchant-name" label="Name" value={row.name || ''} onValueChange={(value) => this.setField('name', value)} invalid={Boolean(errors.name)} />
+          <TextField id="merchant-short-name" label="Short Name" value={row.short_name || ''} onValueChange={(value) => this.setField('short_name', value)} invalid={Boolean(errors.short_name)} />
+          <Select id="merchant-status" label="Status" value={row.status || 'ACTIVE'} options={STATUS_OPTIONS} onValueChange={(value) => this.setField('status', value)} invalid={Boolean(errors.status)} />
+          <Select id="merchant-account-type" label="Account Type" value={row.account_type || 'personal'} options={ACCOUNT_TYPE_OPTIONS} onValueChange={(value) => this.setField('account_type', value)} invalid={Boolean(errors.account_type)} />
+          <div className="cpay-merchant-form-toggle">
+            <Checkbox checked={Boolean(row.generate_new_keys)} onCheckedChange={(value) => this.setField('generate_new_keys', value)} label="Generate New Keys" />
+            <p>Automatically generate API keys for this merchant.</p>
+          </div>
+        </div>
+        {(row.private_key || row.public_key) ? (
+          <div className="cpay-merchant-keys">
+            <TextArea id="merchant-public-key" label="Public Key" rows={3} value={row.public_key || ''} onValueChange={(value) => this.setField('public_key', value)} />
+            <TextArea id="merchant-private-key" label="Private Key" rows={3} value={row.private_key || ''} onValueChange={(value) => this.setField('private_key', value)} />
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
+  renderAccess(row) {
+    const allowedApis = Array.isArray(row.allowed_apis) ? row.allowed_apis : [];
+    return (
+      <section className="cpay-merchant-panel">
+        <header className="cpay-merchant-panel-header">
+          <span><Icons.LockIcon size={18} /></span>
+          <div>
+            <h3>API Access</h3>
+            <p>Enable products and platform services for this merchant.</p>
+          </div>
+        </header>
+        <div className="cpay-api-access-grid">
+          {common.allowed_apis.map((api) => (
+            <div className={`cpay-api-access-option ${allowedApis.includes(api.value) ? 'cpay-api-access-option-active' : ''}`.trim()} key={api.value}>
+              <Checkbox checked={allowedApis.includes(api.value)} onCheckedChange={(checked) => this.setAllowedApi(api.value, checked)} label={api.text} />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  renderAdmins(row, errors) {
+    const admins = row.admins || [];
+    return (
+      <section className="cpay-merchant-panel cpay-merchant-panel-fill">
+        <header className="cpay-merchant-panel-header cpay-merchant-panel-header-actions">
+          <span><Icons.UsersIcon size={18} /></span>
+          <div>
+            <h3>Merchant Administrators</h3>
+            <p>Manage people who can access and administer this merchant account.</p>
+          </div>
+          <Button variant="primary" className="ios-btn--sm" onClick={() => this.addAdmin()}>
+            <Icons.PlusIcon size={15} />{strings.add_admin || 'Add Admin'}
+          </Button>
+        </header>
+        {errors.admins ? <p className="cpay-form-error">{errors.admins}</p> : null}
+        {admins.length ? (
+          <div className="cpay-merchant-admin-list" role="list">
+            {admins.map((admin, index) => {
+              const active = this.state.activeAdminIndex === index;
+              return (
+                <div key={admin.id || admin.email || index} className={`cpay-merchant-admin-row ${active ? 'cpay-merchant-admin-row-active' : ''}`.trim()} role="listitem">
+                  <button type="button" className="cpay-merchant-admin-main" onClick={() => this.setState({ activeAdminIndex: index, selectedStep: 'admins' })}>
+                    <span className="cpay-merchant-admin-avatar">{adminInitials(admin)}</span>
+                    <span>
+                      <strong>{admin.name || 'New administrator'}</strong>
+                      <small>{admin.email || 'Email not set'}</small>
+                    </span>
+                  </button>
+                  <Badge tone={statusTone(admin.status || 'ACTIVE')}>{admin.status || 'ACTIVE'}</Badge>
+                  <span className="cpay-merchant-admin-role">{admin.role || 'Finance Administrator'}</span>
+                  <span className="cpay-merchant-admin-count">{selectedPrivileges(admin).length} permissions</span>
+                  <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ activeAdminIndex: index, selectedStep: 'admins' })}>Edit</Button>
+                  <Button variant="danger" className="ios-btn--sm" onClick={() => this.removeAdmin(index)}>Remove</Button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="cpay-merchant-empty-state">
+            <span><Icons.UsersIcon size={24} /></span>
+            <h4>No administrators added yet</h4>
+            <p>Add administrators to allow secure access to this merchant.</p>
+            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.addAdmin()}>
+              <Icons.PlusIcon size={15} />Add First Admin
+            </Button>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  renderAdminPermissionGroup(admin, index, group) {
+    const selected = selectedPrivileges(admin);
+    const selectedCount = group.values.filter((value) => selected.includes(value)).length;
+    return (
+      <div className={`cpay-permission-group cpay-permission-group-${group.tone}`} key={group.label}>
+        <div className="cpay-permission-group-header">
+          <strong>{group.label}</strong>
           <Checkbox
-            key={privilege.value}
-            checked={selected.includes(privilege.value)}
-            onCheckedChange={(checked) => this.toggleAdminPrivilege(index, privilege.value, checked)}
-            label={privilege.text}
+            checked={selectedCount === group.values.length}
+            onCheckedChange={(checked) => this.toggleAdminPrivilegeGroup(index, group.values, checked)}
+            label={`${selectedCount} of ${group.values.length} selected`}
           />
-        ))}
+        </div>
+        <div className="cpay-permission-grid">
+          {group.values.map((privilege) => (
+            <Checkbox
+              key={privilege}
+              checked={selected.includes(privilege)}
+              onCheckedChange={(checked) => this.toggleAdminPrivilege(index, privilege, checked)}
+              label={privilegeLabel(privilege)}
+            />
+          ))}
+        </div>
       </div>
     );
+  }
+
+  renderAdminEditor(row) {
+    const admins = row.admins || [];
+    const index = this.state.activeAdminIndex ?? (admins.length ? 0 : null);
+    const admin = index == null ? null : admins[index];
+    if (!admin) {
+      return (
+        <aside className="cpay-merchant-side-panel">
+          <header className="cpay-merchant-side-header">
+            <h3>Add Administrator</h3>
+            <p>Create or select an administrator to configure access.</p>
+          </header>
+          <div className="cpay-merchant-side-empty">
+            <Icons.UsersIcon size={24} />
+            <Button variant="primary" className="ios-btn--sm" onClick={() => this.addAdmin()}>
+              <Icons.PlusIcon size={15} />Add Admin
+            </Button>
+          </div>
+        </aside>
+      );
+    }
+
+    const selected = selectedPrivileges(admin);
+    const allPrivilegesSelected = common.merchant_privileges.every((privilege) => selected.includes(privilege.value));
+    return (
+      <aside className="cpay-merchant-side-panel">
+        <header className="cpay-merchant-side-header">
+          <div>
+            <h3>{admin.name ? 'Edit Administrator' : 'Add Administrator'}</h3>
+            <p>Account details and merchant permissions.</p>
+          </div>
+          <button type="button" className="cpay-merchant-side-close" onClick={() => this.setState({ activeAdminIndex: null })} aria-label="Clear selected administrator">
+            <Icons.CloseIcon size={15} />
+          </button>
+        </header>
+        <div className="cpay-merchant-side-scroll">
+          <div className="cpay-merchant-side-section">
+            <h4>Administrator Information</h4>
+            <TextField id={`merchant-admin-name-${index}`} label="Full Name" value={admin.name || ''} onValueChange={(value) => this.updateAdmin(index, 'name', value)} />
+            <TextField id={`merchant-admin-email-${index}`} label="Email Address" type="email" value={admin.email || ''} onValueChange={(value) => this.updateAdmin(index, 'email', value)} />
+            <TextField id={`merchant-admin-phone-${index}`} label="Phone Number" value={admin.phone || ''} onValueChange={(value) => this.updateAdmin(index, 'phone', value)} />
+          </div>
+          <div className="cpay-merchant-side-section">
+            <h4>Account Settings</h4>
+            <div className="cpay-merchant-side-grid">
+              <Select id={`merchant-admin-status-${index}`} label="Status" value={admin.status || 'ACTIVE'} options={STATUS_OPTIONS} onValueChange={(value) => this.updateAdmin(index, 'status', value)} />
+              <Select id={`merchant-admin-role-${index}`} label="Role" value={admin.role || 'Finance Administrator'} options={ADMIN_ROLE_OPTIONS} onValueChange={(value) => this.updateAdmin(index, 'role', value)} />
+            </div>
+          </div>
+          <div className="cpay-merchant-side-section">
+            <div className="cpay-merchant-permission-title">
+              <h4>Permissions</h4>
+              <Checkbox
+                checked={allPrivilegesSelected}
+                onCheckedChange={(checked) => this.selectAllAdminPrivileges(index, checked)}
+                label="Select all"
+              />
+            </div>
+            {ADMIN_PRIVILEGE_GROUPS.map((group) => this.renderAdminPermissionGroup(admin, index, group))}
+          </div>
+          <div className="cpay-merchant-side-section">
+            <h4>Password Options</h4>
+            <Checkbox checked={Boolean(admin.generate_pw)} onCheckedChange={(value) => this.updateAdmin(index, 'generate_pw', value)} label="Generate temporary password" />
+            <Checkbox checked={Boolean(admin.delete)} onCheckedChange={(value) => this.updateAdmin(index, 'delete', value)} label="Mark administrator for deletion" />
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  renderSummary(row) {
+    const allowedApis = Array.isArray(row.allowed_apis) ? row.allowed_apis : [];
+    const admins = row.admins || [];
+    return (
+      <aside className="cpay-merchant-side-panel">
+        <header className="cpay-merchant-side-header">
+          <h3>Setup Summary</h3>
+          <p>Review the merchant profile before saving.</p>
+        </header>
+        <div className="cpay-merchant-summary">
+          <div>
+            <span>Merchant</span>
+            <strong>{row.name || 'Not set'}</strong>
+          </div>
+          <div>
+            <span>Short name</span>
+            <strong>{row.short_name || 'Not set'}</strong>
+          </div>
+          <div>
+            <span>Status</span>
+            <Badge tone={statusTone(row.status || 'ACTIVE')}>{row.status || 'ACTIVE'}</Badge>
+          </div>
+          <div>
+            <span>API services</span>
+            <strong>{allowedApis.length}</strong>
+          </div>
+          <div>
+            <span>Administrators</span>
+            <strong>{admins.length}</strong>
+          </div>
+        </div>
+        <div className="cpay-merchant-summary-actions">
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ selectedStep: 'access' })}>Review APIs</Button>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ selectedStep: 'admins' })}>Review admins</Button>
+        </div>
+      </aside>
+    );
+  }
+
+  renderActiveStep(row, errors) {
+    if (this.state.selectedStep === 'access') return this.renderAccess(row);
+    if (this.state.selectedStep === 'admins') return this.renderAdmins(row, errors);
+    return this.renderDetails(row, errors);
+  }
+
+  renderSidePanel(row) {
+    if (this.state.selectedStep === 'admins') return this.renderAdminEditor(row);
+    return this.renderSummary(row);
+  }
+
+  goToPreviousStep() {
+    const currentIndex = MERCHANT_FORM_STEPS.findIndex((step) => step.key === this.state.selectedStep);
+    if (currentIndex <= 0) return;
+    this.setState({ selectedStep: MERCHANT_FORM_STEPS[currentIndex - 1].key });
+  }
+
+  goToNextStep() {
+    const currentIndex = MERCHANT_FORM_STEPS.findIndex((step) => step.key === this.state.selectedStep);
+    if (currentIndex < 0 || currentIndex >= MERCHANT_FORM_STEPS.length - 1) return;
+    this.setState({ selectedStep: MERCHANT_FORM_STEPS[currentIndex + 1].key });
   }
 
   render() {
     const row = this.state.formd || emptyMerchantForm();
     const errors = this.state.errors;
-    const allowedApis = Array.isArray(row.allowed_apis) ? row.allowed_apis : [];
-    const admins = row.admins || [];
-    const adminColumns = [
-      { key: 'rn', header: '#', width: 40, render: (admin, index) => index + 1 },
-      { key: 'name', header: 'Name', render: (admin, index) => <TextField id={`merchant-admin-name-${index}`} label="" value={admin.name || ''} onValueChange={(value) => this.updateAdmin(index, 'name', value)} /> },
-      { key: 'email', header: 'Email', render: (admin, index) => <TextField id={`merchant-admin-email-${index}`} label="" value={admin.email || ''} onValueChange={(value) => this.updateAdmin(index, 'email', value)} /> },
-      { key: 'phone', header: 'Phone', render: (admin, index) => <TextField id={`merchant-admin-phone-${index}`} label="" value={admin.phone || ''} onValueChange={(value) => this.updateAdmin(index, 'phone', value)} /> },
-      { key: 'status', header: 'Status', render: (admin, index) => <Select id={`merchant-admin-status-${index}`} value={admin.status || 'ACTIVE'} options={STATUS_OPTIONS} onValueChange={(value) => this.updateAdmin(index, 'status', value)} /> },
-      { key: 'privileges', header: 'Privileges', render: (admin, index) => this.renderPrivilegeSelector(admin, index) },
-      { key: 'generate_pw', header: 'Generate PW', align: 'center', render: (admin, index) => <Checkbox checked={Boolean(admin.generate_pw)} onCheckedChange={(value) => this.updateAdmin(index, 'generate_pw', value)} /> },
-      { key: 'delete', header: strings.delete, align: 'center', render: (admin, index) => <Checkbox checked={Boolean(admin.delete)} onCheckedChange={(value) => this.updateAdmin(index, 'delete', value)} /> },
-    ];
+    const currentIndex = MERCHANT_FORM_STEPS.findIndex((step) => step.key === this.state.selectedStep);
+    const hasPrevious = currentIndex > 0;
+    const hasNext = currentIndex < MERCHANT_FORM_STEPS.length - 1;
+    const isEdit = String(this.props.title || '').startsWith('Edit');
+    const title = (
+      <span className="cpay-merchant-sheet-title">
+        <strong>{this.props.title}</strong>
+        <small>{isEdit ? 'Update account details, services, and access.' : 'Create a new merchant account and configure access.'}</small>
+      </span>
+    );
 
     return (
       <Sheet
         open={this.props.open}
         onClose={() => this.close()}
-        title={this.props.title}
+        title={title}
         size="xl"
+        className="cpay-merchant-sheet"
         footer={<>
-          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.close()}>{strings.close}</Button>
+          <Button variant="ghost" className="ios-btn--sm" onClick={() => this.close()}>Cancel</Button>
+          <div className="cpay-merchant-footer-spacer" />
+          <Button variant="ghost" className="ios-btn--sm" disabled={!hasPrevious} onClick={() => this.goToPreviousStep()}>Previous</Button>
+          <Button variant="ghost" className="ios-btn--sm" disabled={!hasNext} onClick={() => this.goToNextStep()}>Next</Button>
           <Button variant="primary" className="ios-btn--sm" onClick={() => this.saveRow()}>
-            <Icons.SettingsIcon size={15} />Save Merchant
+            <Icons.CheckIcon size={15} />Save Merchant
           </Button>
         </>}
       >
-        <div className="cpay-merchant-form">
-          {Object.values(errors).length ? <p className="cpay-form-error">{Object.values(errors)[0]}</p> : null}
-
-          <section className="cpay-merchant-form-section">
-            <header className="cpay-merchant-form-section-header">
-              <span><Icons.StoreIcon size={17} /></span>
-              <div>
-                <h3>Merchant Details</h3>
-                <p>Core account profile and operating status.</p>
-              </div>
-            </header>
-            <div className="cpay-merchant-form-grid">
-              <TextField id="merchant-name" label="Name" value={row.name || ''} onValueChange={(value) => this.setField('name', value)} invalid={Boolean(errors.name)} />
-              <TextField id="merchant-short-name" label="Short Name" value={row.short_name || ''} onValueChange={(value) => this.setField('short_name', value)} invalid={Boolean(errors.short_name)} />
-              <Select id="merchant-status" label="Status" value={row.status || 'ACTIVE'} options={STATUS_OPTIONS} onValueChange={(value) => this.setField('status', value)} invalid={Boolean(errors.status)} />
-              <Select id="merchant-account-type" label="Account Type" value={row.account_type || 'personal'} options={ACCOUNT_TYPE_OPTIONS} onValueChange={(value) => this.setField('account_type', value)} invalid={Boolean(errors.account_type)} />
-              <div className="cpay-merchant-form-toggle">
-                <Checkbox checked={Boolean(row.generate_new_keys)} onCheckedChange={(value) => this.setField('generate_new_keys', value)} label="Generate New Keys" />
-                <p>Automatically generate API keys for this merchant.</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="cpay-merchant-form-section">
-            <header className="cpay-merchant-form-section-header">
-              <span><Icons.LockIcon size={17} /></span>
-              <div>
-                <h3>API Access</h3>
-                <p>Select the products this merchant can use.</p>
-              </div>
-            </header>
-            <div className="cpay-api-access-grid">
-              {common.allowed_apis.map((api) => (
-                <div className={`cpay-api-access-option ${allowedApis.includes(api.value) ? 'cpay-api-access-option-active' : ''}`.trim()} key={api.value}>
-                  <Checkbox checked={allowedApis.includes(api.value)} onCheckedChange={(checked) => this.setAllowedApi(api.value, checked)} label={api.text} />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {(row.private_key || row.public_key) ? (
-            <section className="cpay-merchant-form-section">
-              <header className="cpay-merchant-form-section-header">
-                <span><Icons.ShieldIcon size={17} /></span>
-                <div>
-                  <h3>Merchant Keys</h3>
-                  <p>Existing public/private key material for this merchant.</p>
-                </div>
-              </header>
-              <div className="cpay-merchant-form-grid">
-                <TextArea id="merchant-public-key" label="Public Key" rows={3} value={row.public_key || ''} onValueChange={(value) => this.setField('public_key', value)} />
-                <TextArea id="merchant-private-key" label="Private Key" rows={3} value={row.private_key || ''} onValueChange={(value) => this.setField('private_key', value)} />
-              </div>
-            </section>
-          ) : null}
-
-          <section className="cpay-merchant-form-section">
-            <header className="cpay-merchant-form-section-header cpay-merchant-form-section-header-actions">
-              <span><Icons.UsersIcon size={17} /></span>
-              <div>
-                <h3>Merchant Admins</h3>
-                <p>Add the people who can administer this merchant.</p>
-              </div>
-              <div>
-                <Button variant="primary" className="ios-btn--sm" onClick={() => this.addAdmin()}>
-                  <Icons.PlusIcon size={15} />{strings.add_admin || 'Add Admin'}
-                </Button>
-                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.removeLastAdmin()}>Remove Admin</Button>
-              </div>
-            </header>
-            {errors.admins ? <p className="cpay-form-error">{errors.admins}</p> : null}
-            <div className="cpay-merchant-admin-table">
-              <Table columns={adminColumns} rows={admins} rowKey={(admin, index) => admin.id || admin.email || index} pageSize={50} emptyText="No merchant admins added yet." />
-            </div>
-          </section>
+        <div className="cpay-merchant-wizard">
+          {this.renderStepRail(row)}
+          <main className="cpay-merchant-wizard-main">
+            {Object.values(errors).length ? <p className="cpay-form-error">{Object.values(errors)[0]}</p> : null}
+            {this.renderActiveStep(row, errors)}
+          </main>
+          {this.renderSidePanel(row)}
         </div>
       </Sheet>
     );

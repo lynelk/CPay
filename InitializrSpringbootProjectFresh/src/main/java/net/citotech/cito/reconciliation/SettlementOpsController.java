@@ -1,6 +1,8 @@
 package net.citotech.cito.reconciliation;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -10,9 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(path = "/api/v2/admin/reconciliation/settlements")
 public class SettlementOpsController {
     private final SettlementOpsService service;
+    private final SettlementScheduleService scheduleService;
 
-    public SettlementOpsController(SettlementOpsService service) {
+    public SettlementOpsController(SettlementOpsService service, SettlementScheduleService scheduleService) {
         this.service = service;
+        this.scheduleService = scheduleService;
     }
 
     @PostMapping(path = "/open")
@@ -37,6 +41,31 @@ public class SettlementOpsController {
     public String close(@RequestParam("reference") String reference,
                         @RequestParam(value = "closedBy", defaultValue = "system") String closedBy) {
         return "closed=" + service.closeBatch(reference, closedBy);
+    }
+
+    @PostMapping(path = "/schedule")
+    public String schedule(@RequestParam("merchantId") long merchantId,
+                           @RequestParam("provider") String provider,
+                           @RequestParam("channel") String channel,
+                           @RequestParam("currency") String currency,
+                           @RequestParam(value = "minimumRetainedBalance", defaultValue = "0") String minimumRetainedBalance,
+                           @RequestParam(value = "sweepHour", defaultValue = "2") int sweepHour) {
+        scheduleService.configure(
+            merchantId,
+            provider,
+            channel,
+            currency,
+            new BigDecimal(minimumRetainedBalance),
+            sweepHour);
+        return "scheduled";
+    }
+
+    @PostMapping(path = "/run-due")
+    public List<SettlementSweepResult> runDue(@RequestParam(value = "date", required = false) String date,
+                                              @RequestParam(value = "hour", required = false) Integer hour) {
+        LocalDate runDate = date == null || date.trim().isEmpty() ? LocalDate.now() : LocalDate.parse(date);
+        int sweepHour = hour == null ? java.time.LocalTime.now().getHour() : hour;
+        return scheduleService.runDueSweeps(runDate, sweepHour);
     }
 }
 

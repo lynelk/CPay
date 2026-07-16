@@ -315,9 +315,9 @@ class MerchantModuleSmsC extends React.Component {
 
   detailRow(label, value) {
     return (
-      <div style={{ display: 'flex', gap: 'var(--ios-space-4)', padding: '8px 0', borderBottom: '0.5px solid var(--ios-separator)' }}>
-        <span style={{ minWidth: 140, color: 'var(--ios-text-secondary)', fontSize: 'var(--ios-fs-footnote)' }}>{label}</span>
-        <span style={{ flex: 1, minWidth: 0 }}>{value}</span>
+      <div className="cpay-detail-row">
+        <span className="cpay-detail-label">{label}</span>
+        <span className="cpay-detail-value">{value}</span>
       </div>
     );
   }
@@ -345,7 +345,7 @@ class MerchantModuleSmsC extends React.Component {
         {this.detailRow('Total Amount', `UGX ${row.total_amount || 0}`)}
         {this.detailRow('Created On', row.created_on)}
         {this.detailRow('Send Time', row.send_time)}
-        <h3 className="ios-section-title" style={{ marginTop: 'var(--ios-space-5)' }}>Recipients</h3>
+        <h3 className="cpay-sheet-section-title">Recipients</h3>
         <Table columns={columns} rows={recipients} rowKey={(r, i) => r.id || r.msisdn || r.phone || i} emptyText="No recipients to display." />
       </Sheet>
     );
