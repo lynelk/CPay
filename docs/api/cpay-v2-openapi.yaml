@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CPay Gateway API
-  version: 1.4.0
+  version: 1.5.0
   description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay.
 security:
   - CPayV2Signature: []
@@ -77,6 +77,77 @@ paths:
       responses:
         '200':
           description: Transaction status
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/accounts/validate:
+    post:
+      summary: Validate an account name before payout
+      operationId: validateAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountValidationRequest'
+      responses:
+        '200':
+          description: Account validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountValidationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/statements:
+    get:
+      summary: Export merchant statement rows
+      operationId: exportMerchantStatements
+      parameters:
+        - name: merchantNumber
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5000
+      responses:
+        '200':
+          description: Merchant statement export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementExportResponse'
+            text/csv:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /api/v2/admin/balances/sync-legacy:
@@ -241,6 +312,66 @@ components:
         message:
           type: string
         providerResponse:
+          type: string
+    AccountValidationRequest:
+      type: object
+      required: [merchantNumber, msisdn]
+      properties:
+        merchantNumber:
+          type: string
+        msisdn:
+          type: string
+    AccountValidationResponse:
+      type: object
+      properties:
+        msisdn:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+    StatementExportResponse:
+      type: object
+      properties:
+        merchantNumber:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        count:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatementRow'
+    StatementRow:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        createdOn:
+          type: string
+        gatewayId:
+          type: string
+        transactionType:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        merchantReference:
+          type: string
+        transactionId:
+          type: string
+        transactionStatus:
           type: string
     ApiErrorResponse:
       type: object

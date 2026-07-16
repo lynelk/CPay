@@ -9,22 +9,14 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.interfaces.RSAPublicKey;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
 import net.citotech.cito.Model.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -448,20 +440,10 @@ public class Api {
 
             //If it's stock account, this operation is not permitted
             String stock_account_number = getStockAccount.getSetting_value().trim();
-            Merchant float_stock_account = Common.getMerchantByAccountNumber(
-                    stock_account_number,
-                    jdbcTemplate);
-            
             if (merchant.getAccount_number().equals(stock_account_number)) {
                 return GeneralException
                     .getError("113", GeneralException.ERRORS_113);
             }
-            
-            //suspense_account
-            String suspense_account_number = getSuspenseAccount.getSetting_value().trim();
-            Merchant suspense_stock_account = Common.getMerchantByAccountNumber(
-                    suspense_account_number,
-                    jdbcTemplate);
             
             //First determine the gateway by msisdn
             String gateway_id = DoPayGateway.getGatewayIdByMsisdn(payee_number, jdbcTemplate);
@@ -579,9 +561,6 @@ public class Api {
             }
             
             String signatureBase64 = sObject.getString("signature");
-            String ourTxReference = !sObject.isNull("uniqueTransactionId") ? 
-                    sObject.getString("uniqueTransactionId") : "";
-            
             String reference = sObject.getString("reference");
             String merchant_number = sObject.getString("merchant_number");
             

@@ -45,6 +45,37 @@
           "raw": "{\n  \"merchantNumber\": \"{{merchantNumber}}\",\n  \"channel\": \"airtel_money\",\n  \"country\": \"UG\",\n  \"currency\": \"UGX\",\n  \"amount\": \"5000.00\",\n  \"reference\": \"PAYOUT-10001\",\n  \"description\": \"Customer payout\",\n  \"callbackUrl\": \"https://merchant.example/cpay/callback\",\n  \"payee\": {\"type\": \"MSISDN\", \"value\": \"256750000000\"}\n}"
         }
       }
+    },
+    {
+      "name": "Validate Account",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-CPay-Signature-Version", "value": "v2" },
+          { "key": "X-CPay-Timestamp", "value": "{{timestamp}}" },
+          { "key": "X-CPay-Nonce", "value": "{{nonce}}" },
+          { "key": "X-CPay-Signature", "value": "{{signature}}" }
+        ],
+        "url": "{{baseUrl}}/api/v2/accounts/validate",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"merchantNumber\": \"{{merchantNumber}}\",\n  \"msisdn\": \"256770000000\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Statement Export CSV",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-CPay-Signature-Version", "value": "v2" },
+          { "key": "X-CPay-Timestamp", "value": "{{timestamp}}" },
+          { "key": "X-CPay-Nonce", "value": "{{nonce}}" },
+          { "key": "X-CPay-Signature", "value": "{{signature}}" }
+        ],
+        "url": "{{baseUrl}}/api/v2/statements?merchantNumber={{merchantNumber}}&startDate=2026-07-01&endDate=2026-07-16&format=csv&limit=1000"
+      }
     }
   ]
 }

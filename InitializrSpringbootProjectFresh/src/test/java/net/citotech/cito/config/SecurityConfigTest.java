@@ -30,5 +30,22 @@ class SecurityConfigTest {
                 "http://[::1]:3000"
             );
     }
+
+    @Test
+    void corsUsesExplicitHeadersAndExposesOperationalHeaders() {
+        SecurityConfig securityConfig = new SecurityConfig();
+        ReflectionTestUtils.setField(securityConfig, "allowedOrigins", new String[] {"http://localhost:3000"});
+
+        CorsConfigurationSource source = securityConfig.corsConfigurationSource();
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v2/payments/collections");
+        CorsConfiguration configuration = source.getCorsConfiguration(request);
+
+        assertThat(configuration).isNotNull();
+        assertThat(configuration.getAllowedHeaders())
+            .contains("X-Request-ID", "X-CPay-Signature", "X-Idempotency-Key")
+            .doesNotContain("*");
+        assertThat(configuration.getExposedHeaders())
+            .contains("X-Request-ID", "Deprecation", "Sunset", "Link");
+    }
 }
 

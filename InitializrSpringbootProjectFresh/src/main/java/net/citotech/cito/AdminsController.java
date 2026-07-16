@@ -8,9 +8,7 @@ package net.citotech.cito;
 import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,9 +29,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.GetMapping;
 import net.citotech.cito.security.ColumnAllowlist;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -507,15 +503,7 @@ public class AdminsController {
         //First set session variable
         HttpSession session = request.getSession();
        
-        //Check if still logged in
-        User sessionUser;
-        //sessionUser = (User) session.getAttribute("user");
-
-        if (session.getAttribute("user") == null) {
-            return false;
-        } else {
-            return true;
-        }
+        return session.getAttribute("user") != null;
             
     }
     
@@ -525,15 +513,7 @@ public class AdminsController {
         //First set session variable
         HttpSession session = request.getSession();
        
-        //Check if still logged in
-        MerchantUser sessionUser;
-        //sessionUser = (User) session.getAttribute("user");
-
-        if (session.getAttribute("merchantUser") == null) {
-            return false;
-        } else {
-            return true;
-        }   
+        return session.getAttribute("merchantUser") != null;
     }
     
     /*
@@ -623,7 +603,7 @@ public class AdminsController {
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("admin_id", userId);
                             privParams.addValue("privilege", privilege);
-                            long privId = jdbcTemplate.update(sqlPrivileges, privParams);
+                            jdbcTemplate.update(sqlPrivileges, privParams);
                         }
                         
                         //Now insert audit Trail
@@ -758,7 +738,7 @@ public class AdminsController {
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("admin_id", userId);
                             privParams.addValue("privilege", privilege);
-                            long privId = jdbcTemplate.update(sqlPrivileges, privParams);
+                            jdbcTemplate.update(sqlPrivileges, privParams);
                         }
                         
                         //Now insert audit Trail
@@ -783,7 +763,6 @@ public class AdminsController {
                         return "success";
                     } catch (Exception e) {
                         //transactionManager.rollback(status);
-                        String eMessage = e.getMessage();
                         status.setRollbackOnly();
                         return GeneralException
                             .getError("102", GeneralException.ERRORS_102);
@@ -908,7 +887,7 @@ public class AdminsController {
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("admin_id", sObject.getString("id"));
                             privParams.addValue("privilege", privilege);
-                            long privId = jdbcTemplate.update(sqlPrivileges, privParams);
+                            jdbcTemplate.update(sqlPrivileges, privParams);
                         }
                         
                         //Now insert audit Trail
@@ -1049,7 +1028,7 @@ public class AdminsController {
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("admin_id", sObject.getString("id"));
                             privParams.addValue("privilege", privilege);
-                            long privId = jdbcTemplate.update(sqlPrivileges, privParams);
+                            jdbcTemplate.update(sqlPrivileges, privParams);
                         }
                         
                         //Now insert audit Trail
