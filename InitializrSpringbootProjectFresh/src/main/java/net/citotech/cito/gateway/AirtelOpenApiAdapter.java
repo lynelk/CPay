@@ -6,19 +6,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class AirtelOpenApiAdapter extends LegacyGatewayAdapter {
     public static final String CHANNEL_CODE = "airtel_open_api";
+    private final ProviderEndpointExecutionService executionService;
 
-    public AirtelOpenApiAdapter() {
+    public AirtelOpenApiAdapter(ProviderEndpointExecutionService executionService) {
         super(CHANNEL_CODE, "Airtel OpenAPI", "UG", "UGX", LegacyGatewayIds.AIRTEL_OPEN_API, "25675", "25670", "25676");
+        this.executionService = executionService;
     }
 
     @Override
     public GateWayResponse collect(PaymentGatewayRequest request) {
-        return ProviderEndpointClient.execute(CHANNEL_CODE, "Airtel OpenAPI", "COLLECT", request);
+        return executionService.execute(CHANNEL_CODE, "Airtel OpenAPI", "COLLECT", request);
     }
 
     @Override
     public GateWayResponse payout(PaymentGatewayRequest request) {
-        return ProviderEndpointClient.execute(CHANNEL_CODE, "Airtel OpenAPI", "PAYOUT", request);
+        return executionService.execute(CHANNEL_CODE, "Airtel OpenAPI", "PAYOUT", request);
     }
 }
 

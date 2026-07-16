@@ -5,7 +5,8 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "https://cpaytest.coresynergi.es:8443" },
-    { "key": "merchantNumber", "value": "1000000" }
+    { "key": "merchantNumber", "value": "1000000" },
+    { "key": "checkoutToken", "value": "replace-with-created-payment-link-token" }
   ],
   "item": [
     {
@@ -75,6 +76,39 @@
           { "key": "X-CPay-Signature", "value": "{{signature}}" }
         ],
         "url": "{{baseUrl}}/api/v2/statements?merchantNumber={{merchantNumber}}&startDate=2026-07-01&endDate=2026-07-16&format=csv&limit=1000"
+      }
+    },
+    {
+      "name": "Create Payment Link",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-CPay-Signature-Version", "value": "v2" },
+          { "key": "X-CPay-Timestamp", "value": "{{timestamp}}" },
+          { "key": "X-CPay-Nonce", "value": "{{nonce}}" },
+          { "key": "X-CPay-Signature", "value": "{{signature}}" },
+          { "key": "X-CPay-Idempotency-Key", "value": "{{idempotencyKey}}" }
+        ],
+        "url": "{{baseUrl}}/api/v2/payment-links",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"merchantNumber\": \"{{merchantNumber}}\",\n  \"country\": \"UG\",\n  \"currency\": \"UGX\",\n  \"amount\": \"25000.00\",\n  \"reference\": \"PLINK-10001\",\n  \"description\": \"Hosted checkout invoice\",\n  \"callbackUrl\": \"https://merchant.example/cpay/callback\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Hosted Checkout Pay",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/v2/checkout/{{checkoutToken}}/pay",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"payerAccount\": \"256770000000\",\n  \"channel\": \"mtn_momo\"\n}"
+        }
       }
     }
   ]

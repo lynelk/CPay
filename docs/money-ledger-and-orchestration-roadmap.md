@@ -34,10 +34,15 @@ Target states:
 
 Transitions should be explicit and rejected when invalid.
 
-## Migration Steps
+## Implemented Migration Steps
 
-1. Introduce `ledger_accounts` and `ledger_entries` alongside existing tables.
-2. Write new v2 payments through both legacy statement rows and ledger entries.
-3. Add a daily trial-balance job.
-4. Move dashboard balance reads to a materialized read model.
-5. Remove hardcoded provider balance columns after parity signoff.
+1. `V7__audit_roadmap_production_features.sql` introduces `ledger_accounts`, `ledger_transactions`, `ledger_entries`, reservations, and trial-balance run records.
+2. `DoubleEntryLedgerService` rejects unbalanced ledger groups and preserves idempotency by transaction reference.
+3. Risk authorization now runs before v2 orchestration provider calls.
+
+## Remaining Migration Steps
+
+1. Dual-write every v2 money movement through both legacy rows and normalized ledger entries.
+2. Add a daily trial-balance scheduler once finance signs off on the account taxonomy.
+3. Move dashboard balance reads to a materialized ledger read model.
+4. Remove hardcoded provider balance columns after parity signoff.

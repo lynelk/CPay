@@ -72,11 +72,11 @@ code {
 
 /* ─── CPay brand application shell ──────────────────────────────────────── */
 :root {
-  --cpay-brand-teal: #0E9BC3;
+  --cpay-brand-teal: #1198C4;
   --cpay-brand-gold: #F3B01B;
-  --cpay-brand-navy: #102A43;
-  --cpay-brand-slate: #64748B;
-  --cpay-brand-soft-gray: #F4F8FB;
+  --cpay-brand-navy: #163B5C;
+  --cpay-brand-slate: #667085;
+  --cpay-brand-soft-gray: #F5F7FA;
   --cpay-brand-white: #FFFFFF;
   --cpay-heading-font: Montserrat, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   --cpay-body-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -89,7 +89,7 @@ code {
   --cpay-fuse-text: var(--cpay-brand-navy);
   --cpay-fuse-muted: var(--cpay-brand-slate);
   --cpay-fuse-blue: var(--cpay-brand-teal);
-  --cpay-fuse-blue-dark: #087EA4;
+  --cpay-fuse-blue-dark: #0E7FA5;
   --cpay-fuse-dark: var(--cpay-brand-navy);
   --cpay-fuse-danger: #ff3b30;
   --cpay-fuse-green: #30d158;

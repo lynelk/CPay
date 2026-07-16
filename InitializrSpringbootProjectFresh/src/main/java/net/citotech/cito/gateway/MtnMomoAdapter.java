@@ -6,19 +6,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class MtnMomoAdapter extends LegacyGatewayAdapter {
     public static final String CHANNEL_CODE = "mtn_momo";
+    private final ProviderEndpointExecutionService executionService;
 
-    public MtnMomoAdapter() {
+    public MtnMomoAdapter(ProviderEndpointExecutionService executionService) {
         super(CHANNEL_CODE, "MTN MoMo", "UG", "UGX", LegacyGatewayIds.MTN_MOMO, "25677", "25678", "25676");
+        this.executionService = executionService;
     }
 
     @Override
     public GateWayResponse collect(PaymentGatewayRequest request) {
-        return ProviderEndpointClient.execute(CHANNEL_CODE, "MTN MoMo", "COLLECT", request);
+        return executionService.execute(CHANNEL_CODE, "MTN MoMo", "COLLECT", request);
     }
 
     @Override
     public GateWayResponse payout(PaymentGatewayRequest request) {
-        return ProviderEndpointClient.execute(CHANNEL_CODE, "MTN MoMo", "PAYOUT", request);
+        return executionService.execute(CHANNEL_CODE, "MTN MoMo", "PAYOUT", request);
     }
 }
 

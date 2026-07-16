@@ -1,5 +1,6 @@
 package net.citotech.cito;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import net.citotech.cito.Model.Balance;
@@ -10,11 +11,14 @@ import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.api.v2.dto.PaymentChannelResponse;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
+import net.citotech.cito.compliance.RiskDecisionService;
 import net.citotech.cito.gateway.GatewayCapabilities;
 import net.citotech.cito.gateway.LegacyGatewayAdapter;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.ledger.DoubleEntryLedgerService;
+import net.citotech.cito.ledger.LedgerEntryCommand;
 import net.citotech.cito.money.MoneyAmount;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -25,18 +29,25 @@ public class PaymentOrchestrationService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final PlatformTransactionManager transactionManager;
     private final PaymentChannelRegistry paymentChannelRegistry;
+    private final RiskDecisionService riskDecisionService;
+    private final DoubleEntryLedgerService ledgerService;
 
     public PaymentOrchestrationService(NamedParameterJdbcTemplate jdbcTemplate,
                                        PlatformTransactionManager transactionManager,
-                                       PaymentChannelRegistry paymentChannelRegistry) {
+                                       PaymentChannelRegistry paymentChannelRegistry,
+                                       RiskDecisionService riskDecisionService,
+                                       DoubleEntryLedgerService ledgerService) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
         this.paymentChannelRegistry = paymentChannelRegistry;
+        this.riskDecisionService = riskDecisionService;
+        this.ledgerService = ledgerService;
     }
 
     public PaymentResult collect(PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
         validatePaymentRequest(request, true);
         Merchant merchant = validateMerchant(request.getMerchantNumber(), verifiedMerchant, Common.API_MOBILE_MONEY_PAYIN);
+        riskDecisionService.authorizePayment(merchant, request, "COLLECT");
         String accountIdentifier = request.getPayer().getValue();
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
@@ -51,12 +62,14 @@ public class PaymentOrchestrationService {
         tx.setTx_cost(DoPayGateway.getCostOfInboundCharges(amount, chargeDetails));
 
         String legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager);
+        postLedgerEntries("COLLECT", request, merchant, gatewayId, tx, amount, tx.getCharges());
         return resultFromLegacy(request, tx, adapter, legacyResult);
     }
 
     public PaymentResult payout(PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
         validatePaymentRequest(request, false);
         Merchant merchant = validateMerchant(request.getMerchantNumber(), verifiedMerchant, Common.API_MOBILE_MONEY_PAYOUT);
+        riskDecisionService.authorizePayment(merchant, request, "PAYOUT");
         String accountIdentifier = request.getPayee().getValue();
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
@@ -74,6 +87,7 @@ public class PaymentOrchestrationService {
         tx.setTx_cost(DoPayGateway.getCostOfOutboundCharges(amount, chargeDetails));
 
         String legacyResult = Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager);
+        postLedgerEntries("PAYOUT", request, merchant, gatewayId, tx, amount, charges);
         return resultFromLegacy(request, tx, adapter, legacyResult);
     }
 
@@ -130,6 +144,54 @@ public class PaymentOrchestrationService {
         result.setMessage("Transaction submitted through compatibility payment engine");
         result.setProviderResponse(legacyResult);
         return result;
+    }
+
+    private void postLedgerEntries(String direction,
+                                   PaymentRequest request,
+                                   Merchant merchant,
+                                   String gatewayId,
+                                   Transaction tx,
+                                   Double amount,
+                                   Double charges) {
+        BigDecimal txAmount = MoneyAmount.of(String.valueOf(amount)).asBigDecimal();
+        BigDecimal feeAmount = charges == null || charges <= 0 ? BigDecimal.ZERO : MoneyAmount.of(String.valueOf(charges)).asBigDecimal();
+        String currency = request.getCurrency().trim().toUpperCase();
+        String providerAccount = "provider:" + gatewayId + ":" + currency + ":float";
+        String merchantAccount = "merchant:" + merchant.getId() + ":" + currency + ":" + ("PAYOUT".equals(direction) ? "payouts_payable" : "collections_payable");
+        String feeExpenseAccount = "merchant:" + merchant.getId() + ":" + currency + ":fees";
+        String feeRevenueAccount = "cpay:" + currency + ":fee_revenue";
+
+        List<LedgerEntryCommand> entries = new ArrayList<>();
+        if ("PAYOUT".equals(direction)) {
+            entries.add(ledgerEntry(merchantAccount, "Merchant payout payable", "MERCHANT_LIABILITY", "MERCHANT", merchant.getId(), "DR", txAmount, currency, tx.getTx_merchant_ref()));
+            entries.add(ledgerEntry(providerAccount, "Provider float", "PROVIDER_FLOAT", "PROVIDER", null, "CR", txAmount, currency, tx.getTx_merchant_ref()));
+            if (feeAmount.compareTo(BigDecimal.ZERO) > 0) {
+                entries.add(ledgerEntry(feeExpenseAccount, "Merchant transaction fees", "MERCHANT_EXPENSE", "MERCHANT", merchant.getId(), "DR", feeAmount, currency, tx.getTx_merchant_ref()));
+                entries.add(ledgerEntry(feeRevenueAccount, "CPay fee revenue", "REVENUE", "SYSTEM", null, "CR", feeAmount, currency, tx.getTx_merchant_ref()));
+            }
+        } else {
+            entries.add(ledgerEntry(providerAccount, "Provider float", "PROVIDER_FLOAT", "PROVIDER", null, "DR", txAmount, currency, tx.getTx_merchant_ref()));
+            entries.add(ledgerEntry(merchantAccount, "Merchant collection payable", "MERCHANT_LIABILITY", "MERCHANT", merchant.getId(), "CR", txAmount, currency, tx.getTx_merchant_ref()));
+        }
+
+        ledgerService.post(
+            "payment:" + tx.getTx_unique_id(),
+            "PAYMENT",
+            tx.getTx_unique_id(),
+            direction + " " + request.getReference(),
+            entries);
+    }
+
+    private LedgerEntryCommand ledgerEntry(String accountCode,
+                                           String accountName,
+                                           String accountType,
+                                           String ownerType,
+                                           Long ownerId,
+                                           String direction,
+                                           BigDecimal amount,
+                                           String currency,
+                                           String memo) {
+        return new LedgerEntryCommand(accountCode, accountName, accountType, ownerType, ownerId, direction, amount, currency, memo);
     }
 
     private Merchant validateMerchant(String merchantNumber, Merchant verifiedMerchant, String requiredApi) {

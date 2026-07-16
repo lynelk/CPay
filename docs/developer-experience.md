@@ -4,7 +4,7 @@ This guide captures the minimum merchant-facing developer experience expected fo
 
 ## SDK Targets
 
-Generated SDKs should be built from `docs/api/cpay-v2-openapi.yaml`.
+Generated SDKs should be built from `docs/api/cpay-v2-openapi.yaml`. The repository now also includes first-party signing helpers in `sdk/`.
 
 | Language | First Helper |
 |---|---|
@@ -18,11 +18,12 @@ SDKs should expose one helper that returns:
 
 ```json
 {
-  "X-CPay-Merchant": "merchant_123",
+  "X-CPay-Merchant-Number": "merchant_123",
+  "X-CPay-Signature-Version": "v2",
   "X-CPay-Timestamp": "2026-07-16T09:30:00Z",
   "X-CPay-Nonce": "nonce_123",
   "X-CPay-Signature": "base64-signature",
-  "X-Idempotency-Key": "idem_123"
+  "X-CPay-Idempotency-Key": "idem_123"
 }
 ```
 
