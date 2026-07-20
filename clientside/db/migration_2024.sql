@@ -112,7 +112,7 @@ INSERT IGNORE INTO `db_changes` (`query_id`, `sql_text`, `roll_back`) VALUES (
 -- ============================================================
 
 -- callback_tasks: tracks each outbound merchant webhook delivery
-CREATE TABLE `callback_tasks` (
+CREATE TABLE IF NOT EXISTS `callback_tasks` (
     `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `merchant_id`     BIGINT UNSIGNED NOT NULL,
     `transaction_id`  BIGINT UNSIGNED NOT NULL,
@@ -131,7 +131,7 @@ CREATE TABLE `callback_tasks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- callback_task_claims: distributed locking so multiple workers don't double-fire
-CREATE TABLE `callback_task_claims` (
+CREATE TABLE IF NOT EXISTS `callback_task_claims` (
     `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `task_id`      BIGINT UNSIGNED NOT NULL,
     `worker_name`  VARCHAR(100)    NOT NULL,
