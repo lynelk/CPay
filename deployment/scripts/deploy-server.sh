@@ -263,7 +263,8 @@ normalize_legacy_sql_file() {
   local target_file="$2"
 
   sed -E \
-    -e 's/ADD COLUMN IF NOT EXISTS /ADD COLUMN /g' \
+    -e 's/IF NOT EXISTS / /g' \
+    -e 's/CREATE INDEX IF NOT EXISTS /CREATE INDEX /g' \
     -e 's/CREATE TABLE IF NOT EXISTS /CREATE TABLE /g' \
     -e 's/DROP INDEX IF EXISTS /DROP INDEX /g' \
     -e 's/DROP TABLE IF EXISTS /DROP TABLE /g' \
