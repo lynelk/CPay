@@ -904,7 +904,7 @@ public class MerchantsController {
             String status = sObject.getString("status");
             String account_type = sObject.getString("account_type");
             String short_name = sObject.getString("short_name");
-            String id = sObject.getString("id");
+            String id = sObject.optString("id", "");
             Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
             JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
             String allowed_apis = Common.imploadStringJsonArray(allowed_apis_array);
@@ -970,7 +970,7 @@ public class MerchantsController {
                 
             
             MapSqlParameterSource parameterDropPrivileges = new MapSqlParameterSource();
-            parameterDropPrivileges.addValue("admin_id", sObject.getString("id"));
+            parameterDropPrivileges.addValue("admin_id", sObject.getInt("id"));
             
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             
@@ -1005,7 +1005,7 @@ public class MerchantsController {
                             JSONObject userObject = users.getJSONObject(i);
                             String name = userObject.getString("name");
                             String email = userObject.getString("email");
-                            String row_id = userObject.getString("id");
+                            String row_id = userObject.optString("id", "");
                             String phone =  userObject.getString("phone");
                             String status_ =  userObject.getString("status");
                             
@@ -1136,14 +1136,15 @@ public class MerchantsController {
             
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, ex.getMessage(), ex);
+            ex.printStackTrace();
             return GeneralException
-                    .getError("102", GeneralException.ERRORS_102);
+                    .getError("102", GeneralException.ERRORS_102+" "+ex.getMessage());
         }
     }
     
     private void sendEmailOnUpdatingMerchantUserPassword(MerchantUser u, String password){
         //Now send verification email
-        Setting emailContentManage = Common.getSettings("email_tmp_on_creating_merchant_user", jdbcTemplate);
+        Setting emailContentManage = Common.getSettings("email_tmp_on_editing_merchant_user", jdbcTemplate);
         Setting app_setting_app_url = Common.getSettings("app_setting_app_url", jdbcTemplate);
         String emailContent_ = emailContentManage.getSetting_value()
                 .replace("{name}", u.getName());
@@ -1154,6 +1155,8 @@ public class MerchantsController {
 
         final String subject = "Merchant User Credentials";
         final String to = u.getEmail();
+
+        Logger.getLogger(MerchantsController.class.getName()).log(Level.SEVERE, emailContent, emailContent);
 
         Thread thread = new Thread(){
             public void run(){

@@ -618,6 +618,11 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     
     public Token getToken() throws IOException {
         String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
+        Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.INFO,
+                "MTN Token File "+filePath+" has been created.",
+                "MTN Token File "+filePath+" has been created."
+                );
+
         File resource = new File(filePath);  
         if (resource.createNewFile()) {
             Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
@@ -659,6 +664,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             
             return t;
         } catch (JSONException ex) {
+            ex.printStackTrace();
             Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, null, ex.getMessage() );
             return null;
         }

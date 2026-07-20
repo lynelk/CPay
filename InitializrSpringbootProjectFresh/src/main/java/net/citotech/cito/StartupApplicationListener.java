@@ -70,8 +70,8 @@ public class StartupApplicationListener {
             .log(Level.INFO, "Database Applied "+counter, "");
         
         
-        updateDb();
-        validateGatewayConfig();
+        //updateDb();
+        //validateGatewayConfig();
 
     }
     

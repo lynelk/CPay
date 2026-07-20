@@ -678,11 +678,19 @@ public class DoPayGateway {
                 "production" : 
                 Common.getSettings("application_settings_state", jdbcTemplate)
                     .getSetting_value();
-        if (state.toLowerCase().equals("sandbox")) {
-            return sandboxRunPayGatewayDoPayIn(msisdn,
-                    amount, 
-                    ref,
-                    narrative);
+
+        String simulateTransactions = Common.getSettings("simulate_transactions", jdbcTemplate) == null ?
+                "yes" :
+                Common.getSettings("simulate_transactions", jdbcTemplate)
+                        .getSetting_value();
+
+        if (simulateTransactions.equalsIgnoreCase("yes")) {
+            if (state.equalsIgnoreCase("sandbox")) {
+                return sandboxRunPayGatewayDoPayIn(msisdn,
+                        amount,
+                        ref,
+                        narrative);
+            }
         }
         
         //Select the gateway
@@ -996,11 +1004,18 @@ public class DoPayGateway {
                 "production" : 
                 Common.getSettings("application_settings_state", jdbcTemplate)
                     .getSetting_value();
-        if (state.toLowerCase().equals("sandbox")) {
-            return sandboxRunPayGatewayDoPayOut(msisdn,
-                    amount, 
-                    ref,
-                    narrative);
+        String simulateTransactions = Common.getSettings("simulate_transactions", jdbcTemplate) == null ?
+                "yes" :
+                Common.getSettings("simulate_transactions", jdbcTemplate)
+                        .getSetting_value();
+
+        if (simulateTransactions.equalsIgnoreCase("yes")) {
+            if (state.toLowerCase().equals("sandbox")) {
+                return sandboxRunPayGatewayDoPayOut(msisdn,
+                        amount,
+                        ref,
+                        narrative);
+            }
         }
         
         //Select the gateway
@@ -1160,8 +1175,15 @@ public class DoPayGateway {
                 "production" : 
                 Common.getSettings("application_settings_state", jdbcTemplate)
                     .getSetting_value();
-        if (state.toLowerCase().equals("sandbox")) {
-            return sandboxrunPayGatewayDoCheckStatus(ref);
+        String simulateTransactions = Common.getSettings("simulate_transactions", jdbcTemplate) == null ?
+                "yes" :
+                Common.getSettings("simulate_transactions", jdbcTemplate)
+                        .getSetting_value();
+
+        if (simulateTransactions.equalsIgnoreCase("yes")) {
+            if (state.equalsIgnoreCase("sandbox")) {
+                return sandboxrunPayGatewayDoCheckStatus(ref);
+            }
         }
         
         //Select the gateway

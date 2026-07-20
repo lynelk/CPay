@@ -14,6 +14,13 @@
     "description": "Runtime state used by payment gateway logic."
   },
   {
+    "name": "simulate_transactions",
+    "label": "Simulate Transactions",
+    "setting_value": "yes",
+    "setting_group": "Application",
+    "description": "Set this to yes or no. If set to yes, it will simulate transactions (No provider API calls are made)."
+  },
+  {
     "name": "internal_app_access_auths",
     "label": "Internal App Access Auths",
     "setting_value": "",
@@ -411,6 +418,13 @@
     "setting_value": "Your CPay user has been created.",
     "setting_group": "Email",
     "description": "Email template sent when a merchant user is created."
+  },
+  {
+    "name": "email_tmp_on_editing_merchant_user",
+    "label": "Merchant Account Updated Email Template, Variables Include: {url} {name} {merchant_number} {username}, {password}",
+    "setting_value": "Your CPay user has been created.",
+    "setting_group": "Email",
+    "description": "Email template sent when a merchant account is updated."
   },
   {
     "name": "email_tmp_pw_reset",

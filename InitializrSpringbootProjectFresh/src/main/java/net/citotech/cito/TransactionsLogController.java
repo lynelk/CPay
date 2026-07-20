@@ -2615,7 +2615,7 @@ public class TransactionsLogController {
                 return result;
             }
         }  catch (Exception ex) {
-            
+            ex.printStackTrace();
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
@@ -3590,7 +3590,7 @@ public class TransactionsLogController {
             
             return result;
         }  catch (Exception ex) {
-            
+            ex.printStackTrace();
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
@@ -4795,6 +4795,7 @@ public class TransactionsLogController {
                             return "success";
                         } catch (Exception e) {
                             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+                            e.printStackTrace();
                             //transactionManager.rollback(status);
                             status.setRollbackOnly();
                             Logger.getLogger(AuthenticationController.class.getName())
@@ -5546,7 +5547,7 @@ public class TransactionsLogController {
     
     @PostMapping(path="/testSendPendingSmsCron")
 
-    @Scheduled(fixedDelay = 3000, initialDelay = 1000)
+    //@Scheduled(fixedDelay = 3000, initialDelay = 1000)
     public String testSendPendingSmsCron (/*@RequestBody String requestBody, 
             HttpServletRequest request, HttpServletResponse response*/) {
         //Set the response header

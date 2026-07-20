@@ -62,6 +62,67 @@ class MerchantsControllerTest {
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
+    void editMerchantAcceptsNumericMerchantAndAdminIds() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+            .thenReturn((List) List.of(), (List) List.of(), (List) List.of());
+
+        List<MapSqlParameterSource> updates = new ArrayList<>();
+        doAnswer(invocation -> {
+            updates.add(invocation.getArgument(1));
+            return 1;
+        }).when(jdbcTemplate).update(anyString(), any(MapSqlParameterSource.class));
+        doAnswer(invocation -> {
+            updates.add(invocation.getArgument(1));
+            return 1;
+        }).when(jdbcTemplate).update(anyString(), any(MapSqlParameterSource.class), any(KeyHolder.class));
+        when(jdbcTemplate.update(anyString(), org.mockito.ArgumentMatchers.<Map<String, ?>>any())).thenReturn(1);
+
+        PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+        TransactionStatus transactionStatus = mock(TransactionStatus.class);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(transactionStatus);
+
+        MerchantsController controller = new MerchantsController();
+        controller.jdbcTemplate = jdbcTemplate;
+        ReflectionTestUtils.setField(controller, "transactionManager", transactionManager);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("user", adminUser("UPDATE_MERCHANT"));
+
+        String response = controller.editMerchant("""
+            {
+              "id":44,
+              "name":"Joseph",
+              "short_name":"Joseph",
+              "status":"ACTIVE",
+              "account_type":"business",
+              "allowed_apis":["MOBILE_MONEY_PAYIN","MOBILE_MONEY_PAYOUT"],
+              "admins":[{
+                "privileges":["ACCESS_ADMIN"],
+                "phone":"0783086794",
+                "name":"Joseph Tabajjwa",
+                "id":76,
+                "generate_pw":false,
+                "delete":false,
+                "email":"joseph.tabajjwa@gmail.com",
+                "status":"ACTIVE"
+              }],
+              "generate_password":false,
+              "generate_new_keys":false,
+              "account_number":"1000000"
+            }
+            """, request, new MockHttpServletResponse());
+
+        JSONObject json = new JSONObject(response);
+        assertThat(json.getString("code")).isEqualTo("000");
+        assertThat(updates.stream().filter(params -> params.hasValue("id") && params.getValue("id") instanceof String)
+            .map(params -> (String) params.getValue("id")))
+            .contains("44")
+            .contains("76");
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
     void addMerchantPersistsSubmittedAdminEmail() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
