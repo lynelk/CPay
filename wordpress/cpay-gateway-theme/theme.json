@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/theme.json",
+  "version": 3,
+  "settings": {
+    "appearanceTools": true,
+    "layout": { "contentSize": "820px", "wideSize": "1180px" },
+    "color": {
+      "defaultPalette": false,
+      "palette": [
+        { "slug": "cpay-teal", "name": "CPay Teal", "color": "#1198C4" },
+        { "slug": "cpay-gold", "name": "CPay Gold", "color": "#F3B01B" },
+        { "slug": "cpay-navy", "name": "Deep Navy", "color": "#163B5C" },
+        { "slug": "cpay-slate", "name": "Slate Gray", "color": "#667085" },
+        { "slug": "cpay-soft", "name": "Soft Gray", "color": "#F5F7FA" },
+        { "slug": "white", "name": "White", "color": "#FFFFFF" }
+      ]
+    },
+    "typography": {
+      "fontFamilies": [
+        { "slug": "heading", "name": "Montserrat", "fontFamily": "Montserrat, Inter, Arial, sans-serif" },
+        { "slug": "body", "name": "Inter", "fontFamily": "Inter, Arial, sans-serif" }
+      ],
+      "fluid": true
+    },
+    "spacing": { "units": ["px", "rem", "%", "vw"] }
+  },
+  "styles": {
+    "color": { "background": "#FFFFFF", "text": "#163B5C" },
+    "typography": { "fontFamily": "var(--wp--preset--font-family--body)", "lineHeight": "1.65" },
+    "elements": {
+      "heading": { "typography": { "fontFamily": "var(--wp--preset--font-family--heading)", "fontWeight": "700", "lineHeight": "1.15" } },
+      "link": { "color": { "text": "#0E7FA5" } }
+    }
+  }
+}
