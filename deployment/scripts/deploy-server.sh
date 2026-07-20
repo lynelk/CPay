@@ -258,6 +258,18 @@ ensure_database() {
   fi
 }
 
+normalize_legacy_sql_file() {
+  local source_file="$1"
+  local target_file="$2"
+
+  sed -E \
+    -e 's/ADD COLUMN IF NOT EXISTS /ADD COLUMN /g' \
+    -e 's/CREATE TABLE IF NOT EXISTS /CREATE TABLE /g' \
+    -e 's/DROP INDEX IF EXISTS /DROP INDEX /g' \
+    -e 's/DROP TABLE IF EXISTS /DROP TABLE /g' \
+    "${source_file}" > "${target_file}"
+}
+
 import_legacy_database_scripts() {
   local legacy_dir="${SRC_DIR}/clientside/db"
   local import_order=(
@@ -266,12 +278,16 @@ import_legacy_database_scripts() {
     "cpayadmin.sql"
     "migration_2024.sql"
   )
+  local tmp_sql_file=""
 
   log "Importing legacy database SQL before Flyway"
   for sql_file in "${import_order[@]}"; do
     if [ -f "${legacy_dir}/${sql_file}" ]; then
       log "Applying ${sql_file}"
-      mysql -h localhost -u "${DB_USERNAME}" -p"${DB_PASSWORD}" "${CPAY_DB_NAME}" < "${legacy_dir}/${sql_file}"
+      tmp_sql_file="$(mktemp)"
+      normalize_legacy_sql_file "${legacy_dir}/${sql_file}" "${tmp_sql_file}"
+      mysql -h localhost -u "${DB_USERNAME}" -p"${DB_PASSWORD}" "${CPAY_DB_NAME}" < "${tmp_sql_file}"
+      rm -f "${tmp_sql_file}"
     else
       echo "Legacy SQL file not found: ${legacy_dir}/${sql_file}" >&2
       exit 1
@@ -299,7 +315,7 @@ ensure_user() {
 }
 
 sync_source() {
- git config --global --add safe.directory "${SRC_DIR}"
+  git config --global --add safe.directory "${SRC_DIR}"
 
   if [ ! -d "${SRC_DIR}/.git" ]; then
     rm -rf "${SRC_DIR}"
@@ -307,8 +323,13 @@ sync_source() {
   else
     git -C "${SRC_DIR}" remote set-url origin "${CPAY_REPO_URL}"
     git -C "${SRC_DIR}" fetch --prune origin
-    git -C "${SRC_DIR}" checkout "${CPAY_BRANCH}"
+    if git -C "${SRC_DIR}" rev-parse --verify "${CPAY_BRANCH}" >/dev/null 2>&1; then
+      git -C "${SRC_DIR}" checkout "${CPAY_BRANCH}"
+    else
+      git -C "${SRC_DIR}" checkout -B "${CPAY_BRANCH}" "origin/${CPAY_BRANCH}"
+    fi
     git -C "${SRC_DIR}" reset --hard "origin/${CPAY_BRANCH}"
+    git -C "${SRC_DIR}" clean -fdx
   fi
   chown -R "${CPAY_USER}:${CPAY_USER}" "${SRC_DIR}"
 }

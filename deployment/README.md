@@ -87,7 +87,7 @@ The wrapper file contains the exact environment values needed for the staging de
 
 ## Example: HTTPS deployment with Certbot
 
-If you want the script to request a Let’s Encrypt certificate through Certbot:
+If you want the script to request a Let’s Encrypt certificate through Certbot, set `CPAY_USE_CERTBOT=true` and provide a valid email address. The script will enable the Apache SSL proxy configuration, create the selected vhost, and let Certbot issue or renew the certificate for the requested domain.
 
 ```bash
 sudo CPAY_ENVIRONMENT=production \
@@ -124,6 +124,12 @@ sudo CPAY_ENVIRONMENT=production \
      CPAY_SSL_REDIRECT=true \
      bash /path/to/deploy-server.sh
 ```
+
+### Certbot notes
+
+- `CPAY_USE_CERTBOT=true` is the preferred option when the host is reachable on the public internet and the domain is already pointed to the server.
+- `CPAY_CERTBOT_STAGING=true` is useful for validation runs before switching to the production certificate endpoint.
+- The deployment script expects Apache `httpd` to be active and listening on the chosen HTTP/HTTPS ports so Certbot can complete the domain validation and renewal flow.
 
 ## Notes
 
