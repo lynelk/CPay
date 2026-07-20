@@ -298,7 +298,7 @@ import_legacy_database_scripts() {
 run_database_migrations() {
   log "Running Flyway migrations"
   pushd "${SRC_DIR}/InitializrSpringbootProjectFresh" >/dev/null
-  mvn -DskipTests org.flywaydb:flyway-maven-plugin:11.0.0:migrate \
+  mvn -DskipTests org.flywaydb:flyway-maven-plugin:migrate \
     -Dflyway.url="${DB_URL}" \
     -Dflyway.user="${DB_USERNAME}" \
     -Dflyway.password="${DB_PASSWORD}" \
