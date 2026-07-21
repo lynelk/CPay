@@ -196,6 +196,12 @@ mysql_exec() {
   mysql -h localhost -u "${DB_USERNAME}" -p"${DB_PASSWORD}" "${CPAY_DB_NAME}" "$@"
 }
 
+quote_env_value() {
+  local value="$1"
+  value=${value//\'/\'"\'"\'}
+  printf "'%s'" "${value}"
+}
+
 ensure_env_file() {
   mkdir -p "${ENV_DIR}" "${LOCK_DIR}" "${BIN_DIR}" "${WWW_DIR}" "${SRC_DIR}"
   chmod 750 "${ENV_DIR}"
@@ -235,17 +241,6 @@ load_env_file() {
   set -a
   . "${ENV_FILE}"
   set +a
-}
-
-env_value() {
-  local key="$1"
-  grep -E "^${key}=" "${ENV_FILE}" | tail -n 1 | cut -d= -f2-
-}
-
-quote_env_value() {
-  local value="$1"
-  value=${value//\'/\'"\'"\'}
-  printf "'%s'" "${value}"
 }
 
 ensure_database() {
@@ -355,7 +350,6 @@ build_app() {
   popd >/dev/null
 
   chown -R "${CPAY_USER}:${CPAY_USER}" "${BIN_DIR}" "${WWW_DIR}"
-  # Grant read and execute permissions to all users (including httpd/apache) for web assets
   chmod -R 755 "${WWW_DIR}"
 }
 
@@ -385,19 +379,30 @@ EOF
 }
 
 enable_apache_proxy_modules() {
-  local apache_module_conf="/etc/httpd/conf.modules.d/00-proxy.conf"
+  local apache_module_conf="/etc/httpd/conf.modules.d/10-cpay-proxy.conf"
   mkdir -p "$(dirname "${apache_module_conf}")"
 
-  cat > "${apache_module_conf}" <<EOF
-LoadModule proxy_module modules/mod_proxy.so
-LoadModule proxy_http_module modules/mod_proxy_http.so
-LoadModule rewrite_module modules/mod_rewrite.so
-LoadModule headers_module modules/mod_headers.so
-LoadModule mime_module modules/mod_mime.so
+  cat > "${apache_module_conf}" <<'EOF'
+<IfModule !proxy_module>
+    LoadModule proxy_module modules/mod_proxy.so
+</IfModule>
+<IfModule !proxy_http_module>
+    LoadModule proxy_http_module modules/mod_proxy_http.so
+</IfModule>
+<IfModule !rewrite_module>
+    LoadModule rewrite_module modules/mod_rewrite.so
+</IfModule>
+<IfModule !headers_module>
+    LoadModule headers_module modules/mod_headers.so
+</IfModule>
+<IfModule !mime_module>
+    LoadModule mime_module modules/mod_mime.so
+</IfModule>
 EOF
 }
 
 write_apache_config() {
+  # Write base HTTP configuration file
   cat > "${APACHE_FILE}" <<EOF
 <VirtualHost *:${CPAY_HTTP_PORT}>
     ServerName ${CPAY_DOMAIN}
@@ -412,8 +417,20 @@ write_apache_config() {
         AllowOverride All
         Require all granted
 
-        AddType application/javascript .js
-        AddType text/css .css
+        # Move Rewrite engine inside Directory context so REQUEST_FILENAME resolves correctly
+        RewriteEngine On
+        RewriteBase /
+
+        # 1. Don't touch actual files or directories on disk
+        RewriteCond %{REQUEST_FILENAME} -f [OR]
+        RewriteCond %{REQUEST_FILENAME} -d
+        RewriteRule ^ - [L]
+
+        # 2. Don't rewrite backend API paths
+        RewriteCond %{REQUEST_URI} !^/(api|auth|admins|audittrail|merchants|settings|status|transactions|actuator)(/.*)?$
+
+        # 3. Direct all SPA client-side routes to index.html
+        RewriteRule ^ index.html [L]
     </Directory>
 
     ProxyPreserveHost On
@@ -437,19 +454,12 @@ write_apache_config() {
     ProxyPass /actuator http://127.0.0.1:${CPAY_BACKEND_PORT}/actuator
     ProxyPassReverse /actuator http://127.0.0.1:${CPAY_BACKEND_PORT}/actuator
 
-    RewriteEngine On
-    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
-
-    RewriteCond %{REQUEST_URI} !^/(api|auth|admins|audittrail|merchants|settings|status|transactions|actuator)(/.*)?$
-    RewriteRule ^ /index.html [L]
-
     RequestHeader set X-Forwarded-Proto "http"
     RequestHeader set X-Forwarded-Port "${CPAY_HTTP_PORT}"
 </VirtualHost>
 EOF
 
+  # Run Certbot if requested
   if [ "${CPAY_USE_CERTBOT}" = "true" ]; then
     if [ -z "${CPAY_CERTBOT_EMAIL}" ]; then
       echo "CPAY_CERTBOT_EMAIL is required when CPAY_USE_CERTBOT=true." >&2
@@ -471,27 +481,37 @@ EOF
     CPAY_SSL_KEY_FILE="/etc/letsencrypt/live/${CPAY_DOMAIN}/privkey.pem"
   fi
 
+  # If explicit SSL certificates exist, configure HTTPS VirtualHost
   if [ -n "${CPAY_SSL_CERT_FILE}" ] && [ -n "${CPAY_SSL_KEY_FILE}" ]; then
-    cat > "${APACHE_FILE}.ssl" <<EOF
+    cat > "${APACHE_FILE}" <<EOF
+<IfModule mod_ssl.c>
 <VirtualHost *:${CPAY_HTTPS_PORT}>
     ServerName ${CPAY_DOMAIN}
     DocumentRoot "${WWW_DIR}"
     DirectoryIndex index.html
 
-    SSLEngine on
-    SSLCertificateFile ${CPAY_SSL_CERT_FILE}
-    SSLCertificateKeyFile ${CPAY_SSL_KEY_FILE}
-
-    ErrorLog /var/log/httpd/${SERVICE_NAME}_ssl_error.log
-    CustomLog /var/log/httpd/${SERVICE_NAME}_ssl_access.log combined
+    ErrorLog /var/log/httpd/${SERVICE_NAME}_error.log
+    CustomLog /var/log/httpd/${SERVICE_NAME}_access.log combined
 
     <Directory "${WWW_DIR}">
         Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
 
-        AddType application/javascript .js
-        AddType text/css .css
+        # Move Rewrite engine inside Directory context so REQUEST_FILENAME resolves correctly
+        RewriteEngine On
+        RewriteBase /
+
+        # 1. Don't touch actual files or directories on disk
+        RewriteCond %{REQUEST_FILENAME} -f [OR]
+        RewriteCond %{REQUEST_FILENAME} -d
+        RewriteRule ^ - [L]
+
+        # 2. Don't rewrite backend API paths
+        RewriteCond %{REQUEST_URI} !^/(api|auth|admins|audittrail|merchants|settings|status|transactions|actuator)(/.*)?$
+
+        # 3. Direct all SPA client-side routes to index.html
+        RewriteRule ^ index.html [L]
     </Directory>
 
     ProxyPreserveHost On
@@ -515,28 +535,14 @@ EOF
     ProxyPass /actuator http://127.0.0.1:${CPAY_BACKEND_PORT}/actuator
     ProxyPassReverse /actuator http://127.0.0.1:${CPAY_BACKEND_PORT}/actuator
 
-    RewriteEngine On
-    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
-
-    RewriteCond %{REQUEST_URI} !^/(api|auth|admins|audittrail|merchants|settings|status|transactions|actuator)(/.*)?$
-    RewriteRule ^ /index.html [L]
-
     RequestHeader set X-Forwarded-Proto "https"
     RequestHeader set X-Forwarded-Port "${CPAY_HTTPS_PORT}"
-</VirtualHost>
-EOF
-  fi
 
-  if [ "${CPAY_SSL_REDIRECT}" = "true" ] && [ -n "${CPAY_SSL_CERT_FILE}" ] && [ -n "${CPAY_SSL_KEY_FILE}" ]; then
-    cat > "${APACHE_FILE}" <<EOF
-<VirtualHost *:${CPAY_HTTP_PORT}>
-    ServerName ${CPAY_DOMAIN}
-    RewriteEngine On
-    RewriteCond %{HTTPS} !=on
-    RewriteRule ^/(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+    Include /etc/letsencrypt/options-ssl-apache.conf
+    SSLCertificateFile ${CPAY_SSL_CERT_FILE}
+    SSLCertificateKeyFile ${CPAY_SSL_KEY_FILE}
 </VirtualHost>
+</IfModule>
 EOF
   fi
 
