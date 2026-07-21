@@ -302,7 +302,8 @@ run_database_migrations() {
     -Dflyway.url="${DB_URL}" \
     -Dflyway.user="${DB_USERNAME}" \
     -Dflyway.password="${DB_PASSWORD}" \
-    -Dflyway.locations="classpath:db/migration"
+    -Dflyway.locations="classpath:db/migration" \
+    -Dflyway.baselineOnMigrate=true
   popd >/dev/null
 }
 
@@ -352,7 +353,10 @@ build_app() {
   mvn -DskipTests package
   install -m 640 "target/${JAR_NAME}" "${BIN_DIR}/cpay.jar"
   popd >/dev/null
+
   chown -R "${CPAY_USER}:${CPAY_USER}" "${BIN_DIR}" "${WWW_DIR}"
+  # Grant read and execute permissions to all users (including httpd/apache) for web assets
+  chmod -R 755 "${WWW_DIR}"
 }
 
 write_systemd_service() {
@@ -389,6 +393,7 @@ LoadModule proxy_module modules/mod_proxy.so
 LoadModule proxy_http_module modules/mod_proxy_http.so
 LoadModule rewrite_module modules/mod_rewrite.so
 LoadModule headers_module modules/mod_headers.so
+LoadModule mime_module modules/mod_mime.so
 EOF
 }
 
@@ -403,9 +408,12 @@ write_apache_config() {
     CustomLog /var/log/httpd/${SERVICE_NAME}_access.log combined
 
     <Directory "${WWW_DIR}">
-        Options Indexes FollowSymLinks
+        Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
+
+        AddType application/javascript .js
+        AddType text/css .css
     </Directory>
 
     ProxyPreserveHost On
@@ -430,11 +438,12 @@ write_apache_config() {
     ProxyPassReverse /actuator http://127.0.0.1:${CPAY_BACKEND_PORT}/actuator
 
     RewriteEngine On
-    RewriteRule ^/index\.html$ - [L]
+    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
     RewriteCond %{REQUEST_URI} !^/(api|auth|admins|audittrail|merchants|settings|status|transactions|actuator)(/.*)?$
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule . /index.html [L]
+    RewriteRule ^ /index.html [L]
 
     RequestHeader set X-Forwarded-Proto "http"
     RequestHeader set X-Forwarded-Port "${CPAY_HTTP_PORT}"
@@ -477,9 +486,12 @@ EOF
     CustomLog /var/log/httpd/${SERVICE_NAME}_ssl_access.log combined
 
     <Directory "${WWW_DIR}">
-        Options Indexes FollowSymLinks
+        Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
+
+        AddType application/javascript .js
+        AddType text/css .css
     </Directory>
 
     ProxyPreserveHost On
@@ -504,11 +516,12 @@ EOF
     ProxyPassReverse /actuator http://127.0.0.1:${CPAY_BACKEND_PORT}/actuator
 
     RewriteEngine On
-    RewriteRule ^/index\.html$ - [L]
+    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
     RewriteCond %{REQUEST_URI} !^/(api|auth|admins|audittrail|merchants|settings|status|transactions|actuator)(/.*)?$
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule . /index.html [L]
+    RewriteRule ^ /index.html [L]
 
     RequestHeader set X-Forwarded-Proto "https"
     RequestHeader set X-Forwarded-Port "${CPAY_HTTPS_PORT}"
@@ -567,7 +580,7 @@ restart_and_verify() {
     fi
     sleep 2
   done
-  journalctl -u cpay -n 120 --no-pager || true
+  journalctl -u "${SERVICE_NAME}" -n 120 --no-pager || true
   echo "CPay backend did not become healthy." >&2
   exit 1
 }
