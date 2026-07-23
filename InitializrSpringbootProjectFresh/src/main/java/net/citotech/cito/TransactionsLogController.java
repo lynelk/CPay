@@ -3029,7 +3029,7 @@ public class TransactionsLogController {
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
             
-            String merchant_id = sObject.getString("merchant_id");
+            BigInteger merchant_id = sObject.getBigInteger("merchant_id");
             String pageSize = Common.jsonText(sObject, "pageSize", "");
             String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
@@ -3147,7 +3147,7 @@ public class TransactionsLogController {
             
             return resJson.toString();    
         } catch (JSONException ex) {
-            
+            ex.printStackTrace();
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);

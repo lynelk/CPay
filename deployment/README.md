@@ -153,3 +153,18 @@ If you are deploying staging and it uses port `8082`, use:
 ```bash
 curl http://127.0.0.1:8082/status/health
 ```
+
+
+## Running an update
+For staging, run the following command:
+```
+sudo CPAY_ENVIRONMENT=staging ./run-update-deploy.sh
+
+```
+Adjust the environment accordingly.
+
+
+## Check whether the service is running
+```
+sudo journalctl -u cpay-staging.service -f
+```
