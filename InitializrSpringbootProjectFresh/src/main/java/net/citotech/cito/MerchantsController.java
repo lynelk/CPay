@@ -1161,9 +1161,12 @@ public class MerchantsController {
         Thread thread = new Thread(){
             public void run(){
                 SendMail mail = new SendMail();
-                mail.sendSimpleMessage(to, 
-                subject, 
-                emailContent);
+                mail.sendSimpleMessage(
+                    to,
+                    subject,
+                    emailContent,
+                    jdbcTemplate
+                );
             }
         };
         thread.start();
