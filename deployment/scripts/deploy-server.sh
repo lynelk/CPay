@@ -261,7 +261,6 @@ normalize_legacy_sql_file() {
     -e 's/ADD COLUMN IF NOT EXISTS /ADD COLUMN /g' \
     -e 's/CREATE INDEX IF NOT EXISTS /CREATE INDEX /g' \
     -e 's/DROP INDEX IF EXISTS /DROP INDEX /g' \
-    -e 's/DROP TABLE IF EXISTS /DROP TABLE /g' \
     "${source_file}" > "${target_file}"
 }
 
