@@ -770,7 +770,7 @@ public class MerchantsController {
                 return result;
             }
         }  catch (Exception ex) {
-            
+            ex.printStackTrace();
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
