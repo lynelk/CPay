@@ -365,8 +365,8 @@ public class TransactionsLogController {
         String sqlSelect = "SELECT b.batch_id, b.name as beneficiary_name, b.account, "
                 + " b.amount as beneficiary_amount, b.account_type, b.id as beneficiary_long_id, "
                 + " b.status as beneficiary_status, b.id as benficiary_id, t.*  "
-                + " FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" AS b "
-                + " LEFT JOIN "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" AS t "
+                + " FROM `"+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+"` AS b "
+                + " LEFT JOIN `"+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+"` AS t "
                 + " ON b.id = t.beneficiary_id "
                 + " WHERE b.batch_id = :batch_id";
         

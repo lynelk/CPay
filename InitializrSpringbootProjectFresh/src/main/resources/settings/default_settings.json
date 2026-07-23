@@ -434,6 +434,13 @@
     "description": "Email template sent for password reset requests."
   },
   {
+    "name": "email_tmp_merchant_pw_reset_otp",
+    "label": "Password Reset OTP Email Template to Merchant User",
+    "setting_value": "Hi {name}\nYour password Code is {verification_code}.\nProvide this to complete the reset process.\n",
+    "setting_group": "Email",
+    "description": "Email template sent for password reset requests."
+  },
+  {
     "name": "email_tmp_on_password_reset_done",
     "label": "Password Reset Done Email Template",
     "setting_value": "Your CPay password has been reset.",

@@ -7,7 +7,7 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 export CPAY_ENVIRONMENT="${CPAY_ENVIRONMENT:-staging}"
 export CPAY_REPO_URL="${CPAY_REPO_URL:-https://github.com/lynelk/CPay.git}"
-export CPAY_BRANCH="${CPAY_BRANCH:-frontend/ios-design-system}"
+export CPAY_BRANCH="${CPAY_BRANCH:-main}"
 export CPAY_APP_ROOT="${CPAY_APP_ROOT:-/opt/cpay}"
 export CPAY_USER="${CPAY_USER:-cpay}"
 
@@ -65,6 +65,9 @@ ensure_java_21() {
   if [ -n "${candidate_dir}" ]; then
     export JAVA_HOME="${candidate_dir}"
     export PATH="${JAVA_HOME}/bin:${PATH}"
+    if command -v alternatives >/dev/null 2>&1; then
+      alternatives --set java "${candidate_dir}/bin/java" >/dev/null 2>&1 || true
+    fi
   else
     echo "Error: Java 21 runtime not found." >&2
     exit 1

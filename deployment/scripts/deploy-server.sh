@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CPAY_REPO_URL="${CPAY_REPO_URL:-https://github.com/lynelk/CPay.git}"
-CPAY_BRANCH="${CPAY_BRANCH:-frontend/ios-design-system}"
+CPAY_BRANCH="${CPAY_BRANCH:-main}"
 CPAY_ENVIRONMENT="${CPAY_ENVIRONMENT:-production}"
 CPAY_APP_ROOT="${CPAY_APP_ROOT:-/opt/cpay}"
 CPAY_DOMAIN="${CPAY_DOMAIN:-${CPAY_ENVIRONMENT}.cpay.coresynergi.es}"
@@ -338,8 +338,10 @@ build_app() {
   log "Building frontend"
   pushd "${SRC_DIR}/clientside" >/dev/null
   npm ci
-  npm run build
-  rm -rf "${WWW_DIR:?}/"*
+  npm run build --if-present
+  # Ensure a completely clean target directory by removing and recreating it.
+  rm -rf "${WWW_DIR}"
+  mkdir -p "${WWW_DIR}"
   rsync -a --delete build/ "${WWW_DIR}/"
   popd >/dev/null
 

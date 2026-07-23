@@ -545,20 +545,22 @@ public class AuthenticationController {
             
             if (retVal > 0) {
                 //Now send verification email
-                Setting emailContentManage = Common.getSettings("email_tmp_pw_reset", jdbcTemplate);
+                Setting emailContentManage = Common.getSettings("email_tmp_merchant_pw_reset_otp", jdbcTemplate);
                 String emailContent_ = emailContentManage.getSetting_value()
                         .replace("{name}", u.getName());
                 final String emailContent = emailContent_.replace("{verification_code}", verification_code);
                 
-                final String subject = "Password Reset Request";
+                final String subject = "Password Reset OTP";
                 final String to = u.getEmail();
                 
                 Thread thread = new Thread(){
                     public void run(){
                         SendMail mail = new SendMail();
                         mail.sendSimpleMessage(to, 
-                        subject, 
-                        emailContent);
+                                subject,
+                                emailContent,
+                                jdbcTemplate
+                        );
                     }
                 };
                 thread.start();
