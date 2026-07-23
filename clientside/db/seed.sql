@@ -22,14 +22,14 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- To generate a hash for a different password, run PasswordUtils.hashPassword("...")
 -- from a Java scratch class, or (equivalent) Python:
 --   pip install bcrypt
---   python3 -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt(10)).decode())"
+--   python3 -c "import bcrypt; print(bcrypt.hashpw(b'ChangeMe123!', bcrypt.gensalt(10)).decode())"
 
 INSERT IGNORE INTO `admins`
     (`name`, `email`, `phone`, `status`, `password`,
      `email_verification_code`, `email_verification_sent_on`)
 VALUES
     ('Super Admin', 'admin@example.com', '+256700000000', 'ACTIVE',
-     '$2a$10$9.PG9sY.T4f3IMe22x0a5.V7s89z4Y2u2A/iYxx18D0/a2u2a/iYy', -- ChangeMe123!
+     '$2b$10$0qrVe.dDv8AXsbt8kKlPPOBef7k/eaPpOc32wszIuphro37H.9LIi', -- ChangeMe123!
      '', NOW());
 
 -- ---------------------------------------------------------------------

@@ -269,8 +269,6 @@ import_legacy_database_scripts() {
   local import_order=(
     "structure.sql"
     "seed.sql"
-    #"initialize.sql"
-    #"cpayadmin.sql"
     "migration_2024.sql"
   )
   local tmp_sql_file=""
@@ -552,37 +550,12 @@ EOF
   systemctl enable httpd
 }
 
-seed_admin_if_missing() {
-  local seed_hash
-  seed_hash="e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7"
-  mysql_exec "${CPAY_DB_NAME}" <<SQL
-INSERT IGNORE INTO admins (name, email, phone, status, password)
-VALUES ('Super Admin', 'svcs@coresynergi.es', '256701438948', 'ACTIVE', '${seed_hash}');
-SET @super_id = (SELECT id FROM admins WHERE email='svcs@coresynergi.es');
-INSERT IGNORE INTO admin_privileges (admin_id, privilege) VALUES
-  (@super_id, 'ACCESS_ADMIN'),
-  (@super_id, 'CREATE_ADMIN'),
-  (@super_id, 'UPDATE_ADMIN'),
-  (@super_id, 'DELETE_ADMIN'),
-  (@super_id, 'ACCESS_AUDITTRAIL'),
-  (@super_id, 'ACCESS_TRANSACTION_LOG'),
-  (@super_id, 'ACCESS_SMS_LOG'),
-  (@super_id, 'CREATE_MERCHANT'),
-  (@super_id, 'UPDATE_MERCHANT'),
-  (@super_id, 'DELETE_MERCHANT'),
-  (@super_id, 'CREDIT_MERCHANT'),
-  (@super_id, 'SEND_SMS'),
-  (@super_id, 'CREATE_BATCH_TX'),
-  (@super_id, 'RESOLVE_TRANSACTIONS');
-SQL
-}
 
 restart_and_verify() {
   systemctl restart "${SERVICE_NAME}"
   systemctl restart httpd
   for _ in $(seq 1 60); do
     if curl -fsS "http://127.0.0.1:${CPAY_BACKEND_PORT}/status/health" >/dev/null 2>&1; then
-      seed_admin_if_missing
       curl -fsS "http://127.0.0.1:${CPAY_BACKEND_PORT}/status/health"
       return 0
     fi
