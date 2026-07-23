@@ -32,7 +32,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     String mode = "TEST";
     String global_url = "https://ericssonbasicapi1.azure-api.net";
     String env = "mtnuganda";//sandbox
-    String base_currency = "UGX";
+    String base_currency = "EUR";
     String segment = "collection";//disbursement";
     
     static public String BALANCE_TYPE = "mtnmm_balance";

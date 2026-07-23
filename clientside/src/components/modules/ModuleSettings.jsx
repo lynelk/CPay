@@ -23,7 +23,7 @@ const ENVIRONMENT_OPTIONS = [
     { value: 'development', label: 'Development' },
 ];
 
-const CURRENCY_OPTIONS = ['UGX', 'KES', 'USD', 'TZS'].map(value => ({ value, label: value }));
+const CURRENCY_OPTIONS = ['EUR','UGX', 'KES', 'USD', 'TZS'].map(value => ({ value, label: value }));
 
 function settingName(row) {
     return String(row?.name || row?.setting_key || row?.label || '');
