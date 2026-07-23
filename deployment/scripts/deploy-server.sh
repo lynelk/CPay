@@ -268,8 +268,9 @@ import_legacy_database_scripts() {
   local legacy_dir="${SRC_DIR}/clientside/db"
   local import_order=(
     "structure.sql"
-    "initialize.sql"
-    "cpayadmin.sql"
+    "seed.sql"
+    #"initialize.sql"
+    #"cpayadmin.sql"
     "migration_2024.sql"
   )
   local tmp_sql_file=""
