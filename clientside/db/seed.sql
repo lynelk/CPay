@@ -29,7 +29,7 @@ INSERT IGNORE INTO `admins`
      `email_verification_code`, `email_verification_sent_on`)
 VALUES
     ('Super Admin', 'admin@example.com', '+256700000000', 'ACTIVE',
-     '$2b$10$cTGA64pS9QMHUTOQ3g1u0.1UvMX5bcmlVQaUDW0s685lwH.Ruj1EW',
+     '$2a$10$9.PG9sY.T4f3IMe22x0a5.V7s89z4Y2u2A/iYxx18D0/a2u2a/iYy', -- ChangeMe123!
      '', NOW());
 
 -- ---------------------------------------------------------------------
@@ -76,6 +76,22 @@ VALUES
      'Failed login attempts before rate-limit lockout', 'SECURITY'),
     ('Login Rate-Limit Window (minutes)', 'login_rate_limit_window_minutes', '15',
      'Window used by the IP rate limiter in authenticatedUser()', 'SECURITY');
+
+-- ---------------------------------------------------------------------
+-- 5. Migration tracking table (table: db_changes)
+-- ---------------------------------------------------------------------
+-- This table is essential for the migration_2024.sql script to track
+-- which changes have already been applied.
+
+CREATE TABLE IF NOT EXISTS `db_changes` (
+    `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `query_id` varchar(255) NOT NULL DEFAULT '',
+    `sql_text` text,
+    `roll_back` text,
+    `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `query_id` (`query_id`)
+) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
 -- 4. (Optional) Sample merchant for local/staging environments only
