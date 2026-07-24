@@ -433,7 +433,7 @@ public class SettingsController {
             return resJson.toString();
             
         } catch (JSONException ex) {
-            
+            ex.printStackTrace();
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, ex.getMessage(), ex);
             return GeneralException
@@ -687,9 +687,9 @@ public class SettingsController {
         if (!validation.equals("success")) {
             return validation;
         }
-        
+
         //Now add the user to database
-        String sql = "INSERT INTO "+Common.DB_TABLE_SETTINGS+" "
+        String sql = "INSERT IGNORE INTO "+Common.DB_TABLE_SETTINGS+" "
             +" SET `name`=:name,"
             +" `label`=:label, "
             +" `setting_value`=:setting_value,"
@@ -772,9 +772,9 @@ public class SettingsController {
         if (!validation.equals("success")) {
             return validation;
         }
-        
+
         //Now add the user to database
-        String sql = "INSERT INTO "+Common.DB_MERCHANTS_SETTINGS+" "
+        String sql = "INSERT IGNORE INTO "+Common.DB_MERCHANTS_SETTINGS+" "
             +" SET `name`=:name,"
             +" `merchant_id`=:merchant_id, "
             +" `label`=:label, "

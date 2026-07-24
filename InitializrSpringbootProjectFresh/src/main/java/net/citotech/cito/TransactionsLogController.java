@@ -4665,7 +4665,7 @@ public class TransactionsLogController {
                                     Double charges = DoPayGateway.getCustomerOutboundCharges(b.getAmount(), gwChargingDetails);
                                     Double tx_cost = DoPayGateway.getCostOfOutboundCharges(b.getAmount(), gwChargingDetails);
 
-                                    //First check if their is enough balance.
+                                    //First check if there is enough balance.
                                     ArrayList<Balance> balances = Common.getMerchantBalances(p.getMerchant_id()+"", 
                                         jdbcTemplate);
                                     String insufficient_b_error = "";
@@ -4680,7 +4680,7 @@ public class TransactionsLogController {
                                         }
                                     }
                                     if (!insufficient_b_error.isEmpty()) {
-                                        //Now add the user to database
+                                        //Now update the transaction to database
                                         String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                                             +" SET `reason`=:reason "

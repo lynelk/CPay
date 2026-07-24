@@ -162,8 +162,10 @@ public class AuthenticationController {
                 public void run(){
                     SendMail mail = new SendMail();
                     mail.sendSimpleMessage(u.getEmail(),
-                    "You have logged into Cito Account",
-                    "This is to let you know that you have logged into your account Cito Account.");
+                        "You have logged into Cito Account",
+                        "This is to let you know that you have logged into your account Cito Account.",
+                            jdbcTemplate
+                    );
                 }
             };
             thread.start();
@@ -171,7 +173,7 @@ public class AuthenticationController {
             return resJson.toString();
 
         } catch (JSONException ex) {
-
+            ex.printStackTrace();
             Logger.getLogger(AuthenticationController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
@@ -258,13 +260,13 @@ public class AuthenticationController {
             u_.put("privileges", privileges_array);
             
             resJson.put("user", u_);
-            
+
             //Send mail on login
             Thread thread = new Thread(){
                 public void run(){
                     SendMail mail = new SendMail();
-                    mail.sendSimpleMessage(u.getEmail(), 
-                    "You have logged in", 
+                    mail.sendSimpleMessage(u.getEmail(),
+                    "You have logged in",
                     "This is to let you know that you have logged into your account.");
                 }
             };
@@ -273,7 +275,7 @@ public class AuthenticationController {
             return resJson.toString();
             
         } catch (JSONException ex) {
-            
+            ex.printStackTrace();
             Logger.getLogger(AuthenticationController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);

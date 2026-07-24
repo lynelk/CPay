@@ -820,7 +820,7 @@ public class AdminsController {
             String phone = sObject.getString("phone");
             String status = sObject.getString("status");
             String password = sObject.getString("password");
-            String id = sObject.getString("id");
+            BigInteger id = sObject.getBigInteger("id");
             User newUser = new User();
             newUser.setEmail(email);
             newUser.setName(name);
@@ -829,7 +829,7 @@ public class AdminsController {
             
             JSONArray privileges = sObject.getJSONArray("privileges");
             //Check if this user already exists.
-            User u  = getUserByEmail(email, id);
+            User u  = getUserByEmail(email, String.valueOf(id));
             if (u != null) {
                 return GeneralException
                     .getError("109", String.format(GeneralException.ERRORS_109, "User ", email));
@@ -852,7 +852,7 @@ public class AdminsController {
                 +" `privilege`=:privilege ";
             
             MapSqlParameterSource parameterDropPrivileges = new MapSqlParameterSource();
-            parameterDropPrivileges.addValue("admin_id", sObject.getString("id"));
+            parameterDropPrivileges.addValue("admin_id", sObject.getBigInteger("id"));
             
             //Map<String, Object> parameters = new HashMap<String, Object>();
             
@@ -865,7 +865,7 @@ public class AdminsController {
                 parameters.addValue("password", Common.getSha256EncodedString(password));
             }
             parameters.addValue("name", name);
-            parameters.addValue("id", sObject.getString("id"));
+            parameters.addValue("id", sObject.getBigInteger("id"));
             
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
@@ -885,7 +885,7 @@ public class AdminsController {
                         for (int i=0; i < privileges.length(); i++) {
                             String privilege = privileges.getString(i);
                             privParams = new MapSqlParameterSource();
-                            privParams.addValue("admin_id", sObject.getString("id"));
+                            privParams.addValue("admin_id", sObject.getBigInteger("id"));
                             privParams.addValue("privilege", privilege);
                             jdbcTemplate.update(sqlPrivileges, privParams);
                         }
@@ -904,6 +904,7 @@ public class AdminsController {
                         
                         return "success";
                     } catch (Exception e) {
+                        e.printStackTrace();
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
                         return GeneralException
@@ -920,7 +921,7 @@ public class AdminsController {
                 return result;
             }
         }  catch (Exception ex) {
-            
+            ex.printStackTrace();
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
@@ -961,7 +962,7 @@ public class AdminsController {
             String phone = sObject.getString("phone");
             String status = sObject.getString("status");
             String password = sObject.getString("password");
-            long id =  /*sessionUser.getMerchant_id();*/sObject.getLong("id");
+            BigInteger id =  /*sessionUser.getMerchant_id();*/sObject.getBigInteger("id");
             MerchantUser newUser = new MerchantUser();
             newUser.setEmail(email);
             newUser.setName(name);
@@ -993,7 +994,7 @@ public class AdminsController {
                 +" `privilege`=:privilege ";
             
             MapSqlParameterSource parameterDropPrivileges = new MapSqlParameterSource();
-            parameterDropPrivileges.addValue("admin_id", sObject.getString("id"));
+            parameterDropPrivileges.addValue("admin_id", sObject.getBigInteger("id"));
             
             //Map<String, Object> parameters = new HashMap<String, Object>();
             
@@ -1006,7 +1007,7 @@ public class AdminsController {
                 parameters.addValue("password", Common.getSha256EncodedString(password));
             }
             parameters.addValue("name", name);
-            parameters.addValue("id", sObject.getString("id"));
+            parameters.addValue("id", sObject.getBigInteger("id"));
             
             
             TransactionTemplate template = new TransactionTemplate(transactionManager);
@@ -1026,7 +1027,7 @@ public class AdminsController {
                         for (int i=0; i < privileges.length(); i++) {
                             String privilege = privileges.getString(i);
                             privParams = new MapSqlParameterSource();
-                            privParams.addValue("admin_id", sObject.getString("id"));
+                            privParams.addValue("admin_id", sObject.getBigInteger("id"));
                             privParams.addValue("privilege", privilege);
                             jdbcTemplate.update(sqlPrivileges, privParams);
                         }

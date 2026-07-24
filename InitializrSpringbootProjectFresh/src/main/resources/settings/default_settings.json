@@ -21,6 +21,13 @@
     "description": "Set this to yes or no. If set to yes, it will simulate transactions (No provider API calls are made)."
   },
   {
+    "name": "use_merchant_provider_credentials",
+    "label": "Use Merchant Provider Credentials",
+    "setting_value": "false",
+    "setting_group": "Application",
+    "description": "If enabled, provider credentials (MTN, Airtel, M-Pesa) are read from each merchant's own settings instead of the global settings."
+  },
+  {
     "name": "internal_app_access_auths",
     "label": "Internal App Access Auths",
     "setting_value": "",

@@ -26,5 +26,498 @@
     "setting_value": "",
     "setting_group": "Merchant",
     "description": "Merchant-specific SMS customer charge override; blank uses the global SMS customer charge."
+  },
+
+  {
+    "name": "gw_mtn_api_url",
+    "label": "MTN API URL",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live API base URL for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_url_sandbox",
+    "label": "MTN Sandbox API URL",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox API base URL for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_env",
+    "label": "MTN API Environment",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN environment value; use live for production or sandbox/test values as configured."
+  },
+  {
+    "name": "gw_mtn_api_base_currency",
+    "label": "MTN Base Currency",
+    "setting_value": "UGX",
+    "setting_group": "MTN",
+    "description": "MTN live transaction currency for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_base_currency_sandbox",
+    "label": "MTN Sandbox Base Currency",
+    "setting_value": "UGX",
+    "setting_group": "MTN",
+    "description": "MTN sandbox transaction currency for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_id",
+    "label": "MTN Collections User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live collections API user ID for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_key",
+    "label": "MTN Collections User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live collections API user key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_collections_subscription_key",
+    "label": "MTN Collections Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live collections subscription key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_id",
+    "label": "MTN Disbursements User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live disbursements API user ID for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_key",
+    "label": "MTN Disbursements User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live disbursements API user key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_subscription_key",
+    "label": "MTN Disbursements Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN live disbursements subscription key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_id_sandbox",
+    "label": "MTN Sandbox Collections User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox collections API user ID for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_collections_user_key_sandbox",
+    "label": "MTN Sandbox Collections User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox collections API user key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_collections_subscription_key_sandbox",
+    "label": "MTN Sandbox Collections Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox collections subscription key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_id_sandbox",
+    "label": "MTN Sandbox Disbursements User ID",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox disbursements API user ID for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_user_key_sandbox",
+    "label": "MTN Sandbox Disbursements User Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox disbursements API user key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_subscription_key_sandbox",
+    "label": "MTN Sandbox Disbursements Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "MTN sandbox disbursements subscription key for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_inbound_payment",
+    "label": "MTN Cost Of Inbound Payment",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Internal MTN inbound payment cost amount for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_inbound_payment_method",
+    "label": "MTN Cost Of Inbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN inbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_outbound_payment",
+    "label": "MTN Cost Of Outbound Payment",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Internal MTN outbound payment cost amount for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_cost_of_outbound_payment_method",
+    "label": "MTN Cost Of Outbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN outbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_inbound",
+    "label": "MTN Customer Inbound Charge",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Customer charge for MTN inbound payments for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_inbound_method",
+    "label": "MTN Customer Inbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN inbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_outbound",
+    "label": "MTN Customer Outbound Charge",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Customer charge for MTN outbound payments for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_outbound_method",
+    "label": "MTN Customer Outbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "MTN outbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_mtn_api_customer_charge_method",
+    "label": "MTN Customer Charge Method",
+    "setting_value": "flat",
+    "setting_group": "MTN",
+    "description": "Default MTN customer charge method for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_min_amount",
+    "label": "MTN Minimum Amount",
+    "setting_value": "0",
+    "setting_group": "MTN",
+    "description": "Minimum MTN transaction amount for this merchant."
+  },
+  {
+    "name": "gw_mtn_api_max_amount",
+    "label": "MTN Maximum Amount",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "Maximum MTN transaction amount; blank means no configured limit."
+  },
+
+  {
+    "name": "gw_airtelmoney_use_open_api",
+    "label": "Airtel Use Open API",
+    "setting_value": "no",
+    "setting_group": "Airtel",
+    "description": "Use yes to route Airtel through the Open API implementation."
+  },
+  {
+    "name": "gw_airtelmoney_api_url",
+    "label": "Airtel API URL",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money API base URL for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_username",
+    "label": "Airtel API Username",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money API username for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_password",
+    "label": "Airtel API Password",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money API password for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_pin",
+    "label": "Airtel API PIN",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money Open API PIN for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_public_key",
+    "label": "Airtel API Public Key",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel Money Open API public key for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_disbursement_account",
+    "label": "Airtel Disbursement Account",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel disbursement account for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_collections_account",
+    "label": "Airtel Collections Account",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Airtel collections account for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_inbound_payment",
+    "label": "Airtel Cost Of Inbound Payment",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Internal Airtel inbound payment cost amount for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_inbound_payment_method",
+    "label": "Airtel Cost Of Inbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel inbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_outbound_payment",
+    "label": "Airtel Cost Of Outbound Payment",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Internal Airtel outbound payment cost amount for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_cost_of_outbound_payment_method",
+    "label": "Airtel Cost Of Outbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel outbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_inbound",
+    "label": "Airtel Customer Inbound Charge",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Customer charge for Airtel inbound payments for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_inbound_method",
+    "label": "Airtel Customer Inbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel inbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_outbound",
+    "label": "Airtel Customer Outbound Charge",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Customer charge for Airtel outbound payments for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_outbound_method",
+    "label": "Airtel Customer Outbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Airtel outbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_airtelmoney_api_customer_charge_method",
+    "label": "Airtel Customer Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Airtel",
+    "description": "Default Airtel customer charge method for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_min_amount",
+    "label": "Airtel Minimum Amount",
+    "setting_value": "0",
+    "setting_group": "Airtel",
+    "description": "Minimum Airtel transaction amount for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_api_max_amount",
+    "label": "Airtel Maximum Amount",
+    "setting_value": "",
+    "setting_group": "Airtel",
+    "description": "Maximum Airtel transaction amount; blank means no configured limit."
+  },
+
+  {
+    "name": "gw_safaricom_api_url",
+    "label": "M-Pesa API URL",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa API base URL for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_version",
+    "label": "M-Pesa API Version",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa API version for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_env",
+    "label": "M-Pesa API Environment",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa environment: sandbox or production."
+  },
+  {
+    "name": "gw_safaricom_api_shortcode",
+    "label": "M-Pesa Collections Shortcode",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa collections (paybill/till) shortcode for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_shortcode_disbursement",
+    "label": "M-Pesa Disbursement Shortcode",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa disbursement shortcode for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_password",
+    "label": "M-Pesa Passkey",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa collections passkey for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_consumer_key",
+    "label": "M-Pesa Collections Consumer Key",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa collections consumer key for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_consumer_secret",
+    "label": "M-Pesa Collections Consumer Secret",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa collections consumer secret for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_consumer_key_disbursement",
+    "label": "M-Pesa Disbursement Consumer Key",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa disbursement consumer key for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_consumer_secret_disbursement",
+    "label": "M-Pesa Disbursement Consumer Secret",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa disbursement consumer secret for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_initiator_username_disbursement",
+    "label": "M-Pesa Disbursement Initiator Username",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa disbursement initiator username for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_initiator_pw_disbursement",
+    "label": "M-Pesa Disbursement Initiator Password",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Safaricom M-Pesa disbursement initiator password for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_inbound_payment",
+    "label": "M-Pesa Cost Of Inbound Payment",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Internal M-Pesa inbound payment cost amount for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_inbound_payment_method",
+    "label": "M-Pesa Cost Of Inbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "M-Pesa inbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_outbound_payment",
+    "label": "M-Pesa Cost Of Outbound Payment",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Internal M-Pesa outbound payment cost amount for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_cost_of_outbound_payment_method",
+    "label": "M-Pesa Cost Of Outbound Payment Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "M-Pesa outbound cost method: flat or percentage."
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_inbound",
+    "label": "M-Pesa Customer Inbound Charge",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Customer charge for M-Pesa inbound payments for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_inbound_method",
+    "label": "M-Pesa Customer Inbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "M-Pesa inbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_outbound",
+    "label": "M-Pesa Customer Outbound Charge",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Customer charge for M-Pesa outbound payments for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_outbound_method",
+    "label": "M-Pesa Customer Outbound Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "M-Pesa outbound customer charge method: flat or percentage."
+  },
+  {
+    "name": "gw_safaricom_api_customer_charge_method",
+    "label": "M-Pesa Customer Charge Method",
+    "setting_value": "flat",
+    "setting_group": "Safaricom",
+    "description": "Default M-Pesa customer charge method for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_min_amount",
+    "label": "M-Pesa Minimum Amount",
+    "setting_value": "0",
+    "setting_group": "Safaricom",
+    "description": "Minimum M-Pesa transaction amount for this merchant."
+  },
+  {
+    "name": "gw_safaricom_api_max_amount",
+    "label": "M-Pesa Maximum Amount",
+    "setting_value": "",
+    "setting_group": "Safaricom",
+    "description": "Maximum M-Pesa transaction amount; blank means no configured limit."
   }
 ]

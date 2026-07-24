@@ -11,25 +11,29 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ---------------------------------------------------------------------
 -- 1. Bootstrap super-admin account (table: admins)
 -- ---------------------------------------------------------------------
--- Password: "ChangeMe123!"  (BCrypt hash below — already matches the
--- PasswordUtils.verifyPassword() BCrypt path, so no legacy-hash upgrade
--- will trigger on first login).
+-- The password hash below is a placeholder and MUST be replaced by your
+-- deployment script. Do not commit a real password hash to version control.
 --
--- IMPORTANT: this is a bootstrap credential only. Log in once, then
--- change the password (or better, rotate it immediately after deploy
--- via an authenticated password-change endpoint, not this script).
---
--- To generate a hash for a different password, run PasswordUtils.hashPassword("...")
--- from a Java scratch class, or (equivalent) Python:
+-- To generate a hash for a new password, you can use a script.
+-- For example, in Python:
 --   pip install bcrypt
---   python3 -c "import bcrypt; print(bcrypt.hashpw(b'ChangeMe123!', bcrypt.gensalt(10)).decode())"
+--   python3 -c "import bcrypt; print(bcrypt.hashpw(b'YourSecurePasswordHere!', bcrypt.gensalt(10)).decode())"
+--
+-- Your deployment process should:
+-- 1. Generate a new password hash from a secure source (like an env variable or secrets manager).
+-- 2. Replace the '__ADMIN_PASSWORD_HASH__' placeholder in this script with the real hash.
+-- 3. Run the modified SQL script.
+--
+-- Example using `sed` on Linux/macOS:
+--   export ADMIN_PASS_HASH=$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'YourSecurePasswordHere!', bcrypt.gensalt(10)).decode())")
+--   sed "s|__ADMIN_PASSWORD_HASH__|${ADMIN_PASS_HASH}|" seed.sql | mysql -u... -p... your_db
 
 INSERT IGNORE INTO `admins`
     (`name`, `email`, `phone`, `status`, `password`,
      `email_verification_code`, `email_verification_sent_on`)
 VALUES
     ('Super Admin', 'admin@example.com', '+256700000000', 'ACTIVE',
-     '$2b$10$0qrVe.dDv8AXsbt8kKlPPOBef7k/eaPpOc32wszIuphro37H.9LIi', -- ChangeMe123!
+     '__ADMIN_PASSWORD_HASH__', -- MUST be replaced by deploy script
      '', NOW());
 
 -- ---------------------------------------------------------------------

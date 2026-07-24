@@ -1503,6 +1503,33 @@ public class Common {
     }
     
     /*
+     * Returns true if the system is configured to use merchant-specific provider credentials.
+     * When true, float_stock, suspense, and revenue account postings are skipped.
+     */
+    public static boolean useMerchantProviderCredentials(NamedParameterJdbcTemplate jdbcTemplate) {
+        Setting s = Common.getSettings("use_merchant_provider_credentials", jdbcTemplate);
+        return s != null && "true".equalsIgnoreCase(s.getSetting_value().trim());
+    }
+
+    /*
+     * Returns gateway tracking accounts as [float_stock, suspense_stock, revenue_stock].
+     * Returns [null, null, null] when useMerchantCreds is true (accounts not used).
+     * Each element is assigned exactly once so callers can treat them as effectively final.
+     */
+    public static Merchant[] resolveGatewayAccounts(boolean useMerchantCreds,
+            NamedParameterJdbcTemplate jdbcTemplate) {
+        if (useMerchantCreds) return new Merchant[]{null, null, null};
+        Setting stock = Common.getSettings("float_stock_account", jdbcTemplate);
+        Setting suspense = Common.getSettings("suspense_account", jdbcTemplate);
+        Setting revenue = Common.getSettings("revenue_account", jdbcTemplate);
+        return new Merchant[]{
+            Common.getMerchantByAccountNumber(stock.getSetting_value().trim(), jdbcTemplate),
+            Common.getMerchantByAccountNumber(suspense.getSetting_value().trim(), jdbcTemplate),
+            Common.getMerchantByAccountNumber(revenue.getSetting_value().trim(), jdbcTemplate)
+        };
+    }
+
+    /*
     * DoPayIn makes a payin transaction.
     */
     public static String doPayIn(Transaction newTx,
@@ -1515,30 +1542,16 @@ public class Common {
         jdbcTemplate);
         if (tx != null) {
             return GeneralException
-                .getError("121", String.format(GeneralException.ERRORS_121, 
+                .getError("121", String.format(GeneralException.ERRORS_121,
                         newTx.getTx_merchant_ref()));
         }
-        
-        Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
-        Setting getRevenueAccount = Common.getSettings("revenue_account", jdbcTemplate);
-        Setting getSuspenseAccount = Common.getSettings("suspense_account", jdbcTemplate);
-        
-        String stock_account_number = getStockAccount.getSetting_value().trim();
-        String suspense_account_number = getSuspenseAccount.getSetting_value().trim();
-        String revenue_account_number = getRevenueAccount.getSetting_value().trim();
-        
-        Merchant float_stock_account = Common.getMerchantByAccountNumber(
-                    stock_account_number,
-                    jdbcTemplate);
-        
-        Merchant suspense_stock_account = Common.getMerchantByAccountNumber(
-                    suspense_account_number,
-                    jdbcTemplate);
-        
-        Merchant revenue_stock_account = Common.getMerchantByAccountNumber(
-                    revenue_account_number,
-                    jdbcTemplate);
-        
+
+        boolean useMerchantCreds = Common.useMerchantProviderCredentials(jdbcTemplate);
+        Merchant[] gwAccounts = Common.resolveGatewayAccounts(useMerchantCreds, jdbcTemplate);
+        Merchant float_stock_account = gwAccounts[0];
+        Merchant suspense_stock_account = gwAccounts[1];
+        Merchant revenue_stock_account = gwAccounts[2];
+
         String[] bType = Balance.getBalanceTypeByGatewayId(newTx.getGateway_id());
             String balance_type = bType[0];
 
@@ -1687,6 +1700,7 @@ public class Common {
                                     return res_string;
                                 }
 
+                                if (newTx.getCharges() > 0) {
                                 newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
                                 newTxS.setAmount(newTx.getCharges());
@@ -1699,15 +1713,18 @@ public class Common {
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("DR");
 
-                                res_string = Common.recordStatementTx(newTxS, 
+                                res_string = Common.recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
                                     return res_string;
                                 }
+                                } // end if (charges > 0)
 
+                                if (!useMerchantCreds) {
                                 //Now record this revenue account.
+                                if (newTx.getCharges() > 0) {
                                 newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
                                 newTxS.setAmount(newTx.getCharges());
@@ -1720,13 +1737,14 @@ public class Common {
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("CR");
 
-                                res_string = Common.recordStatementTx(newTxS, 
+                                res_string = Common.recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
                                     return res_string;
-                                } 
+                                }
+                                } // end if (charges > 0)
 
                                 //Now increase stock account.
                                 newTxS = new Statement();
@@ -1741,15 +1759,16 @@ public class Common {
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("CR");
 
-                                res_string = Common.recordStatementTx(newTxS, 
+                                res_string = Common.recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
                                     return res_string;
                                 }
+                                } // end if (!useMerchantCreds)
                             }
-                            
+
                             return "success";
                         } catch (Exception e) {
                             //transactionManager.rollback(status);
@@ -1794,27 +1813,13 @@ public class Common {
             Merchant merchant,
             NamedParameterJdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager) {
-        
-        Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
-        Setting getRevenueAccount = Common.getSettings("revenue_account", jdbcTemplate);
-        Setting getSuspenseAccount = Common.getSettings("suspense_account", jdbcTemplate);
-        
-        String stock_account_number = getStockAccount.getSetting_value().trim();
-        String suspense_account_number = getSuspenseAccount.getSetting_value().trim();
-        String revenue_account_number = getRevenueAccount.getSetting_value().trim();
-        
-        Merchant float_stock_account = Common.getMerchantByAccountNumber(
-                    stock_account_number,
-                    jdbcTemplate);
-        
-        Merchant suspense_stock_account = Common.getMerchantByAccountNumber(
-                    suspense_account_number,
-                    jdbcTemplate);
-        
-        Merchant revenue_stock_account = Common.getMerchantByAccountNumber(
-                    revenue_account_number,
-                    jdbcTemplate);
-        
+
+        boolean useMerchantCreds = Common.useMerchantProviderCredentials(jdbcTemplate);
+        Merchant[] gwAccounts = Common.resolveGatewayAccounts(useMerchantCreds, jdbcTemplate);
+        Merchant float_stock_account = gwAccounts[0];
+        Merchant suspense_stock_account = gwAccounts[1];
+        Merchant revenue_stock_account = gwAccounts[2];
+
         //First check if there is tx with this reference on merchant.
         Transaction tx = Common.getMerchantTxByTheirRef(newTx.getTx_merchant_ref(), merchant.getId()+"",
         jdbcTemplate);
@@ -1948,7 +1953,7 @@ public class Common {
             newTxStatement.setRecorded_by("SYSTEM");
             newTxStatement.setTx_type("DR");
 
-            result = Common.recordStatementTx(newTxStatement, 
+            result = Common.recordStatementTx(newTxStatement,
                     balance_type,
                     jdbcTemplate,
                     transactionManager);
@@ -1956,6 +1961,7 @@ public class Common {
                 return result;
             }
 
+            if (!useMerchantCreds) {
             //Reduce the float stock account
             newTxStatement = new Statement();
             newTxStatement.setTransactions_log_id(newTx.getId());
@@ -1968,7 +1974,7 @@ public class Common {
             newTxStatement.setRecorded_by("SYSTEM");
             newTxStatement.setTx_type("DR");
 
-            result = Common.recordStatementTx(newTxStatement, 
+            result = Common.recordStatementTx(newTxStatement,
                     balance_type,
                     jdbcTemplate,
                     transactionManager);
@@ -1988,14 +1994,16 @@ public class Common {
             newTxStatement.setRecorded_by("SYSTEM");
             newTxStatement.setTx_type("CR");
 
-            result = Common.recordStatementTx(newTxStatement, 
+            result = Common.recordStatementTx(newTxStatement,
                     balance_type,
                     jdbcTemplate,
                     transactionManager);
             if (!result.equals("success")) {
                 return result;
             }
+            } // end if (!useMerchantCreds)
 
+            if (newTx.getCharges() > 0) {
             //Dr account for this transaction's charge
             newTxStatement = new Statement();
             newTxStatement.setTransactions_log_id(newTx.getId());
@@ -2008,7 +2016,7 @@ public class Common {
             newTxStatement.setRecorded_by("SYSTEM");
             newTxStatement.setTx_type("DR");
 
-            result = Common.recordStatementTx(newTxStatement, 
+            result = Common.recordStatementTx(newTxStatement,
                     balance_type,
                     jdbcTemplate,
                     transactionManager);
@@ -2016,6 +2024,7 @@ public class Common {
                 return result;
             }
 
+            if (!useMerchantCreds) {
             //Transfer charges to suspense account
             newTxStatement = new Statement();
             newTxStatement.setTransactions_log_id(newTx.getId());
@@ -2028,13 +2037,15 @@ public class Common {
             newTxStatement.setRecorded_by("SYSTEM");
             newTxStatement.setTx_type("CR");
 
-            result = Common.recordStatementTx(newTxStatement, 
+            result = Common.recordStatementTx(newTxStatement,
                     balance_type,
                     jdbcTemplate,
                     transactionManager);
             if (!result.equals("success")) {
                 return result;
             }
+            } // end if (!useMerchantCreds)
+            } // end if (charges > 0)
 
             //Now make the actual transaction
             DoPayGateway gw = new DoPayGateway();
@@ -2072,10 +2083,11 @@ public class Common {
                             //If the transaction failed, the reverse the funds
                             if (pResponse.getTransactionStatus().equals("FAILED")) {
 
-
-
-                                //Dr the amount on suspense account
                                 Statement newTxS = new Statement();
+
+                                if (!useMerchantCreds) {
+                                //Dr the amount on suspense account
+                                newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
                                 newTxS.setAmount(newTx.getOriginal_amount());
                                 newTxS.setGateway_id(newTx.getGateway_id());
@@ -2087,16 +2099,16 @@ public class Common {
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("DR");
 
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
 
-                                //DR the charge reversal
+                                if (newTx.getCharges() > 0) {
+                                //DR the charge reversal on suspense
                                 newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
                                 newTxS.setAmount(newTx.getCharges());
@@ -2108,14 +2120,15 @@ public class Common {
                                 newTxS.setDescription(newTx.getTx_description());
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("DR");
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
+                                } // end if (charges > 0)
+                                } // end if (!useMerchantCreds)
 
                                 //CR the amount back to customer's account
                                 newTxS = new Statement();
@@ -2129,15 +2142,15 @@ public class Common {
                                 newTxS.setDescription(newTx.getTx_description());
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("CR");
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
 
+                                if (newTx.getCharges() > 0) {
                                 //CR the charge back on customer's account
                                 newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
@@ -2150,15 +2163,16 @@ public class Common {
                                 newTxS.setDescription(newTx.getTx_description());
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("CR");
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
+                                } // end if (charges > 0)
 
+                                if (!useMerchantCreds) {
                                 //Restore the float account
                                 newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
@@ -2171,22 +2185,21 @@ public class Common {
                                 newTxS.setDescription(newTx.getTx_description());
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("CR");
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
+                                } // end if (!useMerchantCreds)
 
                                 Logger.getLogger(AuthenticationController.class.getName())
                                 .log(Level.SEVERE, "INTERNAL ERROR - TX STATUS UPDATE: "+pResponse.toString(), "");
                             } else if (pResponse.getTransactionStatus().equals("SUCCESSFUL")) {
+                                if (!useMerchantCreds) {
                                 //Record a settlement transaction for Payout
-                                
                                 Statement newTxS = new Statement();
-                                newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
                                 newTxS.setAmount(newTx.getOriginal_amount());
                                 newTxS.setGateway_id(newTx.getGateway_id());
@@ -2197,15 +2210,15 @@ public class Common {
                                 newTxS.setDescription(newTx.getTx_description());
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("DR");
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
 
+                                if (newTx.getCharges() > 0) {
                                 //Record a settlement transaction for Payout charge
                                 newTxS = new Statement();
                                 newTxS.setTransactions_log_id(newTx.getId());
@@ -2218,12 +2231,11 @@ public class Common {
                                 newTxS.setDescription(newTx.getTx_description());
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("DR");
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
 
@@ -2239,14 +2251,15 @@ public class Common {
                                 newTxS.setDescription(newTx.getTx_description());
                                 newTxS.setRecorded_by("SYSTEM");
                                 newTxS.setTx_type("CR");
-                                res_string = recordStatementTx(newTxS, 
+                                res_string = recordStatementTx(newTxS,
                                         balance_type,
                                         jdbcTemplate,
                                         transactionManager);
                                 if (!res_string.equals("success")) {
-
                                     return res_string;
                                 }
+                                } // end if (charges > 0)
+                                } // end if (!useMerchantCreds)
                             }
                             
                             return "success";
@@ -2398,45 +2411,39 @@ public class Common {
                                 NamedParameterJdbcTemplate jdbcTemplate,
                                 PlatformTransactionManager transactionManager) {
 
-        //First check if stock|revenew|suspense accounts were configured transaction
-        Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
-        if (getStockAccount == null || getStockAccount.getSetting_value().isEmpty()) {
-            // release lock
-            return GeneralException
-                    .getError("112", GeneralException.ERRORS_112);
+        boolean useMerchantCreds = Common.useMerchantProviderCredentials(jdbcTemplate);
+
+        Merchant float_stock_account = null;
+        Merchant revenue_stock_account = null;
+        Merchant suspense_stock_account = null;
+
+        if (!useMerchantCreds) {
+            //Check stock|revenue|suspense accounts are configured
+            Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
+            if (getStockAccount == null || getStockAccount.getSetting_value().isEmpty()) {
+                return GeneralException
+                        .getError("112", GeneralException.ERRORS_112);
+            }
+
+            Setting getRevenueAccount = Common.getSettings("revenue_account", jdbcTemplate);
+            if (getRevenueAccount == null || getRevenueAccount.getSetting_value().isEmpty()) {
+                return GeneralException
+                        .getError("117", GeneralException.ERRORS_117);
+            }
+
+            Setting getSuspenseAccount = Common.getSettings("suspense_account", jdbcTemplate);
+            if (getSuspenseAccount == null || getSuspenseAccount.getSetting_value().isEmpty()) {
+                return GeneralException
+                        .getError("127", GeneralException.ERRORS_127);
+            }
+
+            float_stock_account = Common.getMerchantByAccountNumber(
+                    getStockAccount.getSetting_value().trim(), jdbcTemplate);
+            revenue_stock_account = Common.getMerchantByAccountNumber(
+                    getRevenueAccount.getSetting_value().trim(), jdbcTemplate);
+            suspense_stock_account = Common.getMerchantByAccountNumber(
+                    getSuspenseAccount.getSetting_value().trim(), jdbcTemplate);
         }
-
-        Setting getRevenueAccount = Common.getSettings("revenue_account", jdbcTemplate);
-        if (getRevenueAccount == null || getRevenueAccount.getSetting_value().isEmpty()) {
-            // release lock
-            return GeneralException
-                    .getError("117", GeneralException.ERRORS_117);
-        }
-
-        Setting getSuspenseAccount = Common.getSettings("suspense_account", jdbcTemplate);
-        if (getSuspenseAccount == null || getSuspenseAccount.getSetting_value().isEmpty()) {
-            // release lock
-            return GeneralException
-                    .getError("127", GeneralException.ERRORS_127);
-        }
-
-        //Now get Stock account
-        String stock_account_number = getStockAccount.getSetting_value().trim();
-        Merchant float_stock_account = Common.getMerchantByAccountNumber(
-                stock_account_number,
-                jdbcTemplate);
-
-        //Now get Revenue account
-        String revenue_account_number = getRevenueAccount.getSetting_value().trim();
-        Merchant revenue_stock_account = Common.getMerchantByAccountNumber(
-                revenue_account_number,
-                jdbcTemplate);
-
-        //suspense_account
-        String suspense_account_number = getSuspenseAccount.getSetting_value().trim();
-        Merchant suspense_stock_account = Common.getMerchantByAccountNumber(
-                suspense_account_number,
-                jdbcTemplate);
 
 
         DoPayGateway gwChargingDetails = new DoPayGateway();
@@ -2632,6 +2639,7 @@ public class Common {
                             return result;
                         }
 
+                        if (tx.getCharges() > 0) {
                         newTx = new Statement();
                         newTx.setTransactions_log_id(tx.getId());
                         newTx.setAmount(tx.getCharges());
@@ -2646,13 +2654,13 @@ public class Common {
 
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
+                        } // end if (charges > 0)
 
+                        if (!useMerchantCreds) {
                         //Now record this revenue account.
+                        if (tx.getCharges() > 0) {
                         newTx = new Statement();
                         newTx.setAmount(tx.getCharges());
                         newTx.setGateway_id(tx.getGateway_id());
@@ -2666,11 +2674,9 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
+                        } // end if (charges > 0)
 
                         //Now increase stock account.
                         newTx = new Statement();
@@ -2686,12 +2692,11 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
+                        } // end if (!useMerchantCreds)
                     } else if (tx.getTx_type().equals(Transaction.TX_TYPE_PAYOUT)) {
+                        if (!useMerchantCreds) {
                         //Record a settlement transaction for Payout
                         newTx = new Statement();
                         newTx.setAmount(tx.getOriginal_amount());
@@ -2706,12 +2711,10 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
 
+                        if (tx.getCharges() > 0) {
                         //Record a settlement transaction for Payout charge
                         newTx = new Statement();
                         newTx.setAmount(tx.getCharges());
@@ -2726,9 +2729,6 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
 
@@ -2746,12 +2746,10 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
-
+                        } // end if (charges > 0)
+                        } // end if (!useMerchantCreds)
                     }
                 } else if (txUpdatedDetails.getTransactionStatus().equals("FAILED")) {
 
@@ -2845,7 +2843,8 @@ public class Common {
                     String[] bType = Balance.getBalanceTypeByGatewayId(tx.getGateway_id());
                     String balance_type = bType[0];
                     if (tx.getTx_type().equals(Transaction.TX_TYPE_PAYOUT)) {
-                        //Dr the amount
+                        if (!useMerchantCreds) {
+                        //Dr the amount on suspense
                         newTx = new Statement();
                         newTx.setAmount(tx.getOriginal_amount());
                         newTx.setGateway_id(tx.getGateway_id());
@@ -2859,13 +2858,11 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
 
-                        //DR the charge reversal
+                        if (tx.getCharges() > 0) {
+                        //DR the charge reversal on suspense
                         newTx = new Statement();
                         newTx.setAmount(tx.getCharges());
                         newTx.setGateway_id(tx.getGateway_id());
@@ -2879,11 +2876,10 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
+                        } // end if (charges > 0)
+                        } // end if (!useMerchantCreds)
 
                         //CR the amount back to customer's account
                         newTx = new Statement();
@@ -2899,12 +2895,10 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
 
+                        if (tx.getCharges() > 0) {
                         //CR the charge back on customer's account
                         newTx = new Statement();
                         newTx.setAmount(tx.getCharges());
@@ -2919,12 +2913,11 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
+                        } // end if (charges > 0)
 
+                        if (!useMerchantCreds) {
                         //Restore the float account
                         newTx = new Statement();
                         newTx.setAmount(tx.getOriginal_amount());
@@ -2939,11 +2932,9 @@ public class Common {
                         result = recordStatementTx(newTx, balance_type, jdbcTemplate, transactionManager);
 
                         if (!result.equals("success")) {
-                            // release lock
-                            //lock.release();
-                            //writer.close();
                             return result;
                         }
+                        } // end if (!useMerchantCreds)
                     }
                 }
                 return result;

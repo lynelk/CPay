@@ -18,12 +18,18 @@ const SETTINGS_SECTIONS = [
 ];
 
 const ENVIRONMENT_OPTIONS = [
+    { value: 'mtnuganda', label: 'Production - MTN Uganda' },
     { value: 'production', label: 'Production' },
     { value: 'sandbox', label: 'Sandbox' },
     { value: 'development', label: 'Development' },
 ];
 
 const CURRENCY_OPTIONS = ['EUR','UGX', 'KES', 'USD', 'TZS'].map(value => ({ value, label: value }));
+
+const CHARGING_METHOD_OPTIONS = [
+    { value: 'flat', label: 'Flat' },
+    { value: 'percentage', label: 'Percentage' },
+];
 
 function settingName(row) {
     return String(row?.name || row?.setting_key || row?.label || '');
@@ -83,6 +89,10 @@ function isEnvironmentSetting(row) {
     return /(environment|env|state)$/i.test(settingName(row));
 }
 
+function isChargingMethodSetting(row) {
+    return /(cost_of|charge)[a-z0-9_]*_method$/i.test(settingName(row));
+}
+
 function isLongSetting(row) {
     return /(url|template|tmp_|parameters|public_key|private_key|consumer_secret|subscription_key|api_key|user_key|image_url|callback)/i
         .test(settingName(row));
@@ -96,7 +106,7 @@ function fieldSizeClass(row) {
     const name = settingName(row).toLowerCase();
     if (isLongSetting(row)) return 'cpay-settings-field--full';
     if (/(port|timeout|retry|interval|min|max|cost|charge|threshold)/.test(name)) return 'cpay-settings-field--sm';
-    if (isCurrencySetting(row) || isBooleanSetting(row) || isEnvironmentSetting(row)) return 'cpay-settings-field--sm';
+    if (isCurrencySetting(row) || isBooleanSetting(row) || isEnvironmentSetting(row) || isChargingMethodSetting(row)) return 'cpay-settings-field--sm';
     if (/account|username|email/.test(name)) return 'cpay-settings-field--md';
     return '';
 }
@@ -288,6 +298,17 @@ class ModuleSettingsC extends React.Component {
                     label={label}
                     value={normalized}
                     options={options}
+                    onValueChange={(v) => this.updateValue(row, v)}
+                />
+            );
+        }
+        if (isChargingMethodSetting(row)) {
+            return (
+                <Select
+                    id={id}
+                    label={label}
+                    value={value || 'flat'}
+                    options={CHARGING_METHOD_OPTIONS}
                     onValueChange={(v) => this.updateValue(row, v)}
                 />
             );
