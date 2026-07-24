@@ -4,14 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy-server.sh"
 
-export CPAY_ENVIRONMENT="change_me"
+export CPAY_ENVIRONMENT="production"
 export CPAY_DOMAIN="change_me"
-export CPAY_DB_NAME="change_me"
+export CPAY_DB_NAME="cpayadmin"
 export CPAY_DB_USER="change_me"
 export CPAY_DB_PASSWORD='change_me'
 export CPAY_ADMIN_EMAIL="change_me"
 export CPAY_ADMIN_PASSWORD='change_me'
-export CPAY_BACKEND_PORT="change_me"
+export CPAY_BACKEND_PORT="8081"
 export CPAY_HTTP_PORT="80"
 export CPAY_HTTPS_PORT="443"
 export CPAY_USE_CERTBOT="true"

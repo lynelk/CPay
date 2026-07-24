@@ -23,6 +23,8 @@ fi
 CPAY_DB_NAME="${CPAY_DB_NAME:-${DEFAULT_DB_NAME}}"
 CPAY_DB_USER="${CPAY_DB_USER:-cpay_user}"
 CPAY_DB_PASSWORD="${CPAY_DB_PASSWORD:-}"
+CPAY_ADMIN_EMAIL="${CPAY_ADMIN_EMAIL:-admin@example.com}"
+CPAY_ADMIN_PASSWORD="${CPAY_ADMIN_PASSWORD:-}"
 DEFAULT_BACKEND_PORT=8081
 if [ "${CPAY_ENVIRONMENT}" != "production" ]; then
   DEFAULT_BACKEND_PORT=8082
@@ -207,12 +209,14 @@ ensure_env_file() {
   chmod 750 "${ENV_DIR}"
   chmod 755 "${LOCK_DIR}"
 
-  local db_password actuator_password admin_password callback_secret channel_key
+  local db_password actuator_password admin_password callback_secret channel_key admin_app_password
   db_password="${CPAY_DB_PASSWORD:-$(openssl rand -hex 24)}"
   actuator_password="$(openssl rand -hex 32)"
   admin_password="$(openssl rand -hex 32)"
   callback_secret="$(openssl rand -base64 48 | tr -d '\n')"
   channel_key="$(openssl rand -base64 48 | tr -d '\n')"
+  admin_app_password="${CPAY_ADMIN_PASSWORD:-$(openssl rand -hex 16)}"
+  CPAY_ADMIN_PASSWORD="${admin_app_password}"
 
   cat > "${ENV_FILE}" <<EOF
 HTTP_PORT=${CPAY_BACKEND_PORT}
@@ -233,6 +237,8 @@ CALLBACK_SIGNING_SECRET=$(quote_env_value "${callback_secret}")
 MERCHANT_CHANNEL_ENCRYPTION_KEY=$(quote_env_value "${channel_key}")
 SPRINGDOC_API_DOCS_ENABLED=false
 SPRINGDOC_SWAGGER_UI_ENABLED=false
+CPAY_ADMIN_EMAIL=${CPAY_ADMIN_EMAIL}
+CPAY_ADMIN_PASSWORD=$(quote_env_value "${admin_app_password}")
 EOF
   chmod 640 "${ENV_FILE}"
 }
@@ -275,16 +281,36 @@ import_legacy_database_scripts() {
 
   log "Importing legacy database SQL before Flyway"
   for sql_file in "${import_order[@]}"; do
-    if [ -f "${legacy_dir}/${sql_file}" ]; then
-      log "Applying ${sql_file}"
-      tmp_sql_file="$(mktemp)"
-      normalize_legacy_sql_file "${legacy_dir}/${sql_file}" "${tmp_sql_file}"
-      mysql -h localhost -u "${DB_USERNAME}" -p"${DB_PASSWORD}" "${CPAY_DB_NAME}" < "${tmp_sql_file}"
-      rm -f "${tmp_sql_file}"
-    else
+    if [ ! -f "${legacy_dir}/${sql_file}" ]; then
       echo "Legacy SQL file not found: ${legacy_dir}/${sql_file}" >&2
       exit 1
     fi
+
+    log "Applying ${sql_file}"
+    tmp_sql_file="$(mktemp)"
+
+    if [ "${sql_file}" = "seed.sql" ]; then
+      if ! command -v htpasswd >/dev/null 2>&1; then
+        echo "htpasswd is required to hash the admin password but was not found. Ensure httpd-tools is installed." >&2
+        exit 1
+      fi
+      if [ -z "${CPAY_ADMIN_PASSWORD:-}" ]; then
+        echo "CPAY_ADMIN_PASSWORD is not set and could not be generated." >&2
+        exit 1
+      fi
+      local admin_hash
+      admin_hash="$(printf '%s' "${CPAY_ADMIN_PASSWORD}" | htpasswd -inBC 10 "" | tr -d ':\n')"
+      normalize_legacy_sql_file "${legacy_dir}/${sql_file}" "${tmp_sql_file}"
+      sed -i \
+        -e "s|__ADMIN_PASSWORD_HASH__|${admin_hash}|g" \
+        -e "s|admin@example\.com|${CPAY_ADMIN_EMAIL}|g" \
+        "${tmp_sql_file}"
+    else
+      normalize_legacy_sql_file "${legacy_dir}/${sql_file}" "${tmp_sql_file}"
+    fi
+
+    mysql -h localhost -u "${DB_USERNAME}" -p"${DB_PASSWORD}" "${CPAY_DB_NAME}" < "${tmp_sql_file}"
+    rm -f "${tmp_sql_file}"
   done
 }
 
@@ -588,6 +614,11 @@ main() {
   write_apache_config
   restart_and_verify
   log "Deployment complete for ${CPAY_DOMAIN} (${CPAY_ENVIRONMENT})"
+  log "------------------------------------------------------------"
+  log "Admin login email:    ${CPAY_ADMIN_EMAIL}"
+  log "Admin login password: ${CPAY_ADMIN_PASSWORD}"
+  log "Record the password above; it is also stored in ${ENV_FILE}"
+  log "------------------------------------------------------------"
 }
 
 main "$@"
