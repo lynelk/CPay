@@ -1646,9 +1646,10 @@ public class Common {
 
             final GateWayResponse pResponse = gw.runPayGatewayDoPayIn(jdbcTemplate,
                     newTx.getPayer_number(),
-                    newTx.getOriginal_amount(), 
-                    newTx.getTx_unique_id(), 
-                    newTx.getTx_description());
+                    newTx.getOriginal_amount(),
+                    newTx.getTx_unique_id(),
+                    newTx.getTx_description(),
+                    Long.parseLong(newTx.getMerchant_id()));
 
             if (pResponse != null ) {
                 String trace = pResponse.getRequestTrace();
@@ -2051,9 +2052,10 @@ public class Common {
             DoPayGateway gw = new DoPayGateway();
             final GateWayResponse pResponse = gw.runPayGatewayDoPayOut(jdbcTemplate,
                     newTx.getPayer_number(),
-                    newTx.getOriginal_amount(), 
-                    newTx.getTx_unique_id(), 
-                    newTx.getTx_description());
+                    newTx.getOriginal_amount(),
+                    newTx.getTx_unique_id(),
+                    newTx.getTx_description(),
+                    Long.parseLong(newTx.getMerchant_id()));
 
             if (pResponse != null ) {
                 String trace = pResponse.getRequestTrace();
@@ -2461,7 +2463,8 @@ public class Common {
                     jdbcTemplate,
                     tx.getGateway_id(),
                     tx.getTx_unique_id(),
-                    tx_type
+                    tx_type,
+                    Long.parseLong(tx.getMerchant_id())
             );
         } else {
             txUpdatedDetails = new GateWayResponse();

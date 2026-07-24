@@ -2019,11 +2019,12 @@ public class TransactionsLogController {
                 Logger.getLogger(AuthenticationController.class.getName())
                         .log(Level.SEVERE, "SAFARICOM REFERENCE ID: "+tx.getSafaricomRequestReference(), "");
 
-                GateWayResponse txUpdatedDetails = gwChargingDetails.runPayGatewayDoCheckStatus( 
+                GateWayResponse txUpdatedDetails = gwChargingDetails.runPayGatewayDoCheckStatus(
                         jdbcTemplate,
                         tx.getGateway_id(),
                         txRef,
-                        tx_type
+                        tx_type,
+                        Long.parseLong(tx.getMerchant_id())
                 );
                 
                 if (txUpdatedDetails != null ) {
@@ -3366,7 +3367,8 @@ public class TransactionsLogController {
         
         GateWayResponse pResponse = gw.runPayGatewayDoPayIn(jdbcTemplate,
                 msisdn,
-                sO.getDouble("amount"), ref, narrative);
+                sO.getDouble("amount"), ref, narrative,
+                null);
         
         if (pResponse != null ) {
             String res = pResponse.getRequestTrace();
@@ -3392,7 +3394,8 @@ public class TransactionsLogController {
         
         GateWayResponse pResponse = gw.runPayGatewayDoPayOut(jdbcTemplate,
                 sO.getString("payer"),
-                sO.getDouble("amount"), ref, narrative);
+                sO.getDouble("amount"), ref, narrative,
+                null);
         
         if (pResponse != null ) {
             String res = pResponse.getRequestTrace();
@@ -3420,7 +3423,8 @@ public class TransactionsLogController {
         GateWayResponse pResponse = gw.runPayGatewayDoCheckStatus(jdbcTemplate,
                 "MTNMoMoPaymentGateway",
                 ref,
-                tx_type);
+                tx_type,
+                null);
         
         if (pResponse != null ) {
             String res = pResponse.getRequestTrace();
