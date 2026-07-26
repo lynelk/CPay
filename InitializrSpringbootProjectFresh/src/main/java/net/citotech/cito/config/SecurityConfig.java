@@ -63,6 +63,7 @@ public class SecurityConfig {
                     "/api/v2/channels",
                     "/api/v2/health",
                     "/api/v2/merchant/**",
+                    "/api/v2/merchant-self-service/signup",
                     "/api/v2/native/**",
                     "/api/v2/payments/**",
                     "/actuator/**",

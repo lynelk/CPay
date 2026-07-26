@@ -20,6 +20,7 @@ import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.ledger.DoubleEntryLedgerService;
 import net.citotech.cito.ledger.LedgerEntryCommand;
 import net.citotech.cito.money.MoneyAmount;
+import net.citotech.cito.webhook.MerchantWebhookService;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -31,17 +32,20 @@ public class PaymentOrchestrationService {
     private final PaymentChannelRegistry paymentChannelRegistry;
     private final RiskDecisionService riskDecisionService;
     private final DoubleEntryLedgerService ledgerService;
+    private final MerchantWebhookService webhookService;
 
     public PaymentOrchestrationService(NamedParameterJdbcTemplate jdbcTemplate,
                                        PlatformTransactionManager transactionManager,
                                        PaymentChannelRegistry paymentChannelRegistry,
                                        RiskDecisionService riskDecisionService,
-                                       DoubleEntryLedgerService ledgerService) {
+                                       DoubleEntryLedgerService ledgerService,
+                                       MerchantWebhookService webhookService) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
         this.paymentChannelRegistry = paymentChannelRegistry;
         this.riskDecisionService = riskDecisionService;
         this.ledgerService = ledgerService;
+        this.webhookService = webhookService;
     }
 
     public PaymentResult collect(PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
@@ -63,7 +67,9 @@ public class PaymentOrchestrationService {
 
         String legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager);
         postLedgerEntries("COLLECT", request, merchant, gatewayId, tx, amount, tx.getCharges());
-        return resultFromLegacy(request, tx, adapter, legacyResult);
+        PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
+        queueWebhook(merchant, "payment.pending", request, result);
+        return result;
     }
 
     public PaymentResult payout(PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
@@ -86,9 +92,25 @@ public class PaymentOrchestrationService {
         tx.setCharges(charges);
         tx.setTx_cost(DoPayGateway.getCostOfOutboundCharges(amount, chargeDetails));
 
-        String legacyResult = Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager);
-        postLedgerEntries("PAYOUT", request, merchant, gatewayId, tx, amount, charges);
-        return resultFromLegacy(request, tx, adapter, legacyResult);
+        BigDecimal reservedAmount = MoneyAmount.of(String.valueOf(amount + charges)).asBigDecimal();
+        String reservationReference = "payout-reserve:" + merchant.getAccount_number() + ":" + request.getReference();
+        ledgerService.reserve(
+            reservationReference,
+            merchant.getId(),
+            request.getReference(),
+            reservedAmount,
+            request.getCurrency());
+        try {
+            String legacyResult = Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager);
+            postLedgerEntries("PAYOUT", request, merchant, gatewayId, tx, amount, charges);
+            ledgerService.captureReservation(reservationReference);
+            PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
+            queueWebhook(merchant, "payout.pending", request, result);
+            return result;
+        } catch (RuntimeException ex) {
+            ledgerService.releaseReservation(reservationReference);
+            throw ex;
+        }
     }
 
     public List<PaymentChannelResponse> listChannels() {
@@ -144,6 +166,23 @@ public class PaymentOrchestrationService {
         result.setMessage("Transaction submitted through compatibility payment engine");
         result.setProviderResponse(legacyResult);
         return result;
+    }
+
+    private void queueWebhook(Merchant merchant, String eventType, PaymentRequest request, PaymentResult result) {
+        try {
+            String payload = "{"
+                + "\"eventType\":\"" + json(eventType) + "\","
+                + "\"merchantNumber\":\"" + json(merchant.getAccount_number()) + "\","
+                + "\"reference\":\"" + json(request.getReference()) + "\","
+                + "\"transactionId\":\"" + json(result.getTransactionId()) + "\","
+                + "\"status\":\"" + json(result.getStatus()) + "\","
+                + "\"amount\":\"" + json(request.getAmount()) + "\","
+                + "\"currency\":\"" + json(request.getCurrency()) + "\""
+                + "}";
+            webhookService.enqueue(merchant.getId(), eventType, result.getTransactionId(), payload);
+        } catch (Exception ignored) {
+            // Payment submission remains authoritative; webhook delivery is retried separately.
+        }
     }
 
     private void postLedgerEntries(String direction,
@@ -306,6 +345,10 @@ public class PaymentOrchestrationService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String json(String value) {
+        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
 

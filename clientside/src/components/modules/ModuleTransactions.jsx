@@ -7,6 +7,8 @@ import {
   Card, Toolbar, Table, Select, SearchField, Checkbox, Badge, Sheet, Button, TextField,
 } from '../../ui';
 
+import { apiFetch } from '../../shared/api/httpClient';
+
 const SEARCH_CATEGORIES = [
   { value: 'all', label: 'All Fields' },
   { value: 'tx_type', label: 'Type' },
@@ -71,7 +73,7 @@ class ModuleTransactionsC extends React.Component {
     getData() {
         this.props.loader("START");
         const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
-        fetch(common.base_url + "/transactions/getTransactions", {
+        apiFetch(common.base_url + "/transactions/getTransactions", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)
@@ -114,7 +116,7 @@ class ModuleTransactionsC extends React.Component {
                 if (!r) return;
                 this.setState({ resolveOpen: false });
                 this.props.loader("START");
-                fetch(common.base_url + "/transactions/resolveTransaction", {
+                apiFetch(common.base_url + "/transactions/resolveTransaction", {
                     method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
                     body: JSON.stringify(row)

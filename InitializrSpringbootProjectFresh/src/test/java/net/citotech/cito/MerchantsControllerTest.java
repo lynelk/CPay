@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Model.Merchant;
+import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.Model.User;
 import net.citotech.cito.Model.UserPrivilege;
 import org.json.JSONObject;
@@ -125,15 +126,20 @@ class MerchantsControllerTest {
     @SuppressWarnings({"rawtypes", "unchecked"})
     void addMerchantPersistsSubmittedAdminEmail() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantUser insertedAdmin = new MerchantUser();
+        insertedAdmin.setName("Jane Doe");
+        insertedAdmin.setEmail("jane.doe@merchant.test");
+        insertedAdmin.setPhone("256700000000");
+        insertedAdmin.setStatus("ACTIVE");
         when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenReturn((List) List.of(0), (List) List.of(0), (List) List.of(), (List) List.of());
+            .thenReturn((List) List.of(0), (List) List.of(0), (List) List.of(), (List) List.of(insertedAdmin), (List) List.of(), (List) List.of());
 
         List<MapSqlParameterSource> updates = new ArrayList<>();
-        int[] generatedId = {2000};
+        long[] generatedId = {2000};
         doAnswer(invocation -> {
             updates.add(invocation.getArgument(1));
             KeyHolder holder = invocation.getArgument(2);
-            holder.getKeyList().add(Map.of("GENERATED_KEY", BigInteger.valueOf(generatedId[0]++)));
+            holder.getKeyList().add(Map.of("GENERATED_KEY", generatedId[0]++));
             return 1;
         }).when(jdbcTemplate).update(anyString(), any(MapSqlParameterSource.class), any(KeyHolder.class));
         doAnswer(invocation -> {

@@ -9,6 +9,8 @@ import {
   TextField, TextArea, DateField, Icons,
 } from '../../../ui';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
 const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
@@ -84,7 +86,7 @@ class MerchantModuleTransactionsC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         };
-        fetch(common.base_url + "/transactions/getMerchantTransactions", {
+        apiFetch(common.base_url + "/transactions/getMerchantTransactions", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)
@@ -126,7 +128,7 @@ class MerchantModuleTransactionsC extends React.Component {
             result: (r) => {
                 if (!r) return;
                 this.props.loader("START");
-                fetch(common.base_url + "/transactions/addPayInTransaction", {
+                apiFetch(common.base_url + "/transactions/addPayInTransaction", {
                     method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
                     body: JSON.stringify(data)

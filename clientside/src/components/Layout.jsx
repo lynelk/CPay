@@ -17,6 +17,8 @@ import ModuleAuditTrail from './modules/ModuleAuditTrail';
 import ModuleMerchants from './modules/ModuleMerchants';
 import ModuleTransactions from './modules/ModuleTransactions';
 
+import { apiFetch } from '../shared/api/httpClient';
+
 const menuTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'Track balances, transactions, and operational health.' },
   merchants: { title: 'Merchants', subtitle: 'Manage merchant profiles, accounts, and access.' },
@@ -90,7 +92,7 @@ class LayoutWithOutRouter extends React.Component {
   async isLoggedIn() {
     try {
       await this.setState({ loader: true, progressValue: 0 });
-      const response = await fetch(common.base_url + "/auth/isLoggedIn", {
+      const response = await apiFetch(common.base_url + "/auth/isLoggedIn", {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
@@ -141,7 +143,7 @@ class LayoutWithOutRouter extends React.Component {
   logoutSendRequest() {
     const { history } = this.props;
     this.setState({ loader: true }, () => {
-      fetch(common.base_url + "/auth/logout", {
+      apiFetch(common.base_url + "/auth/logout", {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',

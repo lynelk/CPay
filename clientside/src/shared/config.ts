@@ -21,5 +21,10 @@ function readApiBase(): string {
 export const API_BASE: string = readApiBase();
 
 export function apiUrl(path: string): string {
-  return `${API_BASE}${path}`;
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  const base = API_BASE.replace(/\/$/, '');
+  const suffix = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${suffix}`;
 }

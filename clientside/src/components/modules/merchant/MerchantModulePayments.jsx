@@ -8,6 +8,8 @@ import {
   TextField, TextArea, FileButton, Icons,
 } from '../../../ui';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const SEARCH_CATEGORIES = [
   { value: 'all', label: 'All Fields' },
   { value: 'account_number', label: 'Merchant Account' },
@@ -67,7 +69,7 @@ class MerchantModulePaymentsC extends React.Component {
     getData() {
         this.props.loader("START");
         const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
-        fetch(common.base_url + "/transactions/getMerchantPayments", {
+        apiFetch(common.base_url + "/transactions/getMerchantPayments", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)
@@ -107,7 +109,7 @@ class MerchantModulePaymentsC extends React.Component {
             result: (r) => {
                 if (!r) return;
                 this.props.loader("START");
-                fetch(common.base_url + url, {
+                apiFetch(common.base_url + url, {
                     method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
                     body: JSON.stringify(row)
@@ -158,7 +160,7 @@ class MerchantModulePaymentsC extends React.Component {
             ? common.base_url + "/transactions/editPayment"
             : common.base_url + "/transactions/addPayment";
         this.props.loader("START");
-        fetch(url, {
+        apiFetch(url, {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(data)
@@ -377,7 +379,7 @@ class PaymentFormDialog extends React.Component {
         const form = new FormData();
         for (let i = 0; i < files.length; i++) form.append('file', files[i]);
         this.props.loader("START");
-        fetch(common.base_url + "/transactions/uploadBeneficiariesFile", { method: 'POST', mode: 'cors', credentials: 'include', body: form })
+        apiFetch(common.base_url + "/transactions/uploadBeneficiariesFile", { method: 'POST', mode: 'cors', credentials: 'include', body: form })
             .then((r) => r.text()).then((t) => {
                 this.props.loader("STOP");
                 const messager = this.props.getMessager();

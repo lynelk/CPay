@@ -2,13 +2,18 @@ package net.citotech.cito.Model;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -18,6 +23,8 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.citotech.cito.Common;
 import net.citotech.cito.SettingsController;
+import net.citotech.cito.gateway.ProviderToken;
+import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,6 +41,12 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     String country = "UG";
     String segment = "collection";
     String api_pin = "";
+    String tokenPath = "/auth/oauth2/token";
+    String collectionsPath = "/merchant/v2/payments/";
+    String disbursementsPath = "/standard/v2/disbursements/";
+    String balancePath = "/standard/v2/users/balance";
+    String collectionStatusPath = "/standard/v2/payments/{reference}/";
+    String disbursementStatusPath = "/standard/v2/disbursements/{reference}/";
 
     static public String BALANCE_TYPE = "airtelmm_balance";
     public static String[] prefix = {"25675", "25670", "25676"};
@@ -64,11 +77,56 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
 
 
     public void setApiDetails(String global_url, String api_username, String api_password, String api_pin) {
-        this.global_url = global_url;
+        if (global_url != null && !global_url.trim().isEmpty()) {
+            this.global_url = global_url.trim();
+        }
         this.api_username = api_username;
         this.api_password = api_password;
         this.api_pin = api_pin;
 
+    }
+
+    public void setEndpointDetails(
+            String tokenPath,
+            String collectionsPath,
+            String disbursementsPath,
+            String balancePath,
+            String collectionStatusPath,
+            String disbursementStatusPath) {
+        this.tokenPath = valueOrCurrent(tokenPath, this.tokenPath);
+        this.collectionsPath = valueOrCurrent(collectionsPath, this.collectionsPath);
+        this.disbursementsPath = valueOrCurrent(disbursementsPath, this.disbursementsPath);
+        this.balancePath = valueOrCurrent(balancePath, this.balancePath);
+        this.collectionStatusPath = valueOrCurrent(collectionStatusPath, this.collectionStatusPath);
+        this.disbursementStatusPath = valueOrCurrent(disbursementStatusPath, this.disbursementStatusPath);
+    }
+
+    String tokenUrl() {
+        return endpoint(tokenPath);
+    }
+
+    String collectionUrl() {
+        return endpoint(collectionsPath);
+    }
+
+    String disbursementUrl() {
+        return endpoint(disbursementsPath);
+    }
+
+    String balanceUrl() {
+        return endpoint(balancePath);
+    }
+
+    String statusUrl(String segment, String reference) {
+        String template = "collection".equalsIgnoreCase(segment) ? collectionStatusPath : disbursementStatusPath;
+        String encodedRef = encodePathSegment(reference);
+        if (template.contains("{reference}")) {
+            return endpoint(template.replace("{reference}", encodedRef));
+        }
+        if (template.contains("{id}")) {
+            return endpoint(template.replace("{id}", encodedRef));
+        }
+        return endpoint(appendPath(template, encodedRef + "/"));
     }
 
     public void setPublicKey(String publicKey) {
@@ -110,7 +168,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 return 0.0;
             }
             Map<String, String> headers = standardHeaders(token);
-            HttpRequestResponse response = Common.doHttpRequest("GET", this.global_url + "/standard/v1/users/balance", "", headers);
+            HttpRequestResponse response = Common.doHttpRequest("GET", balanceUrl(), "", headers);
             if (response == null || response.getStatusCode() != 200 || response.getResponse().isEmpty()) {
                 return 0.0;
             }
@@ -142,7 +200,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             payeeObject.put("msisdn", stripCountryCode(payee));
             body.put("payee", payeeObject);
             body.put("reference", narrative);
-            return submit("POST", this.global_url + "/standard/v1/disbursements/", body.toString(), ref);
+            return submit("POST", disbursementUrl(), body.toString(), ref);
         } catch (BadPaddingException | IllegalBlockSizeException | InvalidKeyException |
                  NoSuchPaddingException | NoSuchAlgorithmException | JSONException e) {
             return gatewayError(e.getMessage(), "FAILED", "");
@@ -166,7 +224,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             subscriber.put("msisdn", stripCountryCode(payer));
             body.put("subscriber", subscriber);
             body.put("reference", narrative);
-            return submit("POST", this.global_url + "/merchant/v1/payments/", body.toString(), ref);
+            return submit("POST", collectionUrl(), body.toString(), ref);
         } catch (JSONException e) {
             return gatewayError(e.getMessage(), "UNDETERMINED", "");
         }
@@ -174,10 +232,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
 
     @Override
     public GateWayResponse checkStatus(String ref) {
-        String path = this.segment.equals("collection")
-                ? "/standard/v1/payments/" + ref + "/"
-                : "/standard/v1/disbursements/" + ref + "/";
-        return submit("GET", this.global_url + path, "", ref);
+        return submit("GET", statusUrl(this.segment, ref), "", ref);
     }
 
     @Override
@@ -193,7 +248,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             headers.put("X-Country", this.country);
             headers.put("X-Currency", this.base_currency);
 
-            String url = this.global_url + "/standard/v1/users/" + msisdn;
+            String url = endpoint("/standard/v2/users/" + encodePathSegment(msisdn));
             HttpRequestResponse rs = Common.doHttpRequest("GET", url, "", headers);
             if (rs == null || rs.getStatusCode() != 200) return info;
             JSONObject r = new JSONObject(rs.getResponse());
@@ -234,7 +289,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         body.put("client_secret", this.api_password);
         body.put("grant_type", "client_credentials");
 
-        HttpRequestResponse response = Common.doHttpRequest("POST", this.global_url + "/auth/oauth2/token", body.toString(), headers);
+        HttpRequestResponse response = Common.doHttpRequest("POST", tokenUrl(), body.toString(), headers);
         if (response == null || response.getStatusCode() != 200 || response.getResponse().isEmpty()) {
             Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "Failed to get Airtel OpenAPI token", "");
             return null;
@@ -307,6 +362,10 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     }
 
     private Token readToken() throws IOException {
+        Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+        if (databaseToken.isPresent()) {
+            return new Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
+        }
         File resource = tokenFile();
         String tokenFileContent = new String(Files.readAllBytes(resource.toPath())).trim();
         if (tokenFileContent.isEmpty()) {
@@ -327,6 +386,12 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     }
 
     private void saveToken(String accessToken, LocalDateTime createdAt) {
+        ProviderTokenStoreRegistry.save(
+                gateway_id,
+                this.segment,
+                tokenEnvironment(),
+                accessToken,
+                Instant.now().plus(TOKEN_TTL_MINUTES, ChronoUnit.MINUTES));
         try {
             File resource = tokenFile();
             JSONObject newToken = new JSONObject();
@@ -358,10 +423,52 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     private Map<String, String> standardHeaders(Token token) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
+        headers.put("Accept", "application/json");
         headers.put("Authorization", "Bearer " + token.getToken());
         headers.put("X-Country", this.country);
         headers.put("X-Currency", this.base_currency);
         return headers;
+    }
+
+    private String tokenEnvironment() {
+        if (this.mode != null && this.mode.toUpperCase().contains("PROD")) {
+            return "PRODUCTION";
+        }
+        if (this.global_url != null && this.global_url.toLowerCase().contains("openapi.airtel")) {
+            return "PRODUCTION";
+        }
+        return "SANDBOX";
+    }
+
+    private String endpoint(String pathOrUrl) {
+        String configured = valueOrCurrent(pathOrUrl, "");
+        if (configured.startsWith("http://") || configured.startsWith("https://")) {
+            return configured;
+        }
+        String base = this.global_url == null || this.global_url.trim().isEmpty()
+                ? "https://openapiuat.airtel.africa"
+                : this.global_url.trim();
+        return appendPath(base, configured);
+    }
+
+    private String appendPath(String base, String path) {
+        if (path == null || path.trim().isEmpty()) {
+            return base;
+        }
+        String cleanBase = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+        String cleanPath = path.startsWith("/") ? path : "/" + path;
+        return cleanBase + cleanPath;
+    }
+
+    private String valueOrCurrent(String candidate, String current) {
+        return candidate == null || candidate.trim().isEmpty() ? current : candidate.trim();
+    }
+
+    private String encodePathSegment(String value) {
+        if (value == null) {
+            return "";
+        }
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     private String stripCountryCode(String msisdn) {

@@ -6,7 +6,7 @@ describe('merchant form payload helpers', () => {
       name: 'Test Merchant',
       short_name: 'TEST',
       status: { value: 'ACTIVE', text: 'ACTIVE' },
-      account_type: { value: 'business', text: 'BUSINESS' },
+      account_type: { value: 'BUSINESS', text: 'BUSINESS' },
       allowed_apis: [
         { value: 'MOBILE_MONEY_PAYIN', text: 'MOBILE MONEY PAYIN' },
         'API_SEND_SMS',
@@ -18,6 +18,7 @@ describe('merchant form payload helpers', () => {
           email: 'admin@example.com',
           phone: '256700000000',
           status: { value: 'ACTIVE', text: 'ACTIVE' },
+          temporary_password: 'StartHere#123',
           privileges: [
             { value: 'ACCESS_SETTINGS', text: 'ACCESS SETTINGS' },
             'CREATE_BATCH_TX',
@@ -39,6 +40,7 @@ describe('merchant form payload helpers', () => {
           email: 'admin@example.com',
           phone: '256700000000',
           status: 'ACTIVE',
+          temporary_password: 'StartHere#123',
           privileges: ['ACCESS_SETTINGS', 'CREATE_BATCH_TX'],
           generate_pw: false,
           delete: false,
@@ -60,6 +62,35 @@ describe('merchant form payload helpers', () => {
       generate_new_keys: false,
       private_key: '',
       public_key: '',
+    });
+  });
+
+  test('keeps owner-style admin payloads explicit for backend saves', () => {
+    const payload = buildMerchantPayload({
+      name: 'Acme Merchant',
+      short_name: 'ACME',
+      account_type: 'BUSINESS',
+      allowed_apis: [],
+      admins: [
+        {
+          role: 'Owner',
+          name: 'Owner Admin',
+          email: 'owner@example.com',
+          phone: '0700000000',
+          status: 'ACTIVE',
+          temporary_password: '',
+          privileges: ['ACCESS_ADMIN', 'UPDATE_SETTINGS'],
+        },
+      ],
+    });
+
+    expect(payload.account_type).toBe('business');
+    expect(payload.admins[0]).toMatchObject({
+      role: 'Owner',
+      temporary_password: '',
+      privileges: ['ACCESS_ADMIN', 'UPDATE_SETTINGS'],
+      generate_pw: false,
+      delete: false,
     });
   });
 });

@@ -14,7 +14,8 @@ public class ProductionSafetyConfig {
     ApplicationRunner productionSafetyGuard(
             Environment environment,
             @Value("${custom.gatewaystate:SANDBOX}") String gatewayState,
-            @Value("${custom.ssl.skip-verify:false}") boolean skipSslVerification) {
+            @Value("${custom.ssl.skip-verify:false}") boolean skipSslVerification,
+            @Value("${cpay.security.nonce-store:jdbc}") String nonceStore) {
         return args -> {
             if (!isProductionProfile(environment)) {
                 return;
@@ -24,6 +25,9 @@ public class ProductionSafetyConfig {
             }
             if (skipSslVerification) {
                 throw new IllegalStateException("Production profiles cannot run with custom.ssl.skip-verify=true");
+            }
+            if ("memory".equalsIgnoreCase(nonceStore)) {
+                throw new IllegalStateException("Production profiles require a durable cpay.security.nonce-store");
             }
         };
     }

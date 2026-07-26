@@ -2,6 +2,8 @@ import React from 'react';
 import common from '../../Common';
 import { Badge, Button, Card, TextField, Toolbar } from '../../../ui';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const FIELD_LABELS = {
   collectUrl: 'Collection URL',
   payoutUrl: 'Payout URL',
@@ -37,7 +39,7 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
   async loadChannels() {
     this.setState({ loading: true });
     try {
-      const response = await fetch(common.base_url + '/api/v2/merchant-self-service/channels', {
+      const response = await apiFetch(common.base_url + '/api/v2/merchant-self-service/channels', {
         method: 'GET', mode: 'cors', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       });
       const data = await response.json();
@@ -91,7 +93,7 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
   async call(path, body, successMessage) {
     this.setState({ loading: true, message: '' });
     try {
-      const response = await fetch(common.base_url + path, {
+      const response = await apiFetch(common.base_url + path, {
         method: 'POST', mode: 'cors', credentials: 'include',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });

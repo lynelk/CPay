@@ -8,6 +8,8 @@ import {
   TextField, PasswordField, Icons,
 } from '../../../ui';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: 'ACTIVE' },
   { value: 'INACTIVE', label: 'INACTIVE' },
@@ -87,7 +89,7 @@ class MerchantModuleAdminsC extends React.Component {
     getData() {
         this.props.loader("START");
         const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
-        fetch(common.base_url + "/admins/getAdminsMerchant", {
+        apiFetch(common.base_url + "/admins/getAdminsMerchant", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)
@@ -132,7 +134,7 @@ class MerchantModuleAdminsC extends React.Component {
             result: (r) => {
                 if (!r) return;
                 this.props.loader("START");
-                fetch(common.base_url + "/admins/deleteAdminMerchant", {
+                apiFetch(common.base_url + "/admins/deleteAdminMerchant", {
                     method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
                     body: JSON.stringify(row)
@@ -202,7 +204,7 @@ class MerchantModuleAdminsC extends React.Component {
             ? common.base_url + "/admins/editAdminMerchant"
             : common.base_url + "/admins/addAdminMerchant";
         this.props.loader("START");
-        fetch(url, {
+        apiFetch(url, {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(this.state.formd)

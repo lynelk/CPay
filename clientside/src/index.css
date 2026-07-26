@@ -3709,6 +3709,13 @@ select,
   gap: 12px;
 }
 
+.cpay-merchant-side-hint {
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: -4px 0 2px;
+}
+
 .cpay-merchant-side-section h4,
 .cpay-merchant-permission-title h4 {
   font-size: 13px;
