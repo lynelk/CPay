@@ -70,7 +70,7 @@ Required evidence:
 - Sandbox run endpoint exists.
 - Provider statement validation endpoint exists.
 - Parser tests exist.
-- Merchant channel setup supports MTN, Airtel, Airtel OpenAPI, and Safaricom.
+- Merchant channel setup supports MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments.
 - Provider adapters call configured endpoint URLs for collect and payout flows.
 - Missing endpoint URLs are rejected in production mode.
 
@@ -80,6 +80,7 @@ Manual evidence still required:
 - Real Airtel sandbox run.
 - Real Airtel OpenAPI sandbox run.
 - Real Safaricom sandbox run.
+- Real Yo! Payments sandbox run.
 - Real provider statement files.
 - Provider production approval.
 
