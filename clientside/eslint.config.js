@@ -27,4 +27,16 @@ export default tseslint.config(
       'no-empty': 'warn',
     },
   },
+  {
+    files: ['src/components/**/*.{js,jsx,ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='fetch']",
+          message: 'Use shared/api/httpClient apiFetch or request so credentials and API base handling stay consistent.',
+        },
+      ],
+    },
+  },
 );

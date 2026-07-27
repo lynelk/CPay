@@ -42,6 +42,12 @@ class SettingsControllerTest {
             "gw_mtn_api_max_amount",
             "gw_airtelmoney_use_open_api",
             "gw_airtelmoney_api_url",
+            "gw_airtelmoney_token_url",
+            "gw_airtelmoney_collections_url",
+            "gw_airtelmoney_disbursements_url",
+            "gw_airtelmoney_balance_url",
+            "gw_airtelmoney_collections_status_url",
+            "gw_airtelmoney_disbursements_status_url",
             "gw_airtelmoney_api_username",
             "gw_airtelmoney_api_password",
             "gw_airtelmoney_api_pin",
@@ -64,6 +70,15 @@ class SettingsControllerTest {
             "sms_gateway_cost",
             "sms_customer_charge",
             "sms_revenue_account");
+
+        JSONObject byName = byName(settings);
+        assertThat(byName.getJSONObject("gw_airtelmoney_use_open_api").getString("setting_value")).isEqualTo("yes");
+        assertThat(byName.getJSONObject("gw_airtelmoney_api_url").getString("setting_value"))
+            .isEqualTo("https://openapiuat.airtel.africa");
+        assertThat(byName.getJSONObject("gw_airtelmoney_collections_url").getString("setting_value"))
+            .isEqualTo("/merchant/v2/payments/");
+        assertThat(byName.getJSONObject("gw_airtelmoney_disbursements_url").getString("setting_value"))
+            .isEqualTo("/standard/v2/disbursements/");
     }
 
     @Test
@@ -74,6 +89,8 @@ class SettingsControllerTest {
             "api_allowed_ips",
             "daily_volume_limit",
             "monthly_volume_limit",
+            "gw_airtelmoney_collections_url",
+            "gw_airtelmoney_disbursements_url",
             "sms_customer_charge");
     }
 

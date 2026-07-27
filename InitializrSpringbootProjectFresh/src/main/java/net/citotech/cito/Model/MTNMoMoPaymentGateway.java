@@ -8,16 +8,21 @@ package net.citotech.cito.Model;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.citotech.cito.Common;
 import net.citotech.cito.SettingsController;
+import net.citotech.cito.gateway.ProviderToken;
+import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -617,6 +622,10 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     }
     
     public Token getToken() throws IOException {
+        Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+        if (databaseToken.isPresent()) {
+            return new Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
+        }
         String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
         Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.INFO,
                 "MTN Token File "+filePath+" has been created.",
@@ -700,6 +709,12 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             JSONObject jsToken = new JSONObject(rs.getResponse());
             String accessToken = jsToken.getString("access_token");
             LocalDateTime d = LocalDateTime.now();
+            ProviderTokenStoreRegistry.save(
+                    gateway_id,
+                    this.segment,
+                    tokenEnvironment(),
+                    accessToken,
+                    Instant.now().plus(55, ChronoUnit.MINUTES));
             
             JSONObject newToken = new JSONObject();
             newToken.put("token", accessToken);
@@ -742,6 +757,17 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             }
             return new Token(accessToken, d);
         }
+    }
+
+    private String tokenEnvironment() {
+        if (this.mode != null && this.mode.toUpperCase().contains("PROD")) {
+            return "PRODUCTION";
+        }
+        if (this.global_url != null && !this.global_url.toLowerCase().contains("sandbox")
+                && !this.global_url.toLowerCase().contains("azure-api")) {
+            return "PRODUCTION";
+        }
+        return "SANDBOX";
     }
     
     public class Token {

@@ -84,6 +84,62 @@ public class DoubleEntryLedgerService {
         return result;
     }
 
+    public List<String> activeCurrencies() {
+        return jdbcTemplate.query(
+            "SELECT DISTINCT currency FROM ledger_entries ORDER BY currency",
+            new MapSqlParameterSource(),
+            (rs, rowNum) -> rs.getString("currency"));
+    }
+
+    @Transactional
+    public void reserve(String reservationReference,
+                        long merchantId,
+                        String sourceReference,
+                        BigDecimal amount,
+                        String currency) {
+        if (blank(reservationReference) || merchantId <= 0 || blank(sourceReference) || blank(currency)) {
+            throw new PaymentGatewayException("Ledger reservation requires reference, merchant, source, and currency");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentGatewayException("Ledger reservation amount must be greater than zero");
+        }
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("reservation_reference", reservationReference);
+        p.addValue("merchant_id", merchantId);
+        p.addValue("source_reference", sourceReference);
+        p.addValue("amount", amount.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
+        p.addValue("currency", currency.trim().toUpperCase());
+        jdbcTemplate.update(
+            "INSERT INTO ledger_reservations "
+                + "(reservation_reference, merchant_id, source_reference, amount, currency, reservation_status) "
+                + "VALUES (:reservation_reference, :merchant_id, :source_reference, :amount, :currency, 'RESERVED') "
+                + "ON DUPLICATE KEY UPDATE source_reference=:source_reference",
+            p);
+    }
+
+    @Transactional
+    public int captureReservation(String reservationReference) {
+        return updateReservation(reservationReference, "CAPTURED");
+    }
+
+    @Transactional
+    public int releaseReservation(String reservationReference) {
+        return updateReservation(reservationReference, "RELEASED");
+    }
+
+    private int updateReservation(String reservationReference, String status) {
+        if (blank(reservationReference)) {
+            throw new PaymentGatewayException("Ledger reservation reference is required");
+        }
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("reservation_reference", reservationReference);
+        p.addValue("status", status);
+        return jdbcTemplate.update(
+            "UPDATE ledger_reservations SET reservation_status=:status "
+                + "WHERE reservation_reference=:reservation_reference AND reservation_status='RESERVED'",
+            p);
+    }
+
     private void validateEntries(List<LedgerEntryCommand> entries) {
         if (entries == null || entries.size() < 2) {
             throw new PaymentGatewayException("Ledger transaction requires at least two entries");

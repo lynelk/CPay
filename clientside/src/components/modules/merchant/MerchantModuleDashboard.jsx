@@ -6,6 +6,8 @@ import { CardsIcon, CheckIcon, CloseIcon } from "../../ShellIcons";
 import LinearChart from './LinearChart';
 import { dashboardErrorDetails, formatAmount, formatCount, numericValues } from '../ModuleDashboard';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const merchantDefaultSnapshotCards = [];
 
 const merchantSnapshotCards = [
@@ -102,7 +104,7 @@ class MerchantModuleDashboardC extends React.Component {
 
     getData(chartType, api) {
         this.props.loader("START");
-        fetch(common.base_url + "/transactions/" + api, {
+        apiFetch(common.base_url + "/transactions/" + api, {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',

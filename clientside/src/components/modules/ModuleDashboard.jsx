@@ -5,6 +5,8 @@ import common from "../Common";
 import { CardsIcon, CheckIcon, CloseIcon } from "../ShellIcons";
 import LinearChart from './LinearChart';
 
+import { apiFetch } from '../../shared/api/httpClient';
+
 export const dashboardErrorDetails = (res) => {
     const hasCode = res && res.code !== undefined && res.code !== null && String(res.code).trim() !== "";
     const message = (res && (res.message || res.error))
@@ -196,7 +198,7 @@ class ModuleDashboardC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         };
-        fetch(common.base_url + "/transactions/" + api, {
+        apiFetch(common.base_url + "/transactions/" + api, {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',

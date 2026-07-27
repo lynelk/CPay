@@ -36,6 +36,7 @@ application-local.properties
 
 ## ─── Lock / temporary files ─────────────────────────────────────────────────
 .local/
+.codex-smoke/
 *.lock
 !clientside/yarn.lock
 *.log
@@ -60,6 +61,7 @@ nbactions.xml
 .vscode/
 *.suo
 *.user
+__pycache__/
 
 ## ─── Compiled/generated static assets ───────────────────────────────────────
 # The React production build should be generated in CI, not committed

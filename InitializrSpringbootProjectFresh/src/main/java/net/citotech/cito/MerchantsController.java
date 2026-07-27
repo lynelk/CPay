@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +30,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import net.citotech.cito.security.ColumnAllowlist;
+import net.citotech.cito.security.PasswordUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -384,6 +386,43 @@ public class MerchantsController {
         }
             
     }
+
+    private static BigInteger generatedKey(KeyHolder keyHolder) {
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Database insert did not return a generated id");
+        }
+        if (key instanceof BigInteger bigInteger) {
+            return bigInteger;
+        }
+        return BigInteger.valueOf(key.longValue());
+    }
+
+    private static String normalizeAccountType(String accountType) {
+        String normalized = accountType == null ? "" : accountType.trim().toLowerCase(Locale.ROOT);
+        if (!"business".equals(normalized) && !"personal".equals(normalized)) {
+            return "personal";
+        }
+        return normalized;
+    }
+
+    private static JSONArray privilegesFrom(JSONObject userObject) {
+        JSONArray privileges = userObject.optJSONArray("privileges");
+        return privileges == null ? new JSONArray() : privileges;
+    }
+
+    private static String passwordForMerchantAdmin(JSONObject userObject) {
+        String explicitPassword = userObject.optString("temporary_password", "").trim();
+        if (explicitPassword.isEmpty()) {
+            explicitPassword = userObject.optString("password", "").trim();
+        }
+        return explicitPassword.isEmpty() ? Common.randomAlphaNumericString(10) : explicitPassword;
+    }
+
+    private static boolean hasExplicitMerchantAdminPassword(JSONObject userObject) {
+        return !userObject.optString("temporary_password", "").trim().isEmpty()
+                || !userObject.optString("password", "").trim().isEmpty();
+    }
     
     /*
     * API to add new merchant by Authorized app.
@@ -415,7 +454,7 @@ public class MerchantsController {
             String account_number = generateMerchantNumber();
             String name = sObject.getString("name");
             String status = sObject.getString("status");
-            String account_type = sObject.getString("account_type");
+            String account_type = normalizeAccountType(sObject.getString("account_type"));
             String short_name = sObject.getString("short_name");
             Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
             JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
@@ -448,6 +487,7 @@ public class MerchantsController {
             
             Merchant newMerchant = new Merchant();
             newMerchant.setCreated_by("SYSTEM:-"+authorizationKey);
+            newMerchant.setAccount_number(account_number);
             newMerchant.setName(name);
             newMerchant.setAccount_type(account_type);
             newMerchant.setStatus(status);
@@ -515,7 +555,7 @@ public class MerchantsController {
                         //long userId;
                         jdbcTemplate.update(sql_, parameters, keyHolder);
                         //Now insert privileges
-                        BigInteger merchantId = (BigInteger)keyHolder.getKey();
+                        BigInteger merchantId = generatedKey(keyHolder);
                         
                         KeyHolder keyHolderUser = new GeneratedKeyHolder();
                         MapSqlParameterSource privParams;
@@ -530,15 +570,15 @@ public class MerchantsController {
                             privParams.addValue("email", email);
                             privParams.addValue("status", usersObject.getString("status"));
                             
-                            String password = Common.randomAlphaNumericString(10);
-                            privParams.addValue("password", Common.getSha256EncodedString(password));
+                            String password = passwordForMerchantAdmin(usersObject);
+                            privParams.addValue("password", PasswordUtils.hashPassword(password));
                             //privParams.addValue("name", privilege.getString("name"));
                             long privId = jdbcTemplate.update(sqlAdmins, privParams, keyHolderUser);
                             
-                            BigInteger userId = (BigInteger)keyHolderUser.getKey();
+                            BigInteger userId = generatedKey(keyHolderUser);
                             
                             //Now add merchant users. First delete 
-                            JSONArray uPrivileges = usersObject.getJSONArray("privileges");
+                            JSONArray uPrivileges = privilegesFrom(usersObject);
                             for (int p=0; p < uPrivileges.length(); p++) {
                                 String privilege = uPrivileges.getString(p);
                                 privParams = new MapSqlParameterSource();
@@ -621,7 +661,7 @@ public class MerchantsController {
             String account_number = generateMerchantNumber();
             String name = sObject.getString("name");
             String status = sObject.getString("status");
-            String account_type = sObject.getString("account_type");
+            String account_type = normalizeAccountType(sObject.getString("account_type"));
             String short_name = sObject.getString("short_name");
             Boolean generate_new_keys = sObject.optBoolean("generate_new_keys", false);
             JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
@@ -633,6 +673,7 @@ public class MerchantsController {
             
             Merchant newMerchant = new Merchant();
             newMerchant.setCreated_by(created_by);
+            newMerchant.setAccount_number(account_number);
             newMerchant.setName(name);
             newMerchant.setAccount_type(account_type);
             newMerchant.setStatus(status);
@@ -699,7 +740,7 @@ public class MerchantsController {
                         //long userId;
                         jdbcTemplate.update(sql_, parameters, keyHolder);
                         //Now insert privileges
-                        BigInteger merchantId = (BigInteger)keyHolder.getKey();
+                        BigInteger merchantId = generatedKey(keyHolder);
                         
                         KeyHolder keyHolderUser = new GeneratedKeyHolder();
                         MapSqlParameterSource privParams;
@@ -714,15 +755,15 @@ public class MerchantsController {
                             privParams.addValue("email", email);
                             privParams.addValue("status", usersObject.getString("status"));
                             
-                            String password = Common.randomAlphaNumericString(10);
-                            privParams.addValue("password", Common.getSha256EncodedString(password));
+                            String password = passwordForMerchantAdmin(usersObject);
+                            privParams.addValue("password", PasswordUtils.hashPassword(password));
                             //privParams.addValue("name", privilege.getString("name"));
                             long privId = jdbcTemplate.update(sqlAdmins, privParams, keyHolderUser);
                             
-                            BigInteger userId = (BigInteger)keyHolderUser.getKey();
+                            BigInteger userId = generatedKey(keyHolderUser);
                             
                             //Now add merchant users. First delete 
-                            JSONArray uPrivileges = usersObject.getJSONArray("privileges");
+                            JSONArray uPrivileges = privilegesFrom(usersObject);
                             for (int p=0; p < uPrivileges.length(); p++) {
                                 String privilege = uPrivileges.getString(p);
                                 privParams = new MapSqlParameterSource();
@@ -813,12 +854,16 @@ public class MerchantsController {
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("merchant_id", merchant_id);
         params.addValue("email", email);
-        String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
-                + " WHERE merchant_id=:merchant_id AND email=:email";
+        String sqlSelect = "SELECT ma.*, m.account_number AS merchant_number, "
+                + "m.name AS merchant_name, m.status AS merchant_status, "
+                + "m.account_type AS merchant_account_type FROM " + Common.DB_TABLE_MERCHANT_USERS
+                + " ma LEFT JOIN " + Common.DB_TABLE_MERCHANTS + " m ON ma.merchant_id=m.id "
+                + "WHERE ma.merchant_id=:merchant_id AND ma.email=:email";
         RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));
+                u.setMerchant_id(rs.getLong("merchant_id"));
                 u.setName(rs.getString("name"));
                 u.setEmail(rs.getString("email"));
                 u.setPhone(rs.getString("phone"));
@@ -826,6 +871,10 @@ public class MerchantsController {
                 u.setPassword(rs.getString("password"));
                 u.setCreated_on(rs.getString("created_on"));
                 u.setUpdated_on(rs.getString("updated_on"));
+                u.setMerchant_number(rs.getString("merchant_number"));
+                u.setMerchant_name(rs.getString("merchant_name"));
+                u.setMerchant_status(rs.getString("merchant_status"));
+                u.setMerchant_account_type(rs.getString("merchant_account_type"));
                 return u;
             }
         };
@@ -845,12 +894,16 @@ public class MerchantsController {
         params.addValue("merchant_id", merchant_id);
         params.addValue("email", email);
         params.addValue("id", id);
-        String sqlSelect = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_USERS
-                + " WHERE merchant_id=:merchant_id AND email=:email AND id <> :id";
+        String sqlSelect = "SELECT ma.*, m.account_number AS merchant_number, "
+                + "m.name AS merchant_name, m.status AS merchant_status, "
+                + "m.account_type AS merchant_account_type FROM " + Common.DB_TABLE_MERCHANT_USERS
+                + " ma LEFT JOIN " + Common.DB_TABLE_MERCHANTS + " m ON ma.merchant_id=m.id "
+                + "WHERE ma.merchant_id=:merchant_id AND ma.email=:email AND ma.id <> :id";
         RowMapper<MerchantUser> rm = new RowMapper<MerchantUser>() {
         public MerchantUser mapRow(ResultSet rs, int rowNum) throws SQLException {
                 MerchantUser u = new MerchantUser();
                 u.setId(rs.getLong("id"));
+                u.setMerchant_id(rs.getLong("merchant_id"));
                 u.setName(rs.getString("name"));
                 u.setEmail(rs.getString("email"));
                 u.setPhone(rs.getString("phone"));
@@ -858,6 +911,10 @@ public class MerchantsController {
                 u.setPassword(rs.getString("password"));
                 u.setCreated_on(rs.getString("created_on"));
                 u.setUpdated_on(rs.getString("updated_on"));
+                u.setMerchant_number(rs.getString("merchant_number"));
+                u.setMerchant_name(rs.getString("merchant_name"));
+                u.setMerchant_status(rs.getString("merchant_status"));
+                u.setMerchant_account_type(rs.getString("merchant_account_type"));
                 return u;
             }
         };
@@ -902,7 +959,7 @@ public class MerchantsController {
             String account_number = sObject.getString("account_number");
             String name = sObject.getString("name");
             String status = sObject.getString("status");
-            String account_type = sObject.getString("account_type");
+            String account_type = normalizeAccountType(sObject.getString("account_type"));
             String short_name = sObject.getString("short_name");
             String id = sObject.optString("id", "");
             Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
@@ -1040,8 +1097,8 @@ public class MerchantsController {
                             
                             if (row_id.isEmpty()) {
                                 //This is a new MerchantUser
-                                String password = Common.randomAlphaNumericString(10);
-                                privParams.addValue("password", Common.getSha256EncodedString(password));
+                                String password = passwordForMerchantAdmin(userObject);
+                                privParams.addValue("password", PasswordUtils.hashPassword(password));
                                 
                                 //Check if this user exists
                                 MerchantUser mU = getMerchantUserByEmail(id, email);
@@ -1057,19 +1114,20 @@ public class MerchantsController {
                                 
                                 GeneratedKeyHolder keyHolderUser = new GeneratedKeyHolder();
                                 long privId = jdbcTemplate.update(sqlInsertMerchantUser, privParams, keyHolderUser);
-                                BigInteger userId = (BigInteger)keyHolderUser.getKey();
+                                BigInteger userId = generatedKey(keyHolderUser);
                                 row_id = userId+"";
                             } else {
                                 //Now update
                                 String sqlUpdateMerchantUser_ = sqlUpdateMerchantUser;
                                 String password = "";
-                                if (generate_pw) {
-                                    password = Common.randomAlphaNumericString(10);
+                                if (generate_pw || hasExplicitMerchantAdminPassword(userObject)) {
+                                    password = passwordForMerchantAdmin(userObject);
                                     sqlUpdateMerchantUser_ += ", password=:password";
-                                    privParams.addValue("password", Common.getSha256EncodedString(password));
+                                    privParams.addValue("password", PasswordUtils.hashPassword(password));
                                 }
                                 sqlUpdateMerchantUser_ += " WHERE id=:row_id";
                                 privParams.addValue("row_id", row_id);
+                                privParams.addValue("id", row_id);
                                 MerchantUser mU = getMerchantUserByEmail(id, email, row_id);
                                
                                 if (mU != null) {
@@ -1078,7 +1136,7 @@ public class MerchantsController {
                                                 String.format(GeneralException.ERRORS_108, 
                                                 "Merchant User ", name));
                                 }
-                                if (generate_pw) {
+                                if (!password.isEmpty()) {
                                     sendEmailOnUpdatingMerchantUserPassword(mu, password);
                                 }
                                 long privId = jdbcTemplate.update(sqlUpdateMerchantUser_, privParams);
@@ -1092,7 +1150,7 @@ public class MerchantsController {
                             parameterDropPrivileges.addValue("admin_id", row_id);
                             jdbcTemplate.update(sqlPrivilegesDropExistings, parameterDropPrivileges);
 
-                            JSONArray uPrivileges = userObject.getJSONArray("privileges");
+                            JSONArray uPrivileges = privilegesFrom(userObject);
                             for (int p=0; p < uPrivileges.length(); p++) {
                                 String privilege = uPrivileges.getString(p);
                                 privParams = new MapSqlParameterSource();
@@ -1143,33 +1201,46 @@ public class MerchantsController {
     }
     
     private void sendEmailOnUpdatingMerchantUserPassword(MerchantUser u, String password){
-        //Now send verification email
-        Setting emailContentManage = Common.getSettings("email_tmp_on_editing_merchant_user", jdbcTemplate);
-        Setting app_setting_app_url = Common.getSettings("app_setting_app_url", jdbcTemplate);
-        String emailContent_ = emailContentManage.getSetting_value()
-                .replace("{name}", u.getName());
-        emailContent_ = emailContent_.replace("{url}", app_setting_app_url.getSetting_value());
-        emailContent_ = emailContent_.replace("{merchant_number}", u.getMerchant_number());
-        emailContent_ = emailContent_.replace("{username}", u.getEmail());
-        final String emailContent = emailContent_.replace("{password}", password);
-
-        final String subject = "Merchant User Credentials";
-        final String to = u.getEmail();
-
-        Logger.getLogger(MerchantsController.class.getName()).log(Level.SEVERE, emailContent, emailContent);
-
-        Thread thread = new Thread(){
-            public void run(){
-                SendMail mail = new SendMail();
-                mail.sendSimpleMessage(
-                    to,
-                    subject,
-                    emailContent,
-                    jdbcTemplate
-                );
+        try {
+            Setting emailContentManage = Common.getSettings("email_tmp_on_editing_merchant_user", jdbcTemplate);
+            if (emailContentManage == null || safeText(emailContentManage.getSetting_value()).isBlank()) {
+                Logger.getLogger(MerchantsController.class.getName())
+                        .log(Level.WARNING, "Skipping merchant credentials email because the template setting is missing.");
+                return;
             }
-        };
-        thread.start();
+            Setting app_setting_app_url = Common.getSettings("app_setting_app_url", jdbcTemplate);
+            String emailContent_ = emailContentManage.getSetting_value()
+                    .replace("{name}", safeText(u.getName()));
+            emailContent_ = emailContent_.replace("{url}", app_setting_app_url == null ? "" : safeText(app_setting_app_url.getSetting_value()));
+            emailContent_ = emailContent_.replace("{merchant_number}", safeText(u.getMerchant_number()));
+            emailContent_ = emailContent_.replace("{username}", safeText(u.getEmail()));
+            final String emailContent = emailContent_.replace("{password}", safeText(password));
+
+            final String subject = "Merchant User Credentials";
+            final String to = u.getEmail();
+
+            Logger.getLogger(MerchantsController.class.getName()).log(Level.FINE, emailContent);
+
+            Thread thread = new Thread(){
+                public void run(){
+                    SendMail mail = new SendMail();
+                    mail.sendSimpleMessage(
+                        to,
+                        subject,
+                        emailContent,
+                        jdbcTemplate
+                    );
+                }
+            };
+            thread.start();
+        } catch (Exception ex) {
+            Logger.getLogger(MerchantsController.class.getName())
+                    .log(Level.WARNING, "Merchant credentials email could not be queued.", ex);
+        }
+    }
+
+    private static String safeText(String value) {
+        return value == null ? "" : value;
     }
     
     

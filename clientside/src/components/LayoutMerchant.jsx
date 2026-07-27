@@ -20,6 +20,8 @@ import MerchantModuleMerchantAccount from './modules/merchant/MerchantModuleMerc
 import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
 import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
 
+import { apiFetch } from '../shared/api/httpClient';
+
 const menuTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'Track balances, activity, and service status.' },
   channels: { title: 'Payment Channels', subtitle: 'Manage MTN, Airtel, and payment channel access.' },
@@ -99,7 +101,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
   async isLoggedIn() {
     try {
       await this.setState({ loader: true, progressValue: 0 });
-      const response = await fetch(common.base_url + "/auth/isMerchantUserLoggedIn", {
+      const response = await apiFetch(common.base_url + "/auth/isMerchantUserLoggedIn", {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
@@ -142,7 +144,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
   logoutUser() {
     const { history } = this.props;
     this.setState({ loader: true }, () => {
-      fetch(common.base_url + "/auth/logoutMerchantUser", {
+      apiFetch(common.base_url + "/auth/logoutMerchantUser", {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',

@@ -16,9 +16,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class RiskDecisionService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final ComplianceCaseService complianceCaseService;
+    private final SanctionsScreeningService sanctionsScreeningService;
 
-    public RiskDecisionService(NamedParameterJdbcTemplate jdbcTemplate) {
+    public RiskDecisionService(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            ComplianceCaseService complianceCaseService,
+            SanctionsScreeningService sanctionsScreeningService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.complianceCaseService = complianceCaseService;
+        this.sanctionsScreeningService = sanctionsScreeningService;
     }
 
     public RiskDecision authorizePayment(Merchant merchant, PaymentRequest request, String direction) {
@@ -29,17 +36,28 @@ public class RiskDecisionService {
         String currency = normalized(request.getCurrency(), "UGX");
         String account = accountValue(request, direction);
 
-        RiskDecision decision = evaluate(merchant, request.getReference(), direction, amount, currency, account);
+        RiskDecision decision = evaluate(merchant, request, direction, amount, currency, account);
         recordDecision(merchant, request.getReference(), direction, amount, currency, decision);
+        complianceCaseService.captureRiskDecision(
+            merchant.getId(),
+            request.getReference(),
+            direction,
+            amount,
+            currency,
+            decision);
         if (decision.isBlocked()) {
             throw new PaymentGatewayException("Risk authorization blocked request: " + decision.getSummary());
         }
         return decision;
     }
 
-    private RiskDecision evaluate(Merchant merchant, String reference, String direction, BigDecimal amount, String currency, String account) {
+    private RiskDecision evaluate(Merchant merchant, PaymentRequest request, String direction, BigDecimal amount, String currency, String account) {
         if (!blank(account) && isBlockedAccount(account)) {
             return RiskDecision.block("BLOCKLIST_MATCH", "Account is blocklisted");
+        }
+        RiskDecision screening = sanctionsScreeningService.screenPayment(merchant, request, direction);
+        if (!"ALLOW".equals(screening.getDecision())) {
+            return screening;
         }
         RiskDecision singleCap = evaluateSingleTransactionCap(merchant, amount, currency);
         if (!"ALLOW".equals(singleCap.getDecision())) {
@@ -49,7 +67,7 @@ public class RiskDecisionService {
         if (!"ALLOW".equals(dailyCap.getDecision())) {
             return dailyCap;
         }
-        return RiskDecision.allow("Risk checks passed for " + reference + " (" + direction + ")");
+        return RiskDecision.allow("Risk checks passed for " + request.getReference() + " (" + direction + ")");
     }
 
     private boolean isBlockedAccount(String account) {

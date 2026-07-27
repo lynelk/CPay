@@ -424,6 +424,90 @@ paths:
       responses:
         '200':
           description: Operations dashboard metrics
+  /api/v2/admin/compliance/summary:
+    get:
+      summary: Get compliance and operational control counters
+      operationId: complianceSummary
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Compliance summary
+  /api/v2/admin/compliance/cases:
+    get:
+      summary: List open compliance cases
+      operationId: listComplianceCases
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Open compliance cases
+  /api/v2/admin/compliance/cases/{id}/decision:
+    post:
+      summary: Close a compliance case with a decision
+      operationId: decideComplianceCase
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: decision
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Decision result
+  /api/v2/admin/provider-certification/summary:
+    get:
+      summary: Get provider certification evidence coverage
+      operationId: providerCertificationSummary
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Provider certification coverage
+  /api/v2/admin/provider-certification/evidence:
+    get:
+      summary: List provider certification evidence
+      operationId: listProviderCertificationEvidence
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: provider
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Provider certification evidence records
+  /api/v2/admin/provider-certification/evidence/{id}/approve:
+    post:
+      summary: Approve captured provider certification evidence
+      operationId: approveProviderCertificationEvidence
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Approval result
   /api/v2/admin/readiness/summary:
     get:
       summary: Get non-manual readiness evidence summary

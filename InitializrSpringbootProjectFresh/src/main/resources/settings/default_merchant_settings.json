@@ -228,16 +228,58 @@
   {
     "name": "gw_airtelmoney_use_open_api",
     "label": "Airtel Use Open API",
-    "setting_value": "no",
+    "setting_value": "yes",
     "setting_group": "Airtel",
     "description": "Use yes to route Airtel through the Open API implementation."
   },
   {
     "name": "gw_airtelmoney_api_url",
     "label": "Airtel API URL",
-    "setting_value": "",
+    "setting_value": "https://openapiuat.airtel.africa",
     "setting_group": "Airtel",
     "description": "Airtel Money API base URL for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_token_url",
+    "label": "Airtel Token URL",
+    "setting_value": "/auth/oauth2/token",
+    "setting_group": "Airtel",
+    "description": "OAuth token path or absolute URL for Airtel Open API for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_collections_url",
+    "label": "Airtel Collections URL",
+    "setting_value": "/merchant/v2/payments/",
+    "setting_group": "Airtel",
+    "description": "Collection request path or absolute URL for Airtel Open API v2 for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_disbursements_url",
+    "label": "Airtel Payouts URL",
+    "setting_value": "/standard/v2/disbursements/",
+    "setting_group": "Airtel",
+    "description": "Payout request path or absolute URL for Airtel Open API v2 for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_balance_url",
+    "label": "Airtel Balance URL",
+    "setting_value": "/standard/v2/users/balance",
+    "setting_group": "Airtel",
+    "description": "Balance path or absolute URL for Airtel Open API for this merchant."
+  },
+  {
+    "name": "gw_airtelmoney_collections_status_url",
+    "label": "Airtel Collections Status URL",
+    "setting_value": "/standard/v2/payments/{reference}/",
+    "setting_group": "Airtel",
+    "description": "Collection status path or absolute URL; use {reference} for the transaction ID."
+  },
+  {
+    "name": "gw_airtelmoney_disbursements_status_url",
+    "label": "Airtel Payouts Status URL",
+    "setting_value": "/standard/v2/disbursements/{reference}/",
+    "setting_group": "Airtel",
+    "description": "Payout status path or absolute URL; use {reference} for the transaction ID."
   },
   {
     "name": "gw_airtelmoney_api_username",

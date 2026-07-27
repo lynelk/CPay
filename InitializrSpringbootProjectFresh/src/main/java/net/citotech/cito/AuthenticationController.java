@@ -16,6 +16,8 @@ import jakarta.servlet.http.HttpSession;
 import net.citotech.cito.Model.User;
 import net.citotech.cito.security.AdminMfaService;
 import net.citotech.cito.security.LoginRateLimiter;
+import net.citotech.cito.security.MerchantMfaService;
+import net.citotech.cito.security.PasswordResetTokenService;
 import net.citotech.cito.security.PasswordUtils;
 
 //import jdk.nashorn.internal.parser.JSONParser;
@@ -69,6 +71,12 @@ public class AuthenticationController {
 
     @Autowired(required = false)
     AdminMfaService adminMfaService;
+
+    @Autowired(required = false)
+    MerchantMfaService merchantMfaService;
+
+    @Autowired(required = false)
+    PasswordResetTokenService passwordResetTokenService;
 
     @PostMapping(path="/authenticate")
     public String authenticatedUser (@RequestBody Map<String, String> requestBody,
@@ -223,6 +231,19 @@ public class AuthenticationController {
             //Check if the user's account is suspended
             if (u.getStatus().equals("SUSPENDED")) {
                 return GeneralException.getError("137", GeneralException.ERRORS_137);
+            }
+
+            if (merchantMfaService != null && merchantMfaService.isEnabled(u.getId())) {
+                String mfaCode = requestBody.get("mfa_code");
+                if (mfaCode == null || mfaCode.trim().isEmpty()) {
+                    JSONObject resJson = new JSONObject();
+                    resJson.put("code", "MFA_REQUIRED");
+                    resJson.put("message", "MFA code is required");
+                    return resJson.toString();
+                }
+                if (!merchantMfaService.verifyCode(u.getId(), mfaCode)) {
+                    return GeneralException.getError("139", "Invalid MFA code.");
+                }
             }
 
             // Session fixation protection: invalidate old session, create a fresh one
@@ -539,7 +560,7 @@ public class AuthenticationController {
                 + "WHERE id = :id";
             
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
+            String verification_code = resetToken("MERCHANT_ADMIN", u.getId(), u.getEmail(), clientIp);
             parameters.put("email_verification_code", verification_code);
             parameters.put("id", u.getId());
             
@@ -610,7 +631,7 @@ public class AuthenticationController {
                 + "WHERE id = :id";
             
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
+            String verification_code = resetToken("ADMIN", u.getId(), u.getEmail(), clientIp);
             parameters.put("email_verification_code", verification_code);
             parameters.put("id", u.getId());
             
@@ -680,7 +701,7 @@ public class AuthenticationController {
                 + " WHERE id = :id";
 
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
+            String verification_code = resetToken("MERCHANT_ADMIN", u.getId(), u.getEmail(), clientIp);
             parameters.put("email_verification_code", verification_code);
             parameters.put("id", u.getId());
 
@@ -744,7 +765,8 @@ public class AuthenticationController {
                     .getError("105", GeneralException.ERRORS_105);
             }
 
-            if (!u.getEmail_verification_code().equals(verificationCode)) {
+            if (!isResetTokenValid("ADMIN", u.getId(), u.getEmail(), verificationCode)
+                    && !legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
                 return GeneralException
                     .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
             }
@@ -754,7 +776,6 @@ public class AuthenticationController {
                 +" WHERE id = :id";
             
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
             parameters.put("password", PasswordUtils.hashPassword(newPassword));
             parameters.put("id", u.getId());
             
@@ -825,7 +846,8 @@ public class AuthenticationController {
                     .getError("105", GeneralException.ERRORS_105);
             }
 
-            if (!u.getEmail_verification_code().equals(verificationCode)) {
+            if (!isResetTokenValid("MERCHANT_ADMIN", u.getId(), u.getEmail(), verificationCode)
+                    && !legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
                 return GeneralException
                     .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
             }
@@ -879,6 +901,24 @@ public class AuthenticationController {
         }
     }
     
+    private String resetToken(String entityType, Long entityId, String email, String clientIp) {
+        if (passwordResetTokenService == null) {
+            return Common.randomNumericString(6);
+        }
+        return passwordResetTokenService.issue(entityType, entityId == null ? 0L : entityId, email, clientIp);
+    }
+
+    private boolean isResetTokenValid(String entityType, Long entityId, String email, String token) {
+        if (passwordResetTokenService == null || entityId == null) {
+            return false;
+        }
+        return passwordResetTokenService.consume(entityType, entityId, email, token);
+    }
+
+    private boolean legacyVerificationMatches(String expected, String supplied) {
+        return expected != null && supplied != null && expected.equals(supplied);
+    }
+
     public List<UserPrivilege> getUserPrivileges(User user) {
         
         String sqlSelect = "SELECT * FROM "+Common.DB_TABLE_ADMIN_PRIVILEGES+" WHERE ";

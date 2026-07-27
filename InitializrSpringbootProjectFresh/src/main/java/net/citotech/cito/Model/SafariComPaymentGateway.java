@@ -18,19 +18,24 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Instant;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.citotech.cito.gateway.ProviderToken;
+import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
 
 public class SafariComPaymentGateway extends PaymentGateway {
     String xml_sent = "";
@@ -913,6 +918,10 @@ public class SafariComPaymentGateway extends PaymentGateway {
     }
 
     public SafariComPaymentGateway.Token getToken() throws IOException {
+        Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+        if (databaseToken.isPresent()) {
+            return new SafariComPaymentGateway.Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
+        }
         String filePath = lockfiledirectory+Common.CLASS_PATH_SAFARICOM_TOKEN_FILE;
         File resource = new File(filePath);
         if (resource.createNewFile()) {
@@ -988,6 +997,13 @@ public class SafariComPaymentGateway extends PaymentGateway {
             String accessToken = jsToken.getString("access_token");
             String expires_in = jsToken.getString("expires_in");
             LocalDateTime d = LocalDateTime.now();
+            long expiresSeconds = parseExpirySeconds(expires_in);
+            ProviderTokenStoreRegistry.save(
+                    gateway_id,
+                    this.segment,
+                    tokenEnvironment(),
+                    accessToken,
+                    Instant.now().plus(expiresSeconds, ChronoUnit.SECONDS));
 
             JSONObject newToken = new JSONObject();
             newToken.put("token", accessToken);
@@ -1030,6 +1046,24 @@ public class SafariComPaymentGateway extends PaymentGateway {
             }
             return new SafariComPaymentGateway.Token(accessToken, d);
         }
+    }
+
+    private long parseExpirySeconds(String expiresIn) {
+        try {
+            return Long.parseLong(expiresIn);
+        } catch (Exception ignored) {
+            return 3300;
+        }
+    }
+
+    private String tokenEnvironment() {
+        if (this.mode != null && this.mode.toUpperCase().contains("PROD")) {
+            return "PRODUCTION";
+        }
+        if (this.global_url != null && !this.global_url.toLowerCase().contains("sandbox")) {
+            return "PRODUCTION";
+        }
+        return "SANDBOX";
     }
 
     public class Token {

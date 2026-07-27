@@ -6,6 +6,8 @@ import {
   Toolbar, Table, Select, Sheet, Button, TextField, TextArea, DateField, Icons,
 } from '../../ui';
 
+import { apiFetch } from '../../shared/api/httpClient';
+
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
 const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
@@ -57,7 +59,7 @@ class ModuleMerchantAccouunt extends React.Component {
             ? common.base_url + "/transactions/getMerchantStatement"
             : common.base_url + "/transactions/getMerchantStatementByMerchant";
 
-        fetch(url, {
+        apiFetch(url, {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)
@@ -85,7 +87,7 @@ class ModuleMerchantAccouunt extends React.Component {
     recordTransactionRequest() {
         this.props.loader("START");
         const data = { ...this.state.record_tx_data, merchant_id: this.props.openMerchantAccount.id };
-        fetch(common.base_url + "/transactions/recordTransaction", {
+        apiFetch(common.base_url + "/transactions/recordTransaction", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(data)

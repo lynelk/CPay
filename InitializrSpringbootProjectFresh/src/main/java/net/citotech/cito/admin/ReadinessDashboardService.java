@@ -25,6 +25,9 @@ public class ReadinessDashboardService {
         int parkedCallbacks = scalar("SELECT COUNT(*) FROM callback_tasks WHERE task_status='PARKED'");
         int dailyCloses = count("reconciliation_daily_closes");
         int adminAuditEvents = count("admin_audit_events");
+        int openComplianceCases = scalar("SELECT COUNT(*) FROM compliance_cases WHERE case_status IN ('OPEN','IN_REVIEW')");
+        int approvedProviderEvidence = scalar("SELECT COUNT(*) FROM provider_certification_evidence WHERE evidence_status='APPROVED'");
+        int pendingComplianceProfiles = scalar("SELECT COUNT(*) FROM compliance_profiles WHERE status IN ('PENDING','IN_REVIEW')");
 
         result.put("providerSandboxRuns", providerSandboxRuns);
         result.put("statementValidationRuns", statementValidationRuns);
@@ -33,6 +36,9 @@ public class ReadinessDashboardService {
         result.put("parkedCallbacks", parkedCallbacks);
         result.put("dailyCloses", dailyCloses);
         result.put("adminAuditEvents", adminAuditEvents);
+        result.put("openComplianceCases", openComplianceCases);
+        result.put("approvedProviderEvidence", approvedProviderEvidence);
+        result.put("pendingComplianceProfiles", pendingComplianceProfiles);
         result.put("checklist", readinessChecklist(
                 providerSandboxRuns,
                 statementValidationRuns,
@@ -40,7 +46,10 @@ public class ReadinessDashboardService {
                 openAlerts,
                 parkedCallbacks,
                 dailyCloses,
-                adminAuditEvents));
+                adminAuditEvents,
+                openComplianceCases,
+                approvedProviderEvidence,
+                pendingComplianceProfiles));
         return result;
     }
 
@@ -51,7 +60,10 @@ public class ReadinessDashboardService {
             int openAlerts,
             int parkedCallbacks,
             int dailyCloses,
-            int adminAuditEvents) {
+            int adminAuditEvents,
+            int openComplianceCases,
+            int approvedProviderEvidence,
+            int pendingComplianceProfiles) {
         List<Map<String, Object>> checks = new ArrayList<>();
         checks.add(check("provider_sandbox", "Provider sandbox test completed", providerSandboxRuns > 0,
                 providerSandboxRuns, "Run at least one provider sandbox test before go-live."));
@@ -67,6 +79,12 @@ public class ReadinessDashboardService {
                 dailyCloses, "Run the reconciliation daily close."));
         checks.add(check("admin_audit", "Admin audit is recording events", adminAuditEvents > 0,
                 adminAuditEvents, "Perform an admin action and confirm audit capture."));
+        checks.add(check("compliance_cases", "No open compliance cases", openComplianceCases == 0,
+                openComplianceCases, "Review open compliance cases before go-live."));
+        checks.add(check("provider_certification", "Provider certification evidence approved", approvedProviderEvidence > 0,
+                approvedProviderEvidence, "Capture and approve provider certification evidence."));
+        checks.add(check("compliance_profiles", "No pending compliance profiles", pendingComplianceProfiles == 0,
+                pendingComplianceProfiles, "Complete pending KYC/compliance profiles."));
         return checks;
     }
 

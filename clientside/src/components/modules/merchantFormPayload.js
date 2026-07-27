@@ -15,6 +15,11 @@ export function normalizeComboArray(value) {
     .filter(item => item !== '');
 }
 
+export function normalizeAccountType(value) {
+  const normalized = String(normalizeComboValue(value, 'personal')).trim().toLowerCase();
+  return normalized === 'business' || normalized === 'personal' ? normalized : 'personal';
+}
+
 export function emptyMerchantForm() {
   return {
     id: '',
@@ -37,7 +42,7 @@ export function buildMerchantPayload(formd = {}) {
     name: formd.name ?? '',
     short_name: formd.short_name ?? '',
     status: normalizeComboValue(formd.status, 'ACTIVE'),
-    account_type: normalizeComboValue(formd.account_type, 'personal'),
+    account_type: normalizeAccountType(formd.account_type),
     allowed_apis: normalizeComboArray(formd.allowed_apis),
     generate_password: Boolean(formd.generate_password),
     generate_new_keys: Boolean(formd.generate_new_keys),
@@ -48,6 +53,7 @@ export function buildMerchantPayload(formd = {}) {
           email: admin.email ?? '',
           phone: admin.phone ?? '',
           status: normalizeComboValue(admin.status, 'ACTIVE'),
+          temporary_password: admin.temporary_password ?? '',
           privileges: normalizeComboArray(admin.privileges),
           generate_pw: Boolean(admin.generate_pw),
           delete: Boolean(admin.delete),

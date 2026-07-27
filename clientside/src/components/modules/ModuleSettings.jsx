@@ -5,6 +5,8 @@ import common from "../Common";
 import { isSensitiveSetting, maskedSettingValue } from './settingsGridHelpers';
 import { Badge, Button, Icons, PasswordField, SearchField, Select, TextArea, TextField } from '../../ui';
 
+import { apiFetch } from '../../shared/api/httpClient';
+
 const SETTINGS_SECTIONS = [
     { id: 'general', title: 'General', groupNames: ['Application'], icon: Icons.SettingsIcon },
     { id: 'login', title: 'Login Portal', groupNames: ['Login Portal'], icon: Icons.UsersIcon },
@@ -167,7 +169,7 @@ class ModuleSettingsC extends React.Component {
 
     getData() {
         this.props.loader("START");
-        fetch(common.base_url + "/settings/getSettings", {
+        apiFetch(common.base_url + "/settings/getSettings", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify({ settings: "all" })
@@ -194,7 +196,7 @@ class ModuleSettingsC extends React.Component {
 
     saveSettings() {
         this.props.loader("START");
-        fetch(common.base_url + "/settings/updateSettings", {
+        apiFetch(common.base_url + "/settings/updateSettings", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(this.state.data)

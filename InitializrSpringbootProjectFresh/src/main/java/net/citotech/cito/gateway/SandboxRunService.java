@@ -1,5 +1,6 @@
 package net.citotech.cito.gateway;
 
+import net.citotech.cito.Model.GateWayResponse;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -8,17 +9,32 @@ import org.springframework.stereotype.Service;
 public class SandboxRunService {
     private final PaymentChannelRegistry registry;
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final ProviderCertificationService certificationService;
 
-    public SandboxRunService(PaymentChannelRegistry registry, NamedParameterJdbcTemplate jdbcTemplate) {
+    public SandboxRunService(
+            PaymentChannelRegistry registry,
+            NamedParameterJdbcTemplate jdbcTemplate,
+            ProviderCertificationService certificationService) {
         this.registry = registry;
         this.jdbcTemplate = jdbcTemplate;
+        this.certificationService = certificationService;
     }
 
     public long run(String channelCode, String scenarioName, String account, String amount) {
         PaymentChannelAdapter adapter = registry.findByChannelCode(channelCode).orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
         PaymentGatewayRequest request = new PaymentGatewayRequest("SANDBOX", account, Double.valueOf(amount), "SANDBOX-REF", "Sandbox validation", "sandbox-callback", null);
-        String response = adapter.collect(request).toString();
-        return save(adapter.displayName(), adapter.channelCode(), scenarioName, request.getAccountIdentifier(), response, "PASSED");
+        GateWayResponse gatewayResponse = adapter.collect(request);
+        String response = gatewayResponse.toString();
+        String runStatus = "SUCCESS".equalsIgnoreCase(gatewayResponse.getStatus()) ? "PASSED" : "FAILED";
+        long runId = save(adapter.displayName(), adapter.channelCode(), scenarioName, request.getAccountIdentifier(), response, runStatus);
+        certificationService.recordSandboxEvidence(
+            adapter.displayName(),
+            adapter.channelCode(),
+            scenarioName,
+            runId,
+            runStatus,
+            response);
+        return runId;
     }
 
     private long save(String providerCode, String channelCode, String scenarioName, String requestSummary, String responseSummary, String status) {
