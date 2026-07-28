@@ -5577,6 +5577,16 @@ public class TransactionsLogController {
 
 
 
+    /**
+     * A 2xx status is the only provider-agnostic signal available for this generic, settings-driven
+     * HTTP SMS gateway integration (the response body format varies per configured provider) -
+     * matches the same check net.citotech.cito.webhook.MerchantWebhookService uses for webhook
+     * delivery success (audit P5).
+     */
+    boolean isSuccessfulSmsGatewayResponse(int statusCode) {
+        return statusCode >= 200 && statusCode < 300;
+    }
+
     @PostMapping(path="/testSendPendingSmsCron")
 
     //@Scheduled(fixedDelay = 3000, initialDelay = 1000)
@@ -5848,19 +5858,78 @@ public class TransactionsLogController {
                             parameters.addValue("id", tx.getId());
                             parameters.addValue("trace", "REQUEST FAILED");
                             parameters.addValue("gw_response", "");
-                            parameters.addValue("status", "FAILED");
+                            parameters.addValue("status", net.citotech.cito.Model.SmsDeliveryStatus.FAILED.name());
                             parameters.addValue("smsgw", getSMSGwName.getSetting_value());
                             jdbcTemplate.update(sql_update_, parameters);
 
                         }
 
+                    } else if (!isSuccessfulSmsGatewayResponse(rs.getStatusCode())) {
+                        // Audit P5: the gateway responded, but with a non-2xx status - a real
+                        // provider-side rejection (invalid number, blocked content, insufficient
+                        // provider credit, etc), not a successful send. Previously ANY response at
+                        // all (including 4xx/5xx) was marked SENT with no refund; this now reverses
+                        // the charge exactly like the transport-failure branch above, using the
+                        // same 2xx check net.citotech.cito.webhook.MerchantWebhookService already
+                        // uses to judge webhook delivery success.
+                        newTx = new Statement();
+                        newTx.setAmount(tx.getTotal_amount());
+                        newTx.setGateway_id(SmsGateway.getGatewayId());
+                        newTx.setNarritive(Transaction.TX_TYPE_SMS_CUSTOMER_CHARGE_REVERSAL);
+                        newTx.setMerchant_id(merchant_account.getId());
+                        newTx.setDescription("SMS Charge: ");
+                        newTx.setRecorded_by("SYSTEM");
+                        newTx.setTx_type("CR");
+
+                        final Statement newTxRejectedReversal = newTx;
+                        template = new TransactionTemplate(transactionManager);
+                        result = template.execute(new TransactionCallback<String>() {
+                            @Override
+                            public String doInTransaction(TransactionStatus status) {
+                                String res = "";
+                                try {
+
+                                    res = Common.recordStatementTxWithoutTransaction(newTxRejectedReversal,
+                                            balance_type,
+                                            jdbcTemplate,
+                                            transactionManager,
+                                            status);
+
+                                    if (!res.equals("success")) {
+                                        // release lock
+                                        lock.release();
+                                        writer.close();
+                                        return res;
+                                    }
+                                    res = "success";
+
+                                } catch (Exception ex) {
+                                    status.setRollbackOnly();
+                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+                                    return GeneralException
+                                            .getError("102", GeneralException.ERRORS_102);
+                                }
+                                return res;
+                            }
+                        });
+
+                        if (result.equals("success")) {
+                            String sql_update_ = sql_update +" WHERE id=:id";
+                            parameters = new MapSqlParameterSource();
+                            parameters.addValue("id", tx.getId());
+                            parameters.addValue("trace", rs.toString());
+                            parameters.addValue("gw_response", rs.getResponse());
+                            parameters.addValue("status", net.citotech.cito.Model.SmsDeliveryStatus.REJECTED.name());
+                            parameters.addValue("smsgw", getSMSGwName.getSetting_value());
+                            jdbcTemplate.update(sql_update_, parameters);
+                        }
                     } else {
                         String sql_update_ = sql_update +" WHERE id=:id";
                         parameters = new MapSqlParameterSource();
                         parameters.addValue("id", tx.getId());
                         parameters.addValue("trace", rs.toString());
                         parameters.addValue("gw_response", rs.getResponse());
-                        parameters.addValue("status", "SENT");
+                        parameters.addValue("status", net.citotech.cito.Model.SmsDeliveryStatus.SENT.name());
                         parameters.addValue("smsgw", getSMSGwName.getSetting_value());
                         jdbcTemplate.update(sql_update_, parameters);
                     }
