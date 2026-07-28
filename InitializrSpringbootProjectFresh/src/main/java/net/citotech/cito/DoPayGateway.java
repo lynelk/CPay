@@ -104,7 +104,7 @@ public class DoPayGateway {
 
     
     
-    static GatewayChargeDetails getGatewayChargeDetailsById(
+    public static GatewayChargeDetails getGatewayChargeDetailsById(
             NamedParameterJdbcTemplate jdbcTemplate,
             String gateway_id) {
         if (MTNMoMoPaymentGateway.gateway_id.equals(gateway_id)) {
@@ -294,7 +294,7 @@ public class DoPayGateway {
                 resolveCredentialValue("gw_airtelmoney_disbursements_status_url", merchantId, useMerchantCreds, jdbcTemplate));
     }
     
-    static GatewayChargeDetails getGatewayChargeDetailsById(
+    public static GatewayChargeDetails getGatewayChargeDetailsById(
             NamedParameterJdbcTemplate jdbcTemplate,
             String gateway_id,
             Long merchant_id) {
