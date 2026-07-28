@@ -10,8 +10,11 @@ import net.citotech.cito.DoPayGateway;
 import net.citotech.cito.Model.GatewayChargeDetails;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.Transaction;
+import net.citotech.cito.SendMail;
+import net.citotech.cito.async.ManagedAsyncTasks;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.ledger.DoubleEntryLedgerService;
+import net.citotech.cito.merchant.MerchantNotificationPreferenceService;
 import net.citotech.cito.money.MoneyAmount;
 import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -32,13 +35,16 @@ public class RefundService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final PlatformTransactionManager transactionManager;
     private final DoubleEntryLedgerService ledgerService;
+    private final MerchantNotificationPreferenceService notificationPreferenceService;
 
     public RefundService(NamedParameterJdbcTemplate jdbcTemplate,
                          PlatformTransactionManager transactionManager,
-                         DoubleEntryLedgerService ledgerService) {
+                         DoubleEntryLedgerService ledgerService,
+                         MerchantNotificationPreferenceService notificationPreferenceService) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
         this.ledgerService = ledgerService;
+        this.notificationPreferenceService = notificationPreferenceService;
     }
 
     /** amount == null means a full refund of whatever remains unrefunded on the original payin. */
@@ -76,15 +82,52 @@ public class RefundService {
             if (outcome.succeeded()) {
                 transition(refundId, RefundStatus.COMPLETED, null);
                 linkPayoutTransaction(refundId, outcome.payoutTransactionId());
+                notifyRefundOutcome(merchant, refundReference, refundAmount, true, null);
             } else {
                 transition(refundId, RefundStatus.FAILED, outcome.message());
+                notifyRefundOutcome(merchant, refundReference, refundAmount, false, outcome.message());
             }
         } catch (RuntimeException ex) {
             transition(refundId, RefundStatus.FAILED, ex.getMessage());
+            notifyRefundOutcome(merchant, refundReference, refundAmount, false, ex.getMessage());
             throw ex;
         }
 
         return findById(refundId).orElseThrow(() -> new PaymentGatewayException("Failed to read back the refund just created"));
+    }
+
+    /**
+     * Notifies the merchant of a terminal refund outcome (audit N5) - the refund.completed/
+     * refund.failed events in {@link net.citotech.cito.webhook.WebhookEventCatalog}. Previously
+     * nothing notified the merchant of a refund outcome at all; this routes through the merchant's
+     * own {@link MerchantNotificationPreferenceService} preference rather than sending
+     * unconditionally, so an explicit NONE suppresses the send and a configured address overrides
+     * the merchant's primary contact. SMS is resolved but not dispatched here since no SMS provider
+     * is wired into this codebase yet. A failure in resolving/sending the notification must never
+     * affect the refund result already recorded, so it's swallowed rather than propagated.
+     */
+    private void notifyRefundOutcome(Merchant merchant, String refundReference, BigDecimal amount,
+            boolean succeeded, String failureMessage) {
+        try {
+            String eventType = succeeded ? "refund.completed" : "refund.failed";
+            MerchantNotificationPreferenceService.ResolvedNotification notification =
+                notificationPreferenceService.resolveChannel(merchant.getId(), eventType);
+            if (!notification.shouldSend()
+                    || notification.channel() != MerchantNotificationPreferenceService.Channel.EMAIL) {
+                return;
+            }
+            String to = notification.address();
+            String subject = succeeded ? "Refund completed: " + refundReference : "Refund failed: " + refundReference;
+            String body = succeeded
+                ? "Your refund " + refundReference + " for " + amount + " has completed successfully."
+                : "Your refund " + refundReference + " for " + amount + " failed."
+                    + (failureMessage == null || failureMessage.isEmpty() ? "" : " Reason: " + failureMessage);
+            ManagedAsyncTasks.run("refund-notification-" + refundReference,
+                () -> new SendMail().sendSimpleMessage(to, subject, body, jdbcTemplate));
+        } catch (Exception ignored) {
+            // The refund result is already recorded; a notification routing/send failure must not
+            // affect it or bubble up to the caller.
+        }
     }
 
     public Optional<RefundRecord> findByReference(long merchantId, String refundReference) {
