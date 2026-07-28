@@ -1,0 +1,214 @@
+# Prometheus alerting rules for CPay, translating the intent in
+# Docs/Runbooks/Operations-alerts.md into executable rules.
+#
+# Scope and honesty note (read before editing): every `expr` below references a metric that is
+# actually exposed today by this backend's /actuator/prometheus endpoint. Two kinds of metrics were
+# verified before writing this file:
+#   1. CPay's own business metrics, registered in
+#      InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/metrics/GatewayMetrics.java.
+#      Micrometer's Prometheus registry renders a Counter named e.g. "cpay.callback.delivery" as the
+#      series `cpay_callback_delivery_total` (dots -> underscores, "_total" suffix for counters).
+#   2. Spring Boot Actuator / Micrometer's own default JVM, process, HTTP, and (via HikariCP,
+#      pulled in by the `spring-boot-starter-jdbc` dependency) datasource-pool metrics, which are
+#      exposed automatically once `management.endpoints.web.exposure.include` includes `prometheus`
+#      (see InitializrSpringbootProjectFresh/src/main/resources/application.properties) — no custom
+#      registration needed for these.
+#
+# IMPORTANT gap found while writing this file: GatewayMetrics.java defines
+# incrementTransactionInitiated(gatewayId, txType), incrementTransactionCompleted(gatewayId, txType,
+# status), and incrementGatewayError(gatewayId) — i.e. cpay_transaction_initiated_total,
+# cpay_transaction_completed_total, and cpay_gateway_error_total exist as counters. A repo-wide
+# search found NO call sites for any of these three methods outside GatewayMetrics.java itself: only
+# incrementCallbackDelivery(...) (from CallbackTaskService) and incrementRateLimitHit(...) (from
+# SimpleRateLimitService) are ever actually invoked. In other words, the transaction/gateway-error
+# series are wired up in Micrometer but nothing in the codebase increments them today, so they will
+# either be permanently absent from /actuator/prometheus (Micrometer only exports a Counter once it
+# has been touched at least once) or permanently zero. Alerting on them would be pure theater — the
+# alert would never fire not because things are healthy, but because no code path feeds it. No rules
+# are defined against these three series below; wiring up those increment calls at the real
+# transaction/gateway-error call sites is a prerequisite before any such alert would mean anything.
+#
+# Runbook alerts with NO backing metric at all (checked: GatewayMetrics.java is the only place in the
+# whole backend that registers any custom Micrometer meter — no Gauge/Timer/Counter exists anywhere
+# else, e.g. nothing for float/balance runway, reconciliation exceptions, daily-close status, or
+# operating_control_events / operations_alerts row counts). These runbook sections have no
+# corresponding rule in this file, and none should be faked:
+#   - "Float below threshold" (FloatAlertScheduler) — no float/balance metric is emitted anywhere.
+#   - "Reconciliation exceptions" — no reconciliation metric is emitted anywhere; the only signal
+#     today is the `operations_alerts` / `reconciliation_records.match_status` DB rows themselves,
+#     which nothing exports as a Prometheus series (a DB-polling exporter or a custom Gauge would be
+#     needed).
+#   - "Retry queue growth" is only approximated below via the RETRY-status delivery *counter*, which
+#     is a proxy for retry throughput, not an actual queue-depth gauge (there is no gauge for how many
+#     callback_tasks rows are currently PENDING/RETRY) — treat CPayCallbackRetryVolumeHigh as
+#     directional, not authoritative.
+#
+# Also note: management.metrics.distribution.percentiles-histogram is not configured anywhere in
+# application.properties, so http_server_requests_seconds and jvm_gc_pause_seconds are exposed as
+# plain Summaries (count + sum only, no _bucket series). histogram_quantile()-based latency/pause
+# alerts are therefore not possible against this app today; the HTTP latency rule below uses the
+# mean (sum/count) as a coarser stand-in and says so in its annotation.
+#
+# Operational note: /actuator/prometheus is protected by HTTP Basic Auth in this app (see
+# `actuator.username` / `actuator.password` in application.properties). Whatever scrapes this
+# endpoint (this file assumes a Prometheus scrape job labeled `job="cpay-backend"`) needs those
+# credentials configured in its scrape config; that scrape config is not part of this repo.
+
+groups:
+  - name: cpay-callback-delivery
+    rules:
+      - alert: CPayCallbackTasksParked
+        expr: increase(cpay_callback_delivery_total{status="PARKED"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay callback deliveries are being parked"
+          description: >-
+            One or more callback deliveries hit their retry limit and moved to PARKED in the last
+            15 minutes (cpay_callback_delivery_total{{status="PARKED"}}). Follow the "Callback
+            parked" section of Docs/Runbooks/Operations-alerts.md: confirm the merchant callback
+            URL is reachable and the signing secret/allowlist are correct before requeuing.
+
+      - alert: CPayCallbackRetryVolumeHigh
+        expr: increase(cpay_callback_delivery_total{status="RETRY"}[30m]) > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay callback retry volume is elevated"
+          description: >-
+            More than 50 callback delivery attempts moved to RETRY in the last 30 minutes
+            (cpay_callback_delivery_total{{status="RETRY"}}). This is a proxy for retry-queue growth,
+            not a direct queue-depth measurement (no gauge exists for pending callback_tasks rows).
+            Follow the "Retry queue growth" section of Docs/Runbooks/Operations-alerts.md: check
+            provider status before any bulk retry, and avoid manual replay of payouts without
+            confirming idempotency behavior. Tune the threshold to real traffic volume.
+
+      - alert: CPayCallbackDeliverySilent
+        expr: |
+          sum(rate(cpay_callback_delivery_total[30m])) == 0
+          and
+          sum(increase(cpay_callback_delivery_total[6h])) > 0
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "CPay callback delivery counter has gone silent"
+          description: >-
+            No callback delivery outcomes (DONE/RETRY/PARKED) have been recorded in 30 minutes, after
+            being active in the prior 6 hours. This can mean callback processing has stalled, or it
+            can simply mean traffic is quiet — treat as informational and cross-check the callback
+            worker/scheduler logs before paging anyone.
+
+  - name: cpay-rate-limiting
+    rules:
+      - alert: CPayRateLimitHitsSpiking
+        expr: increase(cpay_rate_limit_exceeded_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay is rejecting a high volume of requests for rate limiting"
+          description: >-
+            More than 100 requests were rejected by rate limiting in 5 minutes
+            (cpay_rate_limit_exceeded_total{{limiter="database_window"}} today is the only limiter
+            label in use). Could indicate a misbehaving integration, a retry storm from a merchant,
+            or an abuse/credential-stuffing attempt. Not itself a money-movement incident, but worth
+            triage per Docs/Runbooks/Operations-alerts.md's general triage steps.
+
+  - name: cpay-http-availability
+    rules:
+      - alert: CPayBackendTargetDown
+        expr: up{job="cpay-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPay backend is not responding to Prometheus scrapes"
+          description: >-
+            Prometheus has not been able to scrape the CPay backend's /actuator/prometheus endpoint
+            for 2 minutes. Assumes a scrape job labeled job="cpay-backend"; adjust the label selector
+            to match whatever scrape config is actually deployed (not part of this repo). Remember
+            the endpoint requires HTTP Basic Auth (actuator.username/actuator.password).
+
+      - alert: CPayHttp5xxRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))
+          /
+          sum(rate(http_server_requests_seconds_count[5m]))
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPay 5xx error rate above 5%"
+          description: >-
+            More than 5% of HTTP responses in the last 5 minutes were server errors
+            (http_server_requests_seconds_count{{outcome="SERVER_ERROR"}}), a standard Spring Boot
+            Actuator/Micrometer metric enabled by default. Check recent deploys, migrations, and
+            provider/credential changes per the general triage steps in
+            Docs/Runbooks/Operations-alerts.md.
+
+      - alert: CPayHttpMeanLatencyHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_sum[5m]))
+          /
+          sum(rate(http_server_requests_seconds_count[5m]))
+          > 1.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay mean HTTP response time above 1.5s"
+          description: >-
+            Average HTTP response time over 5 minutes exceeds 1.5s. This uses the mean (sum/count)
+            because percentile histograms are not enabled (no
+            management.metrics.distribution.percentiles-histogram config exists), so no
+            http_server_requests_seconds_bucket series is available for a true p95/p99 alert. Treat
+            this as a coarse signal only; enabling percentile histograms would allow a tighter
+            latency SLO alert.
+
+  - name: cpay-jvm-and-process
+    rules:
+      - alert: CPayJvmHeapNearMax
+        expr: |
+          sum(jvm_memory_used_bytes{area="heap"}) / sum(jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay JVM heap usage above 90% of max"
+          description: >-
+            JVM heap usage has been above 90% of the configured max heap for 10 minutes
+            (jvm_memory_used_bytes / jvm_memory_max_bytes, standard Micrometer JVM metrics). Risk of
+            GC pressure or OutOfMemoryError; check for a leak or undersized heap.
+
+      - alert: CPayProcessCpuHigh
+        expr: process_cpu_usage > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay backend process CPU usage above 85%"
+          description: >-
+            process_cpu_usage (standard Micrometer process metric) has been above 0.85 for 10
+            minutes. Check for a runaway job, an unbounded retry loop, or genuine load growth that
+            needs more capacity.
+
+  - name: cpay-datasource
+    rules:
+      - alert: CPayHikariPoolNearExhaustion
+        expr: |
+          sum(hikaricp_connections_active) / sum(hikaricp_connections_max) > 0.9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPay database connection pool is nearly exhausted"
+          description: >-
+            HikariCP active connections are above 90% of the configured max for 5 minutes
+            (hikaricp_connections_active / hikaricp_connections_max, auto-exposed by Spring Boot
+            because spring-boot-starter-jdbc pulls in HikariCP). Requests may start blocking or
+            timing out waiting for a connection; check for connection leaks or a slow query holding
+            connections open, and check MySQL's own max_connections headroom.
