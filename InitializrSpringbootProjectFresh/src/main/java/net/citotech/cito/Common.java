@@ -1880,6 +1880,16 @@ public class Common {
                             //If the transaction failed, the reverse the funds
                             if (pResponse.getTransactionStatus().equals("FAILED")) {
 
+                                // Persisted compensation saga (audit B3): this reversal is 2-5
+                                // separate statement writes. If one fails, the whole DB
+                                // transaction below rolls back (recordStatementTx marks it
+                                // rollback-only on failure) - but this saga record commits
+                                // independently (REQUIRES_NEW), so a partial/stuck reversal is
+                                // left in a queryable non-COMPLETED state rather than only a log
+                                // line, and PayoutCompensationAlertScheduler can alert on it.
+                                Long compensationSagaId = net.citotech.cito.payout.PayoutCompensationSagaRegistry.start(
+                                        newTx.getId(), newTx.getTx_unique_id(), merchant.getId(), 5);
+
                                 Statement newTxS = new Statement();
 
                                 if (!useMerchantCreds) {
@@ -1903,6 +1913,8 @@ public class Common {
                                 if (!res_string.equals("success")) {
                                     return res_string;
                                 }
+                                net.citotech.cito.payout.PayoutCompensationSagaRegistry.recordStepComplete(
+                                        compensationSagaId, "DR_SUSPENSE");
 
                                 if (newTx.getCharges() > 0) {
                                 //DR the charge reversal on suspense
@@ -1924,6 +1936,8 @@ public class Common {
                                 if (!res_string.equals("success")) {
                                     return res_string;
                                 }
+                                net.citotech.cito.payout.PayoutCompensationSagaRegistry.recordStepComplete(
+                                        compensationSagaId, "DR_CHARGE_SUSPENSE");
                                 } // end if (charges > 0)
                                 } // end if (!useMerchantCreds)
 
@@ -1946,6 +1960,8 @@ public class Common {
                                 if (!res_string.equals("success")) {
                                     return res_string;
                                 }
+                                net.citotech.cito.payout.PayoutCompensationSagaRegistry.recordStepComplete(
+                                        compensationSagaId, "CR_CUSTOMER");
 
                                 if (newTx.getCharges() > 0) {
                                 //CR the charge back on customer's account
@@ -1967,6 +1983,8 @@ public class Common {
                                 if (!res_string.equals("success")) {
                                     return res_string;
                                 }
+                                net.citotech.cito.payout.PayoutCompensationSagaRegistry.recordStepComplete(
+                                        compensationSagaId, "CR_CHARGE_CUSTOMER");
                                 } // end if (charges > 0)
 
                                 if (!useMerchantCreds) {
@@ -1989,7 +2007,11 @@ public class Common {
                                 if (!res_string.equals("success")) {
                                     return res_string;
                                 }
+                                net.citotech.cito.payout.PayoutCompensationSagaRegistry.recordStepComplete(
+                                        compensationSagaId, "CR_FLOAT");
                                 } // end if (!useMerchantCreds)
+
+                                net.citotech.cito.payout.PayoutCompensationSagaRegistry.complete(compensationSagaId);
 
                                 Logger.getLogger(AuthenticationController.class.getName())
                                 .log(Level.SEVERE, "INTERNAL ERROR - TX STATUS UPDATE: "+pResponse.toString(), "");
