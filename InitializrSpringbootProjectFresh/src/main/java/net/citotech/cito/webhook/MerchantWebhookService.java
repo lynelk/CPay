@@ -12,6 +12,8 @@ import net.citotech.cito.Model.HttpRequestResponse;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
 import net.citotech.cito.security.CanonicalRequestSigner;
+import net.citotech.cito.webhook.WebhookEventCatalog.EventDefinition;
+import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,10 @@ public class MerchantWebhookService {
     public Map<String, Object> registerEndpoint(long merchantId, String eventType, String endpointUrl, String actor) {
         if (merchantId <= 0 || blank(eventType) || blank(endpointUrl)) {
             throw new PaymentGatewayException("merchantId, eventType, and endpointUrl are required");
+        }
+        if (!WebhookEventCatalog.isKnown(eventType)) {
+            throw new PaymentGatewayException(
+                "Unknown webhook event type: " + eventType + ". See GET /api/v2/webhooks/events for the catalog.");
         }
         String secret = generateSecret();
         MapSqlParameterSource p = new MapSqlParameterSource();
@@ -78,6 +84,9 @@ public class MerchantWebhookService {
 
     @Transactional
     public int enqueue(long merchantId, String eventType, String eventReference, String payloadJson) {
+        EventDefinition definition = WebhookEventCatalog.lookup(eventType)
+            .orElseThrow(() -> new PaymentGatewayException("Unknown webhook event type: " + eventType));
+        String envelopedPayload = envelope(definition, payloadJson);
         List<EndpointRow> endpoints = activeEndpoints(merchantId, eventType);
         int queued = 0;
         for (EndpointRow endpoint : endpoints) {
@@ -86,7 +95,7 @@ public class MerchantWebhookService {
             p.addValue("endpoint_id", endpoint.id());
             p.addValue("event_type", normalizeEvent(eventType));
             p.addValue("event_reference", eventReference);
-            p.addValue("payload_json", payloadJson);
+            p.addValue("payload_json", envelopedPayload);
             queued += jdbcTemplate.update(
                 "INSERT IGNORE INTO merchant_webhook_deliveries "
                     + "(merchant_id, endpoint_id, event_type, event_reference, payload_json, delivery_status, next_attempt_at) "
@@ -94,6 +103,19 @@ public class MerchantWebhookService {
                 p);
         }
         return queued;
+    }
+
+    /**
+     * Adds the versioned envelope fields (eventId/eventVersion/createdAt) from the catalog on top
+     * of the caller's payload, additively - existing fields the caller already set (eventType,
+     * merchantNumber, etc.) are left untouched so a merchant reading only those is unaffected.
+     */
+    private String envelope(EventDefinition definition, String payloadJson) {
+        JSONObject obj = new JSONObject(payloadJson);
+        obj.put("eventId", Common.generateUuid());
+        obj.put("eventVersion", definition.version());
+        obj.put("createdAt", Instant.now().toString());
+        return obj.toString();
     }
 
     @Transactional
