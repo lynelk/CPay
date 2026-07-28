@@ -39,6 +39,7 @@ public class MerchantSelfServiceController {
     private final MerchantStatementExportService statementExportService;
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final MerchantNotificationPreferenceService notificationPreferenceService;
+    private final MerchantEmailVerificationService emailVerificationService;
 
     public MerchantSelfServiceController(MerchantSelfServiceSignupService signupService,
                                          MerchantChannelCredentialService channelService,
@@ -47,7 +48,8 @@ public class MerchantSelfServiceController {
                                          SimpleRateLimitService rateLimitService,
                                          MerchantStatementExportService statementExportService,
                                          NamedParameterJdbcTemplate jdbcTemplate,
-                                         MerchantNotificationPreferenceService notificationPreferenceService) {
+                                         MerchantNotificationPreferenceService notificationPreferenceService,
+                                         MerchantEmailVerificationService emailVerificationService) {
         this.signupService = signupService;
         this.channelService = channelService;
         this.environmentService = environmentService;
@@ -56,6 +58,7 @@ public class MerchantSelfServiceController {
         this.statementExportService = statementExportService;
         this.jdbcTemplate = jdbcTemplate;
         this.notificationPreferenceService = notificationPreferenceService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @PostMapping(path = "/signup")
@@ -71,6 +74,46 @@ public class MerchantSelfServiceController {
             Logger.getLogger(MerchantSelfServiceController.class.getName()).log(Level.SEVERE, "Signup failed", e);
             return ResponseEntity.badRequest().body(error("SIGNUP_FAILED", "Unable to complete merchant signup"));
         }
+    }
+
+    /**
+     * Confirms a merchant user's email address (audit P4). Reachable pre-login (no session exists
+     * yet), so the merchant is identified by merchantNumber+email rather than the session.
+     */
+    @PostMapping(path = "/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        try {
+            String merchantNumber = text(body == null ? null : body.get("merchantNumber"));
+            String email = text(body == null ? null : body.get("email"));
+            String code = text(body == null ? null : body.get("code"));
+            boolean verified = emailVerificationService.verifyByMerchantNumberAndEmail(merchantNumber, email, code);
+            if (!verified) {
+                return ResponseEntity.badRequest().body(error("VERIFICATION_CODE_INVALID", "That verification code is invalid or has expired."));
+            }
+            return ResponseEntity.ok(Map.of("code", "000", "message", "Email address verified. You can now log in."));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.badRequest().body(error("VERIFICATION_REJECTED", e.getMessage()));
+        }
+    }
+
+    /**
+     * Always responds with the same generic, 200 message regardless of whether merchantNumber+email
+     * actually resolves to an account - an error message that varied ("no such user" vs "sent")
+     * would let an attacker enumerate registered email addresses.
+     */
+    @PostMapping(path = "/verify-email/resend")
+    public ResponseEntity<?> resendVerificationEmail(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        String merchantNumber = text(body == null ? null : body.get("merchantNumber"));
+        String email = text(body == null ? null : body.get("email"));
+        if (!rateLimitService.allow("merchant-verify-email-resend:" + merchantNumber + ":" + email, 3)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error("RATE_LIMITED", "Too many requests. Please try again later."));
+        }
+        try {
+            emailVerificationService.resendVerificationEmail(merchantNumber, email);
+        } catch (PaymentGatewayException ignored) {
+            // Fall through to the same generic response - see javadoc above.
+        }
+        return ResponseEntity.ok(Map.of("code", "000", "message", "A new verification code has been sent if the account exists."));
     }
 
     @GetMapping(path = "/channels")

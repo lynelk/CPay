@@ -19,6 +19,13 @@ public class MerchantUser extends User implements java.io.Serializable {
      * embedding the enum type directly on this legacy model.
      */
     String role;
+    /**
+     * When this merchant user's email address was confirmed (audit P4), or null if not yet
+     * verified. A null value blocks login - see AuthenticationController#authenticateMerchantUser.
+     * Existing accounts are backfilled to their created_on time by the V26 migration so this gate
+     * only affects accounts created after it shipped.
+     */
+    String email_verified_at;
 
     public String getRole() {
         return role;
@@ -26,6 +33,14 @@ public class MerchantUser extends User implements java.io.Serializable {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getEmail_verified_at() {
+        return email_verified_at;
+    }
+
+    public void setEmail_verified_at(String email_verified_at) {
+        this.email_verified_at = email_verified_at;
     }
 
     public String getMerchant_number() {

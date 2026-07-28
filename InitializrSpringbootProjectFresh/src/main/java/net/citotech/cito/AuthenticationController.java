@@ -237,6 +237,13 @@ public class AuthenticationController {
                 return GeneralException.getError("137", GeneralException.ERRORS_137);
             }
 
+            // Audit P4: block login until the merchant user's email address is confirmed. Existing
+            // accounts were backfilled to verified by the V26 migration, so this only affects
+            // accounts created after this shipped.
+            if (u.getEmail_verified_at() == null) {
+                return GeneralException.getError("147", GeneralException.ERRORS_147);
+            }
+
             if (merchantMfaService != null && merchantMfaService.isEnabled(u.getId())) {
                 String mfaCode = requestBody.get("mfa_code");
                 if (mfaCode == null || mfaCode.trim().isEmpty()) {
@@ -350,6 +357,7 @@ public class AuthenticationController {
                 user.setIs_verification_timedout(rs.getString("is_verification_timedout"));
                 user.setEmail_verification_code(rs.getString("email_verification_code"));
                 user.setRole(rs.getString("role"));
+                user.setEmail_verified_at(rs.getString("email_verified_at"));
                 user.setPrivileges(getMerchantUserPrivileges(user));
                 return user;
             }

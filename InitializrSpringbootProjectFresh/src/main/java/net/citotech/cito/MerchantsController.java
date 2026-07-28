@@ -519,6 +519,10 @@ public class MerchantsController {
                 +" `email`=:email, "
                 +" `phone`=:phone, "
                 +" `password`=:password, "
+                // Audit P4: this account is provisioned directly by a trusted internal admin, not
+                // via open self-service signup, so it starts pre-verified rather than blocked at
+                // login until an email-confirmation step nobody would otherwise trigger for it.
+                +" `email_verified_at`=CURRENT_TIMESTAMP, "
                 +" `status`=:status ";
             
             String sqlPrivileges = "INSERT INTO "+Common.DB_TABLE_MERCHANT_ADMIN_PRIVILEGES+" "
@@ -710,6 +714,10 @@ public class MerchantsController {
                 +" `email`=:email, "
                 +" `phone`=:phone, "
                 +" `password`=:password, "
+                // Audit P4: this account is provisioned directly by a trusted internal admin, not
+                // via open self-service signup, so it starts pre-verified rather than blocked at
+                // login until an email-confirmation step nobody would otherwise trigger for it.
+                +" `email_verified_at`=CURRENT_TIMESTAMP, "
                 +" `status`=:status ";
             
             String sqlPrivileges = "INSERT INTO "+Common.DB_TABLE_MERCHANT_ADMIN_PRIVILEGES+" "
@@ -1020,6 +1028,9 @@ public class MerchantsController {
                 +" `email`=:email, "
                 +" `status`=:status, "
                 +" `role`=:role, "
+                // Audit P4: provisioned by a trusted internal admin (this is editMerchant's
+                // team-management flow), not open self-service signup - starts pre-verified.
+                +" `email_verified_at`=CURRENT_TIMESTAMP, "
                 +" `password`=:password "
                 +" ";
 

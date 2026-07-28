@@ -21,17 +21,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class MerchantSelfServiceSignupService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final ComplianceCaseService complianceCaseService;
+    private final MerchantEmailVerificationService emailVerificationService;
 
     @Autowired
     public MerchantSelfServiceSignupService(NamedParameterJdbcTemplate jdbcTemplate,
-                                            ComplianceCaseService complianceCaseService) {
+                                            ComplianceCaseService complianceCaseService,
+                                            MerchantEmailVerificationService emailVerificationService) {
         this.jdbcTemplate = jdbcTemplate;
         this.complianceCaseService = complianceCaseService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     public MerchantSelfServiceSignupService(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
         this.complianceCaseService = null;
+        this.emailVerificationService = null;
     }
 
     @Transactional
@@ -90,6 +94,11 @@ public class MerchantSelfServiceSignupService {
                 "[\"business_registration\",\"tax_identification\",\"beneficial_owners\"]",
                 "Self-service signup requires KYB review before production activation.",
                 null);
+        }
+        // Audit P4: the new merchant_admins row starts with email_verified_at NULL (see V26); this
+        // is what actually blocks login until the address is confirmed.
+        if (emailVerificationService != null) {
+            emailVerificationService.sendVerificationEmail(adminId.longValue(), email, contactName);
         }
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("code", "000");

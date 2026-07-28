@@ -105,7 +105,8 @@ class MerchantSelfServiceControllerStatementsTest {
             mock(SimpleRateLimitService.class),
             statementExportService,
             jdbcTemplate,
-            mock(net.citotech.cito.merchant.MerchantNotificationPreferenceService.class)
+            mock(net.citotech.cito.merchant.MerchantNotificationPreferenceService.class),
+            mock(MerchantEmailVerificationService.class)
         );
         return MockMvcBuilders.standaloneSetup(controller).build();
     }
