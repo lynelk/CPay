@@ -11,21 +11,22 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.citotech.cito.Common;
-import net.citotech.cito.SettingsController;
 import net.citotech.cito.gateway.ProviderToken;
 import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
+    // Audit H1: converted from java.util.logging to SLF4J (money-path class: Airtel OpenAPI gateway).
+    private static final Logger logger = LoggerFactory.getLogger(AirtelMoneyOpenApiPaymentGateway.class);
     private static final int TOKEN_TTL_MINUTES = 1;
 
     String xml_sent = "";
@@ -178,7 +179,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             }
             return 0.0;
         } catch (Exception e) {
-            Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+            logger.error(e.getMessage(), e);
             return 0.0;
         }
     }
@@ -257,7 +258,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 if (!data.isNull("msisdn")) info.setMsisdn(data.getString("msisdn"));
             }
         } catch (Exception ex) {
-            Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            logger.error(ex.getMessage(), ex);
         }
         return info;
     }
@@ -280,7 +281,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
 
         HttpRequestResponse response = Common.doHttpRequest("POST", tokenUrl(), body.toString(), headers);
         if (response == null || response.getStatusCode() != 200 || response.getResponse().isEmpty()) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "Failed to get Airtel OpenAPI token", "");
+            logger.error("Failed to get Airtel OpenAPI token");
             return null;
         }
         JSONObject tokenJson = new JSONObject(response.getResponse());

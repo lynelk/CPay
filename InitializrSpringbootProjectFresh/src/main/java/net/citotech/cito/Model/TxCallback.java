@@ -1,9 +1,7 @@
 package net.citotech.cito.Model;
 
-import net.citotech.cito.AuthenticationController;
 import net.citotech.cito.Common;
 import net.citotech.cito.GeneralException;
-import net.citotech.cito.TransactionsLogController;
 import net.citotech.cito.async.ManagedAsyncTasks;
 import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -19,10 +17,13 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TxCallback {
+    // Audit H1: converted from java.util.logging to SLF4J (money-path class: merchant callback delivery).
+    private static final Logger logger = LoggerFactory.getLogger(TxCallback.class);
+
     public Transaction tx;
     public Merchant merchant;
     public String sql_update;
@@ -144,18 +145,16 @@ public class TxCallback {
                                     return "success";
                                 } catch (Exception e) {
                                     status.setRollbackOnly();
-                                    Logger.getLogger(AuthenticationController.class.getName())
-                                            .log(Level.SEVERE, "INTERNAL ERROR: " + e.getMessage(), "");
+                                    logger.error("INTERNAL ERROR: " + e.getMessage());
                                     return GeneralException.getError("102", GeneralException.ERRORS_102);
                                 }
                         });
-                        Logger.getLogger(TransactionsLogController.class.getName())
-                                .log(Level.INFO, "Callback result: " + result, "");
+                        logger.info("Callback result: " + result);
                     } else {
                         markCallbackFailed(jdbcTemplate, template);
                     }
                 } catch (Exception ex) {
-                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(null, ex);
                     markCallbackFailed(jdbcTemplate, template);
                 }
         });

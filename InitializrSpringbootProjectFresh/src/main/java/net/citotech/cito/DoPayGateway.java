@@ -1,9 +1,8 @@
 package net.citotech.cito;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import net.citotech.cito.Model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
@@ -12,7 +11,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
  * @author josephtabajjwa
  */
 public class DoPayGateway {
-    
+    // Audit H1: converted from java.util.logging to SLF4J (money-path class).
+    private static final Logger logger = LoggerFactory.getLogger(DoPayGateway.class);
+
     MTNMoMoPaymentGateway mtn_mmpgw;
     AirtelMoneyPaymentGateway airtelmm_mmpgw;
     AirtelMoneyOpenApiPaymentGateway airteloapimm_mmpgw;
@@ -42,11 +43,10 @@ public class DoPayGateway {
     }
 
     private static void logBalanceWarning(String message, Exception ex) {
-        Logger logger = Logger.getLogger(DoPayGateway.class.getName());
         if (ex == null) {
-            logger.log(Level.WARNING, message);
+            logger.warn(message);
         } else {
-            logger.log(Level.WARNING, message, ex);
+            logger.warn(message, ex);
         }
     }
 
@@ -772,8 +772,7 @@ public class DoPayGateway {
                     api_collections_key, api_collections_subscription,
                     api_disbursements_user, api_disbursements_key,
                     api_disbursements_subscription, env.getSetting_value(), base_currency);
-            Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "API User Details: " + api_collections_user + " " + api_collections_key, "");
+            logger.error("API User Details: " + api_collections_user + " " + api_collections_key);
             return mtn_mmpgw.doPayIn(amount, msisdn, ref, narrative);
         }
 
@@ -796,8 +795,7 @@ public class DoPayGateway {
             safaricom_mmpgw.setApiDetails(global_url, gw_safaricom_api_consumer_key,
                     gw_safaricom_api_consumer_secret, gw_safaricom_api_shortcode,
                     gw_safaricom_api_password, env.getSetting_value(), app_setting_app_url);
-            Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "API User Details: " + gw_safaricom_api_consumer_key + " " + gw_safaricom_api_consumer_secret, "");
+            logger.error("API User Details: " + gw_safaricom_api_consumer_key + " " + gw_safaricom_api_consumer_secret);
             return safaricom_mmpgw.doPayIn(amount, msisdn, ref, narrative);
         }
 
@@ -1269,8 +1267,7 @@ public class DoPayGateway {
                         app_setting_app_url);
                 safaricom_mmpgw.setSegment("disbursement");
             }
-            Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, "API User Details: "+gw_safaricom_api_consumer_key+" "+gw_safaricom_api_consumer_secret, "");
+            logger.error("API User Details: "+gw_safaricom_api_consumer_key+" "+gw_safaricom_api_consumer_secret);
 
             safaricom_mmpgw.setSegment(tx_type);
             GateWayResponse pResponse = safaricom_mmpgw.checkStatus(ref);
