@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: InitializrSpringbootProject
+        working-directory: InitializrSpringbootProjectFresh
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -40,12 +40,21 @@ jobs:
           cache: maven
       - name: Compile, test and verify
         run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
+      - name: Generate backend SBOM
+        run: mvn -B org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom --no-transfer-progress -DskipTests
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-surefire-reports
-          path: InitializrSpringbootProject/target/surefire-reports/
+          path: InitializrSpringbootProjectFresh/target/surefire-reports/
+      - name: Upload backend SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-sbom
+          path: |
+            InitializrSpringbootProjectFresh/target/bom.json
+            InitializrSpringbootProjectFresh/target/bom.xml
 
   migration-smoke:
     name: Migration Naming and Duplicate Check
@@ -55,7 +64,7 @@ jobs:
       - name: Check Flyway migration versions are unique
         run: |
           set -euo pipefail
-          files=$(find InitializrSpringbootProject/src/main/resources/db/migration -type f -name 'V*.sql' -printf '%f\n' | sort)
+          files=$(find InitializrSpringbootProjectFresh/src/main/resources/db/migration -type f -name 'V*.sql' -printf '%f\n' | sort)
           echo "$files"
           versions=$(echo "$files" | sed -E 's/^V([0-9]+)__.*/\1/')
           dupes=$(echo "$versions" | sort | uniq -d)
@@ -74,6 +83,8 @@ jobs:
           test -s docs/api/cpay-v2-openapi.yaml
           grep -q "/api/v2/native/payments/collect" docs/api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/recon-finance/summary" docs/api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/compliance/cases" docs/api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/provider-certification/evidence" docs/api/cpay-v2-openapi.yaml
 
   owasp:
     name: OWASP Dependency-Check
@@ -81,7 +92,7 @@ jobs:
     needs: backend
     defaults:
       run:
-        working-directory: InitializrSpringbootProject
+        working-directory: InitializrSpringbootProjectFresh
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -101,7 +112,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: owasp-dependency-check-report
-          path: InitializrSpringbootProject/target/dependency-check-report.html
+          path: InitializrSpringbootProjectFresh/target/dependency-check-report.html
 
   codeql:
     name: CodeQL Security Analysis
@@ -121,7 +132,7 @@ jobs:
           distribution: "temurin"
           cache: maven
       - name: Build for CodeQL
-        working-directory: InitializrSpringbootProject
+        working-directory: InitializrSpringbootProjectFresh
         run: mvn -B compile --no-transfer-progress -DskipTests
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
@@ -139,7 +150,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
           cache: npm
           cache-dependency-path: clientside/package-lock.json
       - name: Install dependencies
@@ -147,9 +158,13 @@ jobs:
       - name: Run linter
         run: npm run lint --if-present
       - name: Run tests
-        run: npm test -- --watchAll=false --passWithNoTests
+        run: npm test
         env:
           CI: "true"
+          NODE_OPTIONS: "--openssl-legacy-provider"
+      - name: Run typecheck
+        run: npm run typecheck
+        env:
           NODE_OPTIONS: "--openssl-legacy-provider"
       - name: Build React app
         run: npm run build

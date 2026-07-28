@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.citotech.cito;
 
 import java.io.BufferedReader;
@@ -36,14 +31,17 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.security.SecureRandom;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -52,6 +50,7 @@ import javax.net.ssl.X509TrustManager;
 import jakarta.servlet.http.HttpServletRequest;
 
 import net.citotech.cito.Model.*;
+import net.citotech.cito.async.ManagedAsyncTasks;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -92,9 +91,6 @@ public class Common {
     public static final String CLASS_PATH_DEFAULT_MERCHANT_SETTINGS = "settings/default_merchant_settings.json";
     public static final String CLASS_PATH_GENERAL_SETTINGS = "settings/general_settings.json";
     public static final String CLASS_PATH_GENERAL_DBCHANGES_DIR = "dbchanges";
-    public static final String CLASS_PATH_MTN_TOKEN_FILE = "default_mtn_token.json";
-    public static final String CLASS_PATH_SAFARICOM_TOKEN_FILE = "default_safaricom_token.json";
-    public static final String CLASS_PATH_AIRTELOAPI_TOKEN_FILE = "default_airteloapi_token.json";
 
     public static File safeLockFile(String lockFileDirectory, String fileName) throws IOException {
         if (fileName == null || !fileName.matches("[A-Za-z0-9._-]+")) {
@@ -130,6 +126,30 @@ public class Common {
      */
     public static void setAppBaseUrl(String url) {
         appBaseUrl = (url != null) ? url : "";
+    }
+
+    /**
+     * IP addresses of reverse proxies/load balancers this deployment sits behind. Empty by
+     * default, meaning X-Forwarded-For/X-Real-IP are never trusted until explicitly configured
+     * (via {@code cpay.security.trusted-proxy-ips}) - those headers are attacker-controlled on
+     * any direct connection, and trusting them unconditionally lets a client spoof the IP used
+     * for rate-limiting and audit logging.
+     */
+    private static volatile Set<String> trustedProxyIps = Set.of();
+
+    /**
+     * Called at startup by {@link net.citotech.cito.config.SslConfig} to set the trusted proxy
+     * hop(s) whose X-Forwarded-For/X-Real-IP headers {@link #getIpAddress} may trust.
+     */
+    public static void setTrustedProxyIps(String commaSeparatedIps) {
+        if (commaSeparatedIps == null || commaSeparatedIps.isBlank()) {
+            trustedProxyIps = Set.of();
+            return;
+        }
+        trustedProxyIps = Arrays.stream(commaSeparatedIps.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
     }
 
 
@@ -962,20 +982,7 @@ public class Common {
     }
     
     
-    static public String imploadStringArray(String[] strings) {
-        String r = "";
-        for (String s : strings) {
-            String s_ = s.trim();
-            if (s_.isEmpty()) {
-                continue;
-            }
-            r += s.trim()+",";
-        }
-        r = r.substring(0, (r.length()-1));
-        return r;
-    }
-    
-    static public String imploadStringJsonArray(JSONArray strings) throws JSONException {
+    static public String implodeStringJsonArray(JSONArray strings) throws JSONException {
         String r = "";
         for (int i=0; i < strings.length(); i++) {
             String s = strings.getString(i).trim();
@@ -997,295 +1004,75 @@ public class Common {
     * Returns success | JSON String with errors.
     */
     
-    static public String recordStatementTx(Statement tx, 
+    static public String recordStatementTx(Statement tx,
             String balance_type,
             NamedParameterJdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager) {
-        
-        //Balance query
-        String balanceSql = "SELECT * FROM "+Common.DB_TABLE_MERCHANT_STATEMENT
-                +" WHERE merchant_id = :merchant_id "
-                +" ORDER BY id DESC LIMIT 1 "
-                +" FOR UPDATE";
-
-         MapSqlParameterSource parametersBalanceSql = new MapSqlParameterSource();
-         parametersBalanceSql.addValue("merchant_id", tx.getMerchant_id());
-
-        //Now add the user to database
-        String sql = "INSERT INTO "+Common.DB_TABLE_MERCHANT_STATEMENT+" "
-            +" SET `merchant_id`=:merchant_id,"
-            +" `gateway_id`=:gateway_id, "
-            +" `description`=:description,"
-            +" `recorded_by`=:recorded_by,"
-            +" `amount`=:amount,"
-            +" `tx_type`=:tx_type,"
-            +" `narrative`=:narrative,"
-            +" `airtelmm_balance`=:airtelmm_balance,"
-                +" `safaricom_balance`=:safaricom_balance,"
-            +" `sms_balance`=:sms_balance,"
-            +" `mtnmm_balance`=:mtnmm_balance";
-
-
-        MapSqlParameterSource parameters = new MapSqlParameterSource();
-        
-        if (tx.getTransactions_log_id() > 0) {
-            sql += ", transactions_log_id=:transactions_log_id ";
-            parameters.addValue("transactions_log_id", tx.getTransactions_log_id());
-        }
-        parameters.addValue("merchant_id", tx.getMerchant_id());
-        parameters.addValue("gateway_id", tx.getGateway_id());
-        parameters.addValue("description", tx.getDescription());
-        parameters.addValue("amount", tx.getAmount());
-        parameters.addValue("tx_type", tx.getTx_type());
-        parameters.addValue("narrative", tx.getNarritive());
-        parameters.addValue("recorded_by", tx.getRecorded_by());
-
-        final String sql_final = sql;
         TransactionTemplate template = new TransactionTemplate(transactionManager);
-        String result = template.execute(new TransactionCallback<String>() {
+        return template.execute(new TransactionCallback<String>() {
             @Override
             public String doInTransaction(TransactionStatus status) {
-                try {
-
-                    RowMapper<Statement> rm_b = new RowMapper<Statement>() {
-                    public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
-                            Statement t = new Statement();
-                            t.setId(rs.getLong("id"));
-                            t.setAmount(rs.getDouble("amount"));
-                            t.setAirtelmm_balance(rs.getDouble("airtelmm_balance"));
-                            t.setMtnmm_balance(rs.getDouble("mtnmm_balance"));
-                            t.setSafaricom_balance(rs.getDouble("safaricom_balance"));
-                            t.setCreated_on(rs.getString("created_on"));
-                            t.setUpdated_on(rs.getString("updated_on"));
-                            t.setGateway_id(rs.getString("gateway_id"));
-                            t.setDescription(rs.getString("description"));
-                            t.setMerchant_id(rs.getLong("merchant_id"));
-                            t.setNarritive(rs.getString("narrative"));
-                            t.setTransactions_log_id(rs.getLong("transactions_log_id"));
-                            t.setTx_type(rs.getString("tx_type"));
-                            t.setSms_balance(rs.getDouble("sms_balance"));
-                            return t;
-                    }
-                    };
-
-                    List<Statement> balanceList = jdbcTemplate.query(balanceSql, parametersBalanceSql, rm_b);
-                    Balance mtn_balance;
-                    Balance airtel_balance;
-                    Balance sms_balance;
-                    Balance safaricom_balance;
-
-                    if (balanceList.size() > 0) {
-                        Statement s = balanceList.get(0);
-                        mtn_balance = new Balance("UGX MTN MM", 
-                                s.getMtnmm_balance(), 
-                                "MTNMoMoPaymentGateway"   );
-
-                        airtel_balance = new Balance("UGX AIRTEL MM", 
-                                s.getAirtelmm_balance(), 
-                                "AirtelMoneyPaymentGateway"   );
-                        airtel_balance.setBaseCurrency("UGX");
-
-                        safaricom_balance = new Balance("KES MPESA",
-                                s.getSafaricom_balance(),
-                                "SafariComPaymentGateway"   );
-                        safaricom_balance.setBaseCurrency("KES");
-
-                        sms_balance = new Balance("UGX SMS", 
-                                s.getSms_balance(), 
-                                "SmsGateway"   );
-                        sms_balance.setBaseCurrency("UGX");
-                    } else {
-                        mtn_balance = new Balance("UGX MTN MM", 
-                                0.00, 
-                                "MTNMoMoPaymentGateway");
-
-                        airtel_balance = new Balance("UGX AIRTEL MM", 
-                                0.00, 
-                                "AirtelMoneyPaymentGateway");
-                        airtel_balance.setBaseCurrency("UGX");
-
-                        safaricom_balance = new Balance("KES MPESA",
-                                0.00,
-                                "SafariComPaymentGateway"   );
-                        safaricom_balance.setBaseCurrency("KES");
-
-                        sms_balance = new Balance("UGX SMS", 
-                                0.00, 
-                                "SmsGateway"   );
-                        sms_balance.setBaseCurrency("UGX");
-                    }
-
-                    //New balance
-                    if (tx.getTx_type().contains("CR")) {
-                        if (balance_type.equals("mtnmm_balance")) {
-                            Double nBalance = tx.getAmount() + mtn_balance.getAmount();
-                            parameters.addValue("mtnmm_balance", nBalance);
-                            parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                            parameters.addValue("sms_balance", sms_balance.getAmount());
-                            parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                        }
-                        if (balance_type.equals("airtelmm_balance")) {
-                            Double nBalance = tx.getAmount() + airtel_balance.getAmount();
-                            parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                            parameters.addValue("airtelmm_balance", nBalance);
-                            parameters.addValue("sms_balance", sms_balance.getAmount());
-                            parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                        }
-                        if (balance_type.equals("safaricom_balance")) {
-                            Double nBalance = tx.getAmount() + safaricom_balance.getAmount();
-                            parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                            parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                            parameters.addValue("sms_balance", sms_balance.getAmount());
-                            parameters.addValue("safaricom_balance", nBalance);
-                        }
-                        if (balance_type.equals("sms_balance")) {
-                            Double nBalance = tx.getAmount() + sms_balance.getAmount();
-                            parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                            parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                            parameters.addValue("sms_balance", nBalance);
-                            parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                        }
-                    } else {
-                        if (balance_type.equals("mtnmm_balance")) {
-                            //Check if there is enough balance for this transaction
-                            if (tx.getAmount() > mtn_balance.getAmount()) {
-                                status.setRollbackOnly();
-                                return GeneralException
-                                        .getError("111", 
-                                                String.format(GeneralException.ERRORS_111, 
-                                                        mtn_balance.getAmount(), 
-                                                        mtn_balance.getCode()));
-                            }
-                            Double nBalance =  mtn_balance.getAmount() - tx.getAmount();
-                            parameters.addValue("mtnmm_balance", nBalance);
-                            parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                            parameters.addValue("sms_balance", sms_balance.getAmount());
-                            parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                        }
-
-                        if (balance_type.equals("airtelmm_balance")) {
-                            if (tx.getAmount() > airtel_balance.getAmount()) {
-                                status.setRollbackOnly();
-                                return GeneralException
-                                        .getError("111", 
-                                                String.format(GeneralException.ERRORS_111, 
-                                                        airtel_balance.getAmount(), 
-                                                        airtel_balance.getCode()));
-                            }
-                            Double nBalance = airtel_balance.getAmount() - tx.getAmount();
-                            parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                            parameters.addValue("airtelmm_balance", nBalance);
-                            parameters.addValue("sms_balance", sms_balance.getAmount());
-                            parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                        }
-
-                        if (balance_type.equals("sms_balance")) {
-                            if (tx.getAmount() > sms_balance.getAmount()) {
-                                status.setRollbackOnly();
-                                return GeneralException
-                                        .getError("111", 
-                                                String.format(GeneralException.ERRORS_111, 
-                                                        sms_balance.getAmount(), 
-                                                        sms_balance.getCode()));
-                            }
-                            Double nBalance = sms_balance.getAmount() - tx.getAmount();
-                            parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                            parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                            parameters.addValue("sms_balance", nBalance);
-                            parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                        }
-                        if (balance_type.equals("safaricom_balance")) {
-                            if (tx.getAmount() > safaricom_balance.getAmount()) {
-                                status.setRollbackOnly();
-                                return GeneralException
-                                        .getError("111",
-                                                String.format(GeneralException.ERRORS_111,
-                                                        safaricom_balance.getAmount(),
-                                                        safaricom_balance.getCode()));
-                            }
-                            Double nBalance = safaricom_balance.getAmount() - tx.getAmount();
-                            parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                            parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                            parameters.addValue("sms_balance", sms_balance.getAmount());
-                            parameters.addValue("safaricom_balance", nBalance);
-                        }
-                        //More balances
-                    }
-
-                    if (parameters.getParameterNames().length <= 0) {
-                        return GeneralException
-                                .getError("102", GeneralException.ERRORS_102
-                                        +" "+balance_type);
-                    }
-
-                    KeyHolder keyHolder = new GeneratedKeyHolder();
-                    //long userId;
-                    jdbcTemplate.update(sql_final, parameters, keyHolder);
-                    //Now insert privileges
-                    BigInteger statementId = (BigInteger)keyHolder.getKey();
-
-
-                    return "success";
-                } catch (Exception e) {
-                    Logger.getLogger(Common.class.getName()).log(Level.SEVERE, e.getMessage(), e);
-                    status.setRollbackOnly();
-                    return GeneralException
-                        .getError("102", GeneralException.ERRORS_102);
-                }
+                return recordStatementTxCore(tx, balance_type, jdbcTemplate, status);
             }
         });
-        return result;
     }
-    
-    
-    static public String recordStatementTxWithoutTransaciton(Statement tx, 
+
+    static public String recordStatementTxWithoutTransaction(Statement tx,
             String balance_type,
             NamedParameterJdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
             TransactionStatus status) {
-        
-        //Balance query
-        String balanceSql = "SELECT * FROM "+Common.DB_TABLE_MERCHANT_STATEMENT
-                +" WHERE merchant_id = :merchant_id "
-                +" ORDER BY id DESC LIMIT 1 "
-                +" FOR UPDATE";
+        return recordStatementTxCore(tx, balance_type, jdbcTemplate, status);
+    }
 
-         MapSqlParameterSource parametersBalanceSql = new MapSqlParameterSource();
-         parametersBalanceSql.addValue("merchant_id", tx.getMerchant_id());
-
-        //Now add the user to database
-        String sql = "INSERT INTO "+Common.DB_TABLE_MERCHANT_STATEMENT+" "
-            +" SET `merchant_id`=:merchant_id,"
-            +" `gateway_id`=:gateway_id, "
-            +" `description`=:description,"
-            +" `recorded_by`=:recorded_by,"
-            +" `amount`=:amount,"
-            +" `tx_type`=:tx_type,"
-            +" `narrative`=:narrative,"
-            +" `airtelmm_balance`=:airtelmm_balance,"
-                +" `safaricom_balance`=:safaricom_balance,"
-            +" `sms_balance`=:sms_balance,"
-            +" `mtnmm_balance`=:mtnmm_balance";
-
-
-        MapSqlParameterSource parameters = new MapSqlParameterSource();
-        if (tx.getTransactions_log_id() > 0) {
-            sql += ", transactions_log_id=:transactions_log_id ";
-            parameters.addValue("transactions_log_id", tx.getTransactions_log_id());
-        }
-        parameters.addValue("merchant_id", tx.getMerchant_id());
-        parameters.addValue("gateway_id", tx.getGateway_id());
-        parameters.addValue("description", tx.getDescription());
-        parameters.addValue("amount", tx.getAmount());
-        parameters.addValue("tx_type", tx.getTx_type());
-        parameters.addValue("narrative", tx.getNarritive());
-        parameters.addValue("recorded_by", tx.getRecorded_by());
-        
-
-        final String sql_final = sql;
-        //TransactionTemplate template = new TransactionTemplate(transactionManager);
-        
+    /**
+     * Shared CR/DR balance-update core for {@link #recordStatementTx} and
+     * {@link #recordStatementTxWithoutTransaction}. The two callers differ only in whether they
+     * open their own transaction or reuse an ambient {@link TransactionStatus}; the balance
+     * lookup, insufficient-funds check, and statement insert are otherwise identical.
+     */
+    private static String recordStatementTxCore(Statement tx,
+            String balance_type,
+            NamedParameterJdbcTemplate jdbcTemplate,
+            TransactionStatus status) {
         try {
+            //Balance query
+            String balanceSql = "SELECT * FROM "+Common.DB_TABLE_MERCHANT_STATEMENT
+                    +" WHERE merchant_id = :merchant_id "
+                    +" ORDER BY id DESC LIMIT 1 "
+                    +" FOR UPDATE";
+
+            MapSqlParameterSource parametersBalanceSql = new MapSqlParameterSource();
+            parametersBalanceSql.addValue("merchant_id", tx.getMerchant_id());
+
+            //Now add the user to database
+            String sql = "INSERT INTO "+Common.DB_TABLE_MERCHANT_STATEMENT+" "
+                +" SET `merchant_id`=:merchant_id,"
+                +" `gateway_id`=:gateway_id, "
+                +" `description`=:description,"
+                +" `recorded_by`=:recorded_by,"
+                +" `amount`=:amount,"
+                +" `tx_type`=:tx_type,"
+                +" `narrative`=:narrative,"
+                +" `airtelmm_balance`=:airtelmm_balance,"
+                    +" `safaricom_balance`=:safaricom_balance,"
+                +" `sms_balance`=:sms_balance,"
+                +" `mtnmm_balance`=:mtnmm_balance";
+
+            MapSqlParameterSource parameters = new MapSqlParameterSource();
+            if (tx.getTransactions_log_id() > 0) {
+                sql += ", transactions_log_id=:transactions_log_id ";
+                parameters.addValue("transactions_log_id", tx.getTransactions_log_id());
+            }
+            parameters.addValue("merchant_id", tx.getMerchant_id());
+            parameters.addValue("gateway_id", tx.getGateway_id());
+            parameters.addValue("description", tx.getDescription());
+            parameters.addValue("amount", tx.getAmount());
+            parameters.addValue("tx_type", tx.getTx_type());
+            parameters.addValue("narrative", tx.getNarritive());
+            parameters.addValue("recorded_by", tx.getRecorded_by());
+
+            final String sql_final = sql;
 
             RowMapper<Statement> rm_b = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -1294,6 +1081,7 @@ public class Common {
                     t.setAmount(rs.getDouble("amount"));
                     t.setAirtelmm_balance(rs.getDouble("airtelmm_balance"));
                     t.setMtnmm_balance(rs.getDouble("mtnmm_balance"));
+                    t.setSafaricom_balance(rs.getDouble("safaricom_balance"));
                     t.setCreated_on(rs.getString("created_on"));
                     t.setUpdated_on(rs.getString("updated_on"));
                     t.setGateway_id(rs.getString("gateway_id"));
@@ -1303,9 +1091,6 @@ public class Common {
                     t.setTransactions_log_id(rs.getLong("transactions_log_id"));
                     t.setTx_type(rs.getString("tx_type"));
                     t.setSms_balance(rs.getDouble("sms_balance"));
-                    t.setSafaricom_balance(rs.getDouble("safaricom_balance"));
-                    //safaricom_balance
-
                     return t;
             }
             };
@@ -1316,17 +1101,14 @@ public class Common {
             Balance sms_balance;
             Balance safaricom_balance;
 
-            Logger.getLogger(Common.class.getName()).log(Level.INFO,
-                    "Working on SMS Balance List: "+balanceList.size());
-
             if (balanceList.size() > 0) {
                 Statement s = balanceList.get(0);
-                mtn_balance = new Balance("UGX MTN MM", 
-                        s.getMtnmm_balance(), 
+                mtn_balance = new Balance("UGX MTN MM",
+                        s.getMtnmm_balance(),
                         "MTNMoMoPaymentGateway"   );
 
-                airtel_balance = new Balance("UGX AIRTEL MM", 
-                        s.getAirtelmm_balance(), 
+                airtel_balance = new Balance("UGX AIRTEL MM",
+                        s.getAirtelmm_balance(),
                         "AirtelMoneyPaymentGateway"   );
                 airtel_balance.setBaseCurrency("UGX");
 
@@ -1334,31 +1116,30 @@ public class Common {
                         s.getSafaricom_balance(),
                         "SafariComPaymentGateway"   );
                 safaricom_balance.setBaseCurrency("KES");
-                
-                sms_balance = new Balance("UGX SMS", 
-                        s.getSms_balance(), 
+
+                sms_balance = new Balance("UGX SMS",
+                        s.getSms_balance(),
                         "SmsGateway"   );
                 sms_balance.setBaseCurrency("UGX");
-
             } else {
-                mtn_balance = new Balance("UGX MTN MM", 
-                        0.00, 
+                mtn_balance = new Balance("UGX MTN MM",
+                        0.00,
                         "MTNMoMoPaymentGateway");
 
-                airtel_balance = new Balance("UGX AIRTEL MM", 
-                        0.00, 
+                airtel_balance = new Balance("UGX AIRTEL MM",
+                        0.00,
                         "AirtelMoneyPaymentGateway");
                 airtel_balance.setBaseCurrency("UGX");
-                
-                sms_balance = new Balance("UGX SMS", 
-                        0.00, 
-                        "SmsGateway"   );
-                sms_balance.setBaseCurrency("UGX");
 
                 safaricom_balance = new Balance("KES MPESA",
                         0.00,
                         "SafariComPaymentGateway"   );
                 safaricom_balance.setBaseCurrency("KES");
+
+                sms_balance = new Balance("UGX SMS",
+                        0.00,
+                        "SmsGateway"   );
+                sms_balance.setBaseCurrency("UGX");
             }
 
             //New balance
@@ -1377,14 +1158,6 @@ public class Common {
                     parameters.addValue("sms_balance", sms_balance.getAmount());
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
-                if (balance_type.equals("sms_balance")) {
-                    Double nBalance = tx.getAmount() + sms_balance.getAmount();
-                    parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                    parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                    parameters.addValue("sms_balance", nBalance);
-                    parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                }
-
                 if (balance_type.equals("safaricom_balance")) {
                     Double nBalance = tx.getAmount() + safaricom_balance.getAmount();
                     parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
@@ -1392,15 +1165,22 @@ public class Common {
                     parameters.addValue("sms_balance", sms_balance.getAmount());
                     parameters.addValue("safaricom_balance", nBalance);
                 }
+                if (balance_type.equals("sms_balance")) {
+                    Double nBalance = tx.getAmount() + sms_balance.getAmount();
+                    parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
+                    parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
+                    parameters.addValue("sms_balance", nBalance);
+                    parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
+                }
             } else {
                 if (balance_type.equals("mtnmm_balance")) {
                     //Check if there is enough balance for this transaction
                     if (tx.getAmount() > mtn_balance.getAmount()) {
                         status.setRollbackOnly();
                         return GeneralException
-                                .getError("111", 
-                                        String.format(GeneralException.ERRORS_111, 
-                                                mtn_balance.getAmount(), 
+                                .getError("111",
+                                        String.format(GeneralException.ERRORS_111,
+                                                mtn_balance.getAmount(),
                                                 mtn_balance.getCode()));
                     }
                     Double nBalance =  mtn_balance.getAmount() - tx.getAmount();
@@ -1414,9 +1194,9 @@ public class Common {
                     if (tx.getAmount() > airtel_balance.getAmount()) {
                         status.setRollbackOnly();
                         return GeneralException
-                                .getError("111", 
-                                        String.format(GeneralException.ERRORS_111, 
-                                                airtel_balance.getAmount(), 
+                                .getError("111",
+                                        String.format(GeneralException.ERRORS_111,
+                                                airtel_balance.getAmount(),
                                                 airtel_balance.getCode()));
                     }
                     Double nBalance = airtel_balance.getAmount() - tx.getAmount();
@@ -1426,6 +1206,21 @@ public class Common {
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
 
+                if (balance_type.equals("sms_balance")) {
+                    if (tx.getAmount() > sms_balance.getAmount()) {
+                        status.setRollbackOnly();
+                        return GeneralException
+                                .getError("111",
+                                        String.format(GeneralException.ERRORS_111,
+                                                sms_balance.getAmount(),
+                                                sms_balance.getCode()));
+                    }
+                    Double nBalance = sms_balance.getAmount() - tx.getAmount();
+                    parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
+                    parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
+                    parameters.addValue("sms_balance", nBalance);
+                    parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
+                }
                 if (balance_type.equals("safaricom_balance")) {
                     if (tx.getAmount() > safaricom_balance.getAmount()) {
                         status.setRollbackOnly();
@@ -1441,23 +1236,13 @@ public class Common {
                     parameters.addValue("sms_balance", sms_balance.getAmount());
                     parameters.addValue("safaricom_balance", nBalance);
                 }
-                
-                if (balance_type.equals("sms_balance")) {
-                    if (tx.getAmount() > sms_balance.getAmount()) {
-                        status.setRollbackOnly();
-                        return GeneralException
-                                .getError("111", 
-                                        String.format(GeneralException.ERRORS_111, 
-                                                sms_balance.getAmount(), 
-                                                sms_balance.getCode()));
-                    }
-                    Double nBalance = sms_balance.getAmount() - tx.getAmount();
-                    parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
-                    parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
-                    parameters.addValue("sms_balance", nBalance);
-                    parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
-                }
                 //More balances
+            }
+
+            if (parameters.getParameterNames().length <= 0) {
+                return GeneralException
+                        .getError("102", GeneralException.ERRORS_102
+                                +" "+balance_type);
             }
 
             KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -1491,15 +1276,12 @@ public class Common {
         final String subject = "Merchant User Credentials";
         final String to = u.getEmail();
 
-        Thread thread = new Thread(){
-            public void run(){
-                SendMail mail = new SendMail();
-                mail.sendSimpleMessage(to, 
-                subject, 
-                emailContent);
-            }
-        };
-        thread.start();
+        ManagedAsyncTasks.run("sendEmailOnUpdatingMerchantUserPassword", () -> {
+            SendMail mail = new SendMail();
+            mail.sendSimpleMessage(to,
+            subject,
+            emailContent);
+        });
     }
     
     /*
@@ -2370,18 +2152,24 @@ public class Common {
     }
     
     public static String getIpAddress(HttpServletRequest request) {
-        if (request != null) {
-            String forwardedFor = firstHeaderValue(request.getHeader("X-Forwarded-For"));
-            if (forwardedFor != null && !forwardedFor.isEmpty()) {
-                return forwardedFor;
-            }
-            String realIp = firstHeaderValue(request.getHeader("X-Real-IP"));
-            if (realIp != null && !realIp.isEmpty()) {
-                return realIp;
-            }
-            return request.getRemoteAddr();
+        if (request == null) {
+            return "";
         }
-        return "";
+        String remoteAddr = request.getRemoteAddr();
+        if (remoteAddr == null || !trustedProxyIps.contains(remoteAddr)) {
+            // The direct TCP peer is not a configured trusted proxy: X-Forwarded-For/X-Real-IP
+            // are client-supplied and spoofable, so they must be ignored entirely.
+            return remoteAddr == null ? "" : remoteAddr;
+        }
+        String forwardedFor = firstHeaderValue(request.getHeader("X-Forwarded-For"));
+        if (!forwardedFor.isEmpty()) {
+            return forwardedFor;
+        }
+        String realIp = firstHeaderValue(request.getHeader("X-Real-IP"));
+        if (!realIp.isEmpty()) {
+            return realIp;
+        }
+        return remoteAddr;
     }
 
     private static String firstHeaderValue(String headerValue) {
@@ -2494,7 +2282,12 @@ public class Common {
             tx.setStatus(txUpdatedDetails.getTransactionStatus());
             tx.setTx_gateway_ref(txUpdatedDetails.getNetworkId());
 
-            final String sql_update_final =  sql_update+" WHERE id=:id";
+            // Guard against re-delivered provider callbacks: only transition rows that are
+            // still in a non-terminal state. If 0 rows are affected, this status update has
+            // already been applied (or the tx is otherwise terminal) - do not re-run the
+            // ledger/statement sequence below, or a duplicate callback would double-credit.
+            final String sql_update_final =  sql_update
+                    +" WHERE id=:id AND status NOT IN ('SUCCESSFUL','FAILED')";
             parameters_.addValue("id", tx.getId());
             parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
             parameters_.addValue("status", tx.getStatus());
@@ -2505,8 +2298,8 @@ public class Common {
                 @Override
                 public String doInTransaction(TransactionStatus status) {
                     try {
-                        jdbcTemplate.update(sql_update_final, parameters_);
-                        return "success";
+                        int rowsUpdated = jdbcTemplate.update(sql_update_final, parameters_);
+                        return rowsUpdated > 0 ? "success" : "duplicate";
                     } catch (Exception e) {
                         //transactionManager.rollback(status);
                         status.setRollbackOnly();
@@ -2518,7 +2311,14 @@ public class Common {
                 }
             });
 
-
+            if (result.equals("duplicate")) {
+                Logger.getLogger(TransactionsLogController.class.getName()).log(Level.WARNING,
+                        "Ignoring re-delivered status update for tx id=" + tx.getId()
+                                + " - already in a terminal state, skipping ledger re-application", "");
+                // Acknowledge as success so the provider stops retrying, without re-applying
+                // the statement/ledger writes a second time.
+                return "success";
+            }
 
             if (result.equals("success")) {
                 Merchant merchant = Common.getMerchantById(tx.getMerchant_id(), jdbcTemplate);
@@ -2526,10 +2326,9 @@ public class Common {
                 //If the transaction SUCCEEDED, then CREDIT THE CUSTOMER'S ACCOUNT
                 if (txUpdatedDetails.getTransactionStatus().equals("SUCCESSFUL")) {
 
-                    //Send callback request on another thread
+                    //Send callback request asynchronously
                     if (tx.getCallback_url() != null && !tx.getCallback_url().isEmpty()) {
-                        Thread thread = new Thread(){
-                            public void run(){
+                        ManagedAsyncTasks.run("updateTx-successful-callback-" + tx.getId(), () -> {
                                 String amountToSign = tx.getOriginal_amount()+"";
                                 String signedData = tx.getPayer_number()+amountToSign
                                         +tx.getCreated_on()+tx.getTx_merchant_ref()+tx.getStatus()
@@ -2573,21 +2372,21 @@ public class Common {
 
                                     HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                                     if (rs != null) {
-                                        String sql_update_final =  sql_update+", callback_trace=:callback_trace "
+                                        String successTraceSql =  sql_update+", callback_trace=:callback_trace "
                                                 + " WHERE id=:id";
-                                        MapSqlParameterSource parameters_ = new MapSqlParameterSource();
-                                        parameters_.addValue("id", tx.getId());
-                                        parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
-                                        parameters_.addValue("status", tx.getStatus());
-                                        parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
-                                        parameters_.addValue("callback_trace", rs.toString());
+                                        MapSqlParameterSource successTraceParams = new MapSqlParameterSource();
+                                        successTraceParams.addValue("id", tx.getId());
+                                        successTraceParams.addValue("tx_update_trace", tx.getTx_update_trace());
+                                        successTraceParams.addValue("status", tx.getStatus());
+                                        successTraceParams.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
+                                        successTraceParams.addValue("callback_trace", rs.toString());
 
                                         //Now update the trace of this transaction.
-                                        String result = template.execute(new TransactionCallback<String>() {
+                                        String traceResult = template.execute(new TransactionCallback<String>() {
                                             @Override
                                             public String doInTransaction(TransactionStatus status) {
                                                 try {
-                                                    jdbcTemplate.update(sql_update_final, parameters_);
+                                                    jdbcTemplate.update(successTraceSql, successTraceParams);
                                                     return "success";
                                                 } catch (Exception e) {
                                                     //transactionManager.rollback(status);
@@ -2599,7 +2398,7 @@ public class Common {
                                                 }
                                             }
                                         });
-                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: "+result, "");
+                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: "+traceResult, "");
                                     }
 
                                 } catch (NoSuchAlgorithmException ex) {
@@ -2611,10 +2410,7 @@ public class Common {
                                 } catch (JSONException ex) {
                                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                 }
-
-                            }
-                        };
-                        thread.start();
+                        });
                     }
 
                     //Record this transaction
@@ -2756,10 +2552,9 @@ public class Common {
                     }
                 } else if (txUpdatedDetails.getTransactionStatus().equals("FAILED")) {
 
-                    //Send callback request on another thread
+                    //Send callback request asynchronously
                     if (tx.getCallback_url() != null && !tx.getCallback_url().isEmpty()) {
-                        Thread thread = new Thread() {
-                            public void run() {
+                        ManagedAsyncTasks.run("updateTx-failed-callback-" + tx.getId(), () -> {
                                 String signedData = tx.getPayer_number() + tx.getOriginal_amount()
                                         + tx.getCreated_on() + tx.getTx_merchant_ref() + tx.getStatus()
                                         + tx.getTx_merchant_description() + tx.getTx_gateway_ref();
@@ -2797,21 +2592,21 @@ public class Common {
 
                                     HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                                     if (rs != null) {
-                                        String sql_update_final = sql_update + ", callback_trace=:callback_trace "
+                                        String failedTraceSql = sql_update + ", callback_trace=:callback_trace "
                                                 + " WHERE id=:id";
-                                        MapSqlParameterSource parameters_ = new MapSqlParameterSource();
-                                        parameters_.addValue("id", tx.getId());
-                                        parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
-                                        parameters_.addValue("status", tx.getStatus());
-                                        parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
-                                        parameters_.addValue("callback_trace", rs.toString());
+                                        MapSqlParameterSource failedTraceParams = new MapSqlParameterSource();
+                                        failedTraceParams.addValue("id", tx.getId());
+                                        failedTraceParams.addValue("tx_update_trace", tx.getTx_update_trace());
+                                        failedTraceParams.addValue("status", tx.getStatus());
+                                        failedTraceParams.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
+                                        failedTraceParams.addValue("callback_trace", rs.toString());
 
                                         //Now update the trace of this transaction.
-                                        String result = template.execute(new TransactionCallback<String>() {
+                                        String traceResult = template.execute(new TransactionCallback<String>() {
                                             @Override
                                             public String doInTransaction(TransactionStatus status) {
                                                 try {
-                                                    jdbcTemplate.update(sql_update_final, parameters_);
+                                                    jdbcTemplate.update(failedTraceSql, failedTraceParams);
                                                     return "success";
                                                 } catch (Exception e) {
                                                     //transactionManager.rollback(status);
@@ -2823,7 +2618,7 @@ public class Common {
                                                 }
                                             }
                                         });
-                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: " + result, "");
+                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: " + traceResult, "");
                                     }
 
                                 } catch (NoSuchAlgorithmException ex) {
@@ -2835,10 +2630,7 @@ public class Common {
                                 } catch (JSONException ex) {
                                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                 }
-
-                            }
-                        };
-                        thread.start();
+                        });
                     }
 
                     //If it's a payout, reverse the money.

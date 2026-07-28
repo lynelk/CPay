@@ -14,6 +14,7 @@ import net.citotech.cito.Model.GateWayResponse;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.api.v2.dto.PaymentPartyRequest;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
+import net.citotech.cito.api.v2.dto.PaymentResult;
 import net.citotech.cito.gateway.GatewayBalance;
 import net.citotech.cito.gateway.GatewayBalanceRequest;
 import net.citotech.cito.gateway.GatewayCapabilities;
@@ -23,6 +24,7 @@ import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayRequest;
 import net.citotech.cito.gateway.PaymentStatusRequest;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
+import net.citotech.cito.merchant.MerchantEnvironmentService;
 import org.junit.jupiter.api.Test;
 
 class AdapterNativePaymentServiceTest {
@@ -31,21 +33,26 @@ class AdapterNativePaymentServiceTest {
     void productionModeUsesProductionMerchantChannelCredentials() {
         CapturingAdapter adapter = new CapturingAdapter();
         MerchantChannelCredentialService credentialService = mock(MerchantChannelCredentialService.class);
+        MerchantEnvironmentService environmentService = mock(MerchantEnvironmentService.class);
         GatewayExecutionService gatewayExecutionService = new GatewayExecutionService();
+        when(environmentService.normalizedEnvironment("PRODUCTION")).thenReturn("PRODUCTION");
         when(credentialService.loadDecrypted(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION")))
             .thenReturn(Map.of("collectUrl", "https://provider.example/collect"));
 
         AdapterNativePaymentService service = new AdapterNativePaymentService(
             new PaymentChannelRegistry(List.of(adapter)),
             credentialService,
+            environmentService,
             gatewayExecutionService,
             "PRODUCTION"
         );
 
-        service.collect(paymentRequest(), merchant());
+        PaymentResult result = service.collect(paymentRequest(), merchant(), "PRODUCTION");
 
+        verify(environmentService).enforceProductionLimit(any(Merchant.class), eq("PRODUCTION"));
         verify(credentialService).ensureChannelReady(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
         verify(credentialService).loadDecrypted(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
+        assertThat(result.getEnvironment()).isEqualTo("PRODUCTION");
         assertThat(adapter.lastRequest.getMetadata())
             .containsEntry("gatewayState", "PRODUCTION")
             .containsEntry("credentialEnvironment", "PRODUCTION")

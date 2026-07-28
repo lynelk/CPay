@@ -7,9 +7,11 @@ import ModuleMerchantsAccount from './ModuleMerchantsAccount';
 import MerchantModuleSettings from './merchant/MerchantModuleSettings';
 import { buildMerchantPayload, emptyMerchantForm } from './merchantFormPayload';
 import {
-  Badge, Button, Card, Checkbox, Icons, SearchField, Select, Sheet, Table,
+  Badge, Button, Card, Checkbox, Icons, PasswordField, SearchField, Select, Sheet, Table,
   TextArea, TextField, Toolbar,
 } from '../../ui';
+
+import { apiFetch } from '../../shared/api/httpClient';
 
 const SEARCH_CATEGORIES = [
   { value: 'all', label: 'All Fields' },
@@ -57,9 +59,10 @@ function defaultAdmin() {
     email: '',
     phone: '',
     status: 'ACTIVE',
-    role: 'Finance Administrator',
-    privileges: [],
+    role: 'Owner',
+    privileges: common.merchant_privileges.map((privilege) => privilege.value),
     generate_pw: false,
+    temporary_password: '',
     delete: false,
     id: '',
   };
@@ -97,7 +100,7 @@ function parseJson(text, fallbackMessage = 'The server did not return a readable
   }
   try {
     return JSON.parse(trimmed);
-  } catch (error) {
+  } catch {
     return {
       code: 'INVALID_RESPONSE',
       message: 'The server returned an invalid response. Please retry the action.',
@@ -147,7 +150,7 @@ class ModuleMerchantsC extends React.Component {
   getData() {
     this.props.loader('START');
     const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
-    fetch(common.base_url + '/merchants/getMerchants', {
+    apiFetch(common.base_url + '/merchants/getMerchants', {
       method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
       headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
       body: JSON.stringify(searchData),
@@ -221,7 +224,7 @@ class ModuleMerchantsC extends React.Component {
       result: (ok) => {
         if (!ok) return;
         this.props.loader('START');
-        fetch(common.base_url + '/merchants/deleteMerchant', {
+        apiFetch(common.base_url + '/merchants/deleteMerchant', {
           method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
           headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
           body: JSON.stringify(row),
@@ -247,7 +250,7 @@ class ModuleMerchantsC extends React.Component {
       ? common.base_url + '/merchants/editMerchant'
       : common.base_url + '/merchants/addMerchant';
     this.props.loader('START');
-    fetch(url, {
+    apiFetch(url, {
       method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
       headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
       body: JSON.stringify(buildMerchantPayload(data)),
@@ -487,6 +490,10 @@ class MerchantFormDialog extends React.Component {
         errors.admins = 'Every active admin needs name, email, and phone.';
         break;
       }
+      if (!admins[i].id && !admins[i].generate_pw && !admins[i].temporary_password) {
+        errors.admins = 'Set a temporary password for each new admin or choose generate temporary password.';
+        break;
+      }
     }
     this.setState({ errors, selectedStep: errors.admins ? 'admins' : this.state.selectedStep });
     return Object.keys(errors).length === 0;
@@ -511,7 +518,9 @@ class MerchantFormDialog extends React.Component {
     if (key === 'access') return Array.isArray(row.allowed_apis) && row.allowed_apis.length > 0;
     if (key === 'admins') {
       const admins = (row.admins || []).filter((admin) => !admin.delete);
-      return admins.length > 0 && admins.every((admin) => admin.name && admin.email && admin.phone);
+      return admins.length > 0 && admins.every((admin) => (
+        admin.name && admin.email && admin.phone && (admin.id || admin.generate_pw || admin.temporary_password)
+      ));
     }
     return false;
   }
@@ -742,6 +751,17 @@ class MerchantFormDialog extends React.Component {
           </div>
           <div className="cpay-merchant-side-section">
             <h4>Password Options</h4>
+            <PasswordField
+              id={`merchant-admin-temporary-password-${index}`}
+              label={admin.id ? 'New temporary password' : 'Temporary password'}
+              value={admin.temporary_password || ''}
+              onValueChange={(value) => this.updateAdmin(index, 'temporary_password', value)}
+              autoComplete="new-password"
+              placeholder={admin.id ? 'Leave blank to keep current password' : 'Set first sign-in password'}
+            />
+            <p className="cpay-merchant-side-hint">
+              Use this password for first login. If you generate one instead, make sure email delivery is configured.
+            </p>
             <Checkbox checked={Boolean(admin.generate_pw)} onCheckedChange={(value) => this.updateAdmin(index, 'generate_pw', value)} label="Generate temporary password" />
             <Checkbox checked={Boolean(admin.delete)} onCheckedChange={(value) => this.updateAdmin(index, 'delete', value)} label="Mark administrator for deletion" />
           </div>

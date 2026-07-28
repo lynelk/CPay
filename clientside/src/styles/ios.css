@@ -201,6 +201,32 @@
   font-size: 13px;
 }
 
+.ios-auth-signup .ios-auth__card {
+  max-width: 1100px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(390px, 0.92fr);
+}
+
+.ios-auth-signup .ios-auth__main {
+  padding: clamp(22px, 2.6vw, 30px) clamp(28px, 3.6vw, 40px);
+}
+
+.ios-auth-signup .ios-auth__header {
+  margin-bottom: 14px;
+}
+
+.ios-auth-signup .ios-grid {
+  gap: 10px 14px;
+}
+
+.ios-auth-signup .ios-actions {
+  margin-top: 10px;
+}
+
+.ios-auth-signup .ios-result {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
 .ios-auth__aside--media {
   position: relative;
   min-height: 0;

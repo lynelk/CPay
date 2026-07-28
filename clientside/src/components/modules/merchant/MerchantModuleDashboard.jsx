@@ -6,11 +6,13 @@ import { CardsIcon, CheckIcon, CloseIcon } from "../../ShellIcons";
 import LinearChart from './LinearChart';
 import { dashboardErrorDetails, formatAmount, formatCount, numericValues } from '../ModuleDashboard';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const merchantDefaultSnapshotCards = [];
 
 const merchantSnapshotCards = [
     { id: 'transactionTypes', title: 'Transaction Types', label: 'Mix', kind: 'chart', chartKey: 'chartDataTxTypes' },
-    { id: 'gatewaySplit', title: 'Gateway Split', label: 'MTN / Airtel', kind: 'chart', chartKey: 'chartDataTxPerGateway' },
+    { id: 'gatewaySplit', title: 'Gateway Split', label: 'MTN / Airtel / Yo! Payments', kind: 'chart', chartKey: 'chartDataTxPerGateway' },
     { id: 'apiReadiness', title: 'API Readiness', label: 'Integration', kind: 'api' },
     { id: 'smsNotifications', title: 'SMS Notifications', label: 'Messaging', kind: 'sms' },
     { id: 'floatWatch', title: 'Float Watch', label: 'Liquidity', kind: 'float' },
@@ -39,6 +41,8 @@ class MerchantModuleDashboardC extends React.Component {
             chartDataTxTypes: null,
             chartDataTxVolumes: null,
             chartDataTxPerGateway: null,
+            portalSummary: null,
+            activeInsight: null,
             visibleSnapshotCards: this.loadSnapshotCards(),
             showSnapshotPicker: false,
             fetchErrors: []
@@ -46,10 +50,38 @@ class MerchantModuleDashboardC extends React.Component {
     }
 
     componentDidMount() {
+        this.refreshDashboardData();
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.refreshSignal !== this.props.refreshSignal) {
+            this.refreshDashboardData();
+        }
+    }
+
+    refreshDashboardData() {
         this.getData("chartData", "getDashboardDetailsPayinsVsPayoutsMerchant");
         this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypesMerchant");
         this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumesMerchant");
         this.getData("chartDataTxPerGateway", "getDashboardDetailsTxPerGatewayMerchant");
+        this.getPortalSummary();
+    }
+
+    async getPortalSummary() {
+        try {
+            const response = await apiFetch(common.base_url + "/api/v2/portal/dashboard/summary", {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const summary = await response.json();
+            if (response.ok) {
+                this.setState({ portalSummary: summary });
+            }
+        } catch (error) {
+            this.addFetchError(error.message);
+        }
     }
 
     loadSnapshotCards() {
@@ -102,7 +134,7 @@ class MerchantModuleDashboardC extends React.Component {
 
     getData(chartType, api) {
         this.props.loader("START");
-        fetch(common.base_url + "/transactions/" + api, {
+        apiFetch(common.base_url + "/transactions/" + api, {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',
@@ -212,6 +244,62 @@ class MerchantModuleDashboardC extends React.Component {
                     </li>
                 ))}
             </ul>
+        );
+    }
+
+    renderActiveInsight() {
+        const insight = this.state.activeInsight;
+        if (!insight) return null;
+        return (
+            <section className="cpay-dashboard-insight" aria-live="polite">
+                <strong>{insight.title}</strong>
+                <span>{insight.value}</span>
+                <em>{insight.detail}</em>
+            </section>
+        );
+    }
+
+    renderChannelOverview() {
+        const channels = Array.isArray(this.state.portalSummary?.activeChannels)
+            ? this.state.portalSummary.activeChannels.slice(0, 6)
+            : [];
+        const fallback = [
+            { channel_code: 'mtn_momo', display_name: 'MTN MoMo', environment: this.state.portalSummary?.environment || 'SANDBOX', status: 'Ready' },
+            { channel_code: 'airtel_open_api', display_name: 'Airtel Money', environment: this.state.portalSummary?.environment || 'SANDBOX', status: 'Ready' },
+            { channel_code: 'yo_payments', display_name: 'Yo! Payments', environment: this.state.portalSummary?.environment || 'SANDBOX', status: 'Available' },
+        ];
+        const items = channels.length ? channels : fallback;
+        const limit = this.state.portalSummary?.productionLimit || {};
+        return (
+            <article className="cpay-dashboard-card cpay-dashboard-card-channels">
+                <header className="cpay-dashboard-card-header">
+                    <div>
+                        <span>Channels</span>
+                        <h3>Payment Channel Readiness</h3>
+                    </div>
+                    <strong>{this.state.portalSummary?.environment || 'SANDBOX'}</strong>
+                </header>
+                <div className="cpay-dashboard-channel-tiles">
+                    {items.map(channel => (
+                        <button
+                            type="button"
+                            key={`${channel.channel_code}-${channel.environment}`}
+                            onClick={() => this.setState({ activeInsight: {
+                                title: channel.display_name || channel.channel_code,
+                                value: channel.status || 'Not configured',
+                                detail: `${channel.environment || 'SANDBOX'} channel`
+                            } })}
+                        >
+                            <strong>{channel.display_name || channel.channel_code}</strong>
+                            <span>{channel.environment || 'SANDBOX'}</span>
+                            <em>{channel.status || 'NOT_CONFIGURED'}</em>
+                        </button>
+                    ))}
+                </div>
+                <p className="cpay-dashboard-card-copy">
+                    Production cap: {limit.enabled === false ? 'disabled' : `${limit.remainingToday ?? limit.limit ?? 10} of ${limit.limit ?? 10} remaining today`}.
+                </p>
+            </article>
         );
     }
 
@@ -327,7 +415,11 @@ class MerchantModuleDashboardC extends React.Component {
                 </section>
 
                 <section className="cpay-dashboard-grid" aria-label="Merchant dashboard snapshot cards">
-                    <article className="cpay-dashboard-card cpay-dashboard-card-balance">
+                    <button
+                        type="button"
+                        className="cpay-dashboard-card cpay-dashboard-card-balance cpay-dashboard-click-card"
+                        onClick={() => this.setState({ activeInsight: { title: 'Pay In / Pay Out', value: formatAmount(payInPayOutTotal), detail: 'Transaction trend refreshed from merchant activity.' } })}
+                    >
                         <header className="cpay-dashboard-card-header">
                             <div>
                                 <span>Pay In / Pay Out</span>
@@ -336,9 +428,13 @@ class MerchantModuleDashboardC extends React.Component {
                             <strong>{formatAmount(payInPayOutTotal)}</strong>
                         </header>
                         {this.renderChart(this.state.chartData, 'Pay In and Pay Out trends will appear when data loads.')}
-                    </article>
+                    </button>
 
-                    <article className="cpay-dashboard-card cpay-dashboard-card-collections">
+                    <button
+                        type="button"
+                        className="cpay-dashboard-card cpay-dashboard-card-collections cpay-dashboard-click-card"
+                        onClick={() => this.setState({ activeInsight: { title: 'Collections Trend', value: formatAmount(volumeTotal), detail: 'Collection volume across active channels.' } })}
+                    >
                         <header className="cpay-dashboard-card-header">
                             <div>
                                 <span>Volume</span>
@@ -347,9 +443,13 @@ class MerchantModuleDashboardC extends React.Component {
                             <strong>{formatAmount(volumeTotal)}</strong>
                         </header>
                         {this.renderChart(this.state.chartDataTxVolumes, 'Collection volumes will appear when data loads.')}
-                    </article>
+                    </button>
 
-                    <article className="cpay-dashboard-card cpay-dashboard-card-notifications">
+                    <button
+                        type="button"
+                        className="cpay-dashboard-card cpay-dashboard-card-notifications cpay-dashboard-click-card"
+                        onClick={() => this.setState({ activeInsight: { title: 'Notifications', value: formatCount(this.state.fetchErrors.length), detail: 'Operational feed and integration warnings.' } })}
+                    >
                         <header className="cpay-dashboard-card-header">
                             <div>
                                 <span>Operational feed</span>
@@ -358,8 +458,10 @@ class MerchantModuleDashboardC extends React.Component {
                             <strong>{formatCount(this.state.fetchErrors.length)}</strong>
                         </header>
                         {this.renderNotifications()}
-                    </article>
+                    </button>
 
+                    {this.renderChannelOverview()}
+                    {this.renderActiveInsight()}
                     {this.state.visibleSnapshotCards.map(cardId => this.renderSnapshotCard(cardId))}
                     <Messager ref={ref => this.messager = ref}></Messager>
                 </section>

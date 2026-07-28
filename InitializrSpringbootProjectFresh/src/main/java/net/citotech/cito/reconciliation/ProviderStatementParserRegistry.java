@@ -13,6 +13,7 @@ public class ProviderStatementParserRegistry {
         register(new CsvStatementParser("AIRTEL", "airtel_money"));
         register(new CsvStatementParser("AIRTEL_OPENAPI", "airtel_money_openapi"));
         register(new CsvStatementParser("SAFARICOM", "safaricom_mpesa"));
+        register(new CsvStatementParser("YO_PAYMENTS", "yo_payments"));
     }
 
     private void register(ProviderStatementParser parser) {

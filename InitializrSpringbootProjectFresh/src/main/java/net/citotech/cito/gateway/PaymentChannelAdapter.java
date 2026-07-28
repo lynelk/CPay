@@ -6,10 +6,10 @@ import net.citotech.cito.Model.GateWayResponse;
  * Adapter contract for adding payment channels without expanding the legacy
  * DoPayGateway switch/if chain.
  *
- * Existing MTN, Airtel, and Safaricom integrations can be wrapped behind this
- * interface incrementally. New channels such as Yo! Payments, Flutterwave,
- * Pesapal, Stripe, bank transfers, QR, USSD, or WhatsApp payment links should
- * start here.
+ * Existing MTN, Airtel, Safaricom, and Yo! Payments integrations can be
+ * wrapped behind this interface incrementally. New channels such as
+ * Flutterwave, Pesapal, Stripe, bank transfers, QR, USSD, or WhatsApp
+ * payment links should start here.
  */
 public interface PaymentChannelAdapter {
     /** Stable machine code, for example mtn_momo, airtel_money, or safaricom_mpesa. */

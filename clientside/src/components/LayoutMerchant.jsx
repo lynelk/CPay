@@ -20,6 +20,8 @@ import MerchantModuleMerchantAccount from './modules/merchant/MerchantModuleMerc
 import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
 import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
 
+import { apiFetch } from '../shared/api/httpClient';
+
 const menuTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'Track balances, activity, and service status.' },
   channels: { title: 'Payment Channels', subtitle: 'Manage MTN, Airtel, and payment channel access.' },
@@ -42,10 +44,12 @@ class LayoutMerchantWithOutRouter extends React.Component {
       isLogged: false,
       progressValue: 0,
       currentMenuKey: 'dashboard',
+      refreshTick: 0,
       user: localStorage.getItem("merchantUser") != null ? JSON.parse(localStorage.getItem("merchantUser")) : {},
-      currentMenuItem: this.renderModule('dashboard'),
+      currentMenuItem: this.renderModule('dashboard', 0),
     };
     this.menuChanged = this.menuChanged.bind(this);
+    this.refreshCurrentPage = this.refreshCurrentPage.bind(this);
   }
 
   async componentDidMount() {
@@ -65,11 +69,12 @@ class LayoutMerchantWithOutRouter extends React.Component {
     }
   }
 
-  renderModule(item) {
+  renderModule(item, refreshSignal = this.state?.refreshTick || 0) {
     const moduleProps = {
       sessionExpired: this.sessionExpired?.bind(this),
       logOut: this.logoutUser?.bind(this),
       loader: this.startOrStopLoader?.bind(this),
+      refreshSignal,
     };
 
     switch (item) {
@@ -99,7 +104,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
   async isLoggedIn() {
     try {
       await this.setState({ loader: true, progressValue: 0 });
-      const response = await fetch(common.base_url + "/auth/isMerchantUserLoggedIn", {
+      const response = await apiFetch(common.base_url + "/auth/isMerchantUserLoggedIn", {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
@@ -131,7 +136,17 @@ class LayoutMerchantWithOutRouter extends React.Component {
 
     this.setState({
       currentMenuKey: item,
-      currentMenuItem: this.renderModule(item),
+      currentMenuItem: this.renderModule(item, this.state.refreshTick),
+    });
+  }
+
+  refreshCurrentPage() {
+    this.setState(prevState => {
+      const refreshTick = prevState.refreshTick + 1;
+      return {
+        refreshTick,
+        currentMenuItem: this.renderModule(prevState.currentMenuKey, refreshTick),
+      };
     });
   }
 
@@ -142,7 +157,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
   logoutUser() {
     const { history } = this.props;
     this.setState({ loader: true }, () => {
-      fetch(common.base_url + "/auth/logoutMerchantUser", {
+      apiFetch(common.base_url + "/auth/logoutMerchantUser", {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
@@ -204,7 +219,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
               <>
                 <ThemeToggle />
                 <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>Settings</Button>
-                <Button variant="primary" className="ios-btn--sm" onClick={() => window.location.reload()}>Refresh</Button>
+                <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>Refresh</Button>
                 <UserChip
                   name={user.name || user.username || 'Merchant User'}
                   meta={user.email || user.account_number || 'Signed in'}

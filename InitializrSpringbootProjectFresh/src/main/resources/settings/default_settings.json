@@ -28,6 +28,62 @@
     "description": "If enabled, provider credentials (MTN, Airtel, M-Pesa) are read from each merchant's own settings instead of the global settings."
   },
   {
+    "name": "developer_sandbox_base_url",
+    "label": "Developer Sandbox Base URL",
+    "setting_value": "https://sandbox.cpay.example",
+    "setting_group": "Developer Sandbox",
+    "description": "Base URL shown to developers when testing CPay integrations."
+  },
+  {
+    "name": "developer_production_base_url",
+    "label": "Developer Production Base URL",
+    "setting_value": "https://api.cpay.example",
+    "setting_group": "Developer Sandbox",
+    "description": "Production API base URL shown beside sandbox examples."
+  },
+  {
+    "name": "developer_sandbox_merchant_number",
+    "label": "Sandbox Merchant Number",
+    "setting_value": "1000000",
+    "setting_group": "Developer Sandbox",
+    "description": "Default sandbox merchant number used in examples when a merchant has not been assigned one."
+  },
+  {
+    "name": "developer_sandbox_retention_days",
+    "label": "Sandbox Retention Days",
+    "setting_value": "7",
+    "setting_group": "Developer Sandbox",
+    "description": "Number of days sandbox events and examples are retained."
+  },
+  {
+    "name": "developer_sandbox_idempotency_hours",
+    "label": "Sandbox Idempotency Hours",
+    "setting_value": "24",
+    "setting_group": "Developer Sandbox",
+    "description": "Idempotency window shown in sandbox setup guidance."
+  },
+  {
+    "name": "production_transaction_limit_enabled",
+    "label": "Production Transaction Limit Enabled",
+    "setting_value": "true",
+    "setting_group": "Developer Sandbox",
+    "description": "Enable the default daily production transaction cap for merchant API traffic."
+  },
+  {
+    "name": "production_transaction_limit_count",
+    "label": "Production Transaction Limit Count",
+    "setting_value": "10",
+    "setting_group": "Developer Sandbox",
+    "description": "Default daily production transaction cap. Increase it or disable the limit from the admin portal."
+  },
+  {
+    "name": "yo_payments_channel_label",
+    "label": "Yo! Payments Channel Label",
+    "setting_value": "Yo! Payments",
+    "setting_group": "Payment Channels",
+    "description": "Display label for the Yo! Payments channel."
+  },
+  {
     "name": "internal_app_access_auths",
     "label": "Internal App Access Auths",
     "setting_value": "",
@@ -702,16 +758,58 @@
   {
     "name": "gw_airtelmoney_use_open_api",
     "label": "Airtel Use Open API",
-    "setting_value": "no",
+    "setting_value": "yes",
     "setting_group": "Airtel",
     "description": "Use yes to route Airtel through the Open API implementation."
   },
   {
     "name": "gw_airtelmoney_api_url",
     "label": "Airtel API URL",
-    "setting_value": "",
+    "setting_value": "https://openapiuat.airtel.africa",
     "setting_group": "Airtel",
     "description": "Airtel Money API base URL."
+  },
+  {
+    "name": "gw_airtelmoney_token_url",
+    "label": "Airtel Token URL",
+    "setting_value": "/auth/oauth2/token",
+    "setting_group": "Airtel",
+    "description": "OAuth token path or absolute URL for Airtel Open API."
+  },
+  {
+    "name": "gw_airtelmoney_collections_url",
+    "label": "Airtel Collections URL",
+    "setting_value": "/merchant/v2/payments/",
+    "setting_group": "Airtel",
+    "description": "Collection request path or absolute URL for Airtel Open API v2."
+  },
+  {
+    "name": "gw_airtelmoney_disbursements_url",
+    "label": "Airtel Payouts URL",
+    "setting_value": "/standard/v2/disbursements/",
+    "setting_group": "Airtel",
+    "description": "Payout request path or absolute URL for Airtel Open API v2."
+  },
+  {
+    "name": "gw_airtelmoney_balance_url",
+    "label": "Airtel Balance URL",
+    "setting_value": "/standard/v2/users/balance",
+    "setting_group": "Airtel",
+    "description": "Balance path or absolute URL for Airtel Open API."
+  },
+  {
+    "name": "gw_airtelmoney_collections_status_url",
+    "label": "Airtel Collections Status URL",
+    "setting_value": "/standard/v2/payments/{reference}/",
+    "setting_group": "Airtel",
+    "description": "Collection status path or absolute URL; use {reference} for the transaction ID."
+  },
+  {
+    "name": "gw_airtelmoney_disbursements_status_url",
+    "label": "Airtel Payouts Status URL",
+    "setting_value": "/standard/v2/disbursements/{reference}/",
+    "setting_group": "Airtel",
+    "description": "Payout status path or absolute URL; use {reference} for the transaction ID."
   },
   {
     "name": "gw_airtelmoney_api_username",

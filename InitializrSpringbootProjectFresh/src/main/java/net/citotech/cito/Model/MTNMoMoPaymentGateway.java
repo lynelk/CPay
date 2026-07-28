@@ -1,24 +1,20 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.citotech.cito.Model;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.citotech.cito.Common;
 import net.citotech.cito.SettingsController;
-import org.springframework.beans.factory.annotation.Value;
+import net.citotech.cito.gateway.ProviderToken;
+import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -50,10 +46,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     public static String gateway_id = "MTNMoMoPaymentGateway";
     
     public static String gateway_currency_code = "MTNMM";
-    
-    @Value( "${custom.lockfiledirectory}" )
-    private String lockfiledirectory;
-    
+
     public static boolean isValidMisdn(String msisdn) {
         for (int i=0; i <  prefix.length; i++) {
             String line = msisdn;
@@ -569,109 +562,16 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
         return info;
     }
     
-    Boolean isTokenAboutToExpire() throws IOException {
-        String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
-        File resource = new File(filePath);  
-        if (resource.createNewFile()) {
-            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
-            "MTN Token File "+filePath+" has been created.");
-        }
-        
-        //File resource = new ClassPathResource(Common.CLASS_PATH_MTN_TOKEN_FILE).getFile();
-       
-        String token = new String(
-            Files.readAllBytes(resource.toPath())
-        );
-        
-        if (token.isEmpty()) {
-            return true;
-        }
-        
-        JSONObject r = null;
-        try {
-            r = new JSONObject(token);
-            
-            //If no token for this segment
-            if (r.isNull(this.segment)) {
-                return true;
-            }
-            
-            JSONObject rO = r.getJSONObject(this.segment);
-            
-            LocalDateTime whenCreated = LocalDateTime.parse(rO.getString("created_on"));
-            
-            //Compare with when it was created
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(55);
-            if (lastCreatedPlus.isAfter(now)) {
-                return true;
-            } else {
-                return false;
-            }
-            
-        } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName())
-                    .log(Level.SEVERE, ex.getMessage(), ex.getMessage());
-            return true;
-        }    
-    }
-    
     public Token getToken() throws IOException {
-        String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
-        Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.INFO,
-                "MTN Token File "+filePath+" has been created.",
-                "MTN Token File "+filePath+" has been created."
-                );
-
-        File resource = new File(filePath);  
-        if (resource.createNewFile()) {
-            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
-            "MTN Token File "+filePath+" has been created.");
+        // Tokens live only in the encrypted provider_tokens DB store (see ProviderTokenStoreService) -
+        // no plaintext on-disk cache.
+        Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+        if (databaseToken.isPresent()) {
+            return new Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
         }
-        
-        //File resource = new ClassPathResource(Common.CLASS_PATH_MTN_TOKEN_FILE).getFile();
-       
-        String token = new String(
-            Files.readAllBytes(resource.toPath())
-        );
-        
-        token = token.trim();
-        Logger.getLogger(SettingsController.class.getName())
-                .log(Level.INFO, "Error "+token, " Is Empty " );
-        JSONObject r = null;
-        try {
-            if (token.isEmpty()) {
-                //No token, request for a new one
-                return this.requestToken();
-            }
-            
-            r = new JSONObject(token);
-            if (r.isNull(this.segment)) {
-                return this.requestToken();
-            }
-            
-            JSONObject rO = r.getJSONObject(this.segment);
-            LocalDateTime whenCreated = LocalDateTime.parse(rO.getString("created_on"), 
-                    Common.getDateTimeFormater());
-            Token t = new Token(rO.getString("token"), whenCreated);
-            
-            //First check if the token is still valid
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(55);
-            if (now.isAfter(lastCreatedPlus)) {
-                return this.requestToken();
-            }
-            
-            return t;
-        } catch (JSONException ex) {
-            ex.printStackTrace();
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, null, ex.getMessage() );
-            return null;
-        }
+        return this.requestToken();
     }
-    
-    
-    
+
     public Token requestToken() throws JSONException {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -701,48 +601,25 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             JSONObject jsToken = new JSONObject(rs.getResponse());
             String accessToken = jsToken.getString("access_token");
             LocalDateTime d = LocalDateTime.now();
-            
-            JSONObject newToken = new JSONObject();
-            newToken.put("token", accessToken);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            newToken.put("created_on", d.format(formatter));
-            
-            String filePath = lockfiledirectory+Common.CLASS_PATH_MTN_TOKEN_FILE;
-            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
-                "MTN Token "+filePath);
-            
-            //Now save the new token
-            try {
-                File resource = new File(filePath);  
-                if (resource.createNewFile()) {
-                    Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, 
-                    "MTN Token File "+filePath+" has been created.");
-                }
-                
-                //File resource = new ClassPathResource(Common.CLASS_PATH_MTN_TOKEN_FILE).getFile();
-       
-                String token = new String(
-                    Files.readAllBytes(resource.toPath())
-                );
-
-                if (token.isEmpty()) {
-                    //new Token
-                    JSONObject newTokenO = new JSONObject();
-                    newTokenO.put(this.segment, newToken);
-                    Files.writeString(resource.toPath(), newTokenO.toString());
-                } else {
-                    JSONObject newTokenO = new JSONObject(token);
-                    newTokenO.put(this.segment, newToken);
-                    Files.writeString(resource.toPath(), newTokenO.toString());
-                }
-                
-            } catch (IOException ex) {
-                Logger.getLogger(MTNMoMoPaymentGateway.class.getName())
-                        .log(Level.SEVERE, ex.getMessage(), ex);
-                return null;
-            }
+            ProviderTokenStoreRegistry.save(
+                    gateway_id,
+                    this.segment,
+                    tokenEnvironment(),
+                    accessToken,
+                    Instant.now().plus(55, ChronoUnit.MINUTES));
             return new Token(accessToken, d);
         }
+    }
+
+    private String tokenEnvironment() {
+        if (this.mode != null && this.mode.toUpperCase().contains("PROD")) {
+            return "PRODUCTION";
+        }
+        if (this.global_url != null && !this.global_url.toLowerCase().contains("sandbox")
+                && !this.global_url.toLowerCase().contains("azure-api")) {
+            return "PRODUCTION";
+        }
+        return "SANDBOX";
     }
     
     public class Token {

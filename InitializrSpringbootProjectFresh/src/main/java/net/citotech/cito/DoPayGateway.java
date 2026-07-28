@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.citotech.cito;
 
 import java.util.logging.Level;
@@ -283,6 +278,20 @@ public class DoPayGateway {
         err.setMessage("Merchant provider credential '" + settingName + "' is not configured for " + gateway
                 + ". Please configure merchant-specific gateway settings.");
         return err;
+    }
+
+    private static void configureAirtelOpenApiEndpoints(
+            AirtelMoneyOpenApiPaymentGateway gateway,
+            Long merchantId,
+            boolean useMerchantCreds,
+            NamedParameterJdbcTemplate jdbcTemplate) {
+        gateway.setEndpointDetails(
+                resolveCredentialValue("gw_airtelmoney_token_url", merchantId, useMerchantCreds, jdbcTemplate),
+                resolveCredentialValue("gw_airtelmoney_collections_url", merchantId, useMerchantCreds, jdbcTemplate),
+                resolveCredentialValue("gw_airtelmoney_disbursements_url", merchantId, useMerchantCreds, jdbcTemplate),
+                resolveCredentialValue("gw_airtelmoney_balance_url", merchantId, useMerchantCreds, jdbcTemplate),
+                resolveCredentialValue("gw_airtelmoney_collections_status_url", merchantId, useMerchantCreds, jdbcTemplate),
+                resolveCredentialValue("gw_airtelmoney_disbursements_status_url", merchantId, useMerchantCreds, jdbcTemplate));
     }
     
     static GatewayChargeDetails getGatewayChargeDetailsById(
@@ -806,6 +815,7 @@ public class DoPayGateway {
 
                 airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                configureAirtelOpenApiEndpoints(airteloapimm_mmpgw, merchantId, useMerchantCreds, jdbcTemplate);
                 Setting airtelPublicKey = resolveCredentialSetting("gw_airtelmoney_api_public_key", merchantId, useMerchantCreds, jdbcTemplate);
                 if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
                 if (airteloapimm_mmpgw.getPublicKey().isEmpty()) {
@@ -904,6 +914,7 @@ public class DoPayGateway {
                 } else {
                     airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
                     airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                    configureAirtelOpenApiEndpoints(airteloapimm_mmpgw, null, false, jdbcTemplate);
                     Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
                     if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
 
@@ -1107,6 +1118,7 @@ public class DoPayGateway {
 
                 airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                configureAirtelOpenApiEndpoints(airteloapimm_mmpgw, merchantId, useMerchantCreds, jdbcTemplate);
                 Setting airtelPublicKey = resolveCredentialSetting("gw_airtelmoney_api_public_key", merchantId, useMerchantCreds, jdbcTemplate);
                 if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
                 if (airteloapimm_mmpgw.getPublicKey().isEmpty()) {
@@ -1281,6 +1293,7 @@ public class DoPayGateway {
 
                 airteloapimm_mmpgw = new AirtelMoneyOpenApiPaymentGateway();
                 airteloapimm_mmpgw.setApiDetails(global_url, api_username, api_password, api_pin);
+                configureAirtelOpenApiEndpoints(airteloapimm_mmpgw, merchantId, useMerchantCreds, jdbcTemplate);
                 Setting airtelPublicKey = resolveCredentialSetting("gw_airtelmoney_api_public_key", merchantId, useMerchantCreds, jdbcTemplate);
                 if (airtelPublicKey != null) airteloapimm_mmpgw.setPublicKey(airtelPublicKey.getSetting_value());
                 airteloapimm_mmpgw.setSegment(tx_type);
@@ -1350,6 +1363,7 @@ public class DoPayGateway {
             String api_pin = Common.getSettings("gw_airtelmoney_api_pin", jdbcTemplate).getSetting_value();
             AirtelMoneyOpenApiPaymentGateway airtel = new AirtelMoneyOpenApiPaymentGateway();
             airtel.setApiDetails(global_url, api_username, api_password, api_pin);
+            configureAirtelOpenApiEndpoints(airtel, null, false, jdbcTemplate);
             Setting airtelPublicKey = Common.getSettings("gw_airtelmoney_api_public_key", jdbcTemplate);
             if (airtelPublicKey != null) airtel.setPublicKey(airtelPublicKey.getSetting_value());
             raw = airtel.getAccountInfo(msisdn);

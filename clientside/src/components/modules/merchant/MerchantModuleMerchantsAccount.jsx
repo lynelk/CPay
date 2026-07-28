@@ -6,6 +6,8 @@ import strings from '../../locale';
 import ReactExport from "../../../shared/export/ExcelExport";
 import { Card, Toolbar, Table, Sheet, Button, DateField, Icons } from '../../../ui';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
 const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
@@ -44,7 +46,7 @@ class MerchantModuleMerchantAccouuntC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         };
-        fetch(common.base_url + "/transactions/getMerchantStatementByMerchant", {
+        apiFetch(common.base_url + "/transactions/getMerchantStatementByMerchant", {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)

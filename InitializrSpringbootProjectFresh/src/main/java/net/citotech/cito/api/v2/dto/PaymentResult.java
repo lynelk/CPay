@@ -5,6 +5,7 @@ public class PaymentResult {
     private String transactionId;
     private String status;
     private String channel;
+    private String environment;
     private String currency;
     private String message;
     private Object providerResponse;
@@ -39,6 +40,14 @@ public class PaymentResult {
 
     public void setChannel(String channel) {
         this.channel = channel;
+    }
+
+    public String getEnvironment() {
+        return environment;
+    }
+
+    public void setEnvironment(String environment) {
+        this.environment = environment;
     }
 
     public String getCurrency() {

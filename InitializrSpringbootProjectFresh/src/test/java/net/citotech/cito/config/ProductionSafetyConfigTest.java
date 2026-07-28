@@ -15,7 +15,7 @@ class ProductionSafetyConfigTest {
         environment.setActiveProfiles("production");
 
         ApplicationRunner guard = new ProductionSafetyConfig()
-            .productionSafetyGuard(environment, "SANDBOX", false);
+            .productionSafetyGuard(environment, "SANDBOX", false, "jdbc");
 
         assertThatThrownBy(() -> guard.run(null))
             .isInstanceOf(IllegalStateException.class)
@@ -28,7 +28,7 @@ class ProductionSafetyConfigTest {
         environment.setActiveProfiles("prod");
 
         ApplicationRunner guard = new ProductionSafetyConfig()
-            .productionSafetyGuard(environment, "PRODUCTION", true);
+            .productionSafetyGuard(environment, "PRODUCTION", true, "jdbc");
 
         assertThatThrownBy(() -> guard.run(null))
             .isInstanceOf(IllegalStateException.class)
@@ -41,8 +41,21 @@ class ProductionSafetyConfigTest {
         environment.setActiveProfiles("dev");
 
         ApplicationRunner guard = new ProductionSafetyConfig()
-            .productionSafetyGuard(environment, "SANDBOX", true);
+            .productionSafetyGuard(environment, "SANDBOX", true, "memory");
 
         assertThatCode(() -> guard.run(null)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void productionProfileRejectsMemoryNonceStore() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("production");
+
+        ApplicationRunner guard = new ProductionSafetyConfig()
+            .productionSafetyGuard(environment, "PRODUCTION", false, "memory");
+
+        assertThatThrownBy(() -> guard.run(null))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("durable cpay.security.nonce-store");
     }
 }

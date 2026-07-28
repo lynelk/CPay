@@ -420,7 +420,125 @@ select.ios-input { padding-right: 36px; }
 .ios-channel-panel, .ios-channel-empty { display: grid; gap: var(--ios-space-4); }
 .ios-channel-empty p { margin: 0; color: var(--ios-text-secondary); }
 .ios-channel-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--ios-space-4); }
+.ios-channel-env-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: var(--ios-space-3);
+  align-items: stretch;
+}
+.ios-channel-env-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ios-space-2);
+}
+.ios-channel-env-switch button,
+.ios-channel-env-limit,
+.ios-channel-sandbox-callout,
+.ios-channel-guide {
+  border: 0.5px solid var(--ios-separator);
+  border-radius: var(--ios-r-lg);
+  background: var(--ios-surface-solid);
+}
+.ios-channel-env-switch button {
+  display: grid;
+  gap: 4px;
+  color: var(--ios-text);
+  cursor: pointer;
+  padding: var(--ios-space-3) var(--ios-space-4);
+  text-align: left;
+}
+.ios-channel-env-switch button[aria-selected='true'] {
+  border-color: var(--ios-accent);
+  background: color-mix(in srgb, var(--ios-accent) 12%, var(--ios-surface-solid));
+  box-shadow: inset 4px 0 0 var(--ios-accent);
+}
+.ios-channel-env-switch strong,
+.ios-channel-env-limit strong,
+.ios-channel-sandbox-callout strong,
+.ios-channel-guide-grid strong,
+.ios-channel-test-list strong {
+  color: var(--ios-text);
+  font-size: var(--ios-fs-subhead);
+  font-weight: 800;
+}
+.ios-channel-env-switch span,
+.ios-channel-env-limit span,
+.ios-channel-sandbox-callout span,
+.ios-channel-test-list em {
+  color: var(--ios-text-secondary);
+  font-size: var(--ios-fs-caption);
+}
+.ios-channel-env-limit {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: var(--ios-space-3) var(--ios-space-4);
+}
+.ios-channel-sandbox-callout {
+  display: flex;
+  gap: var(--ios-space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ios-space-3) var(--ios-space-4);
+  background: color-mix(in srgb, var(--ios-accent) 8%, var(--ios-surface-solid));
+}
+.ios-channel-sandbox-callout > div,
+.ios-channel-guide {
+  display: grid;
+  gap: var(--ios-space-2);
+}
+.ios-channel-eyebrow {
+  color: var(--ios-accent);
+  font-size: var(--ios-fs-caption);
+  font-weight: 800;
+}
+.ios-channel-guide {
+  margin-top: var(--ios-space-4);
+  padding: var(--ios-space-4);
+}
+.ios-channel-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ios-space-3);
+}
+.ios-channel-guide-grid > div,
+.ios-channel-envvars span,
+.ios-channel-test-list span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 0.5px solid var(--ios-separator);
+  border-radius: var(--ios-r-md);
+  background: var(--ios-elevated);
+  padding: var(--ios-space-3);
+}
+.ios-channel-guide code {
+  overflow: hidden;
+  color: var(--ios-accent);
+  font-size: var(--ios-fs-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ios-channel-envvars,
+.ios-channel-test-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--ios-space-2);
+}
+.ios-channel-envvars strong {
+  color: var(--ios-text-secondary);
+  font-size: var(--ios-fs-caption);
+}
 
 @media (max-width: 760px) {
   .ios-channel-layout { grid-template-columns: 1fr; }
+  .ios-channel-env-panel,
+  .ios-channel-env-switch,
+  .ios-channel-guide-grid {
+    grid-template-columns: 1fr;
+  }
+  .ios-channel-sandbox-callout {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

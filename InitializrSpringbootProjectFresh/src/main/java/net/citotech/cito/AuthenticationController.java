@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.citotech.cito;
 
 import java.util.ArrayList;
@@ -14,9 +9,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 //import jdk.nashorn.internal.objects.Global;
 import net.citotech.cito.Model.User;
+import net.citotech.cito.async.ManagedAsyncTasks;
 import net.citotech.cito.security.AdminMfaService;
 import net.citotech.cito.security.LoginRateLimiter;
+import net.citotech.cito.security.MerchantMfaService;
+import net.citotech.cito.security.PasswordResetTokenService;
 import net.citotech.cito.security.PasswordUtils;
+import net.citotech.cito.security.SessionRevocationService;
+import org.springframework.session.FindByIndexNameSessionRepository;
 
 //import jdk.nashorn.internal.parser.JSONParser;
 //import jdk.nashorn.internal.runtime.Context;
@@ -69,6 +69,15 @@ public class AuthenticationController {
 
     @Autowired(required = false)
     AdminMfaService adminMfaService;
+
+    @Autowired(required = false)
+    MerchantMfaService merchantMfaService;
+
+    @Autowired(required = false)
+    PasswordResetTokenService passwordResetTokenService;
+
+    @Autowired(required = false)
+    SessionRevocationService sessionRevocationService;
 
     @PostMapping(path="/authenticate")
     public String authenticatedUser (@RequestBody Map<String, String> requestBody,
@@ -134,6 +143,8 @@ public class AuthenticationController {
             newSession.setAttribute("email", u.getEmail());
             newSession.setAttribute("phone", u.getPhone());
             newSession.setAttribute("user", u);
+            newSession.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
+                    SessionRevocationService.adminPrincipal(u.getId()));
 
             rateLimiter.recordSuccess(clientIp);
 
@@ -158,17 +169,14 @@ public class AuthenticationController {
             resJson.put("user", u_);
 
             //Send mail on login
-            Thread thread = new Thread(){
-                public void run(){
+            ManagedAsyncTasks.run("admin-login-email-" + u.getEmail(), () -> {
                     SendMail mail = new SendMail();
                     mail.sendSimpleMessage(u.getEmail(),
                         "You have logged into Cito Account",
                         "This is to let you know that you have logged into your account Cito Account.",
                             jdbcTemplate
                     );
-                }
-            };
-            thread.start();
+            });
 
             return resJson.toString();
 
@@ -225,6 +233,19 @@ public class AuthenticationController {
                 return GeneralException.getError("137", GeneralException.ERRORS_137);
             }
 
+            if (merchantMfaService != null && merchantMfaService.isEnabled(u.getId())) {
+                String mfaCode = requestBody.get("mfa_code");
+                if (mfaCode == null || mfaCode.trim().isEmpty()) {
+                    JSONObject resJson = new JSONObject();
+                    resJson.put("code", "MFA_REQUIRED");
+                    resJson.put("message", "MFA code is required");
+                    return resJson.toString();
+                }
+                if (!merchantMfaService.verifyCode(u.getId(), mfaCode)) {
+                    return GeneralException.getError("139", "Invalid MFA code.");
+                }
+            }
+
             // Session fixation protection: invalidate old session, create a fresh one
             session.invalidate();
             HttpSession newSession = request.getSession(true);
@@ -233,9 +254,11 @@ public class AuthenticationController {
             newSession.setAttribute("email", u.getEmail());
             newSession.setAttribute("phone", u.getPhone());
             newSession.setAttribute("merchantUser", u);
+            newSession.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
+                    SessionRevocationService.merchantUserPrincipal(u.getId()));
 
             rateLimiter.recordSuccess(clientIp);
-            
+
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "SUCCESS");
@@ -262,15 +285,12 @@ public class AuthenticationController {
             resJson.put("user", u_);
 
             //Send mail on login
-            Thread thread = new Thread(){
-                public void run(){
+            ManagedAsyncTasks.run("merchant-login-email-" + u.getEmail(), () -> {
                     SendMail mail = new SendMail();
                     mail.sendSimpleMessage(u.getEmail(),
                     "You have logged in",
                     "This is to let you know that you have logged into your account.");
-                }
-            };
-            thread.start();
+            });
             
             return resJson.toString();
             
@@ -539,7 +559,7 @@ public class AuthenticationController {
                 + "WHERE id = :id";
             
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
+            String verification_code = resetToken("MERCHANT_ADMIN", u.getId(), u.getEmail(), clientIp);
             parameters.put("email_verification_code", verification_code);
             parameters.put("id", u.getId());
             
@@ -554,18 +574,15 @@ public class AuthenticationController {
                 
                 final String subject = "Password Reset OTP";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-otp-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
+                        mail.sendSimpleMessage(to,
                                 subject,
                                 emailContent,
                                 jdbcTemplate
                         );
-                    }
-                };
-                thread.start();
+                });
                  
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
@@ -610,7 +627,7 @@ public class AuthenticationController {
                 + "WHERE id = :id";
             
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
+            String verification_code = resetToken("ADMIN", u.getId(), u.getEmail(), clientIp);
             parameters.put("email_verification_code", verification_code);
             parameters.put("id", u.getId());
             
@@ -625,17 +642,14 @@ public class AuthenticationController {
                 
                 final String subject = "Password Reset Request";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-request-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
-                        subject, 
+                        mail.sendSimpleMessage(to,
+                        subject,
                         emailContent);
-                    }
-                };
-                thread.start();
-                 
+                });
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
@@ -680,7 +694,7 @@ public class AuthenticationController {
                 + " WHERE id = :id";
 
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
+            String verification_code = resetToken("MERCHANT_ADMIN", u.getId(), u.getEmail(), clientIp);
             parameters.put("email_verification_code", verification_code);
             parameters.put("id", u.getId());
 
@@ -695,13 +709,10 @@ public class AuthenticationController {
                 final String subject = "Password Reset Request";
                 final String to = u.getEmail();
 
-                Thread thread = new Thread(){
-                    public void run(){
+                ManagedAsyncTasks.run("merchant-password-reset-request-email-" + to, () -> {
                         SendMail mail = new SendMail();
                         mail.sendSimpleMessage(to, subject, emailContent);
-                    }
-                };
-                thread.start();
+                });
 
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
@@ -744,7 +755,8 @@ public class AuthenticationController {
                     .getError("105", GeneralException.ERRORS_105);
             }
 
-            if (!u.getEmail_verification_code().equals(verificationCode)) {
+            if (!isResetTokenValid("ADMIN", u.getId(), u.getEmail(), verificationCode)
+                    && !legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
                 return GeneralException
                     .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
             }
@@ -752,36 +764,37 @@ public class AuthenticationController {
             String sql = "UPDATE "+Common.DB_TABLE_ADMIN+" "
                 +" SET `password`=:password "
                 +" WHERE id = :id";
-            
+
             Map<String, Object> parameters = new HashMap<String, Object>();
-            String verification_code = Common.randomNumericString(6);
             parameters.put("password", PasswordUtils.hashPassword(newPassword));
             parameters.put("id", u.getId());
-            
+
             long retVal = jdbcTemplate.update(sql, parameters);
-            
+
             if (retVal > 0) {
-                
+
+                // A stolen/logged-in session must not survive a password reset.
+                if (sessionRevocationService != null) {
+                    sessionRevocationService.revokeAllForAdmin(u.getId());
+                }
+
                 //Now send verification email
                 Setting emailContentManage = Common
-                        .getSettings("email_tmp_on_password_reset_done", 
+                        .getSettings("email_tmp_on_password_reset_done",
                                 jdbcTemplate);
                 final String emailContent = emailContentManage.getSetting_value()
                         .replace("{name}", u.getName());
-                
+
                 final String subject = "You have Reset your Password!";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-done-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
-                        subject, 
+                        mail.sendSimpleMessage(to,
+                        subject,
                         emailContent);
-                    }
-                };
-                thread.start();
-                 
+                });
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_001);
             } else {
@@ -825,7 +838,8 @@ public class AuthenticationController {
                     .getError("105", GeneralException.ERRORS_105);
             }
 
-            if (!u.getEmail_verification_code().equals(verificationCode)) {
+            if (!isResetTokenValid("MERCHANT_ADMIN", u.getId(), u.getEmail(), verificationCode)
+                    && !legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
                 return GeneralException
                     .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
             }
@@ -834,36 +848,38 @@ public class AuthenticationController {
             String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_USERS+" "
                 +" SET `password`=:password "
                 +" WHERE id = :id";
-            
+
             Map<String, Object> parameters = new HashMap<String, Object>();
-            
+
             parameters.put("password", PasswordUtils.hashPassword(newPassword));
             parameters.put("id", u.getId());
-            
+
             long retVal = jdbcTemplate.update(sql, parameters);
-            
+
             if (retVal > 0) {
-                
+
+                // A stolen/logged-in session must not survive a password reset.
+                if (sessionRevocationService != null) {
+                    sessionRevocationService.revokeAllForMerchantUser(u.getId());
+                }
+
                 //Now send verification email
                 Setting emailContentManage = Common
-                        .getSettings("email_tmp_on_password_reset_done", 
+                        .getSettings("email_tmp_on_password_reset_done",
                                 jdbcTemplate);
                 final String emailContent = emailContentManage.getSetting_value()
                         .replace("{name}", u.getName());
-                
+
                 final String subject = "You have Reset your Password!";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-done-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
-                        subject, 
+                        mail.sendSimpleMessage(to,
+                        subject,
                         emailContent);
-                    }
-                };
-                thread.start();
-                 
+                });
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_001);
             } else {
@@ -879,6 +895,24 @@ public class AuthenticationController {
         }
     }
     
+    private String resetToken(String entityType, Long entityId, String email, String clientIp) {
+        if (passwordResetTokenService == null) {
+            return Common.randomNumericString(6);
+        }
+        return passwordResetTokenService.issue(entityType, entityId == null ? 0L : entityId, email, clientIp);
+    }
+
+    private boolean isResetTokenValid(String entityType, Long entityId, String email, String token) {
+        if (passwordResetTokenService == null || entityId == null) {
+            return false;
+        }
+        return passwordResetTokenService.consume(entityType, entityId, email, token);
+    }
+
+    private boolean legacyVerificationMatches(String expected, String supplied) {
+        return expected != null && supplied != null && expected.equals(supplied);
+    }
+
     public List<UserPrivilege> getUserPrivileges(User user) {
         
         String sqlSelect = "SELECT * FROM "+Common.DB_TABLE_ADMIN_PRIVILEGES+" WHERE ";

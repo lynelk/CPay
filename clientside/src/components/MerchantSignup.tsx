@@ -2,6 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import common from './Common';
 import { AuthLayout, TextField, PasswordField, Button, Alert } from '../ui';
+import type { AuthAsideBenefit, AuthAsideCard } from '../ui/AuthLayout';
+
+import { apiFetch } from '../shared/api/httpClient';
+
+type MerchantSignupAppearance = Record<string, string>;
 
 interface SignupForm {
   businessName: string;
@@ -30,6 +35,56 @@ const emptyForm: SignupForm = {
   password: '',
 };
 
+const defaultAppearance: MerchantSignupAppearance = {
+  merchant_login_hero_image_url:
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1600&q=80',
+  merchant_login_hero_title: 'Merchant operations workspace',
+  merchant_login_hero_copy: 'Create secure access for collections, payouts, and notifications.',
+  merchant_login_payments_title: 'Payments',
+  merchant_login_payments_status: 'Ready',
+  merchant_login_payments_detail: 'Collections and payouts',
+  merchant_login_communication_title: 'Communication',
+  merchant_login_communication_detail: 'Alerts and SMS',
+  merchant_login_verification_title: 'Verification',
+  merchant_login_verification_detail: 'KYC guided setup',
+  merchant_login_insights_title: 'Insights',
+  merchant_login_insights_detail: 'Operational reports',
+  merchant_login_support_title: 'Support',
+  merchant_login_support_detail: "We're here to help",
+  merchant_login_secure_title: 'Secure Platform',
+  merchant_login_secure_copy: 'Enterprise-grade protection',
+  merchant_login_benefit_insights_title: 'Real-time Insights',
+  merchant_login_benefit_insights_copy: 'Data-driven decisions',
+  merchant_login_control_title: 'Operational Control',
+  merchant_login_control_copy: 'Manage with confidence',
+  merchant_login_automation_title: 'Automation Ready',
+  merchant_login_automation_copy: 'Powerful tools for efficiency',
+  merchant_login_reliable_title: 'Reliable & Scalable',
+  merchant_login_reliable_copy: 'Built for growth and trust',
+};
+
+function setting(appearance: MerchantSignupAppearance, key: string): string {
+  const value = appearance[key]?.trim();
+  return value || defaultAppearance[key] || '';
+}
+
+async function getSignupAppearance(): Promise<MerchantSignupAppearance> {
+  const response = await apiFetch(common.base_url + '/settings/public-login-appearance', {
+    method: 'GET',
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
+  const res = await response.json();
+  if (res.code !== '000' || !res.settings || typeof res.settings !== 'object') {
+    throw new Error(res.message || 'Unable to load signup appearance.');
+  }
+  return { ...defaultAppearance, ...(res.settings as MerchantSignupAppearance) };
+}
+
 async function readJsonResponse(response: Response): Promise<SignupResult> {
   const text = await response.text();
   if (!text.trim()) {
@@ -48,6 +103,21 @@ function MerchantSignup(): React.ReactElement {
   const [loading, setLoading] = React.useState(false);
   const [message, setMessage] = React.useState('');
   const [result, setResult] = React.useState<SignupResult | null>(null);
+  const [appearance, setAppearance] = React.useState<MerchantSignupAppearance>(defaultAppearance);
+
+  React.useEffect(() => {
+    let active = true;
+    getSignupAppearance()
+      .then((settings) => {
+        if (active) setAppearance(settings);
+      })
+      .catch(() => {
+        if (active) setAppearance(defaultAppearance);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function change<K extends keyof SignupForm>(field: K, value: SignupForm[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -59,7 +129,7 @@ function MerchantSignup(): React.ReactElement {
     setMessage('');
     setResult(null);
     try {
-      const response = await fetch(common.base_url + '/api/v2/merchant-self-service/signup', {
+      const response = await apiFetch(common.base_url + '/api/v2/merchant-self-service/signup', {
         method: 'POST',
         mode: 'cors',
         credentials: 'include',
@@ -80,13 +150,83 @@ function MerchantSignup(): React.ReactElement {
     }
   }
 
+  const asideCards: AuthAsideCard[] = [
+    {
+      id: 'payments',
+      icon: 'cards',
+      title: setting(appearance, 'merchant_login_payments_title'),
+      eyebrow: setting(appearance, 'merchant_login_payments_status'),
+      detail: setting(appearance, 'merchant_login_payments_detail'),
+      tone: 'success',
+    },
+    {
+      id: 'communication',
+      icon: 'message',
+      title: setting(appearance, 'merchant_login_communication_title'),
+      detail: setting(appearance, 'merchant_login_communication_detail'),
+    },
+    {
+      id: 'verification',
+      icon: 'verification',
+      title: setting(appearance, 'merchant_login_verification_title'),
+      detail: setting(appearance, 'merchant_login_verification_detail'),
+      tone: 'success',
+    },
+    {
+      id: 'insights',
+      icon: 'insights',
+      title: setting(appearance, 'merchant_login_insights_title'),
+      detail: setting(appearance, 'merchant_login_insights_detail'),
+      tone: 'success',
+    },
+    {
+      id: 'support',
+      icon: 'support',
+      title: setting(appearance, 'merchant_login_support_title'),
+      detail: setting(appearance, 'merchant_login_support_detail'),
+    },
+  ];
+
+  const asideBenefits: AuthAsideBenefit[] = [
+    {
+      icon: 'secure',
+      title: setting(appearance, 'merchant_login_secure_title'),
+      copy: setting(appearance, 'merchant_login_secure_copy'),
+    },
+    {
+      icon: 'insights',
+      title: setting(appearance, 'merchant_login_benefit_insights_title'),
+      copy: setting(appearance, 'merchant_login_benefit_insights_copy'),
+    },
+    {
+      icon: 'users',
+      title: setting(appearance, 'merchant_login_control_title'),
+      copy: setting(appearance, 'merchant_login_control_copy'),
+    },
+    {
+      icon: 'fast',
+      title: setting(appearance, 'merchant_login_automation_title'),
+      copy: setting(appearance, 'merchant_login_automation_copy'),
+    },
+    {
+      icon: 'reliable',
+      title: setting(appearance, 'merchant_login_reliable_title'),
+      copy: setting(appearance, 'merchant_login_reliable_copy'),
+    },
+  ];
+
   return (
     <AuthLayout
-      className="ios-auth-signup"
+      className="ios-auth-merchant ios-auth-signup"
       title="Create merchant account"
       subtitle="Self-service onboarding"
-      asideTitle="Merchant onboarding"
-      asideCopy="Create access for collections, payouts, and notifications."
+      asideTitle={setting(appearance, 'merchant_login_hero_title')}
+      asideCopy={setting(appearance, 'merchant_login_hero_copy')}
+      asideVariant="media"
+      asideImageUrl={setting(appearance, 'merchant_login_hero_image_url')}
+      asideImageAlt="Merchant onboarding workspace"
+      asideCards={asideCards}
+      asideBenefits={asideBenefits}
       footer={`© ${new Date().getFullYear()} CPay`}
     >
       {message && !result ? <Alert variant="error">{message}</Alert> : null}
@@ -110,7 +250,7 @@ function MerchantSignup(): React.ReactElement {
           </Button>
         </div>
       ) : (
-        <form className="ios-form" onSubmit={handleSubmit} noValidate>
+        <form className="ios-form ios-signup-form" onSubmit={handleSubmit} noValidate>
           <div className="ios-grid">
             <TextField id="su-business" label="Business name" value={form.businessName} onValueChange={(v) => change('businessName', v)} required />
             <TextField id="su-short" label="Short name" value={form.shortName} onValueChange={(v) => change('shortName', v)} required />

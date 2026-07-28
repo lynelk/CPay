@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.citotech.cito.Model;
 
 /**
@@ -12,7 +7,7 @@ package net.citotech.cito.Model;
 public class Beneficiary {
     String name;
     double amount;
-    Transaction transaciton;
+    Transaction transaction;
     String account;
     String status;
     String account_type;
@@ -68,12 +63,12 @@ public class Beneficiary {
         this.amount = amount;
     }
 
-    public Transaction getTransaciton() {
-        return transaciton;
+    public Transaction getTransaction() {
+        return transaction;
     }
 
-    public void setTransaciton(Transaction transaciton) {
-        this.transaciton = transaciton;
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
     }
     
 }

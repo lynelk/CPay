@@ -26,6 +26,11 @@ public class ComplianceReportingService {
         result.put("activeMerchantChannels", scalar("SELECT COUNT(*) FROM merchant_channel_credentials WHERE status='ACTIVE'"));
         result.put("openDailyCloses", scalar("SELECT COUNT(*) FROM reconciliation_daily_closes WHERE close_status='OPEN'"));
         result.put("closedDailyCloses", scalar("SELECT COUNT(*) FROM reconciliation_daily_closes WHERE close_status='CLOSED'"));
+        result.put("openComplianceCases", scalar("SELECT COUNT(*) FROM compliance_cases WHERE case_status IN ('OPEN','IN_REVIEW')"));
+        result.put("highSeverityComplianceCases", scalar("SELECT COUNT(*) FROM compliance_cases WHERE case_status IN ('OPEN','IN_REVIEW') AND severity IN ('CRITICAL','HIGH')"));
+        result.put("pendingComplianceProfiles", scalar("SELECT COUNT(*) FROM compliance_profiles WHERE status IN ('PENDING','IN_REVIEW')"));
+        result.put("approvedProviderEvidence", scalar("SELECT COUNT(*) FROM provider_certification_evidence WHERE evidence_status='APPROVED'"));
+        result.put("capturedProviderEvidence", scalar("SELECT COUNT(*) FROM provider_certification_evidence WHERE evidence_status='CAPTURED'"));
         return result;
     }
 
@@ -37,6 +42,8 @@ public class ComplianceReportingService {
         report.put("period", Map.of("from", p.getValue("from_date"), "to", p.getValue("to_date")));
         report.put("controlEvents", rows("SELECT event_type, severity, event_status, reference_value, message, created_at, reviewed_by, reviewed_at FROM operating_control_events WHERE DATE(created_at) BETWEEN :from_date AND :to_date ORDER BY created_at DESC LIMIT 500", p));
         report.put("providerRuns", rows("SELECT channel_code, operation_name, reference_value, http_status, run_status, created_at FROM provider_endpoint_runs WHERE DATE(created_at) BETWEEN :from_date AND :to_date ORDER BY created_at DESC LIMIT 500", p));
+        report.put("complianceCases", rows("SELECT case_reference, case_type, entity_type, entity_id, source_reference, severity, case_status, decision, decision_reason, created_at, closed_at FROM compliance_cases WHERE DATE(created_at) BETWEEN :from_date AND :to_date ORDER BY created_at DESC LIMIT 500", p));
+        report.put("providerCertificationEvidence", rows("SELECT provider_code, channel_code, scenario_name, evidence_type, evidence_status, evidence_summary, approved_by, approved_at, created_at FROM provider_certification_evidence WHERE DATE(created_at) BETWEEN :from_date AND :to_date ORDER BY created_at DESC LIMIT 500", p));
         report.put("callbackExceptions", rows("SELECT merchant_id, transaction_id, reference_value, task_status, attempt_count, message FROM callback_tasks WHERE task_status IN ('PARKED','RETRY') ORDER BY id DESC LIMIT 500", p));
         report.put("dailyCloses", rows("SELECT close_date, currency, close_status, matched_count, unmatched_count, exception_count, variance_amount, closed_by, closed_at FROM reconciliation_daily_closes WHERE close_date BETWEEN :from_date AND :to_date ORDER BY close_date DESC LIMIT 500", p));
         return report;

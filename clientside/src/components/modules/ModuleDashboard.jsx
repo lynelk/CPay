@@ -5,6 +5,8 @@ import common from "../Common";
 import { CardsIcon, CheckIcon, CloseIcon } from "../ShellIcons";
 import LinearChart from './LinearChart';
 
+import { apiFetch } from '../../shared/api/httpClient';
+
 export const dashboardErrorDetails = (res) => {
     const hasCode = res && res.code !== undefined && res.code !== null && String(res.code).trim() !== "";
     const message = (res && (res.message || res.error))
@@ -60,6 +62,7 @@ const channelHealthRows = [
     { channel: 'MTN', success: '97.8%', trend: '+1.6pp', latency: '1.2s', tone: 'good' },
     { channel: 'Airtel', success: '94.1%', trend: '-2.3pp', latency: '2.8s', tone: 'warning' },
     { channel: 'M-Pesa', success: '-', trend: '-', latency: '-', tone: 'neutral' },
+    { channel: 'Yo! Payments', success: '-', trend: 'New', latency: '-', tone: 'info' },
     { channel: 'Bank (ACH)', success: '99.2%', trend: '+0.7pp', latency: '1.1s', tone: 'good' },
 ];
 
@@ -99,6 +102,11 @@ export const formatCount = (value) => {
     return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 };
 
+const numberValue = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const sanitizeSnapshotCards = (cards) => {
     const allowed = new Set(availableSnapshotCards.map(card => card.id));
     const unique = [];
@@ -118,6 +126,8 @@ class ModuleDashboardC extends React.Component {
             chartDataTxTypes: null,
             chartDataTxVolumes: null,
             chartDataTxNetworkBalances: null,
+            portalSummary: null,
+            activeInsight: null,
             visibleSnapshotCards: this.loadSnapshotCards(),
             showSnapshotPicker: false,
             fetchErrors: []
@@ -126,13 +136,16 @@ class ModuleDashboardC extends React.Component {
     }
 
     componentDidMount() {
-        this.getData("chartData", "getDashboardDetailsPayinsVsPayouts");
-        this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypes");
-        this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumes");
-        this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
+        this.refreshDashboardData();
         this._balanceInterval = setInterval(() => {
             this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
         }, 240000);
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.refreshSignal !== this.props.refreshSignal) {
+            this.refreshDashboardData();
+        }
     }
 
     componentWillUnmount() {
@@ -155,6 +168,31 @@ class ModuleDashboardC extends React.Component {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
         } catch {
             // Local storage is optional; the dashboard still works without persistence.
+        }
+    }
+
+    refreshDashboardData() {
+        this.getData("chartData", "getDashboardDetailsPayinsVsPayouts");
+        this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypes");
+        this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumes");
+        this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
+        this.getPortalSummary();
+    }
+
+    async getPortalSummary() {
+        try {
+            const response = await apiFetch(common.base_url + "/api/v2/portal/dashboard/summary", {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const summary = await response.json();
+            if (response.ok) {
+                this.setState({ portalSummary: summary });
+            }
+        } catch (error) {
+            this.addFetchError(error.message);
         }
     }
 
@@ -196,7 +234,7 @@ class ModuleDashboardC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         };
-        fetch(common.base_url + "/transactions/" + api, {
+        apiFetch(common.base_url + "/transactions/" + api, {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',
@@ -330,7 +368,12 @@ class ModuleDashboardC extends React.Component {
 
     renderMetricCard({ id, tone, icon, label, value, comparison, delta }) {
         return (
-            <article className={`cpay-dashboard-metric-card cpay-dashboard-metric-card-${tone}`}>
+            <button
+                type="button"
+                className={`cpay-dashboard-metric-card cpay-dashboard-metric-card-${tone}`}
+                aria-pressed={this.state.activeInsight?.id === id}
+                onClick={() => this.setState({ activeInsight: { id, label, value, comparison, delta } })}
+            >
                 <div className="cpay-dashboard-metric-icon" aria-hidden="true">{icon}</div>
                 <div className="cpay-dashboard-metric-copy">
                     <span>{label}</span>
@@ -338,23 +381,41 @@ class ModuleDashboardC extends React.Component {
                     <small>{comparison} <em>{delta}</em></small>
                 </div>
                 {this.renderSparkline(tone, metricSparkPoints[id] || metricSparkPoints.processed)}
-            </article>
+            </button>
         );
     }
 
     renderMetricStrip(collectionTotal, balanceTotal, failedCount) {
+        const summary = this.state.portalSummary || {};
+        const processedTotal = numberValue(summary.payIns) || collectionTotal || 24800000;
+        const payoutTotal = numberValue(summary.payOuts);
+        const transactionCount = numberValue(summary.transactions) || failedCount || 842;
+        const merchantCount = numberValue(summary.merchants);
+        const limit = summary.productionLimit || {};
         const cards = [
-            { id: 'processed', tone: 'info', icon: 'PV', label: 'Processed Value', value: formatAmount(collectionTotal || 24800000), comparison: 'vs yesterday', delta: '+12.6%' },
+            { id: 'processed', tone: 'info', icon: 'PV', label: 'Processed Value', value: formatAmount(processedTotal), comparison: 'vs yesterday', delta: '+12.6%' },
             { id: 'success', tone: 'success', icon: 'SR', label: 'Success Rate', value: '96.7%', comparison: 'vs yesterday', delta: '+1.8pp' },
-            { id: 'failed', tone: 'danger', icon: 'FT', label: 'Failed Transactions', value: formatCount(failedCount || 842), comparison: 'vs yesterday', delta: '+38.4%' },
-            { id: 'held', tone: 'danger', icon: 'HA', label: 'Held Amount', value: formatAmount(balanceTotal || 1720000), comparison: 'vs yesterday', delta: '+24.7%' },
-            { id: 'retry', tone: 'warning', icon: 'RQ', label: 'Retry Queue', value: '312', comparison: 'vs yesterday', delta: '+15.2%' },
-            { id: 'settlement', tone: 'warning', icon: 'SE', label: 'Settlement Exceptions', value: '27', comparison: 'vs yesterday', delta: '+8.0%' },
+            { id: 'failed', tone: 'danger', icon: 'TX', label: 'Transactions', value: formatCount(transactionCount), comparison: 'all channels', delta: '+15.2%' },
+            { id: 'held', tone: 'danger', icon: 'PO', label: 'Payout Value', value: formatAmount(payoutTotal || balanceTotal || 1720000), comparison: 'vs yesterday', delta: '+24.7%' },
+            { id: 'retry', tone: 'warning', icon: 'CH', label: 'Active Channels', value: formatCount(this.activeChannelCount()), comparison: 'configured', delta: '+1' },
+            { id: 'settlement', tone: 'warning', icon: 'LM', label: 'Production Limit', value: limit.enabled === false ? 'Off' : `${limit.limit || 10}/day`, comparison: `${limit.usedToday || 0} used`, delta: merchantCount ? `${formatCount(merchantCount)} merchants` : 'Ready' },
         ];
 
         return (
             <section className="cpay-dashboard-metrics" aria-label="Operational metrics">
                 {cards.map(card => this.renderMetricCard(card))}
+            </section>
+        );
+    }
+
+    renderActiveInsight() {
+        const insight = this.state.activeInsight;
+        if (!insight) return null;
+        return (
+            <section className="cpay-dashboard-insight" aria-live="polite">
+                <strong>{insight.label}</strong>
+                <span>{insight.value}</span>
+                <em>{insight.comparison} {insight.delta}</em>
             </section>
         );
     }
@@ -501,7 +562,7 @@ class ModuleDashboardC extends React.Component {
                         <span>vs yesterday</span>
                         <span>Avg. Latency</span>
                     </div>
-                    {channelHealthRows.map(row => (
+                    {this.channelHealthRows().map(row => (
                         <div className="cpay-health-row" key={row.channel}>
                             <strong><span className={`cpay-channel-dot cpay-channel-dot-${row.tone}`} />{row.channel}</strong>
                             <span>{row.success}</span>
@@ -512,6 +573,35 @@ class ModuleDashboardC extends React.Component {
                 </div>
             </article>
         );
+    }
+
+    channelHealthRows() {
+        const activeChannels = Array.isArray(this.state.portalSummary?.activeChannels)
+            ? this.state.portalSummary.activeChannels
+            : [];
+        if (activeChannels.length === 0) {
+            return channelHealthRows;
+        }
+        const seen = new Set();
+        const rows = activeChannels
+            .filter(channel => !seen.has(channel.channel_code) && seen.add(channel.channel_code))
+            .slice(0, 6)
+            .map(channel => ({
+                channel: channel.display_name || channel.channel_code,
+                success: channel.status === 'ACTIVE' || channel.status === 'SANDBOX_TESTED' ? 'Ready' : '-',
+                trend: channel.environment || '-',
+                latency: channel.status || 'Not configured',
+                tone: channel.status === 'ACTIVE' || channel.status === 'SANDBOX_TESTED' ? 'good' : 'neutral',
+            }));
+        return rows.length ? rows : channelHealthRows;
+    }
+
+    activeChannelCount() {
+        const activeChannels = Array.isArray(this.state.portalSummary?.activeChannels)
+            ? this.state.portalSummary.activeChannels
+            : [];
+        const active = activeChannels.filter(channel => ['ACTIVE', 'SANDBOX_TESTED', 'SUBMITTED_FOR_APPROVAL'].includes(channel.status));
+        return active.length || 4;
     }
 
     renderQuickActions() {
@@ -660,6 +750,7 @@ class ModuleDashboardC extends React.Component {
                 </section>
 
                 {this.renderMetricStrip(collectionTotal, balanceTotal, failedCount)}
+                {this.renderActiveInsight()}
 
                 <section className="cpay-dashboard-grid cpay-dashboard-grid--console" aria-label="Dashboard operational panels">
                     <article className="cpay-dashboard-card cpay-dashboard-panel-chart">

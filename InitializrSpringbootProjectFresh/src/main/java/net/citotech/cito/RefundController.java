@@ -186,16 +186,7 @@ public class RefundController {
             p.addValue("ref",  merchantRef);
             p.addValue("mid",  merchantId);
             p.addValue("type", Transaction.TX_TYPE_PAYIN);
-            List<Transaction> txList = jdbcTemplate.query(sql, p, (rs, rowNum) -> {
-                Transaction t = new Transaction();
-                t.setId(rs.getLong("id"));
-                t.setGateway_id(rs.getString("gateway_id"));
-                t.setOriginal_amount(rs.getDouble("original_amount"));
-                t.setPayer_number(rs.getString("payer_number"));
-                t.setStatus(rs.getString("status"));
-                t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
-                return t;
-            });
+            List<Transaction> txList = jdbcTemplate.query(sql, p, Common.getTransactionRowMapper());
             return txList.isEmpty() ? null : txList.get(0);
         } catch (Exception e) {
             logger.log(Level.WARNING, "getSuccessfulPayin error: " + e.getMessage(), e);

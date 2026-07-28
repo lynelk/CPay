@@ -4,6 +4,8 @@ import { withRouter } from '../../../shared/router/compat';
 import common from "../../Common";
 import { Card, Toolbar, Table, Select, SearchField, Checkbox, Badge } from '../../../ui';
 
+import { apiFetch } from '../../../shared/api/httpClient';
+
 const CATEGORIES = [
   { value: 'all', label: 'All Fields' },
   { value: 'user_id', label: 'User ID' },
@@ -35,7 +37,7 @@ class MerchantModuleAuditTrailC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         };
-        fetch(common.base_url + "/audittrail/getMerchantAudittrails", {
+        apiFetch(common.base_url + "/audittrail/getMerchantAudittrails", {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',

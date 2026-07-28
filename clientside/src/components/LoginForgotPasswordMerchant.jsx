@@ -2,6 +2,8 @@ import React from 'react';
 import common from './Common';
 import { Alert, Button, PasswordField, ProgressOverlay, Sheet, TextField } from '../ui';
 
+import { apiFetch } from '../shared/api/httpClient';
+
 function initialState(merchantNumber = '') {
   return {
     step: 'request',
@@ -42,7 +44,7 @@ function ForgotPasswordMerchant({ merchantNumber = '', showForgotPassword, onClo
     }
     patch({ loading: true, error: '', message: '' });
     try {
-      const response = await fetch(common.base_url + '/auth/requestMerchantUserResetPassword', {
+      const response = await apiFetch(common.base_url + '/auth/requestMerchantUserResetPassword', {
         method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
         headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrerPolicy: 'no-referrer',
         body: JSON.stringify({ email: state.email, merchant_number: state.merchant_number }),
@@ -70,7 +72,7 @@ function ForgotPasswordMerchant({ merchantNumber = '', showForgotPassword, onClo
     }
     patch({ loading: true, error: '', message: '' });
     try {
-      const response = await fetch(common.base_url + '/auth/resetPasswordMerchant', {
+      const response = await apiFetch(common.base_url + '/auth/resetPasswordMerchant', {
         method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
         headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrerPolicy: 'no-referrer',
         body: JSON.stringify({
