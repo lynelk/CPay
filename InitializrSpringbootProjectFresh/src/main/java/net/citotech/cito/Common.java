@@ -1330,6 +1330,42 @@ public class Common {
     }
 
     /*
+    * Builds the API response for a retried request whose tx_merchant_ref already exists on this
+    * merchant (audit D1). Legacy doPayIn/doPayOut previously rejected every duplicate reference with
+    * a bare "already submitted" error, so a client retrying after a timeout could not tell its retry
+    * apart from a real conflict and had no way to learn the original request's actual outcome. A
+    * terminal transaction (SUCCESSFUL/FAILED) now replays its real outcome instead, mirroring v2's
+    * IdempotencyService replay behavior; a still-PENDING transaction keeps returning the original
+    * ambiguous rejection since there is no final outcome yet to hand back.
+    */
+    private static String buildIdempotentReplayResponse(Transaction existingTx) {
+        net.citotech.cito.Model.TransactionStatus status =
+                net.citotech.cito.Model.TransactionStatus.fromString(existingTx.getStatus());
+        if (status == null || !status.isTerminal()) {
+            return GeneralException
+                .getError("121", String.format(GeneralException.ERRORS_121,
+                        existingTx.getTx_merchant_ref()));
+        }
+
+        GateWayResponse replay = new GateWayResponse();
+        replay.setOurUniqueTxId(existingTx.getTx_unique_id());
+        replay.setStatus(status == net.citotech.cito.Model.TransactionStatus.SUCCESSFUL ? "OK" : "ERROR");
+        replay.setTransactionStatus(existingTx.getStatus() == null ? "" : existingTx.getStatus());
+        replay.setNetworkId(existingTx.getTx_gateway_ref() == null ? "" : existingTx.getTx_gateway_ref());
+        replay.setRequestTrace(existingTx.getTx_request_trace() == null ? "" : existingTx.getTx_request_trace());
+        if (existingTx.getSafaricomRequestReference() != null) {
+            replay.setSafaricomRequestReference(existingTx.getSafaricomRequestReference());
+        }
+
+        if (status == net.citotech.cito.Model.TransactionStatus.SUCCESSFUL) {
+            replay.setMessage(GeneralSuccessResponse.SUCCESS_000);
+            return GeneralSuccessResponse.getApiTxMessage("000", GeneralSuccessResponse.SUCCESS_000, replay);
+        }
+        replay.setMessage(GeneralException.ERRORS_143);
+        return GeneralException.getApiTxMessage("143", GeneralException.ERRORS_143, replay);
+    }
+
+    /*
     * DoPayIn makes a payin transaction.
     */
     public static String doPayIn(Transaction newTx,
@@ -1341,9 +1377,7 @@ public class Common {
         Transaction tx = Common.getMerchantTxByTheirRef(newTx.getTx_merchant_ref(), merchant.getId()+"",
         jdbcTemplate);
         if (tx != null) {
-            return GeneralException
-                .getError("121", String.format(GeneralException.ERRORS_121,
-                        newTx.getTx_merchant_ref()));
+            return buildIdempotentReplayResponse(tx);
         }
 
         boolean useMerchantCreds = Common.useMerchantProviderCredentials(jdbcTemplate);
@@ -1625,9 +1659,7 @@ public class Common {
         Transaction tx = Common.getMerchantTxByTheirRef(newTx.getTx_merchant_ref(), merchant.getId()+"",
         jdbcTemplate);
         if (tx != null) {
-            return GeneralException
-                .getError("121", String.format(GeneralException.ERRORS_121, 
-                        newTx.getTx_merchant_ref()));
+            return buildIdempotentReplayResponse(tx);
         }
 
         MapSqlParameterSource parametersBalanceSql = new MapSqlParameterSource();
