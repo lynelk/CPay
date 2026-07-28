@@ -46,6 +46,25 @@ public class MerchantStatementExportService {
     public StatementExportResponse export(Merchant merchant, String merchantNumber, String startDate, String endDate,
             Integer limit, String cursor) {
         validateMerchant(merchant, merchantNumber);
+        return buildExport(merchant, merchantNumber, startDate, endDate, limit, cursor);
+    }
+
+    /**
+     * Self-service statement export for a merchant portal user (audit N3), reached via a
+     * session-authenticated endpoint rather than a v2-signed API call. Skips the allowed_apis
+     * check that {@link #export} enforces: allowed_apis governs what an external integration key
+     * may call against the signed v2 API, not what a merchant's own logged-in staff can see of
+     * their own data in the portal - those are different trust boundaries. Still requires the
+     * merchant to be ACTIVE.
+     */
+    public StatementExportResponse exportForPortal(Merchant merchant, String startDate, String endDate,
+            Integer limit, String cursor) {
+        validateActiveMerchant(merchant);
+        return buildExport(merchant, merchant.getAccount_number(), startDate, endDate, limit, cursor);
+    }
+
+    private StatementExportResponse buildExport(Merchant merchant, String merchantNumber, String startDate,
+            String endDate, Integer limit, String cursor) {
         LocalDate start = parseDate(startDate, "startDate");
         LocalDate end = parseDate(endDate, "endDate");
         if (end.isBefore(start)) {
@@ -179,11 +198,18 @@ public class MerchantStatementExportService {
         if (merchant == null || !merchantNumber.equals(merchant.getAccount_number())) {
             throw new PaymentGatewayException("Verified merchant does not match request merchant");
         }
-        if (!"ACTIVE".equalsIgnoreCase(merchant.getStatus())) {
-            throw new PaymentGatewayException("Merchant is not active");
-        }
+        validateActiveMerchant(merchant);
         if (!hasApi(merchant, Common.API_STATEMENT_EXPORT)) {
             throw new PaymentGatewayException("Merchant is not allowed to access " + Common.API_STATEMENT_EXPORT);
+        }
+    }
+
+    private void validateActiveMerchant(Merchant merchant) {
+        if (merchant == null) {
+            throw new PaymentGatewayException("Merchant is required");
+        }
+        if (!"ACTIVE".equalsIgnoreCase(merchant.getStatus())) {
+            throw new PaymentGatewayException("Merchant is not active");
         }
     }
 

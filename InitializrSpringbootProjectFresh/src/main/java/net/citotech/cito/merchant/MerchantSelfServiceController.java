@@ -6,15 +6,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import net.citotech.cito.Common;
+import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.MerchantUser;
+import net.citotech.cito.api.v2.MerchantStatementExportService;
+import net.citotech.cito.api.v2.dto.StatementExportResponse;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.security.SimpleRateLimitService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,15 +32,21 @@ public class MerchantSelfServiceController {
     private final MerchantChannelCredentialService channelService;
     private final MerchantEnvironmentService environmentService;
     private final SimpleRateLimitService rateLimitService;
+    private final MerchantStatementExportService statementExportService;
+    private final NamedParameterJdbcTemplate jdbcTemplate;
 
     public MerchantSelfServiceController(MerchantSelfServiceSignupService signupService,
                                          MerchantChannelCredentialService channelService,
                                          MerchantEnvironmentService environmentService,
-                                         SimpleRateLimitService rateLimitService) {
+                                         SimpleRateLimitService rateLimitService,
+                                         MerchantStatementExportService statementExportService,
+                                         NamedParameterJdbcTemplate jdbcTemplate) {
         this.signupService = signupService;
         this.channelService = channelService;
         this.environmentService = environmentService;
         this.rateLimitService = rateLimitService;
+        this.statementExportService = statementExportService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @PostMapping(path = "/signup")
@@ -112,6 +126,44 @@ public class MerchantSelfServiceController {
         } catch (PaymentGatewayException e) {
             return ResponseEntity.badRequest().body(error("CHANNEL_SUBMIT_REJECTED", e.getMessage()));
         }
+    }
+
+    /**
+     * Self-service statement export (audit N3): the existing GET /api/v2/statements requires
+     * v2 HMAC request signing, meant for API integrators - a merchant portal user who is already
+     * logged in via session has no signing keys and no reason to construct a signed request just
+     * to see their own statement. This resolves the merchant from the session instead.
+     */
+    @GetMapping(path = "/statements")
+    public ResponseEntity<?> statements(@RequestParam("startDate") String startDate,
+                                        @RequestParam("endDate") String endDate,
+                                        @RequestParam(value = "format", defaultValue = "json") String format,
+                                        @RequestParam(value = "limit", required = false) Integer limit,
+                                        @RequestParam(value = "cursor", required = false) String cursor,
+                                        HttpServletRequest request) {
+        try {
+            Merchant merchant = currentMerchant(request);
+            StatementExportResponse export = statementExportService.exportForPortal(merchant, startDate, endDate, limit, cursor);
+            if ("csv".equalsIgnoreCase(format)) {
+                String filename = "cpay-statement-" + merchant.getAccount_number() + "-" + startDate + "-to-" + endDate + ".csv";
+                return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType("text/csv"))
+                    .body(statementExportService.toCsv(export));
+            }
+            return ResponseEntity.ok(export);
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
+        }
+    }
+
+    private Merchant currentMerchant(HttpServletRequest request) {
+        MerchantUser user = currentMerchantUser(request);
+        Merchant merchant = Common.getMerchantById(String.valueOf(user.getMerchant_id()), jdbcTemplate);
+        if (merchant == null) {
+            throw new PaymentGatewayException("Merchant login is required");
+        }
+        return merchant;
     }
 
     private MerchantUser currentMerchantUser(HttpServletRequest request) {

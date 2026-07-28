@@ -101,6 +101,40 @@ class MerchantStatementExportServiceTest {
         assertThat(captor.getValue().getValue("cursor_id")).isEqualTo(20L);
     }
 
+    @Test
+    void exportForPortalWorksWithoutTheStatementExportApiPrivilege() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantReadAuditService auditService = mock(MerchantReadAuditService.class);
+        stubRows(jdbcTemplate, List.of(new FakeRow(10, new Timestamp(1_000_000L))));
+
+        MerchantStatementExportService service = new MerchantStatementExportService(jdbcTemplate, auditService);
+        Merchant merchant = new Merchant();
+        merchant.setId(7L);
+        merchant.setAccount_number("1000003");
+        merchant.setStatus("ACTIVE");
+        merchant.setAllowed_apis(new String[0]);
+
+        StatementExportResponse response = service.exportForPortal(merchant, "2026-01-01", "2026-01-31", 2, null);
+
+        assertThat(response.getRows()).hasSize(1);
+        assertThat(response.getMerchantNumber()).isEqualTo("1000003");
+    }
+
+    @Test
+    void exportForPortalStillRejectsANonActiveMerchant() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantReadAuditService auditService = mock(MerchantReadAuditService.class);
+        MerchantStatementExportService service = new MerchantStatementExportService(jdbcTemplate, auditService);
+        Merchant merchant = new Merchant();
+        merchant.setId(7L);
+        merchant.setAccount_number("1000003");
+        merchant.setStatus("SUSPENDED");
+
+        assertThatThrownBy(() -> service.exportForPortal(merchant, "2026-01-01", "2026-01-31", 2, null))
+            .isInstanceOf(PaymentGatewayException.class)
+            .hasMessageContaining("not active");
+    }
+
     private record FakeRow(long id, Timestamp createdOn) {
     }
 
