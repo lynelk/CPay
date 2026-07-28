@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.MerchantUser;
+import net.citotech.cito.SettingsRegistry;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -165,12 +166,11 @@ public class MerchantEnvironmentService {
     }
 
     private boolean productionLimitEnabled() {
-        String value = setting("production_transaction_limit_enabled", "true");
-        return !"false".equalsIgnoreCase(value) && !"no".equalsIgnoreCase(value) && !"0".equals(value);
+        return SettingsRegistry.getBoolean("production_transaction_limit_enabled", jdbcTemplate);
     }
 
     private int productionTransactionLimit() {
-        return parseInt(setting("production_transaction_limit_count", "10"), 10);
+        return SettingsRegistry.getInt("production_transaction_limit_count", jdbcTemplate);
     }
 
     private String setting(String name, String defaultValue) {

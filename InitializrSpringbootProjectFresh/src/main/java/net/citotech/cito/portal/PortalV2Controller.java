@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.Model.User;
+import net.citotech.cito.SettingsRegistry;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -213,8 +214,8 @@ public class PortalV2Controller {
 
     private Map<String, Object> productionLimitStatus(String merchantNumber) {
         Map<String, Object> status = new LinkedHashMap<>();
-        boolean enabled = settingBoolean("production_transaction_limit_enabled", true);
-        int limit = settingInt("production_transaction_limit_count", 10);
+        boolean enabled = SettingsRegistry.getBoolean("production_transaction_limit_enabled", jdbcTemplate);
+        int limit = SettingsRegistry.getInt("production_transaction_limit_count", jdbcTemplate);
         int used = 0;
         if (merchantNumber != null && !merchantNumber.trim().isEmpty()) {
             used = scalarInt(
@@ -227,32 +228,6 @@ public class PortalV2Controller {
         status.put("usedToday", used);
         status.put("remainingToday", enabled && limit > 0 ? Math.max(0, limit - used) : null);
         return status;
-    }
-
-    private boolean settingBoolean(String name, boolean fallback) {
-        String value = setting(name, fallback ? "true" : "false");
-        return !"false".equalsIgnoreCase(value) && !"no".equalsIgnoreCase(value) && !"0".equals(value);
-    }
-
-    private int settingInt(String name, int fallback) {
-        try {
-            return Integer.parseInt(setting(name, String.valueOf(fallback)));
-        } catch (Exception e) {
-            return fallback;
-        }
-    }
-
-    private String setting(String name, String fallback) {
-        try {
-            String value = jdbcTemplate.queryForObject(
-                "SELECT setting_value FROM settings WHERE name=:name LIMIT 1",
-                new MapSqlParameterSource("name", name),
-                String.class
-            );
-            return value == null || value.trim().isEmpty() ? fallback : value.trim();
-        } catch (DataAccessException e) {
-            return fallback;
-        }
     }
 
     private int limit(int requested) {
