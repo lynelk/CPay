@@ -4,6 +4,7 @@ import net.citotech.cito.AuthenticationController;
 import net.citotech.cito.Common;
 import net.citotech.cito.GeneralException;
 import net.citotech.cito.TransactionsLogController;
+import net.citotech.cito.async.ManagedAsyncTasks;
 import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -70,8 +71,7 @@ public class TxCallback {
 
     public void start(NamedParameterJdbcTemplate jdbcTemplate, @org.springframework.lang.NonNull PlatformTransactionManager transactionManager) {
         TransactionTemplate template = new TransactionTemplate(transactionManager);
-        Thread thread = new Thread() {
-            public void run() {
+        ManagedAsyncTasks.run("TxCallback-" + tx.getId(), () -> {
                 // Idempotency: do not re-fire if a previous attempt already succeeded
                 if (isCallbackAlreadyDelivered(jdbcTemplate)) {
                     return;
@@ -158,9 +158,7 @@ public class TxCallback {
                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                     markCallbackFailed(jdbcTemplate, template);
                 }
-            }
-        };
-        thread.start();
+        });
     }
 }
 

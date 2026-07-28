@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import net.citotech.cito.Model.KeyPairStrings;
+import net.citotech.cito.async.ManagedAsyncTasks;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.Model.Setting;
@@ -36,11 +37,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 /**
  *
@@ -483,7 +479,7 @@ public class MerchantsController {
                 return GeneralException.getError("139", GeneralException.ERRORS_139).replaceAll("%s", client_ip);
             }
             
-            String allowed_apis = Common.imploadStringJsonArray(allowed_apis_array);
+            String allowed_apis = Common.implodeStringJsonArray(allowed_apis_array);
             
             Merchant newMerchant = new Merchant();
             newMerchant.setCreated_by("SYSTEM:-"+authorizationKey);
@@ -669,7 +665,7 @@ public class MerchantsController {
             /*for (int i=0; i < allowed_apis_array.length(); i++) {
                 allowed_apis[i] = allowed_apis_array.getString(i);
             }*/
-            String allowed_apis = Common.imploadStringJsonArray(allowed_apis_array);
+            String allowed_apis = Common.implodeStringJsonArray(allowed_apis_array);
             
             Merchant newMerchant = new Merchant();
             newMerchant.setCreated_by(created_by);
@@ -964,7 +960,7 @@ public class MerchantsController {
             String id = sObject.optString("id", "");
             Boolean generate_new_keys = sObject.getBoolean("generate_new_keys");
             JSONArray allowed_apis_array = sObject.getJSONArray("allowed_apis");
-            String allowed_apis = Common.imploadStringJsonArray(allowed_apis_array);
+            String allowed_apis = Common.implodeStringJsonArray(allowed_apis_array);
             
             Merchant newMerchant = new Merchant();
             newMerchant.setCreated_by(created_by);
@@ -1221,8 +1217,7 @@ public class MerchantsController {
 
             Logger.getLogger(MerchantsController.class.getName()).log(Level.FINE, emailContent);
 
-            Thread thread = new Thread(){
-                public void run(){
+            ManagedAsyncTasks.run("merchant-user-credentials-email-" + to, () -> {
                     SendMail mail = new SendMail();
                     mail.sendSimpleMessage(
                         to,
@@ -1230,9 +1225,7 @@ public class MerchantsController {
                         emailContent,
                         jdbcTemplate
                     );
-                }
-            };
-            thread.start();
+            });
         } catch (Exception ex) {
             Logger.getLogger(MerchantsController.class.getName())
                     .log(Level.WARNING, "Merchant credentials email could not be queued.", ex);

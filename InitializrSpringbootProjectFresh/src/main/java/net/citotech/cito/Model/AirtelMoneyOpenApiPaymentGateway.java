@@ -1,16 +1,13 @@
 package net.citotech.cito.Model;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -25,7 +22,6 @@ import net.citotech.cito.Common;
 import net.citotech.cito.SettingsController;
 import net.citotech.cito.gateway.ProviderToken;
 import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
-import org.springframework.beans.factory.annotation.Value;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -61,9 +57,6 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     String api_disbursements_subscription = "";
     
     String publicKey = "";
-
-    @Value("${custom.lockfiledirectory}")
-    private String lockfiledirectory;
 
     public static boolean isValidMisdn(String msisdn) {
         for (String p : prefix) {
@@ -265,14 +258,6 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         return info;
     }
 
-    Boolean isTokenAboutToExpire() throws IOException {
-        Token token = readToken();
-        if (token == null) {
-            return true;
-        }
-        return LocalDateTime.now().isAfter(token.created_on.plusMinutes(TOKEN_TTL_MINUTES));
-    }
-
     public Token getToken() throws IOException, JSONException {
         Token token = readToken();
         if (token == null || LocalDateTime.now().isAfter(token.created_on.plusMinutes(TOKEN_TTL_MINUTES))) {
@@ -361,28 +346,14 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         }
     }
 
-    private Token readToken() throws IOException {
+    private Token readToken() {
+        // Tokens live only in the encrypted provider_tokens DB store (see ProviderTokenStoreService) -
+        // no plaintext on-disk cache.
         Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
         if (databaseToken.isPresent()) {
             return new Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
         }
-        File resource = tokenFile();
-        String tokenFileContent = new String(Files.readAllBytes(resource.toPath())).trim();
-        if (tokenFileContent.isEmpty()) {
-            return null;
-        }
-        try {
-            JSONObject allTokens = new JSONObject(tokenFileContent);
-            if (allTokens.isNull(this.segment)) {
-                return null;
-            }
-            JSONObject segmentToken = allTokens.getJSONObject(this.segment);
-            LocalDateTime createdAt = LocalDateTime.parse(segmentToken.getString("created_on"), Common.getDateTimeFormater());
-            return new Token(segmentToken.getString("token"), createdAt);
-        } catch (JSONException e) {
-            Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
-            return null;
-        }
+        return null;
     }
 
     private void saveToken(String accessToken, LocalDateTime createdAt) {
@@ -392,32 +363,6 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 tokenEnvironment(),
                 accessToken,
                 Instant.now().plus(TOKEN_TTL_MINUTES, ChronoUnit.MINUTES));
-        try {
-            File resource = tokenFile();
-            JSONObject newToken = new JSONObject();
-            newToken.put("token", accessToken);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            newToken.put("created_on", createdAt.format(formatter));
-            String existing = new String(Files.readAllBytes(resource.toPath())).trim();
-            JSONObject allTokens = existing.isEmpty() ? new JSONObject() : new JSONObject(existing);
-            allTokens.put(this.segment, newToken);
-            Files.writeString(resource.toPath(), allTokens.toString());
-        } catch (Exception e) {
-            Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
-        }
-    }
-
-    private File tokenFile() throws IOException {
-        File directory = new File(lockfiledirectory == null ? "/tmp/cpay/locks/" : lockfiledirectory);
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
-        File resource = new File(directory, Common.CLASS_PATH_AIRTELOAPI_TOKEN_FILE);
-        if (resource.createNewFile()) {
-            Logger.getLogger(AirtelMoneyOpenApiPaymentGateway.class.getName()).log(Level.INFO,
-                    "AirtelMoney token file created: " + resource.getAbsolutePath());
-        }
-        return resource;
     }
 
     private Map<String, String> standardHeaders(Token token) {

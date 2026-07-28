@@ -35,13 +35,14 @@ describe('CPay brand guideline tokens', () => {
     expect(css).not.toContain('--cpay-fuse-blue: #0a84ff;');
   });
 
-  test('aligns the shared JavaScript theme with the brand guide', () => {
-    const theme = read('components/iosTheme.js');
+  test('aligns the shared iOS CSS theme with the brand guide', () => {
+    const iosCss = read('styles/ios.css');
+    const iosSystemCss = read('styles/ios-system.css');
 
-    expect(theme).toContain("blue: '#1198C4'");
-    expect(theme).toContain("orange: '#F3B01B'");
-    expect(theme).toContain("label: '#163B5C'");
-    expect(theme).toContain('Montserrat, Inter');
-    expect(theme).not.toContain("'#007AFF'");
+    expect(iosCss).toContain('--ios-accent: var(--cpay-brand-teal, #1198C4);');
+    expect(iosCss).toContain('--ios-text: #163B5C;');
+    expect(iosSystemCss).toContain('--ios-warning: #F3B01B;');
+    expect(iosSystemCss).toContain('--ios-font-display: Montserrat, var(--ios-font);');
+    expect(iosCss).not.toContain('#007AFF');
   });
 });

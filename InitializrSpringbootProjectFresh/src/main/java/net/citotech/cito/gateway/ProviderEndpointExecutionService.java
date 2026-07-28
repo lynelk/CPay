@@ -32,8 +32,9 @@ public class ProviderEndpointExecutionService {
             if ("PRODUCTION".equalsIgnoreCase(gatewayState)) {
                 throw new PaymentGatewayException("Provider endpoint URL is required in production mode for " + channelCode + " " + operation);
             }
-            GateWayResponse accepted = response(channelCode, displayName, operation, request, 202, "SUBMITTED", "Sandbox endpoint not configured");
-            record(channelCode, operation, request, endpointKey, 202, "SANDBOX_ACCEPTED", accepted.getMessage());
+            SandboxScenario scenario = sandboxScenario(operation, request.getAccountIdentifier());
+            GateWayResponse accepted = response(channelCode, displayName, operation, request, scenario.httpStatus, scenario.transactionStatus, scenario.message);
+            record(channelCode, operation, request, endpointKey, scenario.httpStatus, scenario.runStatus, accepted.getMessage());
             return accepted;
         }
         String body = body(channelCode, operation, request);
@@ -80,7 +81,7 @@ public class ProviderEndpointExecutionService {
     }
 
     private void record(String channelCode, String operation, PaymentGatewayRequest request, String endpointUrl, int httpStatus, String status, String message) {
-        String sql = "INSERT INTO provider_endpoint_runs (channel_code, operation_name, reference_value, endpoint_url, http_status, request_hash, response_summary, run_status) VALUES (:channel_code, :operation_name, :reference_value, :endpoint_url, :http_status, :request_hash, :response_summary, :run_status)";
+        String sql = "INSERT INTO provider_endpoint_runs (channel_code, operation_name, reference_value, endpoint_url, http_status, request_hash, response_summary, run_status, merchant_number, environment) VALUES (:channel_code, :operation_name, :reference_value, :endpoint_url, :http_status, :request_hash, :response_summary, :run_status, :merchant_number, :environment)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("channel_code", channelCode);
         p.addValue("operation_name", operation);
@@ -90,7 +91,40 @@ public class ProviderEndpointExecutionService {
         p.addValue("request_hash", safeHash(channelCode + ":" + operation + ":" + request.getReference()));
         p.addValue("response_summary", trim(message));
         p.addValue("run_status", status);
+        p.addValue("merchant_number", request.getMerchantNumber());
+        p.addValue("environment", request.getMetadata().getOrDefault("credentialEnvironment", request.getMetadata().getOrDefault("gatewayState", "SANDBOX")));
         try { jdbcTemplate.update(sql, p); } catch (Exception ignored) { }
+    }
+
+    private SandboxScenario sandboxScenario(String operation, String accountIdentifier) {
+        String account = accountIdentifier == null ? "" : accountIdentifier.trim();
+        String op = operation == null ? "" : operation.trim().toUpperCase();
+        if ("COLLECT".equals(op)) {
+            if (account.endsWith("000002")) return new SandboxScenario(202, "FAILED", "SANDBOX_FAILED", "Sandbox customer declined the collection");
+            if (account.endsWith("000003")) return new SandboxScenario(202, "PENDING", "SANDBOX_PENDING", "Sandbox collection remains pending");
+            if (account.endsWith("000004")) return new SandboxScenario(202, "UNKNOWN", "SANDBOX_TIMEOUT", "Sandbox provider timeout scenario");
+            if (account.endsWith("000005")) return new SandboxScenario(400, "FAILED", "SANDBOX_REJECTED", "Sandbox account is unsupported");
+            return new SandboxScenario(202, "SUCCESSFUL", "SANDBOX_ACCEPTED", "Sandbox collection accepted and resolved successfully");
+        }
+        if ("PAYOUT".equals(op)) {
+            if (account.endsWith("000002")) return new SandboxScenario(202, "FAILED", "SANDBOX_FAILED", "Sandbox payout failed");
+            return new SandboxScenario(202, "SUCCESSFUL", "SANDBOX_ACCEPTED", "Sandbox payout accepted and resolved successfully");
+        }
+        return new SandboxScenario(202, "SUBMITTED", "SANDBOX_ACCEPTED", "Sandbox endpoint not configured");
+    }
+
+    private static class SandboxScenario {
+        private final int httpStatus;
+        private final String transactionStatus;
+        private final String runStatus;
+        private final String message;
+
+        private SandboxScenario(int httpStatus, String transactionStatus, String runStatus, String message) {
+            this.httpStatus = httpStatus;
+            this.transactionStatus = transactionStatus;
+            this.runStatus = runStatus;
+            this.message = message;
+        }
     }
 
     private String body(String channelCode, String operation, PaymentGatewayRequest request) {

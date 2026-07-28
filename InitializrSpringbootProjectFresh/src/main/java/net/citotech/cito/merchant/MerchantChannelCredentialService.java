@@ -19,20 +19,25 @@ public class MerchantChannelCredentialService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final PaymentChannelRegistry registry;
     private final MerchantChannelCryptoService cryptoService;
+    private final MerchantEnvironmentService environmentService;
     private final ObjectMapper objectMapper;
 
     public MerchantChannelCredentialService(NamedParameterJdbcTemplate jdbcTemplate,
                                             PaymentChannelRegistry registry,
                                             MerchantChannelCryptoService cryptoService,
+                                            MerchantEnvironmentService environmentService,
                                             ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.registry = registry;
         this.cryptoService = cryptoService;
+        this.environmentService = environmentService;
         this.objectMapper = objectMapper;
     }
 
     public List<Map<String, Object>> list(MerchantUser user) {
         requireUser(user);
+        Map<String, Object> preference = environmentService.getPreference(user);
+        String activeEnvironment = text(preference.get("environment"));
         List<Map<String, Object>> response = new ArrayList<>();
         for (PaymentChannelAdapter adapter : registry.getAdapters()) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -42,13 +47,73 @@ public class MerchantChannelCredentialService {
             item.put("currencyCode", adapter.currencyCode());
             item.put("supported", true);
             item.put("status", "NOT_CONFIGURED");
-            item.put("environment", "SANDBOX");
+            item.put("environment", activeEnvironment);
             item.put("credentials", new LinkedHashMap<String, Object>());
-            Map<String, Object> saved = find(user.getMerchant_id(), adapter.channelCode(), "SANDBOX");
-            if (saved != null) item.putAll(saved);
+            item.put("sandboxCredentials", sandboxCredentials(adapter));
+            item.put("sandboxGuide", preference.get("sandbox"));
+
+            Map<String, Object> environments = new LinkedHashMap<>();
+            environments.put("SANDBOX", environmentRecord(adapter, user.getMerchant_id(), "SANDBOX"));
+            environments.put("PRODUCTION", environmentRecord(adapter, user.getMerchant_id(), "PRODUCTION"));
+            item.put("environments", environments);
+
+            Map<String, Object> active = asMapOrEmpty(environments.get(activeEnvironment));
+            item.putAll(active);
+            item.put("environment", activeEnvironment);
+            if (!active.containsKey("credentials")) {
+                item.put("credentials", new LinkedHashMap<String, Object>());
+            }
             response.add(item);
         }
         return response;
+    }
+
+    private Map<String, Object> environmentRecord(PaymentChannelAdapter adapter, Long merchantId, String environment) {
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("channelCode", adapter.channelCode());
+        record.put("environment", environment);
+        record.put("displayName", adapter.displayName());
+        record.put("status", "NOT_CONFIGURED");
+        record.put("credentials", new LinkedHashMap<String, Object>());
+        Map<String, Object> saved = find(merchantId, adapter.channelCode(), environment);
+        if (saved != null) record.putAll(saved);
+        return record;
+    }
+
+    private Map<String, Object> sandboxCredentials(PaymentChannelAdapter adapter) {
+        Map<String, Object> credentials = new LinkedHashMap<>();
+        credentials.put("collectUrl", "");
+        credentials.put("payoutUrl", "");
+        credentials.put("authHeaderName", "X-CPay-Sandbox-Key");
+        credentials.put("authHeaderValue", "sandbox-test-key");
+        String channelCode = adapter.channelCode();
+        if ("safaricom_mpesa".equalsIgnoreCase(channelCode)) {
+            credentials.put("shortCode", "174379");
+            credentials.put("consumerKey", "sandbox-consumer-key");
+            credentials.put("consumerSecret", "sandbox-consumer-secret");
+            credentials.put("passKey", "sandbox-pass-key");
+        } else if ("airtel_open_api".equalsIgnoreCase(channelCode)) {
+            credentials.put("clientId", "sandbox-client-id");
+            credentials.put("clientSecret", "sandbox-client-secret");
+            credentials.put("subscriberMsisdn", "256770000001");
+        } else if ("yo_payments".equalsIgnoreCase(channelCode)) {
+            credentials.put("apiUser", "yo-sandbox-user");
+            credentials.put("apiKey", "yo-sandbox-key");
+            credentials.put("collectionAccount", "YO-SANDBOX");
+        } else {
+            credentials.put("apiUser", channelCode + "-sandbox-user");
+            credentials.put("apiKey", channelCode + "-sandbox-key");
+            credentials.put("collectionAccount", "SANDBOX-COLLECTION");
+        }
+        return credentials;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMapOrEmpty(Object value) {
+        if (value instanceof Map) {
+            return (Map<String, Object>) value;
+        }
+        return new LinkedHashMap<>();
     }
 
     public Map<String, Object> save(MerchantUser user, Map<String, Object> body) {
@@ -57,7 +122,7 @@ public class MerchantChannelCredentialService {
         String environment = normalizedEnvironment(text(body.get("environment")));
         Map<String, Object> credentials = asMap(body.get("credentials"));
         PaymentChannelAdapter adapter = registry.findByChannelCode(channelCode).orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
-        validateRequiredCredentials(adapter.channelCode(), credentials);
+        validateRequiredCredentials(adapter.channelCode(), credentials, environment);
         String payload = toJson(credentials);
         String encrypted = cryptoService.encrypt(payload);
         String mask = toJson(mask(credentials));
@@ -84,11 +149,11 @@ public class MerchantChannelCredentialService {
         if (saved == null) throw new PaymentGatewayException("Channel credentials are not configured");
         registry.findByChannelCode(channelCode).orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
         MapSqlParameterSource p = params(user.getMerchant_id(), channelCode, environment);
-        p.addValue("status", "SANDBOX_TESTED");
+        p.addValue("status", "PRODUCTION".equals(environment) ? "CONFIGURED" : "SANDBOX_TESTED");
         p.addValue("test_status", "PASSED");
-        p.addValue("message", "Credential structure and endpoint configuration are complete");
+        p.addValue("message", "Credential structure and endpoint configuration are complete for " + environment);
         jdbcTemplate.update("UPDATE merchant_channel_credentials SET status=:status, last_test_status=:test_status, last_test_message=:message, last_tested_at=CURRENT_TIMESTAMP WHERE merchant_id=:merchant_id AND channel_code=:channel_code AND environment=:environment", p);
-        audit(user.getMerchant_id(), channelCode, environment, "SANDBOX_TEST", user.getEmail(), "Merchant ran channel readiness test");
+        audit(user.getMerchant_id(), channelCode, environment, environment + "_TEST", user.getEmail(), "Merchant ran channel readiness test");
         return find(user.getMerchant_id(), channelCode, environment);
     }
 
@@ -157,10 +222,12 @@ public class MerchantChannelCredentialService {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private void validateRequiredCredentials(String channelCode, Map<String, Object> credentials) {
+    private void validateRequiredCredentials(String channelCode, Map<String, Object> credentials, String environment) {
         List<String> required = new ArrayList<>();
-        required.add("collectUrl");
-        required.add("payoutUrl");
+        if ("PRODUCTION".equals(normalizedEnvironment(environment))) {
+            required.add("collectUrl");
+            required.add("payoutUrl");
+        }
         if ("safaricom_mpesa".equalsIgnoreCase(channelCode)) {
             required.add("shortCode");
             required.add("consumerKey");
@@ -206,7 +273,7 @@ public class MerchantChannelCredentialService {
     }
 
     private void requireUser(MerchantUser user) { if (user == null || user.getMerchant_id() == null) throw new PaymentGatewayException("Merchant session is required"); }
-    private String normalizedEnvironment(String environment) { return environment == null || environment.trim().isEmpty() ? "SANDBOX" : environment.trim().toUpperCase(); }
+    private String normalizedEnvironment(String environment) { return environmentService.normalizedEnvironment(environment); }
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> asMap(Object value) {

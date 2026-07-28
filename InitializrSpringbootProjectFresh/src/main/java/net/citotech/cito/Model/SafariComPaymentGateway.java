@@ -918,55 +918,13 @@ public class SafariComPaymentGateway extends PaymentGateway {
     }
 
     public SafariComPaymentGateway.Token getToken() throws IOException {
+        // Tokens live only in the encrypted provider_tokens DB store (see ProviderTokenStoreService) -
+        // no plaintext on-disk cache.
         Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
         if (databaseToken.isPresent()) {
             return new SafariComPaymentGateway.Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
         }
-        String filePath = lockfiledirectory+Common.CLASS_PATH_SAFARICOM_TOKEN_FILE;
-        File resource = new File(filePath);
-        if (resource.createNewFile()) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
-                    "MPESA Token File "+filePath+" has been created.");
-        }
-
-        //File resource = new ClassPathResource(Common.CLASS_PATH_MTN_TOKEN_FILE).getFile();
-
-        String token = new String(
-                Files.readAllBytes(resource.toPath())
-        );
-
-        token = token.trim();
-        Logger.getLogger(SettingsController.class.getName())
-                .log(Level.INFO, "Error "+token, " Is Empty " );
-        JSONObject r = null;
-        try {
-            if (token.isEmpty()) {
-                //No token, request for a new one
-                return this.requestToken();
-            }
-
-            r = new JSONObject(token);
-            if (r.isNull(this.segment)) {
-                return this.requestToken();
-            }
-
-            JSONObject rO = r.getJSONObject(this.segment);
-            LocalDateTime whenCreated = LocalDateTime.parse(rO.getString("created_on"),
-                    Common.getDateTimeFormater());
-            SafariComPaymentGateway.Token t = new SafariComPaymentGateway.Token(rO.getString("token"), whenCreated);
-
-            //First check if the token is still valid
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime lastCreatedPlus = whenCreated.plusMinutes(55);
-            if (now.isAfter(lastCreatedPlus)) {
-                return this.requestToken();
-            }
-
-            return t;
-        } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, null, ex.getMessage() );
-            return null;
-        }
+        return this.requestToken();
     }
 
     public SafariComPaymentGateway.Token requestToken() throws JSONException {
@@ -1004,46 +962,6 @@ public class SafariComPaymentGateway extends PaymentGateway {
                     tokenEnvironment(),
                     accessToken,
                     Instant.now().plus(expiresSeconds, ChronoUnit.SECONDS));
-
-            JSONObject newToken = new JSONObject();
-            newToken.put("token", accessToken);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            newToken.put("created_on", d.format(formatter));
-
-            String filePath = lockfiledirectory+Common.CLASS_PATH_SAFARICOM_TOKEN_FILE;
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
-                    "SAFARICOM Token "+filePath);
-
-            //Now save the new token
-            try {
-                File resource = new File(filePath);
-                if (resource.createNewFile()) {
-                    Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
-                            "SAFARICOM Token File "+filePath+" has been created.");
-                }
-
-                //File resource = new ClassPathResource(Common.CLASS_PATH_MTN_TOKEN_FILE).getFile();
-
-                String token = new String(
-                        Files.readAllBytes(resource.toPath())
-                );
-
-                if (token.isEmpty()) {
-                    //new Token
-                    JSONObject newTokenO = new JSONObject();
-                    newTokenO.put(this.segment, newToken);
-                    Files.writeString(resource.toPath(), newTokenO.toString());
-                } else {
-                    JSONObject newTokenO = new JSONObject(token);
-                    newTokenO.put(this.segment, newToken);
-                    Files.writeString(resource.toPath(), newTokenO.toString());
-                }
-
-            } catch (IOException ex) {
-                Logger.getLogger(MTNMoMoPaymentGateway.class.getName())
-                        .log(Level.SEVERE, ex.getMessage(), ex);
-                return null;
-            }
             return new SafariComPaymentGateway.Token(accessToken, d);
         }
     }

@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.citotech.cito;
 
 import java.io.File;
@@ -941,11 +936,10 @@ public class Api {
                             return GeneralException
                                     .getError("109", String.format(GeneralException.ERRORS_109, "Transaction", networkRefFinal));
                         }
-                        if (tx.equals("SUCCESSFUL") || tx.equals("FAILED")) {
+                        if (tx.getStatus().equals("SUCCESSFUL") || tx.getStatus().equals("FAILED")) {
                             Logger.getLogger(AuthenticationController.class.getName())
-                                    .log(Level.INFO, "SAFARICOM API CALLBACK COLLECTIONS- Transaction "+CheckoutRequestIDFinal+" Doesnt exists: "+requestBody, requestBody);
-                            return GeneralException
-                                    .getError("144", String.format(GeneralException.ERRORS_144, "Transaction", CheckoutRequestIDFinal));
+                                    .log(Level.INFO, "SAFARICOM API CALLBACK COLLECTIONS- Transaction "+CheckoutRequestIDFinal+" already in terminal state, ignoring duplicate callback: "+requestBody, requestBody);
+                            return GeneralSuccessResponse.getMessage("000", "Request already processed");
                         }
                         if (ResultCodeFinal == 0) {
                             tx.setStatus("SUCCESSFUL");
@@ -1319,7 +1313,6 @@ public class Api {
             return "";
         }
 
-        //File resource = new ClassPathResource(Common.CLASS_PATH_MTN_TOKEN_FILE).getFile();
         String data = new String(
                 Files.readAllBytes(resource.toPath())
         );
