@@ -101,6 +101,8 @@ public class TransactionsLogController {
     TransactionTemplate transactionTemplate;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private net.citotech.cito.ledger.DoubleEntryLedgerService ledgerService;
 
 
 
@@ -4707,18 +4709,49 @@ public class TransactionsLogController {
                                     newTx.setTx_gateway_ref("");
 
 
-                                    String resultPay = Common.doPayOut(newTx,
-                                        merchant,
-                                        jdbcTemplate,
-                                        transactionManager);
+                                    // Reserve-then-capture (audit A8): hold the payout amount in
+                                    // the ledger before the provider call, capture it once
+                                    // Common.doPayOut confirms success, or release it if the
+                                    // provider call fails/errors - mirrors the same pattern
+                                    // PaymentOrchestrationService.payout() uses for the v2 path,
+                                    // extended here to the batch-payout path which previously had
+                                    // no ledger-level hold at all.
+                                    String batchReservationReference = "batch-payout-reserve:" + p.getId() + ":" + b.getId();
+                                    java.math.BigDecimal reservedAmount = net.citotech.cito.money.MoneyAmount
+                                        .of(String.valueOf(b.getAmount() + charges)).asBigDecimal();
+                                    String reservationCurrency = newTx.getCurrency() == null || newTx.getCurrency().isEmpty()
+                                        ? "UGX" : newTx.getCurrency();
+                                    ledgerService.reserve(
+                                        batchReservationReference,
+                                        merchant.getId(),
+                                        newTx.getTx_merchant_ref(),
+                                        reservedAmount,
+                                        reservationCurrency);
+
+                                    String resultPay;
+                                    try {
+                                        resultPay = Common.doPayOut(newTx,
+                                            merchant,
+                                            jdbcTemplate,
+                                            transactionManager);
+                                    } catch (RuntimeException payoutEx) {
+                                        ledgerService.releaseReservation(batchReservationReference);
+                                        throw payoutEx;
+                                    }
 
                                     Logger.getLogger(AuthenticationController.class.getName())
                                          .log(Level.SEVERE, "PAY RESULTS: "+resultPay, "");
 
                                     //Now update this particular beneficiary
                                     JSONObject rObject = new JSONObject(resultPay);
-                                    if (rObject.getString("state").equals("OK")
-                                         && rObject.getString("code").equals("000")) {
+                                    boolean payoutSucceeded = rObject.getString("state").equals("OK")
+                                        && rObject.getString("code").equals("000");
+                                    if (payoutSucceeded) {
+                                        ledgerService.captureReservation(batchReservationReference);
+                                    } else {
+                                        ledgerService.releaseReservation(batchReservationReference);
+                                    }
+                                    if (payoutSucceeded) {
 
                                         String sqlUpdateBen = "UPDATE "
                                             + " "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
