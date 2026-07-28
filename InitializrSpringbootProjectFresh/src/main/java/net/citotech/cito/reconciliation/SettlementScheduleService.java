@@ -14,11 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class SettlementScheduleService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final SettlementOpsService settlementOpsService;
+    private final MerchantSettlementPreferenceService preferenceService;
 
     public SettlementScheduleService(NamedParameterJdbcTemplate jdbcTemplate,
-                                     SettlementOpsService settlementOpsService) {
+                                     SettlementOpsService settlementOpsService,
+                                     MerchantSettlementPreferenceService preferenceService) {
         this.jdbcTemplate = jdbcTemplate;
         this.settlementOpsService = settlementOpsService;
+        this.preferenceService = preferenceService;
     }
 
     @Transactional
@@ -89,6 +92,22 @@ public class SettlementScheduleService {
         String reference = "settlement-" + schedule.id + "-" + runDate;
         if (sweepAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return new SettlementSweepResult(reference, "SKIPPED", BigDecimal.ZERO, "minimum retained balance not reached");
+        }
+        // Merchant-configurable settlement scheduling (audit N4): a per-merchant preference, saved
+        // through self-service and defaulting to "no preference" (behaves exactly like today) when
+        // never set, can additionally hold a sweep back to a slower cadence or a higher threshold
+        // than the ops-configured schedule alone would.
+        MerchantSettlementPreference preference = preferenceService.find(schedule.merchantId).orElse(null);
+        if (preference != null) {
+            if (!preferenceService.isDueOn(preference, runDate)) {
+                return new SettlementSweepResult(reference, "SKIPPED", BigDecimal.ZERO,
+                    "not due today per merchant settlement preference (" + preference.settlementFrequency() + ")");
+            }
+            BigDecimal minimumSettlementAmount = preference.minimumSettlementAmount();
+            if (minimumSettlementAmount != null && sweepAmount.compareTo(minimumSettlementAmount) < 0) {
+                return new SettlementSweepResult(reference, "SKIPPED", BigDecimal.ZERO,
+                    "merchant minimum settlement amount not reached");
+            }
         }
         if (insertRun(schedule.id, reference, "OPENED", sweepAmount, "settlement batch opened") == 0) {
             return new SettlementSweepResult(reference, "ALREADY_RUN", sweepAmount, "settlement sweep already exists");
