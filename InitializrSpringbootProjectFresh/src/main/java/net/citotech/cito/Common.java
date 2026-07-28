@@ -213,17 +213,29 @@ public class Common {
     
     
     public static String recordAction(User user, String action, NamedParameterJdbcTemplate jdbcTemplate) {
+        // Audit F8: hash-chained, append-only (see V28 - a DB trigger rejects UPDATE/DELETE on this
+        // table outright). entry_hash covers this row's content plus the chain's current tip, so
+        // altering or deleting any row breaks every hash chained after it - verified on demand by
+        // net.citotech.cito.audit.AuditChainVerificationService.
+        String prevHash = net.citotech.cito.audit.AuditChainService.fetchLastHash(Common.DB_TABLE_AUDIT_TRAIL, jdbcTemplate);
+        String entryHash = net.citotech.cito.audit.AuditChainService.computeEntryHash(
+                prevHash, user.getName(), user.getEmail(), null, action);
+
         //Now add the user to database
         String sql = "INSERT INTO "+Common.DB_TABLE_AUDIT_TRAIL+" "
         +" SET `user_name`=:user_name,"
         +" `user_id`=:user_id, "
-        +" `action`=:action";
+        +" `action`=:action,"
+        +" `prev_hash`=:prev_hash,"
+        +" `entry_hash`=:entry_hash";
 
         Map<String, Object> parameters = new HashMap<String, Object>();
 
         parameters.put("user_name", user.getName());
         parameters.put("user_id", user.getEmail());
         parameters.put("action", action);
+        parameters.put("prev_hash", prevHash);
+        parameters.put("entry_hash", entryHash);
 
         try {
             jdbcTemplate.update(sql, parameters);
@@ -234,15 +246,24 @@ public class Common {
                 .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     public static String recordMerchantAction(MerchantUser user, String action, NamedParameterJdbcTemplate jdbcTemplate) {
+        // Audit F8: hash-chained, append-only - see recordAction's comment above for the full
+        // rationale; this is the same chain applied to the merchant-side audit table.
+        String merchantIdStr = user.getMerchant_id() == null ? null : String.valueOf(user.getMerchant_id());
+        String prevHash = net.citotech.cito.audit.AuditChainService.fetchLastHash(Common.DB_TABLE_AUDIT_TRAIL_MERCHANT, jdbcTemplate);
+        String entryHash = net.citotech.cito.audit.AuditChainService.computeEntryHash(
+                prevHash, user.getName(), user.getEmail(), merchantIdStr, action);
+
         //Now add the user to database
         String sql = "INSERT INTO "+Common.DB_TABLE_AUDIT_TRAIL_MERCHANT+" "
         +" SET `user_name`=:user_name,"
         +" `user_id`=:user_id, "
         +" `merchant_id`=:merchant_id, "
-        +" `action`=:action";
+        +" `action`=:action,"
+        +" `prev_hash`=:prev_hash,"
+        +" `entry_hash`=:entry_hash";
 
         Map<String, Object> parameters = new HashMap<String, Object>();
 
@@ -250,6 +271,8 @@ public class Common {
         parameters.put("user_id", user.getEmail());
         parameters.put("merchant_id", user.getMerchant_id());
         parameters.put("action", action);
+        parameters.put("prev_hash", prevHash);
+        parameters.put("entry_hash", entryHash);
 
         try {
             jdbcTemplate.update(sql, parameters);
