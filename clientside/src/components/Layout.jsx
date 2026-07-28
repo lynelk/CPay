@@ -38,10 +38,12 @@ class LayoutWithOutRouter extends React.Component {
       isLogged: false,
       progressValue: 0,
       currentMenuKey: 'dashboard',
+      refreshTick: 0,
       user: localStorage.getItem("user") != null ? JSON.parse(localStorage.getItem("user")) : {},
-      currentMenuItem: this.renderModule('dashboard'),
+      currentMenuItem: this.renderModule('dashboard', 0),
     };
     this.menuChanged = this.menuChanged.bind(this);
+    this.refreshCurrentPage = this.refreshCurrentPage.bind(this);
   }
 
   async componentDidMount() {
@@ -61,11 +63,12 @@ class LayoutWithOutRouter extends React.Component {
     }
   }
 
-  renderModule(item) {
+  renderModule(item, refreshSignal = this.state?.refreshTick || 0) {
     const moduleProps = {
       sessionExpired: this.sessionExpired?.bind(this),
       logOut: this.logoutUser?.bind(this),
       loader: this.startOrStopLoader?.bind(this),
+      refreshSignal,
     };
 
     switch (item) {
@@ -124,7 +127,17 @@ class LayoutWithOutRouter extends React.Component {
 
     this.setState({
       currentMenuKey: item,
-      currentMenuItem: this.renderModule(item),
+      currentMenuItem: this.renderModule(item, this.state.refreshTick),
+    });
+  }
+
+  refreshCurrentPage() {
+    this.setState(prevState => {
+      const refreshTick = prevState.refreshTick + 1;
+      return {
+        refreshTick,
+        currentMenuItem: this.renderModule(prevState.currentMenuKey, refreshTick),
+      };
     });
   }
 
@@ -222,7 +235,7 @@ class LayoutWithOutRouter extends React.Component {
               <>
                 <ThemeToggle />
                 <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>Settings</Button>
-                <Button variant="primary" className="ios-btn--sm" onClick={() => window.location.reload()}>Refresh</Button>
+                <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>Refresh</Button>
                 <UserChip name={user.name || 'User'} meta={user.email || 'Signed in'} />
               </>
             }

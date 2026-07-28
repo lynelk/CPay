@@ -248,11 +248,12 @@ npm run build
 | `ACTUATOR_PASSWORD` | Monitoring password. |
 | `SPRINGDOC_API_DOCS_ENABLED` | Enables `/v3/api-docs`; defaults to `false`. |
 | `SPRINGDOC_SWAGGER_UI_ENABLED` | Enables Swagger UI; defaults to `false`. |
-| `CPAY_SECURITY_NONCE_STORE` | Set to `jdbc` for shared v2 replay protection in clustered environments; local default is in-memory. |
+| `CPAY_SECURITY_NONCE_STORE` | v2 replay-protection nonce store; defaults to `jdbc` (shared, safe for clustered deployments). Set to `memory` only for a single-instance local dev run. |
 | `ADMIN_API_USERNAME` | Admin API username. |
 | `ADMIN_API_PASSWORD` | Admin API password. |
 | `CALLBACK_SIGNING_SECRET` | Fallback value used for callback signing where merchant-specific values are not configured. |
 | `MERCHANT_CHANNEL_ENCRYPTION_KEY` | Encryption key used for merchant channel credentials at rest. |
+| `CPAY_TRUSTED_PROXY_IPS` | Comma-separated IP(s) of trusted reverse proxies/load balancers. `X-Forwarded-For`/`X-Real-IP` are only honored when the direct TCP peer is one of these; empty (default) means the app always uses the raw socket address. |
 
 ## Testing and quality checks
 

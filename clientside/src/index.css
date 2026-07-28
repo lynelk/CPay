@@ -930,32 +930,6 @@ select,
   color: var(--cpay-fuse-blue-dark) !important;
 }
 
-/* ─── Existing icon helpers kept but normalized to Fuse density ─────────── */
-.icon-reload,
-.icon-search,
-.icon-man,
-.icon-excel,
-.icon-two-men,
-.icon-report2,
-.icon-events,
-.icon-logout,
-.icon-airtel-money,
-.icon-business_id,
-.icon-mtn-mobile-money,
-.icon-settings,
-.icon-dollars,
-.icon-banknote,
-.icon-money,
-.icon-approve,
-.icon-decline,
-.icon-iphone,
-.icon-dashboard,
-.icon-media-start,
-.icon-details,
-.icon-report {
-  background-size: 16px 16px !important;
-}
-
 @media (max-width: 920px) {
   .cpay-shell {
     flex-direction: column;
@@ -1615,10 +1589,25 @@ select,
   transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
+button.cpay-dashboard-card,
+.cpay-dashboard-click-card {
+  appearance: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
 .cpay-dashboard-card:hover {
   border-color: rgba(14, 155, 195, 0.28);
   box-shadow: var(--cpay-fuse-shadow);
   transform: translateY(-1px);
+}
+
+button.cpay-dashboard-card:focus-visible,
+.cpay-dashboard-channel-tiles button:focus-visible {
+  outline: 3px solid rgba(14, 155, 195, 0.28);
+  outline-offset: 3px;
 }
 
 .cpay-dashboard-card-balance {
@@ -1854,6 +1843,82 @@ select,
   line-height: 1.5;
 }
 
+.cpay-dashboard-insight {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(180px, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(14, 155, 195, 0.22);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: linear-gradient(135deg, rgba(14, 155, 195, 0.12), rgba(34, 197, 94, 0.08));
+  color: var(--cpay-fuse-text);
+  padding: 10px 12px;
+}
+
+.cpay-dashboard-insight strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.cpay-dashboard-insight span {
+  font-family: var(--cpay-heading-font);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.cpay-dashboard-insight em {
+  color: var(--cpay-fuse-muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 750;
+  text-align: right;
+}
+
+.cpay-dashboard-card-channels {
+  grid-column: span 6;
+}
+
+.cpay-dashboard-channel-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 8px;
+}
+
+.cpay-dashboard-channel-tiles button {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--cpay-fuse-line);
+  border-radius: var(--cpay-fuse-radius-sm);
+  background: var(--cpay-fuse-surface-soft);
+  color: var(--cpay-fuse-text);
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.cpay-dashboard-channel-tiles strong,
+.cpay-dashboard-channel-tiles span,
+.cpay-dashboard-channel-tiles em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cpay-dashboard-channel-tiles strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.cpay-dashboard-channel-tiles span,
+.cpay-dashboard-channel-tiles em {
+  color: var(--cpay-fuse-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 760;
+}
+
 .cpay-card-manager-button:focus-visible,
 .cpay-dashboard-picker-option:focus-visible,
 .cpay-dashboard-card-header button:focus-visible {
@@ -2020,6 +2085,20 @@ select,
   background: var(--cpay-fuse-surface);
   box-shadow: var(--cpay-fuse-shadow-soft);
   padding: 12px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.cpay-dashboard-metric-card[aria-pressed="true"] {
+  border-color: rgba(14, 155, 195, 0.5);
+  box-shadow: 0 0 0 3px rgba(14, 155, 195, 0.12), var(--cpay-fuse-shadow-soft);
+}
+
+button.cpay-dashboard-metric-card:focus-visible {
+  outline: 3px solid rgba(14, 155, 195, 0.28);
+  outline-offset: 3px;
 }
 
 .cpay-dashboard-metric-icon {
@@ -2277,6 +2356,7 @@ select,
 
 .cpay-channel-logo-good { background: #22c55e; }
 .cpay-channel-logo-warning { background: #ef4444; }
+.cpay-channel-logo-info { background: #1198C4; }
 .cpay-channel-logo-neutral { background: #94a3b8; }
 
 .cpay-runway-channel {
@@ -2612,6 +2692,7 @@ select,
 
 .cpay-channel-dot-good { --channel-color: #22c55e; }
 .cpay-channel-dot-warning { --channel-color: #ef4444; }
+.cpay-channel-dot-info { --channel-color: #1198C4; }
 .cpay-channel-dot-neutral { --channel-color: #94a3b8; }
 
 .cpay-quick-grid {
@@ -2743,7 +2824,8 @@ select,
   .cpay-dashboard-panel-actions,
   .cpay-dashboard-panel-failure,
   .cpay-dashboard-panel-health,
-  .cpay-dashboard-panel-quick {
+  .cpay-dashboard-panel-quick,
+  .cpay-dashboard-card-channels {
     grid-column: span 6;
     grid-row: auto;
   }
@@ -2788,6 +2870,7 @@ select,
   .cpay-dashboard-panel-failure,
   .cpay-dashboard-panel-health,
   .cpay-dashboard-panel-quick,
+  .cpay-dashboard-card-channels,
   .cpay-dashboard-snapshot-grid .cpay-dashboard-card-balance,
   .cpay-dashboard-snapshot-grid .cpay-dashboard-card-collections,
   .cpay-dashboard-snapshot-grid .cpay-dashboard-card-notifications,
@@ -2809,6 +2892,14 @@ select,
   .cpay-failure-layout,
   .cpay-quick-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cpay-dashboard-insight {
+    grid-template-columns: 1fr;
+  }
+
+  .cpay-dashboard-insight em {
+    text-align: left;
   }
 
   .cpay-runway-head {

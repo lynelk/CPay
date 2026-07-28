@@ -2,6 +2,7 @@ package net.citotech.cito.scheduler;
 
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
+import net.citotech.cito.Model.Setting;
 import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.Model.TxCallback;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,18 +15,22 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Scheduler that auto-resolves PENDING transactions that have exceeded the timeout threshold.
- * Default timeout: 30 minutes (configurable per gateway via settings).
+ * Default timeout: 30 minutes, overridable per gateway via a
+ * {@code transaction_timeout_minutes_<gateway_id>} row in the settings table.
  */
 @Component
 public class TransactionTimeoutScheduler {
 
     private static final Logger logger = Logger.getLogger(TransactionTimeoutScheduler.class.getName());
+    private static final String TIMEOUT_SETTING_PREFIX = "transaction_timeout_minutes_";
 
     @Autowired
     private NamedParameterJdbcTemplate jdbcTemplate;
@@ -37,54 +42,68 @@ public class TransactionTimeoutScheduler {
     private int defaultTimeoutMinutes;
 
     /**
-     * Runs every 5 minutes to find and timeout stuck PENDING transactions.
+     * Runs every 5 minutes to find and timeout stuck PENDING transactions, per gateway.
      */
     @Scheduled(fixedDelayString = "${cpay.transactions.timeout.scan-delay-ms:300000}")
     public void timeoutStalePendingTransactions() {
         try {
-            String sql = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                    + " WHERE status = 'PENDING'"
-                    + " AND created_on <= DATE_SUB(NOW(), INTERVAL :timeout_minutes MINUTE)"
-                    + " LIMIT 100";
+            List<String> gatewayIds = jdbcTemplate.queryForList(
+                    "SELECT DISTINCT gateway_id FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                            + " WHERE status = 'PENDING'",
+                    new MapSqlParameterSource(), String.class);
 
-            MapSqlParameterSource params = new MapSqlParameterSource();
-            params.addValue("timeout_minutes", defaultTimeoutMinutes);
-
-            List<Transaction> staleTxs = jdbcTemplate.query(sql, params, (rs, rowNum) -> {
-                Transaction t = new Transaction();
-                t.setId(rs.getLong("id"));
-                t.setMerchant_id(rs.getString("merchant_id"));
-                t.setGateway_id(rs.getString("gateway_id"));
-                t.setOriginal_amount(rs.getDouble("original_amount"));
-                t.setCharges(rs.getDouble("charges"));
-                t.setStatus(rs.getString("status"));
-                t.setTx_unique_id(rs.getString("tx_unique_id"));
-                t.setTx_gateway_ref(rs.getString("tx_gateway_ref"));
-                t.setTx_merchant_ref(rs.getString("tx_merchant_ref"));
-                t.setPayer_number(rs.getString("payer_number"));
-                t.setTx_type(rs.getString("tx_type"));
-                t.setCreated_on(rs.getString("created_on"));
-                t.setUpdated_on(rs.getString("updated_on"));
-                t.setCallback_url(rs.getString("callback_url"));
-                t.setTx_merchant_description(rs.getString("tx_merchant_description"));
-                t.setTx_update_trace(rs.getString("tx_update_trace"));
-                return t;
-            });
-
-            for (Transaction tx : staleTxs) {
-                timeoutTransaction(tx);
+            Map<String, Integer> resolvedTimeouts = new HashMap<>();
+            for (String gatewayId : gatewayIds) {
+                int timeoutMinutes = timeoutMinutesForGateway(gatewayId, resolvedTimeouts);
+                for (Transaction tx : fetchStalePendingTransactions(gatewayId, timeoutMinutes)) {
+                    timeoutTransaction(tx, timeoutMinutes);
+                }
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "TransactionTimeoutScheduler error: " + e.getMessage(), e);
         }
     }
 
-    private void timeoutTransaction(Transaction tx) {
+    private int timeoutMinutesForGateway(String gatewayId, Map<String, Integer> resolvedTimeouts) {
+        return resolvedTimeouts.computeIfAbsent(gatewayId, id -> {
+            if (id == null || id.isBlank()) {
+                return defaultTimeoutMinutes;
+            }
+            Setting setting = Common.getSettings(TIMEOUT_SETTING_PREFIX + id, jdbcTemplate);
+            if (setting == null || setting.getSetting_value() == null || setting.getSetting_value().isBlank()) {
+                return defaultTimeoutMinutes;
+            }
+            try {
+                int configured = Integer.parseInt(setting.getSetting_value().trim());
+                return configured > 0 ? configured : defaultTimeoutMinutes;
+            } catch (NumberFormatException ex) {
+                logger.log(Level.WARNING, "Invalid " + TIMEOUT_SETTING_PREFIX + id
+                        + " setting value, falling back to default: " + setting.getSetting_value());
+                return defaultTimeoutMinutes;
+            }
+        });
+    }
+
+    private List<Transaction> fetchStalePendingTransactions(String gatewayId, int timeoutMinutes) {
+        String sql = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                + " WHERE status = 'PENDING'"
+                + " AND gateway_id = :gateway_id"
+                + " AND created_on <= DATE_SUB(NOW(), INTERVAL :timeout_minutes MINUTE)"
+                + " LIMIT 100";
+
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("gateway_id", gatewayId);
+        params.addValue("timeout_minutes", timeoutMinutes);
+
+        return jdbcTemplate.query(sql, params, Common.getTransactionRowMapper());
+    }
+
+    private void timeoutTransaction(Transaction tx, int timeoutMinutes) {
         TransactionTemplate template = new TransactionTemplate(transactionManager);
         template.execute((TransactionStatus status) -> {
             try {
                 tx.setStatus("FAILED");
-                tx.setTx_update_trace("AUTO_TIMEOUT: Transaction exceeded " + defaultTimeoutMinutes + " minute pending limit");
+                tx.setTx_update_trace("AUTO_TIMEOUT: Transaction exceeded " + timeoutMinutes + " minute pending limit");
                 tx.setResolved_by("SYSTEM_TIMEOUT");
 
                 String sql = "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG

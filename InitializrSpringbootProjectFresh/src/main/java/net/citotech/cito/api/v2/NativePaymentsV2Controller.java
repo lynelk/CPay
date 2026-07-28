@@ -38,12 +38,14 @@ public class NativePaymentsV2Controller {
     public ResponseEntity<?> collect(@RequestBody String body, HttpServletRequest servletRequest) {
         try {
             PaymentRequest request = objectMapper.readValue(body, PaymentRequest.class);
+            String environment = adapterNativePaymentService.resolveEnvironment(servletRequest.getHeader("X-CPay-Environment"), request);
             Merchant merchant = securityService.verify(servletRequest, body, request.getMerchantNumber());
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
-            Optional<PaymentResult> existing = idempotencyService.findExisting(request.getMerchantNumber(), idempotencyKey, body);
+            String idempotencyBody = bodyWithEnvironment(body, environment);
+            Optional<PaymentResult> existing = idempotencyService.findExisting(request.getMerchantNumber(), idempotencyKey, idempotencyBody);
             if (existing.isPresent()) return ResponseEntity.ok(existing.get());
-            PaymentResult result = adapterNativePaymentService.collect(request, merchant);
-            idempotencyService.record(request.getMerchantNumber(), idempotencyKey, body, result);
+            PaymentResult result = adapterNativePaymentService.collect(request, merchant, environment);
+            idempotencyService.record(request.getMerchantNumber(), idempotencyKey, idempotencyBody, result);
             return ResponseEntity.accepted().body(result);
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
@@ -58,12 +60,14 @@ public class NativePaymentsV2Controller {
     public ResponseEntity<?> payout(@RequestBody String body, HttpServletRequest servletRequest) {
         try {
             PaymentRequest request = objectMapper.readValue(body, PaymentRequest.class);
+            String environment = adapterNativePaymentService.resolveEnvironment(servletRequest.getHeader("X-CPay-Environment"), request);
             Merchant merchant = securityService.verify(servletRequest, body, request.getMerchantNumber());
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
-            Optional<PaymentResult> existing = idempotencyService.findExisting(request.getMerchantNumber(), idempotencyKey, body);
+            String idempotencyBody = bodyWithEnvironment(body, environment);
+            Optional<PaymentResult> existing = idempotencyService.findExisting(request.getMerchantNumber(), idempotencyKey, idempotencyBody);
             if (existing.isPresent()) return ResponseEntity.ok(existing.get());
-            PaymentResult result = adapterNativePaymentService.payout(request, merchant);
-            idempotencyService.record(request.getMerchantNumber(), idempotencyKey, body, result);
+            PaymentResult result = adapterNativePaymentService.payout(request, merchant, environment);
+            idempotencyService.record(request.getMerchantNumber(), idempotencyKey, idempotencyBody, result);
             return ResponseEntity.accepted().body(result);
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
@@ -76,6 +80,10 @@ public class NativePaymentsV2Controller {
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
         return ResponseEntity.status(status).body(new ApiErrorResponse(code, message, UUID.randomUUID().toString()));
+    }
+
+    private String bodyWithEnvironment(String body, String environment) {
+        return (body == null ? "" : body) + "\n#cpay-environment=" + environment;
     }
 }
 

@@ -45,18 +45,48 @@ public class PortalV2Controller {
     }
 
     @GetMapping("/dashboard/summary")
-    public Map<String, Object> dashboardSummary() {
+    public Map<String, Object> dashboardSummary(HttpSession session) {
+        Object merchantSession = session == null ? null : session.getAttribute("merchantUser");
+        MerchantUser merchantUser = merchantSession instanceof MerchantUser ? (MerchantUser) merchantSession : null;
+        boolean merchantScoped = merchantUser != null && merchantUser.getMerchant_id() != null;
+        MapSqlParameterSource scope = new MapSqlParameterSource();
+        if (merchantScoped) {
+            scope.addValue("merchant_id", merchantUser.getMerchant_id());
+            scope.addValue("merchant_number", merchantUser.getMerchant_number());
+        }
+        String txScope = merchantScoped ? " WHERE merchant_id=:merchant_id" : "";
+        String txAndScope = merchantScoped ? " AND merchant_id=:merchant_id" : "";
+        String runScope = merchantScoped ? " WHERE merchant_number=:merchant_number" : "";
+        String credentialScope = merchantScoped ? " WHERE merchant_id=:merchant_id" : "";
+
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("merchants", scalarInt("SELECT COUNT(*) FROM merchants"));
-        response.put("transactions", scalarInt("SELECT COUNT(*) FROM merchant_transactions_log"));
-        response.put("payIns", scalarDecimal("SELECT COALESCE(SUM(original_amount),0) FROM merchant_transactions_log WHERE tx_type='PAYIN'"));
-        response.put("payOuts", scalarDecimal("SELECT COALESCE(SUM(original_amount),0) FROM merchant_transactions_log WHERE tx_type='PAYOUT'"));
+        response.put("scope", merchantScoped ? "MERCHANT" : "ADMIN");
+        response.put("environment", currentEnvironment(merchantScoped ? merchantUser.getMerchant_id() : null, merchantScoped ? merchantUser.getId() : null));
+        response.put("productionLimit", productionLimitStatus(merchantScoped ? merchantUser.getMerchant_number() : null));
+        response.put("merchants", merchantScoped ? 1 : scalarInt("SELECT COUNT(*) FROM merchants"));
+        response.put("transactions", scalarInt("SELECT COUNT(*) FROM merchant_transactions_log" + txScope, scope));
+        response.put("payIns", scalarDecimal("SELECT COALESCE(SUM(original_amount),0) FROM merchant_transactions_log WHERE tx_type='PAYIN'" + txAndScope, scope));
+        response.put("payOuts", scalarDecimal("SELECT COALESCE(SUM(original_amount),0) FROM merchant_transactions_log WHERE tx_type='PAYOUT'" + txAndScope, scope));
         response.put("pendingCallbacks", scalarInt("SELECT COUNT(*) FROM callback_tasks WHERE task_status IN ('PENDING','RETRY','PARKED')"));
-        response.put("smsBatches", scalarInt("SELECT COUNT(*) FROM merchant_sms"));
+        response.put("smsBatches", scalarInt("SELECT COUNT(*) FROM merchant_sms" + txScope, scope));
         response.put("channelBalances", rows(
             "SELECT merchant_id, channel_code, gateway_id, currency, available_balance, ledger_balance, pending_balance "
-                + "FROM merchant_channel_balances ORDER BY updated_at DESC LIMIT 50",
-            new MapSqlParameterSource()
+                + "FROM merchant_channel_balances" + txScope + " ORDER BY updated_at DESC LIMIT 50",
+            scope
+        ));
+        response.put("channelMetrics", rows(
+            "SELECT channel_code, environment, COUNT(*) AS total, "
+                + "SUM(CASE WHEN run_status IN ('SUCCESS','SUCCESSFUL','SUBMITTED','SANDBOX_ACCEPTED') THEN 1 ELSE 0 END) AS successful, "
+                + "SUM(CASE WHEN run_status IN ('FAILED','SANDBOX_FAILED','SANDBOX_REJECTED') THEN 1 ELSE 0 END) AS failed, "
+                + "MAX(created_at) AS last_activity "
+                + "FROM provider_endpoint_runs" + runScope + " GROUP BY channel_code, environment ORDER BY total DESC LIMIT 25",
+            scope
+        ));
+        response.put("activeChannels", rows(
+            "SELECT channel_code, display_name, environment, status, COUNT(*) AS merchants "
+                + "FROM merchant_channel_credentials" + credentialScope
+                + " GROUP BY channel_code, display_name, environment, status ORDER BY channel_code, environment",
+            scope
         ));
         response.put("recentNotifications", rows(
             "SELECT id, alert_type, alert_status, severity, reference_value, message, created_at "
@@ -138,8 +168,12 @@ public class PortalV2Controller {
     }
 
     private Integer scalarInt(String sql) {
+        return scalarInt(sql, new MapSqlParameterSource());
+    }
+
+    private Integer scalarInt(String sql, MapSqlParameterSource parameters) {
         try {
-            Integer value = jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Integer.class);
+            Integer value = jdbcTemplate.queryForObject(sql, parameters, Integer.class);
             return value == null ? 0 : value;
         } catch (DataAccessException e) {
             return 0;
@@ -147,11 +181,77 @@ public class PortalV2Controller {
     }
 
     private BigDecimal scalarDecimal(String sql) {
+        return scalarDecimal(sql, new MapSqlParameterSource());
+    }
+
+    private BigDecimal scalarDecimal(String sql, MapSqlParameterSource parameters) {
         try {
-            BigDecimal value = jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), BigDecimal.class);
+            BigDecimal value = jdbcTemplate.queryForObject(sql, parameters, BigDecimal.class);
             return value == null ? BigDecimal.ZERO : value;
         } catch (DataAccessException e) {
             return BigDecimal.ZERO;
+        }
+    }
+
+    private String currentEnvironment(Long merchantId, Long merchantUserId) {
+        if (merchantId == null || merchantUserId == null) {
+            return "PRODUCTION";
+        }
+        try {
+            MapSqlParameterSource p = new MapSqlParameterSource();
+            p.addValue("merchant_id", merchantId);
+            p.addValue("merchant_user_id", merchantUserId);
+            String sql = "SELECT active_environment FROM merchant_environment_preferences "
+                + "WHERE merchant_id=:merchant_id AND merchant_user_id=:merchant_user_id AND channel_code='*' "
+                + "ORDER BY id DESC LIMIT 1";
+            String value = jdbcTemplate.queryForObject(sql, p, String.class);
+            return value == null || value.trim().isEmpty() ? "SANDBOX" : value.trim().toUpperCase();
+        } catch (DataAccessException e) {
+            return "SANDBOX";
+        }
+    }
+
+    private Map<String, Object> productionLimitStatus(String merchantNumber) {
+        Map<String, Object> status = new LinkedHashMap<>();
+        boolean enabled = settingBoolean("production_transaction_limit_enabled", true);
+        int limit = settingInt("production_transaction_limit_count", 10);
+        int used = 0;
+        if (merchantNumber != null && !merchantNumber.trim().isEmpty()) {
+            used = scalarInt(
+                "SELECT COUNT(*) FROM provider_endpoint_runs WHERE merchant_number=:merchant_number AND environment='PRODUCTION' AND created_at >= CURRENT_DATE()",
+                new MapSqlParameterSource("merchant_number", merchantNumber)
+            );
+        }
+        status.put("enabled", enabled);
+        status.put("limit", limit);
+        status.put("usedToday", used);
+        status.put("remainingToday", enabled && limit > 0 ? Math.max(0, limit - used) : null);
+        return status;
+    }
+
+    private boolean settingBoolean(String name, boolean fallback) {
+        String value = setting(name, fallback ? "true" : "false");
+        return !"false".equalsIgnoreCase(value) && !"no".equalsIgnoreCase(value) && !"0".equals(value);
+    }
+
+    private int settingInt(String name, int fallback) {
+        try {
+            return Integer.parseInt(setting(name, String.valueOf(fallback)));
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private String setting(String name, String fallback) {
+        try {
+            String value = jdbcTemplate.queryForObject(
+                "SELECT setting_value FROM settings WHERE name=:name LIMIT 1",
+                new MapSqlParameterSource("name", name),
+                String.class
+            );
+            return value == null || value.trim().isEmpty() ? fallback : value.trim();
+        } catch (DataAccessException e) {
+            return fallback;
         }
     }
 

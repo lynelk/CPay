@@ -22,13 +22,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class MerchantSelfServiceController {
     private final MerchantSelfServiceSignupService signupService;
     private final MerchantChannelCredentialService channelService;
+    private final MerchantEnvironmentService environmentService;
     private final SimpleRateLimitService rateLimitService;
 
     public MerchantSelfServiceController(MerchantSelfServiceSignupService signupService,
                                          MerchantChannelCredentialService channelService,
+                                         MerchantEnvironmentService environmentService,
                                          SimpleRateLimitService rateLimitService) {
         this.signupService = signupService;
         this.channelService = channelService;
+        this.environmentService = environmentService;
         this.rateLimitService = rateLimitService;
     }
 
@@ -51,6 +54,34 @@ public class MerchantSelfServiceController {
     public ResponseEntity<?> channels(HttpServletRequest request) {
         try {
             return ResponseEntity.ok(channelService.list(currentMerchantUser(request)));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
+        }
+    }
+
+    @GetMapping(path = "/environment")
+    public ResponseEntity<?> environment(HttpServletRequest request) {
+        try {
+            return ResponseEntity.ok(environmentService.getPreference(currentMerchantUser(request)));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
+        }
+    }
+
+    @PostMapping(path = "/environment")
+    public ResponseEntity<?> saveEnvironment(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        try {
+            return ResponseEntity.ok(environmentService.savePreference(currentMerchantUser(request), body));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.badRequest().body(error("ENVIRONMENT_UPDATE_REJECTED", e.getMessage()));
+        }
+    }
+
+    @GetMapping(path = "/sandbox-guide")
+    public ResponseEntity<?> sandboxGuide(HttpServletRequest request) {
+        try {
+            MerchantUser user = currentMerchantUser(request);
+            return ResponseEntity.ok(environmentService.sandboxGuide(user.getMerchant_number()));
         } catch (PaymentGatewayException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
         }

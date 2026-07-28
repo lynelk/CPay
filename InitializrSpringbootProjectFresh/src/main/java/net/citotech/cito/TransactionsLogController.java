@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.citotech.cito;
 
 import java.io.File;
@@ -93,7 +88,7 @@ import java.math.RoundingMode;
  *
  * @author josephtabajjwa
  */
-@RestController 
+@RestController
 @RequestMapping(path="/transactions", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class TransactionsLogController {
     private static final long MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
@@ -105,48 +100,48 @@ public class TransactionsLogController {
     TransactionTemplate transactionTemplate;
     @Autowired
     private PlatformTransactionManager transactionManager;
-    
-    
-    
-    
+
+
+
+
     @PostMapping(path="/getTransactions")
 
-    public String getTransactions (@RequestBody String requestBody, 
+    public String getTransactions (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            
+
             if (session.getAttribute("user") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (User) session.getAttribute("user");
             //Get the first details
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
             String pageSize = Common.jsonText(sObject, "pageSize", "");
             String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
-            
+
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
+
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
-                
+
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
@@ -155,17 +150,17 @@ public class TransactionsLogController {
                     parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
-            
+
             sqlSelect += " ORDER BY id DESC ";
-            
+
             if (pageSize != null && !pageSize.isEmpty()) {
                 int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
                 sqlSelect += " LIMIT " + _limit;
             }
-            
+
             RowMapper<Transaction> rm = Common.getTransactionRowMapper();
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<Transaction> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
@@ -196,72 +191,72 @@ public class TransactionsLogController {
                 u_p_.put("payer_number", us.getPayer_number());
                 u_p_.put("tx_type", us.getTx_type());
                 u_p_.put("callback_trace", us.getCallback_trace());
-                
+
                 admins_array.put(u_p_);
             }
             resJson.put("data", admins_array);
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     @PostMapping(path="/getMerchantTransactions")
 
-    public String getMerchantTransactions (@RequestBody String requestBody, 
+    public String getMerchantTransactions (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             JSONObject sObjectRules = sObject.getJSONObject("search_rules");
             String start_date = sObjectRules.getString("start_date");
             String end_date = sObjectRules.getString("end_date");
             String status = sObjectRules.getString("status");
             String tx_type = sObjectRules.getString("tx_type");
-            
+
             int pageSize = sObject.getInt("pageSize");
             int currentPage = sObject.isNull("currentPage") ? 0 : sObject.getInt("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
-            
+
             parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                     + " WHERE merchant_id = :merchant_id";
-            
+
             String sqlSelectTotal = "SELECT count(*) as total  "
                     + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                     + " WHERE merchant_id = :merchant_id";
-            
+
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
-                
+
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
@@ -270,7 +265,7 @@ public class TransactionsLogController {
                     parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
-            
+
             if (!start_date.isEmpty() && !end_date.isEmpty()) {
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
                 parameters.addValue("start_date", start_date+" 00:00:00");
@@ -280,29 +275,29 @@ public class TransactionsLogController {
                 String end_date_ = dt.format(Common.getDateTimeFormater());
                 LocalDateTime last3Months = dt.minusMonths(3);
                 String start_date_ = last3Months.format(Common.getDateTimeFormater());
-                
+
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
                 parameters.addValue("start_date", start_date_);
                 parameters.addValue("end_date", end_date_);
-                
+
             }
-            
+
             if (!status.isEmpty()) {
                 sqlSelect += " AND status =:status ";
                 parameters.addValue("status", status);
             }
-            
+
             if (!tx_type.isEmpty()) {
                 sqlSelect += " AND tx_type =:tx_type ";
                 parameters.addValue("tx_type", tx_type);
             }
-            
+
             sqlSelect += " ORDER BY id DESC ";
-            
+
             /*if (pageSize != 0) {
                 sqlSelect += " LIMIT "+(pageSize * currentPage)+", "+pageSize+" ";
             }*/
-            
+
             RowMapper<Long> rmTotal = new RowMapper<Long>() {
             public Long mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Long t = rs.getLong("total");
@@ -310,16 +305,16 @@ public class TransactionsLogController {
                 }
             };
             List<Long> listLong = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
-            
+
             RowMapper<Transaction> rm = Common.getTransactionRowMapper();
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<Transaction> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
             resJson.put("total", listLong.get(0));
-            
+
             JSONArray admins_array = new JSONArray();
             for (Transaction us : listUsers) {
                 JSONObject u_p_ = new JSONObject();
@@ -346,21 +341,21 @@ public class TransactionsLogController {
                 u_p_.put("payer_number", us.getPayer_number());
                 u_p_.put("tx_type", us.getTx_type());
                 u_p_.put("callback_trace", us.getCallback_trace());
-                
+
                 admins_array.put(u_p_);
             }
             resJson.put("data", admins_array);
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     private List<Beneficiary> getBatchBeneficiaries(long batch_id) {
         String sqlSelect = "SELECT b.batch_id, b.name as beneficiary_name, b.account, "
                 + " b.amount as beneficiary_amount, b.account_type, b.id as beneficiary_long_id, "
@@ -369,7 +364,7 @@ public class TransactionsLogController {
                 + " LEFT JOIN `"+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+"` AS t "
                 + " ON b.id = t.beneficiary_id "
                 + " WHERE b.batch_id = :batch_id";
-        
+
         RowMapper<Beneficiary> rm = new RowMapper<Beneficiary>() {
             public Beneficiary mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Beneficiary b = new Beneficiary();
@@ -385,8 +380,8 @@ public class TransactionsLogController {
                     } else {
                         t = Common.getTransactionRowMapper().mapRow(rs, rowNum);
                     }
-                    
-                    b.setTransaciton(t);
+
+                    b.setTransaction(t);
                     return b;
                 }
             };
@@ -396,51 +391,51 @@ public class TransactionsLogController {
                 rm);
         return blist;
     }
-    
+
     @PostMapping(path="/getMerchantPayments")
 
-    public String getMerchantPayments (@RequestBody String requestBody, 
+    public String getMerchantPayments (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
             int pageSize = sObject.getInt("pageSize");
             int currentPage = sObject.isNull("currentPage") ? 0 : sObject.getInt("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
-            
+
             parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE merchant_id = :merchant_id";
-            
+
             String sqlSelectTotal = "SELECT count(*) as total  "
                     + " FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE merchant_id = :merchant_id";
-            
+
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
-                
+
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
@@ -449,16 +444,16 @@ public class TransactionsLogController {
                     parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
-            
+
             sqlSelect += " ORDER BY id DESC ";
-            
+
             if (pageSize != 0) {
                 sqlSelect += " LIMIT :offset, :page_size ";
                 parameters.addValue("offset", currentPage * pageSize);
                 parameters.addValue("page_size", pageSize);
             }
-            
-            
+
+
             RowMapper<Payment> rm = new RowMapper<Payment>() {
             public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Payment t = new Payment();
@@ -476,7 +471,7 @@ public class TransactionsLogController {
                     return t;
                 }
             };
-            
+
             RowMapper<String> rmTotal = new RowMapper<String>() {
             public String mapRow(ResultSet rs, int rowNum) throws SQLException {
                     String t =rs.getString("total");
@@ -485,14 +480,14 @@ public class TransactionsLogController {
             };
             //First get total
             List<String> totalList = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<Payment> plist = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
             resJson.put("total", totalList.get(0));
-            
+
             JSONArray admins_array = new JSONArray();
             for (Payment ps : plist) {
                 JSONObject up = new JSONObject();
@@ -505,14 +500,14 @@ public class TransactionsLogController {
                 up.put("total_charges", ps.getTotal_charges());
                 up.put("created_by", ps.getCreated_by());
                 up.put("created_on", ps.getCreated_on());
-                
+
                 //Get Beneficiaries
                 int total_paid = 0;
                 JSONArray jbeneficiaries = new JSONArray();
                 for (Beneficiary b : ps.getBeneficiaries()) {
-                    Transaction us = b.getTransaciton();
+                    Transaction us = b.getTransaction();
                     JSONObject u_p_ = new JSONObject();
-                    
+
                     //Merchant merchant = Common.getMerchantById(us.getMerchant_id(), jdbcTemplate);
                     u_p_.put("name", b.getName());
                     u_p_.put("amount", b.getAmount());
@@ -543,7 +538,7 @@ public class TransactionsLogController {
                     u_p_.put("payer_number", us==null ? "" : us.getPayer_number());
                     u_p_.put("tx_type", us==null ? "" : us.getTx_type());
                     u_p_.put("callback_trace", us==null ? "" : us.getCallback_trace());
-                    
+
                     jbeneficiaries.put(u_p_);
                 }
                 up.put("total_beneficiaries", ps.getBeneficiaries().size());
@@ -552,63 +547,63 @@ public class TransactionsLogController {
                 admins_array.put(up);
             }
             resJson.put("data", admins_array);
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     @PostMapping(path="/getMerchantSms")
 
-    public String getMerchantSms (@RequestBody String requestBody, 
+    public String getMerchantSms (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("ACCESS_SMS_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             JSONObject sObjectRules = sObject.getJSONObject("search_rules");
             String start_date = sObjectRules.getString("start_date");
             String end_date = sObjectRules.getString("end_date");
             String status = sObjectRules.getString("status");
-            
+
             String pageSize = Common.jsonText(sObject, "pageSize", "");
             String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
-            
+
             parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_SMS+" "
                     + " WHERE merchant_id = :merchant_id";
-            
+
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
-                
+
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
@@ -617,7 +612,7 @@ public class TransactionsLogController {
                     parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
-            
+
             if (!start_date.isEmpty() && !end_date.isEmpty()) {
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
                 parameters.addValue("start_date", start_date+" 00:00:00");
@@ -627,25 +622,25 @@ public class TransactionsLogController {
                 String end_date_ = dt.format(Common.getDateTimeFormater());
                 LocalDateTime last3Months = dt.minusMonths(3);
                 String start_date_ = last3Months.format(Common.getDateTimeFormater());
-                
+
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
                 parameters.addValue("start_date", start_date_);
                 parameters.addValue("end_date", end_date_);
-                
+
             }
-            
+
             if (!status.isEmpty()) {
                 sqlSelect += " AND status =:status ";
                 parameters.addValue("status", status);
             }
-            
+
             sqlSelect += " ORDER BY id DESC ";
-            
+
             if (pageSize != null && !pageSize.isEmpty()) {
                 int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
                 sqlSelect += " LIMIT " + _limit;
             }
-            
+
             RowMapper<MerchantSms> rm = new RowMapper<MerchantSms>() {
             public MerchantSms mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantSms t = new MerchantSms();
@@ -665,16 +660,16 @@ public class TransactionsLogController {
                     return t;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<MerchantSms> plist = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
             //Obtain balances
-            ArrayList<Balance> balances = Common.getMerchantBalances(sessionUser.getMerchant_id()+"", 
+            ArrayList<Balance> balances = Common.getMerchantBalances(sessionUser.getMerchant_id()+"",
                     jdbcTemplate);
-            
+
             JSONArray balArray = new JSONArray();
             for (Balance b : balances) {
                 JSONObject jBalance = new JSONObject();
@@ -686,7 +681,7 @@ public class TransactionsLogController {
                 balArray.put(jBalance);
             }
             resJson.put("balances", balArray);
-            
+
             JSONArray admins_array = new JSONArray();
             for (MerchantSms ps : plist) {
                 JSONObject up = new JSONObject();
@@ -713,59 +708,59 @@ public class TransactionsLogController {
                 up.put("total_recipients", ps.getTotal_recipients());
                 up.put("send_time", ps.getSend_time());
                 up.put("total_amount", ps.getTotal_amount());
-                
+
                 admins_array.put(up);
             }
             resJson.put("data", admins_array);
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     @PostMapping(path="/getDashboardDetailsPayinsVsPayouts")
 
-    public String getDashboardDetailsPayinsVsPayouts (@RequestBody String requestBody, 
+    public String getDashboardDetailsPayinsVsPayouts (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            
+
             if (session.getAttribute("user") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (User) session.getAttribute("user");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -778,12 +773,12 @@ public class TransactionsLogController {
                 + "         tx_type='"+Transaction.TX_TYPE_PAYOUT+"' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS payouts"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
@@ -798,7 +793,7 @@ public class TransactionsLogController {
                         JSONArray datasets_color = new JSONArray();
                         datasets_color.put("#3e95cd");
                         datasets_color.put("#8e5ea2");
-                        
+
 
                         dataset.put("backgroundColor", datasets_color);
 
@@ -835,66 +830,66 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getDashboardDetailsPayinsVsPayoutsMerchant")
 
-    public String getDashboardDetailsPayinsVsPayoutsMerchant (@RequestBody String requestBody, 
+    public String getDashboardDetailsPayinsVsPayoutsMerchant (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -908,12 +903,12 @@ public class TransactionsLogController {
                 + "         tx_type='"+Transaction.TX_TYPE_PAYOUT+"' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS payouts"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
@@ -928,7 +923,7 @@ public class TransactionsLogController {
                         JSONArray datasets_color = new JSONArray();
                         datasets_color.put("#3e95cd");
                         datasets_color.put("#8e5ea2");
-                        
+
 
                         dataset.put("backgroundColor", datasets_color);
 
@@ -965,66 +960,66 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getDashboardDetailsTxPerGateway")
 
-    public String getDashboardDetailsTxPerGateway (@RequestBody String requestBody, 
+    public String getDashboardDetailsTxPerGateway (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            
+
             if (session.getAttribute("user") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (User) session.getAttribute("user");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -1037,16 +1032,16 @@ public class TransactionsLogController {
                 + "         gateway_id='AirtelMMPaymentGateway' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS airtelmm"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
-                        labels.put("Transaciton on MTN MM");
+                        labels.put("Transactions on MTN MM");
                         labels.put("Transactions on Airtel MM");
                         data.put("labels", labels);
 
@@ -1057,7 +1052,7 @@ public class TransactionsLogController {
                         JSONArray datasets_color = new JSONArray();
                         datasets_color.put("#3e95cd");
                         datasets_color.put("#8e5ea2");
-                        
+
 
                         dataset.put("backgroundColor", datasets_color);
 
@@ -1094,47 +1089,47 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
-    
+
+
+
     @PostMapping(path="/getDashboardDetailsNetworkBalances")
 
-    public String getDashboardDetailsNetworkBalances (@RequestBody String requestBody, 
+    public String getDashboardDetailsNetworkBalances (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            
+
             if (session.getAttribute("user") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (User) session.getAttribute("user");
-            
+
             JSONObject data = new JSONObject();
             JSONArray labels = new JSONArray();
             labels.put("MTN Collections");
@@ -1193,54 +1188,54 @@ public class TransactionsLogController {
             resJson.put("message", "true");
             resJson.put("chartData", chartData);
             return resJson.toString();
-           
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getDashboardDetailsTxPerGatewayMerchant")
 
-    public String getDashboardDetailsTxPerGatewayMerchant (@RequestBody String requestBody, 
+    public String getDashboardDetailsTxPerGatewayMerchant (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -1253,16 +1248,16 @@ public class TransactionsLogController {
                 + "         gateway_id='AirtelMMPaymentGateway' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS airtelmm"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
-                        labels.put("Transaciton on MTN MM");
+                        labels.put("Transactions on MTN MM");
                         labels.put("Transactions on Airtel MM");
                         data.put("labels", labels);
 
@@ -1273,7 +1268,7 @@ public class TransactionsLogController {
                         JSONArray datasets_color = new JSONArray();
                         datasets_color.put("#3e95cd");
                         datasets_color.put("#8e5ea2");
-                        
+
 
                         dataset.put("backgroundColor", datasets_color);
 
@@ -1310,66 +1305,66 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getDashboardDetailsTransactionTypes")
 
-    public String getDashboardDetailsTransactionTypes (@RequestBody String requestBody, 
+    public String getDashboardDetailsTransactionTypes (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            
+
             if (session.getAttribute("user") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (User) session.getAttribute("user");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -1392,12 +1387,12 @@ public class TransactionsLogController {
                 + "         status='UNDETERMINED' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
@@ -1454,66 +1449,66 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getDashboardDetailsTransactionTypesMerchant")
 
-    public String getDashboardDetailsTransactionTypesMerchant(@RequestBody String requestBody, 
+    public String getDashboardDetailsTransactionTypesMerchant(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -1536,12 +1531,12 @@ public class TransactionsLogController {
                 + "         status='UNDETERMINED' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
@@ -1598,66 +1593,66 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getDashboardDetailsTxVolumes")
 
-    public String getDashboardDetailsTxVolumes (@RequestBody String requestBody, 
+    public String getDashboardDetailsTxVolumes (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            
+
             if (session.getAttribute("user") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (User) session.getAttribute("user");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -1680,12 +1675,12 @@ public class TransactionsLogController {
                 + "         status='UNDETERMINED' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
@@ -1704,7 +1699,7 @@ public class TransactionsLogController {
                         datasets_color.put("#eb4034");
                         datasets_color.put("#8e5ea2");
                         datasets_color.put("#f5c011");
-                        
+
                         dataset.put("backgroundColor", datasets_color);
 
                         JSONArray datasets_data = new JSONArray();
@@ -1742,67 +1737,67 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getDashboardDetailsTxVolumesMerchant")
 
-    public String getDashboardDetailsTxVolumesMerchant (@RequestBody String requestBody, 
+    public String getDashboardDetailsTxVolumesMerchant (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
-            
+
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             /*if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }*/
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             /*JSONObject sObject = new JSONObject(requestBody);
             String pageSize = sObject.getString("pageSize");
             String currentPage = sObject.isNull("currentPage") ? "" : sObject.getString("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
-            
+
             LocalDateTime now = LocalDateTime.now();
             String end_date = now.format(Common.getDateTimeFormater());
             LocalDateTime start_ = now.minusMonths(6);
             String start_date = start_.format(Common.getDateTimeFormater());
-            
+
             String sqlSelect = "SELECT "
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
@@ -1825,12 +1820,12 @@ public class TransactionsLogController {
                 + "         status='UNDETERMINED' AND "
                 + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
-            
-            
-            
+
+
+
             RowMapper<JSONObject> rm = new RowMapper<JSONObject>() {
             public JSONObject mapRow(ResultSet rs, int rowNum) throws SQLException {
-                    
+
                     try {
                         JSONObject data = new JSONObject();
                         JSONArray labels = new JSONArray();
@@ -1849,7 +1844,7 @@ public class TransactionsLogController {
                         datasets_color.put("#eb4034");
                         datasets_color.put("#8e5ea2");
                         datasets_color.put("#f5c011");
-                        
+
                         dataset.put("backgroundColor", datasets_color);
 
                         JSONArray datasets_data = new JSONArray();
@@ -1887,52 +1882,52 @@ public class TransactionsLogController {
                     return null;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<JSONObject> listr = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
-           
+
             for (JSONObject us : listr) {
                 resJson.put("chartData", us);
             }
-            
+
             return resJson.toString();
-            
+
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/testCheckstatusCron")
 
     @Scheduled(fixedDelay = 60000, initialDelay = 1000)
-    public String testCheckstatusCron (/*@RequestBody String requestBody, 
+    public String testCheckstatusCron (/*@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response*/) {
         //Set the response header
-        
+
         String filePath = lockfiledirectory+Common.CLASS_PATH_CHECK_TX_LOCK;
-        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                 "LockFile "+filePath);
-        
+
         try {
-            
+
             RandomAccessFile writer = new RandomAccessFile(Common.CLASS_PATH_CHECK_TX_LOCK, "rw");
-            
-            File lfile = new File(filePath);  
+
+            File lfile = new File(filePath);
             if (lfile.createNewFile()) {
-                Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+                Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                 "Filed "+filePath+" has been created.");
             }
-            
+
             FileLock lock = writer.getChannel().lock();
             writer.write("Am handling lock!".getBytes());
-            
+
             //First check if stock|revenew|suspense accounts were configured transaction
             Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
             if (getStockAccount == null || getStockAccount.getSetting_value().isEmpty()) {
@@ -1978,8 +1973,8 @@ public class TransactionsLogController {
             Merchant suspense_stock_account = Common.getMerchantByAccountNumber(
                     suspense_account_number,
                     jdbcTemplate);
-          
-        
+
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                     + " WHERE status IN ('PENDING','UNDETERMINED') LIMIT 100 FOR UPDATE";
@@ -1991,7 +1986,7 @@ public class TransactionsLogController {
             //ResultSet rs;
             List<Transaction> pendingTransactions = jdbcTemplate.query(sqlSelect, parameters, rm);
 
-            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                     "Checking status for "+pendingTransactions.size()+" TXs", "");
 
             for (Transaction tx : pendingTransactions) {
@@ -2026,11 +2021,11 @@ public class TransactionsLogController {
                         tx_type,
                         Long.parseLong(tx.getMerchant_id())
                 );
-                
+
                 if (txUpdatedDetails != null ) {
 
                     if (txUpdatedDetails.getTransactionStatus().isEmpty()) {
-                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                         "Empty Tx Status: "+txUpdatedDetails.getRequestTrace(), "");
                         continue;
                     }
@@ -2143,7 +2138,7 @@ public class TransactionsLogController {
                                     lock.release();
                                     writer.close();
                                     return result;
-                                } 
+                                }
 
                                 //Now increase stock account.
                                 newTx = new Statement();
@@ -2323,7 +2318,7 @@ public class TransactionsLogController {
                             //If it's a payout, reverse the money.
                             Statement newTx = new Statement();
                             String[] bType = Balance.getBalanceTypeByGatewayId(tx.getGateway_id());
-                            String balance_type = bType[0];   
+                            String balance_type = bType[0];
                             if (tx.getTx_type().equals(Transaction.TX_TYPE_PAYOUT)) {
                                 //Dr the amount
                                 newTx = new Statement();
@@ -2436,7 +2431,7 @@ public class TransactionsLogController {
                     }
                 }
             }
-            
+
             // release lock
             lock.release();
             //close the file
@@ -2452,41 +2447,41 @@ public class TransactionsLogController {
 
             return "OverlappingFileLockException";
         }
-        
+
         //Execution successfully.
         return GeneralSuccessResponse
                 .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
     }
-    
+
     public String recordAfterTx() {
         return "";
     }
-    
+
     /*
     * API to add a new admin to the database
     */
     @PostMapping(path="/recordTransaction")
 
-    public String recordTransaction (@RequestBody String requestBody, 
+    public String recordTransaction (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         try {
-            
+
             if (!isLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             User sessionUser = (User) session.getAttribute("user");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("CREDIT_MERCHANT", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
             Double amount = sObject.getDouble("amount");
             String description = sObject.getString("description");
@@ -2500,14 +2495,14 @@ public class TransactionsLogController {
                    return GeneralException
                     .getError("112", GeneralException.ERRORS_112);
                 }
-                
+
                 //Check if this the right stock account
                 Merchant merchant = Common.getMerchantById(merchant_id+"", jdbcTemplate);
                 if (merchant == null) {
                     return GeneralException
                         .getError("109", String.format(GeneralException.ERRORS_109, "Merchant", merchant_id));
                 }
-                
+
                 //Now check that this is float account that should be credited or debited
                 String stock_account_number = getStockAccount.getSetting_value().trim();
                 if (!merchant.getAccount_number().equals(stock_account_number)) {
@@ -2515,10 +2510,10 @@ public class TransactionsLogController {
                         .getError("113", GeneralException.ERRORS_113);
                 }
             }
-            
+
             //Get this merchant by id.
             Statement newTx = new Statement();
-            
+
             newTx.setDescription(description);
             newTx.setAmount(amount);
             if (balance_type.equals("mtnmm_balance")) {
@@ -2551,23 +2546,23 @@ public class TransactionsLogController {
                 type = "DR";
                 newTx.setTx_type(type);
             }
-            
-            String result = Common.recordStatementTx(newTx, 
+
+            String result = Common.recordStatementTx(newTx,
                     balance_type,
                     jdbcTemplate,
                     transactionManager);
-            
+
             if (result.equals("success")) {
                 Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
                 String stock_account_number = getStockAccount.getSetting_value().trim();
                 Merchant float_stock_account = Common.getMerchantByAccountNumber(
                     stock_account_number,
                     jdbcTemplate);
-                
+
                 //Depending on the type increase or reduce the stock account.
-                if (tx_type.equals(Transaction.TX_TYPE_FLOAT_CREDIT) 
+                if (tx_type.equals(Transaction.TX_TYPE_FLOAT_CREDIT)
                         || tx_type.equals(Transaction.TX_TYPE_FLOAT_DEDBIT)) {
-                    
+
                     if (newTx.getTx_type().equals("CR")) {
                         Statement newTxStatement = new Statement();
                         newTxStatement.setAmount(amount);
@@ -2579,7 +2574,7 @@ public class TransactionsLogController {
                         newTxStatement.setRecorded_by(sessionUser.getEmail()+" - "+sessionUser.getName());
                         newTxStatement.setTx_type("CR");
 
-                        result = Common.recordStatementTx(newTxStatement, 
+                        result = Common.recordStatementTx(newTxStatement,
                                 balance_type,
                                 jdbcTemplate,
                                 transactionManager);
@@ -2598,7 +2593,7 @@ public class TransactionsLogController {
                         newTxStatement.setRecorded_by(sessionUser.getEmail()+" - "+sessionUser.getName());
                         newTxStatement.setTx_type("DR");
 
-                        result = Common.recordStatementTx(newTxStatement, 
+                        result = Common.recordStatementTx(newTxStatement,
                                 balance_type,
                                 jdbcTemplate,
                                 transactionManager);
@@ -2606,12 +2601,12 @@ public class TransactionsLogController {
                             return result;
                         }
                     }
-                    
+
                 }
-                
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
-                
+
             } else {
                 return result;
             }
@@ -2623,48 +2618,48 @@ public class TransactionsLogController {
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
-    
+
+
+
     /*
     * API to add a new admin to the database
     */
     @PostMapping(path="/buySms")
 
-    public String buySms (@RequestBody String requestBody, 
+    public String buySms (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         try {
-            
-            
+
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("SEND_SMS", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
             Double amount = sObject.getDouble("amount");
             Long merchant_id = sessionUser.getMerchant_id();
             String balance_type = sObject.getString("balance_type");
             String tx_type = "SMS PURCHASE";
-            
+
             //First get the SMS revenue account
             Setting getSmsRevenueAccount = Common.getSettings("sms_revenue_account", jdbcTemplate);
             if (getSmsRevenueAccount == null || getSmsRevenueAccount.getSetting_value().isEmpty()) {
                return GeneralException
                 .getError("133", GeneralException.ERRORS_133);
             }
-            
+
             String sms_revenue_account = getSmsRevenueAccount.getSetting_value();
             Merchant smsRevenueMerchantAccount = Common.
                     getMerchantByAccountNumber(sms_revenue_account, jdbcTemplate);
@@ -2672,12 +2667,12 @@ public class TransactionsLogController {
                 return GeneralException
                 .getError("133", GeneralException.ERRORS_133);
             }
-            
+
             //Check the merchant has enough account balance.
-            
-            ArrayList<Balance> balances = Common.getMerchantBalances(sessionUser.getMerchant_id()+"", 
+
+            ArrayList<Balance> balances = Common.getMerchantBalances(sessionUser.getMerchant_id()+"",
                     jdbcTemplate);
-            
+
             //You can't use SMS balance to buy SMS.
             if (balance_type.equals("sms_balance")) {
                 return GeneralException
@@ -2686,23 +2681,23 @@ public class TransactionsLogController {
             String gateway_id = "";
             for (Balance b : balances) {
                 String[] bal_type = b.getBalance_type();
-                
+
                 if (bal_type[0].equals(balance_type)) {
                     //Then check the balance amount is enough
                     if (b.getAmount() < amount) {
                         return GeneralException
-                            .getError("111", 
-                                    String.format(GeneralException.ERRORS_111, 
+                            .getError("111",
+                                    String.format(GeneralException.ERRORS_111,
                                             b.getAmount(), bal_type[1]));
                     }
                     gateway_id = b.getGateway_id();
                     break;
                 }
             }
-            
+
             final String gateway_id_final = gateway_id;
             final String balance_type_final = balance_type;
-            
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
                 String result = template.execute(new TransactionCallback<String>() {
                 @Override
@@ -2710,7 +2705,7 @@ public class TransactionsLogController {
                     String result = "";
                     try {
                         //First debit this merchant's account on this balance
-                        
+
                         Statement newTxStatement = new Statement();
                         newTxStatement.setAmount(amount);
                         newTxStatement.setGateway_id(gateway_id_final);
@@ -2721,7 +2716,7 @@ public class TransactionsLogController {
                         newTxStatement.setRecorded_by("SYSTEM");
                         newTxStatement.setTx_type("DR");
 
-                        result = Common.recordStatementTxWithoutTransaciton(newTxStatement, 
+                        result = Common.recordStatementTxWithoutTransaction(newTxStatement,
                                 balance_type_final,
                                 jdbcTemplate,
                                 transactionManager,
@@ -2729,7 +2724,7 @@ public class TransactionsLogController {
                         if (!result.equals("success")) {
                             return result;
                         }
-                        
+
                         //Credit the merchant's SMS account
                         newTxStatement = new Statement();
                         newTxStatement.setAmount(amount);
@@ -2741,7 +2736,7 @@ public class TransactionsLogController {
                         newTxStatement.setRecorded_by("SYSTEM");
                         newTxStatement.setTx_type("CR");
 
-                        result = Common.recordStatementTxWithoutTransaciton(newTxStatement, 
+                        result = Common.recordStatementTxWithoutTransaction(newTxStatement,
                                 SmsGateway.BALANCE_TYPE,
                                 jdbcTemplate,
                                 transactionManager,
@@ -2749,7 +2744,7 @@ public class TransactionsLogController {
                         if (!result.equals("success")) {
                             return result;
                         }
-                        
+
                         //Record the SMS revenue in the SMS revenue collection account
                         //Credit the merchant's SMS account
                         newTxStatement = new Statement();
@@ -2762,7 +2757,7 @@ public class TransactionsLogController {
                         newTxStatement.setRecorded_by("SYSTEM");
                         newTxStatement.setTx_type("CR");
 
-                        result = Common.recordStatementTxWithoutTransaciton(newTxStatement, 
+                        result = Common.recordStatementTxWithoutTransaction(newTxStatement,
                                 balance_type_final,
                                 jdbcTemplate,
                                 transactionManager,
@@ -2782,31 +2777,31 @@ public class TransactionsLogController {
                     }
                 }
             });
-            
+
             if (result.equals("success")) {
-                
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
-                
+
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     /*
     * @Param String balance_type: This is the balance type, check Common.
     * @Param Statement tx : This is the statement transaction.
     * Returns success | JSON String with errors.
     */
     public String recordStatementTx(Statement tx, String balance_type) {
-        
+
         //Balance query
         String balanceSql = "SELECT * FROM "+Common.DB_TABLE_MERCHANT_STATEMENT
                 +" WHERE merchant_id = :merchant_id "
@@ -2874,21 +2869,21 @@ public class TransactionsLogController {
 
                     if (balanceList.size() > 0) {
                         Statement s = balanceList.get(0);
-                        mtn_balance = new Balance("UGX MTN MM", 
-                                s.getMtnmm_balance(), 
+                        mtn_balance = new Balance("UGX MTN MM",
+                                s.getMtnmm_balance(),
                                 MTNMoMoPaymentGateway.getGatewayId());
 
-                        airtel_balance = new Balance("UGX AIRTEL MM", 
-                                s.getAirtelmm_balance(), 
+                        airtel_balance = new Balance("UGX AIRTEL MM",
+                                s.getAirtelmm_balance(),
                                 AirtelMoneyPaymentGateway.getGatewayId()   );
                         airtel_balance.setBaseCurrency("UGX");
                     } else {
-                        mtn_balance = new Balance("UGX MTN MM", 
-                                0.00, 
+                        mtn_balance = new Balance("UGX MTN MM",
+                                0.00,
                                 MTNMoMoPaymentGateway.getGatewayId());
 
-                        airtel_balance = new Balance("UGX AIRTEL MM", 
-                                0.00, 
+                        airtel_balance = new Balance("UGX AIRTEL MM",
+                                0.00,
                                 AirtelMoneyPaymentGateway.getGatewayId() );
                         airtel_balance.setBaseCurrency("UGX");
                     }
@@ -2911,9 +2906,9 @@ public class TransactionsLogController {
                             if (tx.getAmount() > mtn_balance.getAmount()) {
                                 status.setRollbackOnly();
                                 return GeneralException
-                                        .getError("111", 
-                                                String.format(GeneralException.ERRORS_111, 
-                                                        mtn_balance.getAmount(), 
+                                        .getError("111",
+                                                String.format(GeneralException.ERRORS_111,
+                                                        mtn_balance.getAmount(),
                                                         mtn_balance.getCode()));
                             }
                             Double nBalance =  mtn_balance.getAmount() - tx.getAmount();
@@ -2925,9 +2920,9 @@ public class TransactionsLogController {
                             if (tx.getAmount() > airtel_balance.getAmount()) {
                                 status.setRollbackOnly();
                                 return GeneralException
-                                        .getError("111", 
-                                                String.format(GeneralException.ERRORS_111, 
-                                                        airtel_balance.getAmount(), 
+                                        .getError("111",
+                                                String.format(GeneralException.ERRORS_111,
+                                                        airtel_balance.getAmount(),
                                                         airtel_balance.getCode()));
                             }
                             Double nBalance = airtel_balance.getAmount() - tx.getAmount();
@@ -2955,21 +2950,21 @@ public class TransactionsLogController {
         });
         return result;
     }
-    
-    
+
+
     /*
     * Checks if user is still logged in
     *
     * @Param request This is the serverlet request.
-    * 
+    *
     * Returns true if still logged in or false otherwise.
     */
-    
+
     public Boolean isLoggedIn (HttpServletRequest request ) {
-       
+
         //First set session variable
         HttpSession session = request.getSession();
-       
+
         //Check if still logged in
         User sessionUser;
         //sessionUser = (User) session.getAttribute("user");
@@ -2979,15 +2974,15 @@ public class TransactionsLogController {
         } else {
             return true;
         }
-            
+
     }
-    
-    
+
+
     public Boolean isMerchantUserLoggedIn (HttpServletRequest request ) {
-       
+
         //First set session variable
         HttpSession session = request.getSession();
-       
+
         //Check if still logged in
         MerchantUser sessionUser;
         //sessionUser = (User) session.getAttribute("user");
@@ -2997,55 +2992,55 @@ public class TransactionsLogController {
         } else {
             return true;
         }
-            
+
     }
-    
+
     @PostMapping(path="/getMerchantStatement")
 
-    public String getMerchantStatement (@RequestBody String requestBody, 
+    public String getMerchantStatement (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             User sessionUser;
-            
+
             if (session.getAttribute("user") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (User) session.getAttribute("user");
             //Get the first details
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             BigInteger merchant_id = sObject.getBigInteger("merchant_id");
             String pageSize = Common.jsonText(sObject, "pageSize", "");
             String currentPage = Common.jsonText(sObject, "currentPage", "");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
-            
+
             parameters.addValue("merchant_id", merchant_id);
-            
+
             String sqlSelect = "SELECT s.*, "
                     + " (SELECT payer_number FROM `"+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+"` "
                     + " WHERE id=s.transactions_log_id LIMIT 1) AS payer_number "
                     + "  FROM "+Common.DB_TABLE_MERCHANT_STATEMENT+" AS s "
                     + "WHERE merchant_id = :merchant_id";
-            
+
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
-                
+
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!value.equals("all") && !category.isEmpty() && !value.isEmpty()) {
@@ -3054,7 +3049,7 @@ public class TransactionsLogController {
                     parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
-            
+
             if (!sObject.isNull("search_rules")) {
                 JSONObject jo = sObject.getJSONObject("search_rules");
                 String start_date = jo.getString("start_date");
@@ -3067,14 +3062,14 @@ public class TransactionsLogController {
                     parameters.addValue("end_date", end_date);
                 }
             }
-            
+
             sqlSelect += " ORDER BY id DESC ";
-            
+
             if (pageSize != null && !pageSize.isEmpty()) {
                 int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
                 sqlSelect += " LIMIT " + _limit;
             }
-            
+
             RowMapper<Statement> rm = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
@@ -3097,8 +3092,8 @@ public class TransactionsLogController {
                     return t;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<Statement> listS = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
@@ -3130,11 +3125,11 @@ public class TransactionsLogController {
                         +" | "+SmsGateway.gateway_currency_code+" "+Common.numberFormat(us.getSms_balance());
 
                 u_p_.put("balances", balances_string);
-                
+
                 admins_array.put(u_p_);
             }
             resJson.put("data", admins_array);
-            
+
             //Construct balances presentation string
             ArrayList<Balance> balances = Common.getMerchantBalances(merchant_id+"", jdbcTemplate);
             String balance_string = "";
@@ -3145,8 +3140,8 @@ public class TransactionsLogController {
                 balance_string = balance_string.substring(0, (balance_string.length()-2));
             }
             resJson.put("balances", balance_string);
-            
-            return resJson.toString();    
+
+            return resJson.toString();
         } catch (JSONException ex) {
             ex.printStackTrace();
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
@@ -3154,58 +3149,58 @@ public class TransactionsLogController {
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     @PostMapping(path="/getMerchantStatementByMerchant")
 
-    public String getMerchantStatementByMerchant (@RequestBody String requestBody, 
+    public String getMerchantStatementByMerchant (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         //First set session variable
         HttpSession session = request.getSession();
         try {
             //Check if still logged in
             MerchantUser sessionUser;
-            
+
             if (session.getAttribute("merchantUser") == null) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             sessionUser = (MerchantUser) session.getAttribute("merchantUser");
             //Get the first details
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             //Obtain search fields
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             long merchant_id = sessionUser.getMerchant_id();
             int pageSize = sObject.getInt("pageSize");
             int currentPage = sObject.isNull("currentPage") ? 0 : sObject.getInt("currentPage");
             JSONObject searchValue = sObject.getJSONObject("searchingValue");
-            
+
             parameters.addValue("merchant_id", merchant_id);
-            
+
             String sqlSelect = "SELECT s.*, "
                     + " (SELECT payer_number FROM `"+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+"` "
                     + " WHERE id=s.transactions_log_id LIMIT 1) AS payer_number "
                     + "  FROM `"+Common.DB_TABLE_MERCHANT_STATEMENT+"` AS s "
                     + " WHERE merchant_id = :merchant_id";
-            
+
             String sqlSelectTotal = "SELECT count(*) as total  "
                     + " FROM "+Common.DB_TABLE_MERCHANT_STATEMENT+" "
                     + " WHERE merchant_id = :merchant_id";
-            
+
             //HANDLE SEARCH PARAMETERS
             if (!searchValue.isNull("category") && !searchValue.isNull("value") ) {
-                
+
                 String category = searchValue.getString("category");
                 String value = searchValue.getString("value");
                 if (!category.equals("all") && !value.isEmpty()) {
@@ -3214,7 +3209,7 @@ public class TransactionsLogController {
                     parameters.addValue(safeCategory, "%" + value + "%");
                 }
             }
-            
+
             if (!sObject.isNull("search_rules")) {
                 JSONObject jo = sObject.getJSONObject("search_rules");
                 String start_date = jo.getString("start_date");
@@ -3224,7 +3219,7 @@ public class TransactionsLogController {
                     end_date += " 23:59:59";
                     sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date ) ";
                     sqlSelectTotal += " AND (created_on BETWEEN :start_date AND :end_date ) ";
-                    
+
                     parameters.addValue("start_date", start_date);
                     parameters.addValue("end_date", end_date);
                 }
@@ -3233,18 +3228,18 @@ public class TransactionsLogController {
                 String end_date_ = dt.format(Common.getDateTimeFormater());
                 LocalDateTime last3Months = dt.minusMonths(4);
                 String start_date_ = last3Months.format(Common.getDateTimeFormater());
-                
+
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
                 parameters.addValue("start_date", start_date_);
                 parameters.addValue("end_date", end_date_);
-                
+
             }
             sqlSelect += " ORDER BY id DESC ";
-            
+
             /*if (pageSize != 0) {
                 sqlSelect += " LIMIT "+(currentPage * pageSize)+", "+pageSize+" ";
             }*/
-            
+
             //Get total records
             RowMapper<String> rmTotal = new RowMapper<String>() {
             public String mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -3253,8 +3248,8 @@ public class TransactionsLogController {
                 }
             };
             List<String> listTotal = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
-            
-            
+
+
             RowMapper<Statement> rm = new RowMapper<Statement>() {
             public Statement mapRow(ResultSet rs, int rowNum) throws SQLException {
                     Statement t = new Statement();
@@ -3277,14 +3272,14 @@ public class TransactionsLogController {
                     return t;
                 }
             };
-            
-            //ResultSet rs; 
+
+            //ResultSet rs;
             List<Statement> listS = jdbcTemplate.query(sqlSelect, parameters, rm);
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "true");
             resJson.put("total", listTotal.get(0));
-            
+
             JSONArray admins_array = new JSONArray();
             for (Statement us : listS) {
                 JSONObject u_p_ = new JSONObject();
@@ -3305,18 +3300,18 @@ public class TransactionsLogController {
                 u_p_.put("payer_number", us.getPayer_number());
                 String mtnmm_currency_code = MTNMoMoPaymentGateway.getGatewayCurrencyCode();
                 String airtelmm_currency_code = "AirtelMM";
-                
+
                 String balances_string = mtnmm_currency_code+" "+Common.numberFormat(us.getMtnmm_balance())
                         +" | "+airtelmm_currency_code+" "+Common.numberFormat(us.getAirtelmm_balance())
                         +" | "+SafariComPaymentGateway.getGatewayCurrencyCode()+" "+Common.numberFormat(us.getSafaricom_balance())
                         +" | "+SmsGateway.gateway_currency_code+" "+Common.numberFormat(us.getSms_balance());
-                
+
                 u_p_.put("balances", balances_string);
-                
+
                 admins_array.put(u_p_);
             }
             resJson.put("data", admins_array);
-            
+
             //Construct balances presentation string
             ArrayList<Balance> balances = Common.getMerchantBalances(merchant_id+"", jdbcTemplate);
             String balance_string = "";
@@ -3327,76 +3322,76 @@ public class TransactionsLogController {
                 balance_string = balance_string.substring(0, (balance_string.length()-2));
             }
             resJson.put("balances", balance_string);
-            
-            return resJson.toString();    
+
+            return resJson.toString();
         } catch (JSONException ex) {
-            
+
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     @PostMapping(path="/testMtnTokens")
 
-    public String testMtnTokens (@RequestBody String requestBody, 
+    public String testMtnTokens (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) throws IOException {
-        
+
         MTNMoMoPaymentGateway gw = new MTNMoMoPaymentGateway();
         MTNMoMoPaymentGateway.Token t = gw.getToken();
-        
+
         if (t!= null ) {
             return t.toString();
         } else {
             return "No Token returned. See the logs";
         }
-        
+
     }
-    
+
     @PostMapping(path="/testMtnPayIn")
 
-    public String testMtnPayIn (@RequestBody String requestBody, 
+    public String testMtnPayIn (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) throws IOException, JSONException {
-        
+
         JSONObject sO = new JSONObject(requestBody);
         DoPayGateway gw = new DoPayGateway();
-        
+
         String ref = Common.generateUuid();
         String narrative = sO.getString("narrative");
         String msisdn = sO.getString("payer");
-        
+
         GateWayResponse pResponse = gw.runPayGatewayDoPayIn(jdbcTemplate,
                 msisdn,
                 sO.getDouble("amount"), ref, narrative,
                 null);
-        
+
         if (pResponse != null ) {
             String res = pResponse.getRequestTrace();
-            
+
             return res;
         } else {
             return "No gateway for "+msisdn;
         }
         //String ref = Common.generateUuid();
     }
-    
-    
+
+
     @PostMapping(path="/testMtnPayOut")
 
-    public String testMtnPayOut (@RequestBody String requestBody, 
+    public String testMtnPayOut (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) throws IOException, JSONException {
-        
+
         JSONObject sO = new JSONObject(requestBody);
         DoPayGateway gw = new DoPayGateway();
-        
+
         String ref = Common.generateUuid();
         String narrative = sO.getString("narrative");
-        
+
         GateWayResponse pResponse = gw.runPayGatewayDoPayOut(jdbcTemplate,
                 sO.getString("payer"),
                 sO.getDouble("amount"), ref, narrative,
                 null);
-        
+
         if (pResponse != null ) {
             String res = pResponse.getRequestTrace();
             return res;
@@ -3405,27 +3400,27 @@ public class TransactionsLogController {
         }
         //String ref = Common.generateUuid();
     }
-    
-    
+
+
     @PostMapping(path="/testMtnPayInCheckStatus")
 
-    public String testMtnPayInCheckStatus (@RequestBody String requestBody, 
+    public String testMtnPayInCheckStatus (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) throws IOException, JSONException {
-        
+
         JSONObject sO = new JSONObject(requestBody);
-        
-        
+
+
         DoPayGateway gw = new DoPayGateway();
         String ref = sO.getString("tx_id");
         String tx_type = sO.getString("tx_type");
-        
-        
+
+
         GateWayResponse pResponse = gw.runPayGatewayDoCheckStatus(jdbcTemplate,
                 "MTNMoMoPaymentGateway",
                 ref,
                 tx_type,
                 null);
-        
+
         if (pResponse != null ) {
             String res = pResponse.getRequestTrace();
             res += "\n\n==========\n\n"
@@ -3439,12 +3434,12 @@ public class TransactionsLogController {
         }
         //String ref = Common.generateUuid();
     }
-    
+
     private Payment getPaymentById(long id) {
-        
+
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE id = :id";
-        
+
         RowMapper<Payment> rm = new RowMapper<Payment>() {
         public Payment mapRow(ResultSet rs, int rowNum) throws SQLException {
                 Payment t = new Payment();
@@ -3462,7 +3457,7 @@ public class TransactionsLogController {
                 return t;
             }
         };
-        
+
         List<Payment> blist = jdbcTemplate.query(
                 sqlSelect,
                 new MapSqlParameterSource("id", id),
@@ -3473,59 +3468,59 @@ public class TransactionsLogController {
             return null;
         }
     }
-    
-    
-    
+
+
+
     /*
     * API to create a PayIn
     */
     @PostMapping(path="/addPayInTransaction")
 
-    public String addPayInTransaction (@RequestBody String requestBody, 
+    public String addPayInTransaction (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         try {
-            
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("CREATE_BATCH_TX", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
             String tx_description = sObject.getString("tx_description");
             String account = sObject.getString("account");
             String amount_ = sObject.getString("amount");
             Double amount;
-            
+
             try{
                 amount = Double.parseDouble(amount_);
             } catch (NumberFormatException e) {
                 return GeneralException
                     .getError("123", String.format(GeneralException.ERRORS_123,amount_));
             }
-            
+
             String merchant_number = sessionUser.getMerchant_number();
-            
+
             //Get this merchant
-            Merchant merchant = Common.getMerchantByAccountNumber(merchant_number, 
+            Merchant merchant = Common.getMerchantByAccountNumber(merchant_number,
                     jdbcTemplate);
             if (merchant == null) {
                 return GeneralException
                     .getError("109", String.format(GeneralException.ERRORS_109, "Merchant", merchant_number));
             }
-            
+
             //First check if stock account was configured transaction
             Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
             Setting getRevenueAccount = Common.getSettings("revenue_account", jdbcTemplate);
@@ -3533,7 +3528,7 @@ public class TransactionsLogController {
                return GeneralException
                 .getError("112", GeneralException.ERRORS_112);
             }
-            
+
             if (getRevenueAccount == null || getRevenueAccount.getSetting_value().isEmpty()) {
                return GeneralException
                 .getError("117", GeneralException.ERRORS_117);
@@ -3545,17 +3540,17 @@ public class TransactionsLogController {
                 return GeneralException
                     .getError("113", GeneralException.ERRORS_113);
             }
-            
+
             //First determine the gateway by msisdn
             String gateway_id = DoPayGateway.getGatewayIdByMsisdn(account, jdbcTemplate);
             if (gateway_id == null) {
                 return GeneralException
-                    .getError("118", String.format(GeneralException.ERRORS_118, 
+                    .getError("118", String.format(GeneralException.ERRORS_118,
                             account));
             }
-            
-          
-            
+
+
+
             //Get this merchant by id.
             Transaction newTx = new Transaction();
             newTx.setGateway_id(gateway_id);
@@ -3574,7 +3569,7 @@ public class TransactionsLogController {
             newTx.setTx_unique_id(tx_id);
             newTx.setTx_merchant_ref(tx_id);
             newTx.setCallback_url("");
-            
+
             //First get the charging method
             GatewayChargeDetails gwChargingDetails = DoPayGateway
                     .getGatewayChargeDetailsById(jdbcTemplate, gateway_id, merchant.getId());
@@ -3586,12 +3581,12 @@ public class TransactionsLogController {
             newTx.setTx_request_trace("");
             newTx.setTx_update_trace("");
             newTx.setTx_gateway_ref("");
-            
+
             String result = Common.doPayIn(newTx,
                 merchant,
                 jdbcTemplate,
                 transactionManager);
-            
+
             return result;
         }  catch (Exception ex) {
             ex.printStackTrace();
@@ -3601,40 +3596,40 @@ public class TransactionsLogController {
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     /*
     * API to create bulk payment
     */
     @PostMapping(path="/addPayment")
 
-    public String addPayment (@RequestBody String requestBody, 
+    public String addPayment (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         try {
-            
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("CREATE_BATCH_TX", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
             String tx_description = sObject.getString("tx_description");
             String name = sObject.getString("name");
-            
-            
+
+
             Payment newPayment = new Payment();
             newPayment.setCreated_by(created_by);
             newPayment.setName(name);
@@ -3643,9 +3638,9 @@ public class TransactionsLogController {
             String payment_unique_id = Common.generateUuid();
             newPayment.setPaymentId(payment_unique_id);
             newPayment.setStatus(Transaction.BATCH_PAYMENTS_PENDING);
-            
+
             JSONArray beneficiaries = sObject.getJSONArray("beneficiaries");
-            
+
             //Now add the user to database
             String sql = "INSERT INTO "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                 +" SET `name`=:name,"
@@ -3656,7 +3651,7 @@ public class TransactionsLogController {
                 +" `total_amount`=:total_amount,"
                 +" `total_charges`=:total_charges,"
                 +" `batch_id`=:batch_id";
-            
+
             String sqlBeneficiary = "INSERT INTO "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                 +" SET `batch_id`=:batch_id,"
                 +" `name`=:name, "
@@ -3664,17 +3659,17 @@ public class TransactionsLogController {
                 +" `amount`=:amount, "
                 +" `account_type`=:account_type, "
                 +" `status`=:status ";
-            
+
             //Getting total amount
             double total_amount = 0.00;
             double total_charges = 0.00;
-            
+
             List<Beneficiary> pBeneficiaries = new ArrayList<>();
             for (int i=0; i < beneficiaries.length(); i++) {
                 String account = "";
                 String account_type = "";
                 String beneficiary_name = "";
-                
+
                 JSONObject jObject = beneficiaries.getJSONObject(i);
                 beneficiary_name = jObject.getString("name");
                 double amount = jObject.getDouble("amount");
@@ -3686,11 +3681,11 @@ public class TransactionsLogController {
                 if (account_type.toLowerCase().equals("phone")) {
                     if (gateway_id == null) {
                         return GeneralException
-                            .getError("118", String.format(GeneralException.ERRORS_118, 
+                            .getError("118", String.format(GeneralException.ERRORS_118,
                                     account));
                     }
                 }
-                
+
                 GatewayChargeDetails gwChargingDetails = DoPayGateway
                     .getGatewayChargeDetailsById(jdbcTemplate, gateway_id, sessionUser.getMerchant_id());
                 Double charges = DoPayGateway.getCustomerInboundCharges(amount, gwChargingDetails);
@@ -3703,13 +3698,13 @@ public class TransactionsLogController {
                 b.setAccount_type(account_type);
                 pBeneficiaries.add(b);
             }
-            
+
             newPayment.setTotal_amount(total_amount);
             newPayment.setTotal_charges(total_charges);
             newPayment.setBeneficiaries(pBeneficiaries);
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             parameters.addValue("created_by", created_by);
             parameters.addValue("status", newPayment.getStatus());
@@ -3719,7 +3714,7 @@ public class TransactionsLogController {
             parameters.addValue("tx_description", newPayment.getDescription());
             parameters.addValue("batch_id", newPayment.getPaymentId());
             final String sql_ = sql;
-            
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             String result = template.execute(new TransactionCallback<String>() {
                 @Override
@@ -3731,36 +3726,36 @@ public class TransactionsLogController {
                         jdbcTemplate.update(sql_, parameters, keyHolder);
                         //Now insert privileges
                         BigInteger batchId = (BigInteger)keyHolder.getKey();
-                        
+
                         KeyHolder keyHolderBeneficiary = new GeneratedKeyHolder();
                         MapSqlParameterSource privParams;
-                        
+
                         String sqlCheck = "SELECT count(*) as found "
                             + "FROM `"+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+"` "
                             + " WHERE batch_id = '"+batchId+"' AND account=:account";
-                        
+
                         RowMapper<Integer> rm_ = new RowMapper<Integer>() {
                         public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
                                 int r = rs.getInt("found");
                                 return r;
                             }
                         };
-                        
+
                         MapSqlParameterSource checkParams;
                         for (Beneficiary b : newPayment.getBeneficiaries()) {
                             keyHolderBeneficiary = new GeneratedKeyHolder();
                             checkParams = new MapSqlParameterSource();
                             checkParams.addValue("account", b.getAccount());
-                            
+
                             //Check if this beneficiary was already added
                             List<Integer> listBens = jdbcTemplate.query(sqlCheck, checkParams, rm_);
                             if (listBens.get(0)> 0) {
                                 status.setRollbackOnly();
                                 return GeneralException
-                                    .getError("129", 
+                                    .getError("129",
                                             String.format(GeneralException.ERRORS_129, b.getAccount()));
                             }
-                            
+
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("batch_id", batchId);
                             privParams.addValue("name", b.getName());
@@ -3768,27 +3763,27 @@ public class TransactionsLogController {
                             privParams.addValue("account", b.getAccount());
                             privParams.addValue("status", b.getStatus());
                             privParams.addValue("account_type", b.getAccount_type());
-                            
+
                             //privParams.addValue("name", privilege.getString("name"));
-                            long privId = jdbcTemplate.update(sqlBeneficiary, 
-                                    privParams, 
+                            long privId = jdbcTemplate.update(sqlBeneficiary,
+                                    privParams,
                                     keyHolderBeneficiary);
-                            
+
                             BigInteger beneficiaryId = (BigInteger)keyHolderBeneficiary.getKey();
-                            
+
                         }
-                        
+
                         //Now insert auditTrail
-                        String actionInsert = Common.recordMerchantAction(sessionUser, 
-                                "Added new payment "+newPayment.toString(), 
+                        String actionInsert = Common.recordMerchantAction(sessionUser,
+                                "Added new payment "+newPayment.toString(),
                                 jdbcTemplate);
-                        
+
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
                             status.setRollbackOnly();
                             return actionInsert;
                         }
-                        
+
                         //TransactionManager.commit(status);
                         return "success";
                     } catch (Exception e) {
@@ -3799,66 +3794,66 @@ public class TransactionsLogController {
                     }
                 }
             });
-            
+
             if (result.equals("success")) {
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     /*
     * API to create bulk payment
     */
     @PostMapping(path="/saveSms")
 
-    public String saveSms (@RequestBody String requestBody, 
+    public String saveSms (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
-        
+
         try {
-            
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("SEND_SMS", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
             String content = sObject.getString("content");
             Boolean multiple = sObject.isNull("multiple") ? false : true;
             String send_time = sObject.getString("send_time");
-            
+
             //Check send_time is passed
             SimpleDateFormat sdformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             Date d1 = sdformat.parse(send_time);
             Date d2 = new Date();
-            
+
             if (d2.compareTo(d1) > 0) {
                 return GeneralException
                     .getError("135", GeneralException.ERRORS_135);
             }
-            
+
             MerchantSms newSms = new MerchantSms();
             newSms.setCreated_by(created_by);
             newSms.setContent(content);
@@ -3867,33 +3862,33 @@ public class TransactionsLogController {
             newSms.setGw_response("");
             newSms.setStatus("PENDING");
             newSms.setTrace("");
-            
+
             //Now get recipients
             int total_recipients = 0;
             JSONArray rec_array = sObject.getJSONArray("recipients");
             total_recipients = rec_array.length();
             SmsGateway smsgw = new SmsGateway(jdbcTemplate);
             newSms.setSmsgw(smsgw.getGatewayName());
-            
+
             double charge = smsgw.getCharge(sessionUser.getMerchant_id());
             newSms.setCharge(charge);
             newSms.setCost(smsgw.getCost());
             final double total_amount = (charge * total_recipients);
-            
+
             //Get sms balance
-            ArrayList<Balance> balances = Common.getMerchantBalances(sessionUser.getMerchant_id()+"", 
+            ArrayList<Balance> balances = Common.getMerchantBalances(sessionUser.getMerchant_id()+"",
                     jdbcTemplate);
             //Check whether the user has enough funds
             for (Balance b : balances) {
                 if (b.getGateway_id().equals(SmsGateway.getGatewayId())) {
                     if (b.getAmount() < total_amount) {
                         return GeneralException
-                            .getError("111", 
+                            .getError("111",
                                 String.format(GeneralException.ERRORS_111, b.getAmount(), "SMS Account"));
                     }
                 }
             }
-            
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             String result = template.execute(new TransactionCallback<String>() {
                 @Override
@@ -3924,7 +3919,7 @@ public class TransactionsLogController {
                             newSms.setRecipients(recipient_string);
                             newSms.setTotal_recipients(rec_array.length());
                             newSms.setTotal_amount(total_amount);
-                            
+
                             MerchantSms newSms_ = newSms;
                             parameters.addValue("merchant_id", newSms_.getMerchant_id());
                             parameters.addValue("created_by", created_by);
@@ -3955,7 +3950,7 @@ public class TransactionsLogController {
                                 newSms_.setTotal_recipients(1);
                                 newSms_.setTotal_amount(charge);
                                 multSmsList.add(newSms_);
-            
+
                                 parameters.addValue("merchant_id", newSms_.getMerchant_id());
                                 parameters.addValue("created_by", created_by);
                                 parameters.addValue("status", newSms_.getStatus());
@@ -3969,7 +3964,7 @@ public class TransactionsLogController {
                                 parameters.addValue("smsgw", newSms_.getSmsgw());
                                 parameters.addValue("send_time", newSms_.getSend_time());
                                 parameters.addValue("recipients", newSms_.getRecipients());
-                                
+
                                 KeyHolder keyHolder = new GeneratedKeyHolder();
                                 //long userId;
                                 jdbcTemplate.update(sql, parameters, keyHolder);
@@ -3978,18 +3973,18 @@ public class TransactionsLogController {
                             }
                             //Now save these SMSs.
                         }
-                        
+
                         //Now insert auditTrail
-                        String actionInsert = Common.recordMerchantAction(sessionUser, 
-                                "Created SMS: "+content, 
+                        String actionInsert = Common.recordMerchantAction(sessionUser,
+                                "Created SMS: "+content,
                                 jdbcTemplate);
-                        
+
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
                             status.setRollbackOnly();
                             return actionInsert;
                         }
-                        
+
                         //TransactionManager.commit(status);
                         return "success";
                     } catch (Exception e) {
@@ -4000,51 +3995,51 @@ public class TransactionsLogController {
                     }
                 }
             });
-            
+
             if (result.equals("success")) {
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     /*
     * API to create bulk payment
     */
     @PostMapping(path="/cancelSms")
 
-    public String cancelSms(@RequestBody String requestBody, 
+    public String cancelSms(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         try {
-            
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("SEND_SMS", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONArray sArrayObject = new JSONArray(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
-            
-            
+
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             String result = template.execute(new TransactionCallback<String>() {
                 @Override
@@ -4054,28 +4049,28 @@ public class TransactionsLogController {
                         String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_SMS+" "
                             +" SET `status`=:status"
                             +" WHERE id=:id AND status='PENDING' ";
-                        
+
                         MapSqlParameterSource parameters;
                         for (int i=0; i < sArrayObject.length(); i++) {
                             JSONObject jObject = sArrayObject.getJSONObject(i);
                             parameters = new MapSqlParameterSource();
                             parameters.addValue("status", "CANCELLED");
                             parameters.addValue("id", jObject.getLong("id"));
-                            
+
                             jdbcTemplate.update(sql, parameters);
                         }
-                        
+
                         //Now insert auditTrail
-                        String actionInsert = Common.recordMerchantAction(sessionUser, 
-                                "Cancelled SMSs: ", 
+                        String actionInsert = Common.recordMerchantAction(sessionUser,
+                                "Cancelled SMSs: ",
                                 jdbcTemplate);
-                        
+
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
                             status.setRollbackOnly();
                             return actionInsert;
                         }
-                        
+
                         //TransactionManager.commit(status);
                         return "success";
                     } catch (Exception e) {
@@ -4086,67 +4081,67 @@ public class TransactionsLogController {
                     }
                 }
             });
-            
+
             if (result.equals("success")) {
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     /*
     * API to create bulk payment
     */
     @PostMapping(path="/editPayment")
 
-    public String editPayment(@RequestBody String requestBody, 
+    public String editPayment(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         try {
-            
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("CREATE_BATCH_TX", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
             String tx_description = sObject.getString("tx_description");
             String name = sObject.getString("name");
             long id = sObject.getLong("id");
-            
+
             //Check if this payement exists
             Payment payment = getPaymentById(id);
             if (payment == null) {
                 return GeneralException
                     .getError("108", String.format(GeneralException.ERRORS_108, "Payment ", name));
             }
-            
+
             //If payment is already in an uneditable state
             if (!payment.getStatus().equals(Transaction.BATCH_PAYMENTS_PENDING)) {
                 return GeneralException
                     .getError("128", String.format(GeneralException.ERRORS_128, payment.getStatus()));
             }
-            
+
             Payment newPayment = new Payment();
             newPayment.setId(id);
             newPayment.setCreated_by(created_by);
@@ -4156,9 +4151,9 @@ public class TransactionsLogController {
             String payment_unique_id = Common.generateUuid();
             newPayment.setPaymentId(payment_unique_id);
             newPayment.setStatus(Transaction.BATCH_PAYMENTS_PENDING);
-            
+
             JSONArray beneficiaries = sObject.getJSONArray("beneficiaries");
-            
+
             //Now add the user to database
             String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                 +" SET `name`=:name,"
@@ -4170,12 +4165,12 @@ public class TransactionsLogController {
                 +" `total_charges`=:total_charges,"
                 +" `batch_id`=:batch_id"
                 + " WHERE id=:id";
-            
+
             String sqlDeleteBeneficiary = "DELETE FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                     + " WHERE batch_id=:batch_id ";
             MapSqlParameterSource deleteParams = new MapSqlParameterSource();
             deleteParams.addValue("batch_id", id);
-            
+
             String sqlBeneficiary = "INSERT INTO "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_BENEFICIARIES+" "
                 +" SET `batch_id`=:batch_id,"
                 +" `name`=:name, "
@@ -4183,17 +4178,17 @@ public class TransactionsLogController {
                 +" `amount`=:amount, "
                 +" `account_type`=:account_type, "
                 +" `status`=:status ";
-            
+
             //Getting total amount
             double total_amount = 0.00;
             double total_charges = 0.00;
-            
+
             List<Beneficiary> pBeneficiaries = new ArrayList<>();
             for (int i=0; i < beneficiaries.length(); i++) {
                 String account = "";
                 String account_type = "";
                 String beneficiary_name = "";
-                
+
                 JSONObject jObject = beneficiaries.getJSONObject(i);
                 beneficiary_name = jObject.getString("name");
                 double amount = jObject.getDouble("amount");
@@ -4205,11 +4200,11 @@ public class TransactionsLogController {
                 if (account_type.toLowerCase().equals("phone")) {
                     if (gateway_id == null) {
                         return GeneralException
-                            .getError("118", String.format(GeneralException.ERRORS_118, 
+                            .getError("118", String.format(GeneralException.ERRORS_118,
                                     account));
                     }
                 }
-                
+
                 GatewayChargeDetails gwChargingDetails = DoPayGateway
                     .getGatewayChargeDetailsById(jdbcTemplate, gateway_id, sessionUser.getMerchant_id());
                 Double charges = DoPayGateway.getCustomerInboundCharges(amount, gwChargingDetails);
@@ -4222,13 +4217,13 @@ public class TransactionsLogController {
                 b.setAccount_type(account_type);
                 pBeneficiaries.add(b);
             }
-            
+
             newPayment.setTotal_amount(total_amount);
             newPayment.setTotal_charges(total_charges);
             newPayment.setBeneficiaries(pBeneficiaries);
-            
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
-            
+
             parameters.addValue("merchant_id", sessionUser.getMerchant_id());
             parameters.addValue("created_by", created_by);
             parameters.addValue("status", newPayment.getStatus());
@@ -4238,9 +4233,9 @@ public class TransactionsLogController {
             parameters.addValue("tx_description", newPayment.getDescription());
             parameters.addValue("batch_id", newPayment.getPaymentId());
             parameters.addValue("id", newPayment.getId());
-            
+
             final String sql_ = sql;
-            
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             String result = template.execute(new TransactionCallback<String>() {
                 @Override
@@ -4249,15 +4244,15 @@ public class TransactionsLogController {
 
                         //Update Bulk payments
                         jdbcTemplate.update(sql_, parameters);
-                        
+
                         //First delete existing beneficiaries
                         jdbcTemplate.update(sqlDeleteBeneficiary, deleteParams);
-                        
+
                         KeyHolder keyHolderBeneficiary = new GeneratedKeyHolder();
                         MapSqlParameterSource privParams;
                         for (Beneficiary b : newPayment.getBeneficiaries()) {
                             keyHolderBeneficiary = new GeneratedKeyHolder();
-        
+
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("batch_id", id);
                             privParams.addValue("name", b.getName());
@@ -4265,27 +4260,27 @@ public class TransactionsLogController {
                             privParams.addValue("account", b.getAccount());
                             privParams.addValue("status", b.getStatus());
                             privParams.addValue("account_type", b.getAccount_type());
-                            
+
                             //privParams.addValue("name", privilege.getString("name"));
-                            long privId = jdbcTemplate.update(sqlBeneficiary, 
-                                    privParams, 
+                            long privId = jdbcTemplate.update(sqlBeneficiary,
+                                    privParams,
                                     keyHolderBeneficiary);
-                            
+
                             BigInteger beneficiaryId = (BigInteger)keyHolderBeneficiary.getKey();
-                            
+
                         }
-                        
+
                         //Now insert auditTrail
-                        String actionInsert = Common.recordMerchantAction(sessionUser, 
-                                "Updated payment "+newPayment.toString(), 
+                        String actionInsert = Common.recordMerchantAction(sessionUser,
+                                "Updated payment "+newPayment.toString(),
                                 jdbcTemplate);
-                        
+
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
                             status.setRollbackOnly();
                             return actionInsert;
                         }
-                        
+
                         //TransactionManager.commit(status);
                         return "success";
                     } catch (Exception e) {
@@ -4296,69 +4291,69 @@ public class TransactionsLogController {
                     }
                 }
             });
-            
+
             if (result.equals("success")) {
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     /*
     * API to start a payment
     */
     @PostMapping(path="/startPayment")
 
-    public String startPayment(@RequestBody String requestBody, 
+    public String startPayment(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         try {
-            
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("CREATE_BATCH_TX", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
             long id = sObject.getLong("id");
-            
+
             //Check if this payement exists
             Payment payment = getPaymentById(id);
             if (payment == null) {
                 return GeneralException
                     .getError("108", String.format(GeneralException.ERRORS_108, "Payment ", id));
             }
-            
+
             //If payment is already in an uneditable state
             String pStatus = payment.getStatus();
             if (pStatus.equals(Transaction.BATCH_PAYMENTS_DONE)
                     || pStatus.equals(Transaction.BATCH_PAYMENTS_STOPPED)) {
                 return GeneralException
-                    .getError("128", String.format(GeneralException.ERRORS_128, 
+                    .getError("128", String.format(GeneralException.ERRORS_128,
                             payment.getStatus()));
             }
-            
+
             if (pStatus.equals(Transaction.BATCH_PAYMENTS_PROCESSING)) {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PAUSED);
             } else if (pStatus.equals(Transaction.BATCH_PAYMENTS_PAUSED)) {
@@ -4366,19 +4361,19 @@ public class TransactionsLogController {
             } else {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PROCESSING);
             }
-            
+
             //Now add the user to database
             String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                 +" SET `status`=:status"
                 + " WHERE id=:id";
-            
-            
+
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("id", id);
             parameters.addValue("status", payment.getStatus());
-            
+
             final String sql_ = sql;
-            
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             String result = template.execute(new TransactionCallback<String>() {
                 @Override
@@ -4387,19 +4382,19 @@ public class TransactionsLogController {
 
                         //Update Bulk payments
                         jdbcTemplate.update(sql_, parameters);
-                        
-                       
+
+
                         //Now insert auditTrail
-                        String actionInsert = Common.recordMerchantAction(sessionUser, 
-                                "Started payment "+payment.toString(), 
+                        String actionInsert = Common.recordMerchantAction(sessionUser,
+                                "Started payment "+payment.toString(),
                                 jdbcTemplate);
-                        
+
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
                             status.setRollbackOnly();
                             return actionInsert;
                         }
-                        
+
                         //TransactionManager.commit(status);
                         return "success";
                     } catch (Exception e) {
@@ -4410,16 +4405,16 @@ public class TransactionsLogController {
                     }
                 }
             });
-            
+
             if (result.equals("success")) {
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
@@ -4433,60 +4428,60 @@ public class TransactionsLogController {
     */
     @PostMapping(path="/stopPayment")
 
-    public String stopPayment(@RequestBody String requestBody, 
+    public String stopPayment(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         try {
-            
+
             if (!isMerchantUserLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("CREATE_BATCH_TX", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
             long id = sObject.getLong("id");
-            
+
             //Check if this payement exists
             Payment payment = getPaymentById(id);
             if (payment == null) {
                 return GeneralException
                     .getError("108", String.format(GeneralException.ERRORS_108, "Payment ", id));
             }
-            
+
             //If payment is already in an uneditable state
             String pStatus = payment.getStatus();
             if (pStatus.equals(Transaction.BATCH_PAYMENTS_DONE)
                     || pStatus.equals(Transaction.BATCH_PAYMENTS_STOPPED)) {
                 return GeneralException
-                    .getError("128", String.format(GeneralException.ERRORS_128, 
+                    .getError("128", String.format(GeneralException.ERRORS_128,
                             payment.getStatus()));
             }
-            
+
             payment.setStatus(Transaction.BATCH_PAYMENTS_STOPPED);
-            
+
             //Now add the user to database
             String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                 +" SET `status`=:status"
                 + " WHERE id=:id";
-            
-            
+
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             parameters.addValue("id", id);
             parameters.addValue("status", payment.getStatus());
-            
+
             final String sql_ = sql;
-            
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             String result = template.execute(new TransactionCallback<String>() {
                 @Override
@@ -4495,19 +4490,19 @@ public class TransactionsLogController {
 
                         //Update Bulk payments
                         jdbcTemplate.update(sql_, parameters);
-                        
-                       
+
+
                         //Now insert auditTrail
-                        String actionInsert = Common.recordMerchantAction(sessionUser, 
-                                "Stopped payment "+payment.toString(), 
+                        String actionInsert = Common.recordMerchantAction(sessionUser,
+                                "Stopped payment "+payment.toString(),
                                 jdbcTemplate);
-                        
+
                         //If it failed to execute the statement to record this action
                         if (!actionInsert.equals("success")) {
                             status.setRollbackOnly();
                             return actionInsert;
                         }
-                        
+
                         //TransactionManager.commit(status);
                         return "success";
                     } catch (Exception e) {
@@ -4518,55 +4513,55 @@ public class TransactionsLogController {
                     }
                 }
             });
-            
+
             if (result.equals("success")) {
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     @Value( "${custom.lockfiledirectory}" )
     private String lockfiledirectory;
-    
+
     @PostMapping(path="/paymentsPayCron")
 
     @Scheduled(fixedDelay = 30000, initialDelay = 1000)
     public String paymentsPayCron () {
         //Set the response header
-        
+
         String filePath = lockfiledirectory+Common.CLASS_PATH_PAYMENTS_CRON_TX_LOCK;
-        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                 "LockFile "+filePath);
         try {
-            
-            File lfile = new File(filePath);  
+
+            File lfile = new File(filePath);
             if (lfile.createNewFile()) {
-                Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+                Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                 "Filed "+filePath+" has been created.");
             }
-            
+
             RandomAccessFile writer = new RandomAccessFile(lfile, "rw");
-            FileLock lock = writer.getChannel().lock();  
-            
+            FileLock lock = writer.getChannel().lock();
+
             writer.write("Am handling lock!".getBytes());
-            
+
             /*try {
                 TimeUnit.SECONDS.sleep(20);
             } catch (InterruptedException ex) {
                 Logger.getLogger(TransactionsLogController.class.getName())
                         .log(Level.SEVERE, ex.getMessage(), ex);
             }*/
-        
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             String sqlSelectPayments = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_BATCH_TRANSACTION_LOG+" "
                     + " WHERE status IN('PROCESSING') LIMIT 20 FOR UPDATE";
@@ -4589,13 +4584,13 @@ public class TransactionsLogController {
                 }
             };
 
-            List<Payment> pendingPayments = jdbcTemplate.query(sqlSelectPayments, 
-                                parameters, 
+            List<Payment> pendingPayments = jdbcTemplate.query(sqlSelectPayments,
+                                parameters,
                                 rm);
-            
+
             TransactionTemplate template;
             String result;
-            
+
             //For each payment execute individual beneficiary payment if not yet.
             for (Payment p : pendingPayments) {
 
@@ -4609,12 +4604,12 @@ public class TransactionsLogController {
                             int completelly_processed = 0;
                             for (Beneficiary b: p.getBeneficiaries()) {
 
-                                Transaction t = Common.getTxByBatchIdBeneficiaryId(p.getId(), 
+                                Transaction t = Common.getTxByBatchIdBeneficiaryId(p.getId(),
                                         b.getId(),
                                         jdbcTemplate);
-                                
+
                                 if (t == null ) {
-                                     
+
                                     //Limit payments per batch.
                                     if (ben_count > 30) {
                                         continue;
@@ -4623,9 +4618,9 @@ public class TransactionsLogController {
                                     Merchant merchant = Common.getMerchantById(p.getMerchant_id()+"", jdbcTemplate);
 
                                     String gateway_id = DoPayGateway.getGatewayIdByMsisdn(b.getAccount(), jdbcTemplate);
-                                    
+
                                     if (gateway_id == null) {
-                                        String e = String.format(GeneralException.ERRORS_118, 
+                                        String e = String.format(GeneralException.ERRORS_118,
                                                  b.getAccount());
 
 
@@ -4642,7 +4637,7 @@ public class TransactionsLogController {
                                         jdbcTemplate.update(sqlUpdateBen, updateBenparams);
                                         continue;
                                     }
-                                    
+
                                     Transaction newTx = new Transaction();
                                     newTx.setGateway_id(gateway_id);
                                     newTx.setOriginal_amount(b.getAmount());
@@ -4670,14 +4665,14 @@ public class TransactionsLogController {
                                     Double tx_cost = DoPayGateway.getCostOfOutboundCharges(b.getAmount(), gwChargingDetails);
 
                                     //First check if there is enough balance.
-                                    ArrayList<Balance> balances = Common.getMerchantBalances(p.getMerchant_id()+"", 
+                                    ArrayList<Balance> balances = Common.getMerchantBalances(p.getMerchant_id()+"",
                                         jdbcTemplate);
                                     String insufficient_b_error = "";
                                     for (Balance bal : balances) {
                                         if (bal.getGateway_id().equals(gateway_id)) {
                                             if ((charges + b.getAmount()) > bal.getAmount()) {
 
-                                                insufficient_b_error = String.format(GeneralException.ERRORS_111, 
+                                                insufficient_b_error = String.format(GeneralException.ERRORS_111,
                                                             bal.getAmount(), bal.getCode());
 
                                             }
@@ -4699,8 +4694,8 @@ public class TransactionsLogController {
                                             .log(Level.SEVERE, "INSUFFICIENT BALANCE: "+insufficient_b_error, "");
                                         continue;
                                     }
-                                    
-                                    
+
+
 
                                     newTx.setBeneficiary_id(b.getId());
                                     newTx.setMerchant_batch_transactions_log_id(p.getId());
@@ -4716,7 +4711,7 @@ public class TransactionsLogController {
                                         merchant,
                                         jdbcTemplate,
                                         transactionManager);
-                                    
+
                                     Logger.getLogger(AuthenticationController.class.getName())
                                          .log(Level.SEVERE, "PAY RESULTS: "+resultPay, "");
 
@@ -4817,42 +4812,42 @@ public class TransactionsLogController {
                 }
 
             }
-            
+
             // release lock
             lock.release();
             // close the file
             writer.close();
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON DONE!", "");
-        
+
         } catch (IOException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON IOException: "+ex.getMessage(), "");
 
             return GeneralException.ERRORS_102;
-        } 
+        }
         catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "PAYMENTS CRON OverlappingFileLockException: "+ex.getMessage(), "");
 
             return "OverlappingFileLockException";
         }
-        
+
         //Execution successfully.
         return GeneralSuccessResponse
                 .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
     }
-    
-    
+
+
     /*
     * API to start a payment
     */
     @PostMapping(path="/testParseXml")
 
-    public String testParseXml(@RequestBody String requestBody, 
+    public String testParseXml(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
-        
+
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<AutoCreate><Response>";
         xml += "<Status>ERROR</Status>";
@@ -4895,46 +4890,46 @@ public class TransactionsLogController {
             return GeneralException.ERRORS_102;
         }
     }
-    
-    
+
+
     /*
     * API to start a payment
     */
     @PostMapping(path="/resolveTransaction")
 
-    public String resolveTransaction(@RequestBody String requestBody, 
+    public String resolveTransaction(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         try {
-            
+
             if (!isLoggedIn (request )) {
                 return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
             }
             HttpSession session = request.getSession();
-            
+
             User sessionUser = (User) session.getAttribute("user");
-            
+
             //Check permissions
             if (!Common.isUserAllowedAccessToThis("RESOLVE_TRANSACTIONS", sessionUser)) {
                 return GeneralException
                     .getError("110", GeneralException.ERRORS_110);
             }
-            
+
             JSONObject sObject = new JSONObject(requestBody);
-            
+
             String created_by = sessionUser.getName()+" - "+sessionUser.getEmail();
             long transactionId = sObject.getLong("id");
             String resolve_to_status = sObject.getString("resolve_status");
             String tx_gateway_ref = sObject.getString("tx_gateway_ref");
-            
+
             TransactionTemplate template = new TransactionTemplate(transactionManager);
             String result = template.execute(new TransactionCallback<String>() {
                 @Override
                 public String doInTransaction(TransactionStatus status) {
-                    
-            
-            
+
+
+
                     //Check if this transaction exists
                     String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
                     sqlSelect += " WHERE id = :id FOR UPDATE";
@@ -4946,7 +4941,7 @@ public class TransactionsLogController {
                             rm);
                     if (listTxs.size() < 1) {
                         return GeneralException
-                            .getError("109", String.format(GeneralException.ERRORS_109, "Transaciton"));
+                            .getError("109", String.format(GeneralException.ERRORS_109, "Transaction"));
                     }
 
                     Setting getStockAccount = Common.getSettings("float_stock_account", jdbcTemplate);
@@ -4970,12 +4965,12 @@ public class TransactionsLogController {
                                 jdbcTemplate);
 
                     Transaction newTx = listTxs.get(0);
-                    if (newTx.getStatus().equals("SUCCESSFUL") 
+                    if (newTx.getStatus().equals("SUCCESSFUL")
                             || newTx.getStatus().equals("FAILED")) {
                         return GeneralException
                             .getError("130", String.format(GeneralException.ERRORS_130, newTx.getStatus()));
                     }
-                    
+
                     String[] bType = Balance.getBalanceTypeByGatewayId(newTx.getGateway_id());
                         String balance_type = bType[0];
 
@@ -4993,10 +4988,10 @@ public class TransactionsLogController {
                     updateParam.addValue("tx_gateway_ref", tx_gateway_ref);
                     updateParam.addValue("id", transactionId);
                     updateParam.addValue("resolved_by", created_by);
-                    
+
                     //First update this tx status
                     jdbcTemplate.update(sqlUpdateTx, updateParam);
-                    
+
                     if (resolve_to_status.equals("SUCCESSFUL")) {
                         if (newTx.getTx_type().equals(Transaction.TX_TYPE_PAYIN)) {
                             //Credit this customer's account.
@@ -5010,7 +5005,7 @@ public class TransactionsLogController {
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("CR");
 
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5030,7 +5025,7 @@ public class TransactionsLogController {
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("DR");
 
-                            res_string = Common.recordStatementTx(newTxS, 
+                            res_string = Common.recordStatementTx(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager);
@@ -5050,14 +5045,14 @@ public class TransactionsLogController {
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("CR");
 
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
                                     status);
                             if (!res_string.equals("success")) {
                                 return res_string;
-                            } 
+                            }
 
                             //Now increase stock account.
                             newTxS = new Statement();
@@ -5071,7 +5066,7 @@ public class TransactionsLogController {
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("CR");
 
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5080,7 +5075,7 @@ public class TransactionsLogController {
                                 return res_string;
                             }
                         } else if (newTx.getTx_type().equals(Transaction.TX_TYPE_PAYOUT) ) {
-                            //Record a settlement transaction for Payout   
+                            //Record a settlement transaction for Payout
                             Statement newTxS = new Statement();
                             newTxS = new Statement();
                             newTxS.setAmount(newTx.getOriginal_amount());
@@ -5092,7 +5087,7 @@ public class TransactionsLogController {
                             newTxS.setDescription(newTx.getTx_description());
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("DR");
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5113,10 +5108,10 @@ public class TransactionsLogController {
                             newTxS.setDescription(newTx.getTx_description());
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("DR");
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
-                                    transactionManager, 
+                                    transactionManager,
                                     status);
                             if (!res_string.equals("success")) {
 
@@ -5134,7 +5129,7 @@ public class TransactionsLogController {
                             newTxS.setDescription(newTx.getTx_description());
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("CR");
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5157,7 +5152,7 @@ public class TransactionsLogController {
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("DR");
 
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5178,7 +5173,7 @@ public class TransactionsLogController {
                             newTxS.setDescription(newTx.getTx_description());
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("DR");
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5199,7 +5194,7 @@ public class TransactionsLogController {
                             newTxS.setDescription(newTx.getTx_description());
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("CR");
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5220,10 +5215,10 @@ public class TransactionsLogController {
                             newTxS.setDescription(newTx.getTx_description());
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("CR");
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
-                                    transactionManager, 
+                                    transactionManager,
                                     status);
                             if (!res_string.equals("success")) {
 
@@ -5241,7 +5236,7 @@ public class TransactionsLogController {
                             newTxS.setDescription(newTx.getTx_description());
                             newTxS.setRecorded_by("SYSTEM");
                             newTxS.setTx_type("CR");
-                            res_string = Common.recordStatementTxWithoutTransaciton(newTxS, 
+                            res_string = Common.recordStatementTxWithoutTransaction(newTxS,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
@@ -5254,28 +5249,28 @@ public class TransactionsLogController {
                     return "success";
                 }
             });
-            
+
             if (result.equals("success")) {
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
                 return result;
             }
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, null, ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
-    
+
+
     private Transaction getTransactionById(long id) {
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
         sqlSelect += " WHERE id = :id";
-        
+
         RowMapper<Transaction> rm = Common.getTransactionRowMapper();
         List<Transaction> listTxs = jdbcTemplate.query(
                 sqlSelect,
@@ -5287,8 +5282,8 @@ public class TransactionsLogController {
             return null;
         }
     }
-    
-    
+
+
     @PostMapping("/uploadBeneficiariesFile")
     public String uploadBeneficiariesFile(@RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
@@ -5303,28 +5298,28 @@ public class TransactionsLogController {
                 return validationError;
             }
             /*File directory = new File(fileDestination);
-            
+
             if (!directory.exists()) {
                 directory.mkdir();
             }
-            
+
             String unique_file_name = Common.generateUuid();
             String final_file_path = StringUtils.cleanPath(
                     fileDestination+File.separator+unique_file_name+"_"+file.getOriginalFilename()
             );
-            
+
             Path copyLocation = Paths.get(final_file_path);
             Files.copy(file.getInputStream(), copyLocation, StandardCopyOption.REPLACE_EXISTING);
             */
-            
+
             //Now process the file.
             String ext = Common.getExtensionByStringHandling(file.getOriginalFilename());
             if (!this.isSupportedExceExtension(ext)) {
                 return GeneralException
-                    .getError("132", String.format(GeneralException.ERRORS_132, 
+                    .getError("132", String.format(GeneralException.ERRORS_132,
                             file.getOriginalFilename() +" Extension: "+ext));
             }
-            
+
             //FileInputStream file = new FileInputStream(new File(fileLocation));
             JSONArray bens = new JSONArray();
             try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
@@ -5341,18 +5336,18 @@ public class TransactionsLogController {
                 if (row == null) {
                     continue;
                 }
-                
+
                 Cell nameCell = row.getCell(0);
                 Cell accountCell = row.getCell(1);
                 Cell amountCell = row.getCell(2);
-                
+
                 if (nameCell == null || accountCell == null || amountCell == null) {
                     continue;
                 }
                 try {
                     jObject.put("name", nameCell.getStringCellValue());
                 } catch( Exception e) {
-                    
+
                     return GeneralException
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename())
                     +". Cell A"+i);
@@ -5371,7 +5366,7 @@ public class TransactionsLogController {
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename())
                     +". Cell C"+i);
                 }
-                
+
                 /*jObject.put("name", nameCell.getStringCellValue());
                 jObject.put("account", accountCell.getNumericCellValue());
                 jObject.put("amount", amountCell.getNumericCellValue());*/
@@ -5379,18 +5374,18 @@ public class TransactionsLogController {
                 jObject.put("status", "ACTIVE");
                 jObject.put("delete", false);
                 jObject.put("id", "");
-                 
-                
+
+
                     bens.put(jObject);
                 }
             }
-            
+
             JSONObject resJson = new JSONObject();
             resJson.put("state", "OK");
             resJson.put("code", "000");
             resJson.put("message", "");
             resJson.put("data", bens);
-            
+
             return resJson.toString();
         } catch (Exception e) {
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
@@ -5398,8 +5393,8 @@ public class TransactionsLogController {
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename()));
         }
     }
-    
-    
+
+
     @PostMapping("/uploadSmsRecipientsFile")
     public String uploadSmsRecipientsFile(@RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
@@ -5411,22 +5406,22 @@ public class TransactionsLogController {
 
         Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, "Params:", "");
-        
+
         try {
             String validationError = validateSpreadsheetUpload(file);
             if (validationError != null) {
                 return validationError;
             }
-           
-            
+
+
             //Now process the file.
             String ext = Common.getExtensionByStringHandling(file.getOriginalFilename());
             if (!this.isSupportedExceExtension(ext)) {
                 return GeneralException
-                    .getError("132", String.format(GeneralException.ERRORS_132, 
+                    .getError("132", String.format(GeneralException.ERRORS_132,
                             file.getOriginalFilename() +" Extension: "+ext));
             }
-            
+
             //FileInputStream file = new FileInputStream(new File(fileLocation));
             JSONArray bens = new JSONArray();
             try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
@@ -5452,7 +5447,7 @@ public class TransactionsLogController {
                 Cell cell10 = row.getCell(10);
                 Cell cell11 = row.getCell(11);
                 Cell cell12 = row.getCell(12);
-                
+
                 jObject.put("phone", phoneCell.getNumericCellValue());
                 jObject.put("cellB", getCellValueAsString(cell1));
                 jObject.put("cellC", getCellValueAsString(cell2));
@@ -5468,17 +5463,17 @@ public class TransactionsLogController {
                 jObject.put("cellM", getCellValueAsString(cell12));
                 jObject.put("delete", false);
                 jObject.put("id", "");
-                
+
                     bens.put(jObject);
                 }
             }
-            
+
             JSONObject resJson = new JSONObject();
             resJson.put("state", "OK");
             resJson.put("code", "000");
             resJson.put("message", "");
             resJson.put("data", bens);
-            
+
             return resJson.toString();
         } catch (Exception e) {
             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, e.getMessage(), e);
@@ -5486,7 +5481,7 @@ public class TransactionsLogController {
                     .getError("131", String.format(GeneralException.ERRORS_131, file.getOriginalFilename()));
         }
     }
-    
+
     private String getCellValueAsString(Cell cell) {
         String r = "";
         if (cell == null) {
@@ -5500,7 +5495,7 @@ public class TransactionsLogController {
         }
         return r;
     }
-    
+
     private boolean isSupportedExceExtension(String ext) {
         if (ext == null) {
             return false;
@@ -5544,37 +5539,37 @@ public class TransactionsLogController {
             || "application/vnd.ms-excel".equalsIgnoreCase(contentType)
             || "application/octet-stream".equalsIgnoreCase(contentType);
     }
-    
-    
-    
-    
-    
+
+
+
+
+
     @PostMapping(path="/testSendPendingSmsCron")
 
     //@Scheduled(fixedDelay = 3000, initialDelay = 1000)
-    public String testSendPendingSmsCron (/*@RequestBody String requestBody, 
+    public String testSendPendingSmsCron (/*@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response*/) {
         //Set the response header
-        
+
         String filePath = lockfiledirectory+Common.CLASS_PATH_SEND_SMS_SERVICE_TX_LOCK;
-        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                 "LockFile "+filePath);
-        
+
         try {
-            
+
             RandomAccessFile writer = new RandomAccessFile(Common.CLASS_PATH_SEND_SMS_SERVICE_TX_LOCK, "rw");
-            
-            File lfile = new File(filePath);  
+
+            File lfile = new File(filePath);
             if (lfile.createNewFile()) {
-                Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+                Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                 "Filed "+filePath+" has been created.");
             }
-            
+
             FileLock lock = writer.getChannel().lock();
             writer.write("Am handling lock!".getBytes());
-            
-          
-        
+
+
+
             MapSqlParameterSource parameters = new MapSqlParameterSource();
             String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_SMS+" "
                     + " WHERE status IN('PENDING') LIMIT 1000 FOR UPDATE ";
@@ -5584,7 +5579,7 @@ public class TransactionsLogController {
                     + " gw_response=:gw_response, "
                     + " smsgw=:smsgw, "
                     + " trace=:trace";
-            
+
             RowMapper<MerchantSms> rm = new RowMapper<MerchantSms>() {
                 public MerchantSms mapRow(ResultSet rs, int rowNum) throws SQLException {
                     MerchantSms t = new MerchantSms();
@@ -5603,16 +5598,16 @@ public class TransactionsLogController {
                     t.setTotal_recipients(rs.getInt("total_recipients"));
                     t.setGw_response(rs.getString("gw_response"));
                     t.setCreated_by(rs.getString("created_by"));
-                    
+
                     return t;
                 }
             };
             //ResultSet rs;
             List<MerchantSms> pendingSms = jdbcTemplate.query(sqlSelect, parameters, rm);
 
-            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, 
+            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE,
                     "Sending SMS ("+pendingSms.size()+")", "");
-            
+
             Setting getSMSGwURL = Common.getSettings("sms_api_url", jdbcTemplate);
             if (getSMSGwURL == null || getSMSGwURL.getSetting_value().isEmpty()) {
                 // release lock
@@ -5621,7 +5616,7 @@ public class TransactionsLogController {
                 return GeneralException
                         .getError("136", String.format(GeneralException.ERRORS_136, "SMS API URL"));
             }
-            
+
             Setting getSMSGwParams = Common.getSettings("sms_api_parameters", jdbcTemplate);
             if (getSMSGwParams == null || getSMSGwParams.getSetting_value().isEmpty()) {
                 // release lock
@@ -5630,7 +5625,7 @@ public class TransactionsLogController {
                 return GeneralException
                         .getError("136", String.format(GeneralException.ERRORS_136, "SMS API Params"));
             }
-            
+
             Setting getSMSGwHttpmethod = Common.getSettings("sms_api_http_method", jdbcTemplate);
             if (getSMSGwHttpmethod == null || getSMSGwHttpmethod.getSetting_value().isEmpty()) {
                 // release lock
@@ -5639,7 +5634,7 @@ public class TransactionsLogController {
                 return GeneralException
                         .getError("136", String.format(GeneralException.ERRORS_136, "SMS API HTTP Method"));
             }
-            
+
             Setting getSMSGwName = Common.getSettings("sms_gateway_name", jdbcTemplate);
             if (getSMSGwName == null || getSMSGwName.getSetting_value().isEmpty()) {
                 // release lock
@@ -5647,8 +5642,8 @@ public class TransactionsLogController {
                 writer.close();
                 return GeneralException
                         .getError("136", String.format(GeneralException.ERRORS_136, "SMS Gateway Name"));
-            }   
-            
+            }
+
             Setting getSMSGwCost = Common.getSettings("sms_gateway_cost", jdbcTemplate);
             if (getSMSGwCost == null || getSMSGwCost.getSetting_value().isEmpty()) {
                 // release lock
@@ -5656,8 +5651,8 @@ public class TransactionsLogController {
                 writer.close();
                 return GeneralException
                         .getError("136", String.format(GeneralException.ERRORS_136, "SMS Gateway Purchase Rate"));
-            }  
-            
+            }
+
             Setting getSMSGwCustomerRate = Common.getSettings("sms_customer_charge", jdbcTemplate);
             if (getSMSGwCustomerRate == null || getSMSGwCustomerRate.getSetting_value().isEmpty()) {
                 // release lock
@@ -5665,8 +5660,8 @@ public class TransactionsLogController {
                 writer.close();
                 return GeneralException
                         .getError("136", String.format(GeneralException.ERRORS_136, "SMS Customer Charge"));
-            }  
-            
+            }
+
             Statement newTx;
             String balance_type = SmsGateway.BALANCE_TYPE;
             String result = "";
@@ -5674,12 +5669,12 @@ public class TransactionsLogController {
 
                 Logger.getLogger(TransactionsLogController.class.getName()).log(Level.INFO,
                         "Working on Pending SMS: "+tx.getContent());
-            
+
                 //Get merchant account
                 Merchant merchant_account = Common.getMerchantById(
                     tx.getMerchant_id()+"",
                     jdbcTemplate);
-                
+
                 //Now bill this Merchant
                 newTx = new Statement();
                 newTx.setAmount(tx.getTotal_amount());
@@ -5689,7 +5684,7 @@ public class TransactionsLogController {
                 newTx.setDescription("SMS Charge: ");
                 newTx.setRecorded_by("SYSTEM");
                 newTx.setTx_type("DR");
-                
+
                 final Statement nSmsTx = newTx;
                 TransactionTemplate template = new TransactionTemplate(transactionManager);
                 result = template.execute(new TransactionCallback<String>() {
@@ -5697,13 +5692,13 @@ public class TransactionsLogController {
                     public String doInTransaction(TransactionStatus status) {
                         String res = "";
                         try {
-                             
-                            res = Common.recordStatementTxWithoutTransaciton(nSmsTx, 
+
+                            res = Common.recordStatementTxWithoutTransaction(nSmsTx,
                                     balance_type,
                                     jdbcTemplate,
                                     transactionManager,
                                     status);
-                            
+
                             if (!res.equals("success")) {
                                 // release lock
                                 lock.release();
@@ -5711,7 +5706,7 @@ public class TransactionsLogController {
                                 return res;
                             }
                             res = "success";
-                            
+
                         } catch (Exception ex) {
                             status.setRollbackOnly();
                             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
@@ -5721,7 +5716,7 @@ public class TransactionsLogController {
                         return res;
                     }
                 });
-                
+
                 if (result.equals("success")) {
                     //Now send the SMS.
 
@@ -5768,7 +5763,7 @@ public class TransactionsLogController {
 
                     Logger.getLogger(TransactionsLogController.class.getName()).log(Level.INFO,
                             "SMS RESULTS: "+tx.getContent()+" "+rs.getResponse());
-                    
+
                     if (rs == null || rs.getStatusCode() == 0 ) {
                         //SMS Failed, then reversion the amount
                         //Now bill this Merchant
@@ -5780,7 +5775,7 @@ public class TransactionsLogController {
                         newTx.setDescription("SMS Charge: ");
                         newTx.setRecorded_by("SYSTEM");
                         newTx.setTx_type("CR");
-                        
+
                         final Statement newTxReversal = newTx;
                         template = new TransactionTemplate(transactionManager);
                         result = template.execute(new TransactionCallback<String>() {
@@ -5789,7 +5784,7 @@ public class TransactionsLogController {
                                 String res = "";
                                 try {
 
-                                    res = Common.recordStatementTxWithoutTransaciton(newTxReversal, 
+                                    res = Common.recordStatementTxWithoutTransaction(newTxReversal,
                                             balance_type,
                                             jdbcTemplate,
                                             transactionManager,
@@ -5812,7 +5807,7 @@ public class TransactionsLogController {
                                 return res;
                             }
                         });
-                        
+
                         if (result.equals("success")) {
                             //Now update the SMS record
                             String sql_update_ = sql_update +" WHERE id=:id";
@@ -5823,9 +5818,9 @@ public class TransactionsLogController {
                             parameters.addValue("status", "FAILED");
                             parameters.addValue("smsgw", getSMSGwName.getSetting_value());
                             jdbcTemplate.update(sql_update_, parameters);
-                            
+
                         }
-                        
+
                     } else {
                         String sql_update_ = sql_update +" WHERE id=:id";
                         parameters = new MapSqlParameterSource();
@@ -5851,24 +5846,24 @@ public class TransactionsLogController {
                     //return result;
                 }
                 //Move to the next SMS.
-            } 
-            
+            }
+
             //Release lock
             lock.release();
             //close the file
             writer.close();
-            
+
             //Execution successfully.
             return GeneralSuccessResponse
                 .getMessage("000", GeneralSuccessResponse.SUCCESS_000
                         +" Processed: "+pendingSms.size());
-        
+
         } catch (IOException ex) {
             Logger.getLogger(TransactionsLogController.class.getName())
                     .log(Level.SEVERE, "HANDLING_SMS_SERVICE IOException:"+ex.getMessage(), ex);
             return GeneralException
                     .getError("107", GeneralException.ERRORS_107);
-            
+
         } catch (java.nio.channels.OverlappingFileLockException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
                 .log(Level.SEVERE, "HANDLING_SMS_SERVICE OverlappingFileLockException: "+ex.getMessage(), "");
@@ -5876,15 +5871,15 @@ public class TransactionsLogController {
             return "OverlappingFileLockException";
         }
     }
-    
-    
-    
+
+
+
     @GetMapping(path="/testRecieveSmsRequest")
-    public String testRecieveSmsRequest (@RequestBody String requestBody, 
+    public String testRecieveSmsRequest (@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
         //Set the response header
         return request.getQueryString();
     }
-    
+
 }
 

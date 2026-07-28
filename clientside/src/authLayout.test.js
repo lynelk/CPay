@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = relativePath => fs.readFileSync(path.join(__dirname, relativePath), 'utf8');
 
 describe('auth layout viewport safety', () => {
-  test('legacy AuthShell CSS still owns the viewport and prevents nested auth scrollbars', () => {
+  test('legacy auth CSS still owns the viewport and prevents nested auth scrollbars while it remains in the bundle', () => {
     const css = read('index.css');
 
     expect(css).toMatch(/\.cpay-auth-screen\s*\{[^}]*height:\s*100vh;[^}]*overflow:\s*hidden;/s);
@@ -45,13 +45,15 @@ describe('auth layout viewport safety', () => {
     expect(merchantLogin).not.toContain("from './Progress'");
   });
 
-  test('login shell centers the brand mark and avoids service chips on the login screen', () => {
-    const authShell = read('components/AuthShell.jsx');
+  test('iOS auth shell centers the brand mark and avoids legacy service chips on the login screen', () => {
+    const authLayout = read('ui/AuthLayout.tsx');
     const css = read('index.css');
 
-    expect(authShell).not.toContain("['MTN', 'Airtel', 'Pay In', 'Pay Out', 'SMS']");
-    expect(authShell).not.toContain('cpay-auth-chip-grid');
-    expect(authShell).toContain('cpay-auth-header-centered');
+    expect(fs.existsSync(path.join(__dirname, 'components/AuthShell.jsx'))).toBe(false);
+    expect(authLayout).not.toContain("['MTN', 'Airtel', 'Pay In', 'Pay Out', 'SMS']");
+    expect(authLayout).not.toContain('cpay-auth-chip-grid');
+    expect(authLayout).toContain('ios-auth__header');
+    expect(authLayout).toContain('ios-auth__title');
     expect(css).toMatch(/\.cpay-auth-header-centered\s*\{[^}]*justify-content:\s*center;[^}]*text-align:\s*center;/s);
     expect(css).toMatch(/\.cpay-auth-brand-large\s*\{[^}]*margin:\s*0 auto;/s);
   });

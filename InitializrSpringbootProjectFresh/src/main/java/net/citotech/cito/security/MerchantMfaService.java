@@ -3,6 +3,8 @@ package net.citotech.cito.security;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
 import org.springframework.jdbc.BadSqlGrammarException;
@@ -63,10 +65,12 @@ public class MerchantMfaService {
                 Integer.class);
             return count != null && count > 0;
         } catch (BadSqlGrammarException ex) {
-            if (isMissingMfaTable(ex)) {
-                return false;
-            }
-            throw ex;
+            // Fail closed: an unreadable MFA store must never be treated as "MFA disabled",
+            // or a broken/missing table would silently bypass the second factor at login.
+            Logger.getLogger(MerchantMfaService.class.getName()).log(Level.SEVERE,
+                "Merchant MFA store is unreadable (merchant_admin_id=" + merchantAdminId + "); denying login "
+                    + "instead of bypassing MFA", ex);
+            throw new PaymentGatewayException("MFA verification is temporarily unavailable", ex);
         }
     }
 
@@ -113,16 +117,6 @@ public class MerchantMfaService {
             throw new PaymentGatewayException(field + " is required");
         }
         return value.trim();
-    }
-
-    private boolean isMissingMfaTable(BadSqlGrammarException ex) {
-        Throwable cause = ex.getMostSpecificCause();
-        String sqlState = ex.getSQLException() != null ? ex.getSQLException().getSQLState() : null;
-        String message = cause != null ? cause.getMessage() : ex.getMessage();
-        return "42S02".equals(sqlState)
-            || (message != null
-                && message.toLowerCase().contains("merchant_mfa_totp")
-                && message.toLowerCase().contains("doesn't exist"));
     }
 
     private record MerchantAdminIdentity(long id, String email, String accountNumber) {
