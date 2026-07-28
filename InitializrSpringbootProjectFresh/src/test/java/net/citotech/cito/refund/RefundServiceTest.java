@@ -17,6 +17,7 @@ import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.ledger.DoubleEntryLedgerService;
+import net.citotech.cito.merchant.MerchantNotificationPreferenceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -37,11 +38,12 @@ class RefundServiceTest {
         PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
         DoubleEntryLedgerService ledgerService = mock(DoubleEntryLedgerService.class);
 
+        MerchantNotificationPreferenceService notificationPreferenceService = mock(MerchantNotificationPreferenceService.class);
         stubNoExistingRefund(jdbcTemplate);
         stubOriginalPayin(jdbcTemplate, 1L, 1000.0);
         stubRefundedSoFar(jdbcTemplate, new BigDecimal("400"));
 
-        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService);
+        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService, notificationPreferenceService);
 
         assertThatThrownBy(() -> service.requestRefund(merchant(), "PAY-1", "REF-1", new BigDecimal("700"), "too much"))
             .isInstanceOf(PaymentGatewayException.class)
@@ -56,11 +58,12 @@ class RefundServiceTest {
         PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
         DoubleEntryLedgerService ledgerService = mock(DoubleEntryLedgerService.class);
 
+        MerchantNotificationPreferenceService notificationPreferenceService = mock(MerchantNotificationPreferenceService.class);
         stubNoExistingRefund(jdbcTemplate);
         when(jdbcTemplate.query(contains("merchant_transactions_log"), any(MapSqlParameterSource.class), any(RowMapper.class)))
             .thenReturn(List.of());
 
-        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService);
+        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService, notificationPreferenceService);
 
         assertThatThrownBy(() -> service.requestRefund(merchant(), "PAY-MISSING", "REF-1", null, "reason"))
             .isInstanceOf(PaymentGatewayException.class)
@@ -94,7 +97,8 @@ class RefundServiceTest {
                 return List.of(mapper.mapRow(refundRow, 1));
             });
 
-        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService);
+        MerchantNotificationPreferenceService notificationPreferenceService = mock(MerchantNotificationPreferenceService.class);
+        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService, notificationPreferenceService);
         RefundRecord result = service.requestRefund(merchant(), "PAY-1", "REF-1", new BigDecimal("500"), "reason");
 
         assertThat(result.status()).isEqualTo(RefundStatus.COMPLETED);

@@ -24,15 +24,18 @@ public class MerchantSelfServiceController {
     private final MerchantChannelCredentialService channelService;
     private final MerchantEnvironmentService environmentService;
     private final SimpleRateLimitService rateLimitService;
+    private final MerchantNotificationPreferenceService notificationPreferenceService;
 
     public MerchantSelfServiceController(MerchantSelfServiceSignupService signupService,
                                          MerchantChannelCredentialService channelService,
                                          MerchantEnvironmentService environmentService,
-                                         SimpleRateLimitService rateLimitService) {
+                                         SimpleRateLimitService rateLimitService,
+                                         MerchantNotificationPreferenceService notificationPreferenceService) {
         this.signupService = signupService;
         this.channelService = channelService;
         this.environmentService = environmentService;
         this.rateLimitService = rateLimitService;
+        this.notificationPreferenceService = notificationPreferenceService;
     }
 
     @PostMapping(path = "/signup")
@@ -112,6 +115,43 @@ public class MerchantSelfServiceController {
         } catch (PaymentGatewayException e) {
             return ResponseEntity.badRequest().body(error("CHANNEL_SUBMIT_REJECTED", e.getMessage()));
         }
+    }
+
+    /**
+     * Lists one row per catalog event type (audit N5) - the merchant's explicit channel/address
+     * choice where one exists, otherwise a defaulted EMAIL-to-primary-contact entry, so the portal
+     * can show every configurable event even before the merchant has touched any of them.
+     */
+    @GetMapping(path = "/notification-preferences")
+    public ResponseEntity<?> notificationPreferences(HttpServletRequest request) {
+        try {
+            MerchantUser user = currentMerchantUser(request);
+            return ResponseEntity.ok(notificationPreferenceService.list(user.getMerchant_id()));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
+        }
+    }
+
+    /**
+     * Upserts the merchant's preference for a single event type: {@code eventType} (must be one of
+     * net.citotech.cito.webhook.WebhookEventCatalog's event types), {@code channel} (EMAIL, SMS, or
+     * NONE), and an optional {@code notifyAddress} override.
+     */
+    @PostMapping(path = "/notification-preferences")
+    public ResponseEntity<?> saveNotificationPreference(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        try {
+            MerchantUser user = currentMerchantUser(request);
+            String eventType = text(body.get("eventType"));
+            String channel = text(body.get("channel"));
+            String notifyAddress = text(body.get("notifyAddress"));
+            return ResponseEntity.ok(notificationPreferenceService.save(user.getMerchant_id(), eventType, channel, notifyAddress));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.badRequest().body(error("NOTIFICATION_PREFERENCE_REJECTED", e.getMessage()));
+        }
+    }
+
+    private String text(Object value) {
+        return value == null ? null : String.valueOf(value).trim();
     }
 
     private MerchantUser currentMerchantUser(HttpServletRequest request) {
