@@ -1307,8 +1307,7 @@ public class Common {
      * When true, float_stock, suspense, and revenue account postings are skipped.
      */
     public static boolean useMerchantProviderCredentials(NamedParameterJdbcTemplate jdbcTemplate) {
-        Setting s = Common.getSettings("use_merchant_provider_credentials", jdbcTemplate);
-        return s != null && "true".equalsIgnoreCase(s.getSetting_value().trim());
+        return SettingsRegistry.getBoolean("use_merchant_provider_credentials", jdbcTemplate);
     }
 
     /*
