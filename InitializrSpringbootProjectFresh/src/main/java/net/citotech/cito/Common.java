@@ -2592,21 +2592,21 @@ public class Common {
 
                                     HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                                     if (rs != null) {
-                                        String sql_update_final = sql_update + ", callback_trace=:callback_trace "
+                                        String failedTraceSql = sql_update + ", callback_trace=:callback_trace "
                                                 + " WHERE id=:id";
-                                        MapSqlParameterSource parameters_ = new MapSqlParameterSource();
-                                        parameters_.addValue("id", tx.getId());
-                                        parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
-                                        parameters_.addValue("status", tx.getStatus());
-                                        parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
-                                        parameters_.addValue("callback_trace", rs.toString());
+                                        MapSqlParameterSource failedTraceParams = new MapSqlParameterSource();
+                                        failedTraceParams.addValue("id", tx.getId());
+                                        failedTraceParams.addValue("tx_update_trace", tx.getTx_update_trace());
+                                        failedTraceParams.addValue("status", tx.getStatus());
+                                        failedTraceParams.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
+                                        failedTraceParams.addValue("callback_trace", rs.toString());
 
                                         //Now update the trace of this transaction.
-                                        String result = template.execute(new TransactionCallback<String>() {
+                                        String traceResult = template.execute(new TransactionCallback<String>() {
                                             @Override
                                             public String doInTransaction(TransactionStatus status) {
                                                 try {
-                                                    jdbcTemplate.update(sql_update_final, parameters_);
+                                                    jdbcTemplate.update(failedTraceSql, failedTraceParams);
                                                     return "success";
                                                 } catch (Exception e) {
                                                     //transactionManager.rollback(status);
@@ -2618,7 +2618,7 @@ public class Common {
                                                 }
                                             }
                                         });
-                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: " + result, "");
+                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: " + traceResult, "");
                                     }
 
                                 } catch (NoSuchAlgorithmException ex) {

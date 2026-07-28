@@ -161,17 +161,14 @@ public class AuthenticationController {
             resJson.put("user", u_);
 
             //Send mail on login
-            Thread thread = new Thread(){
-                public void run(){
+            ManagedAsyncTasks.run("admin-login-email-" + u.getEmail(), () -> {
                     SendMail mail = new SendMail();
                     mail.sendSimpleMessage(u.getEmail(),
                         "You have logged into Cito Account",
                         "This is to let you know that you have logged into your account Cito Account.",
                             jdbcTemplate
                     );
-                }
-            };
-            thread.start();
+            });
 
             return resJson.toString();
 
@@ -278,15 +275,12 @@ public class AuthenticationController {
             resJson.put("user", u_);
 
             //Send mail on login
-            Thread thread = new Thread(){
-                public void run(){
+            ManagedAsyncTasks.run("merchant-login-email-" + u.getEmail(), () -> {
                     SendMail mail = new SendMail();
                     mail.sendSimpleMessage(u.getEmail(),
                     "You have logged in",
                     "This is to let you know that you have logged into your account.");
-                }
-            };
-            thread.start();
+            });
             
             return resJson.toString();
             
@@ -570,18 +564,15 @@ public class AuthenticationController {
                 
                 final String subject = "Password Reset OTP";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-otp-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
+                        mail.sendSimpleMessage(to,
                                 subject,
                                 emailContent,
                                 jdbcTemplate
                         );
-                    }
-                };
-                thread.start();
+                });
                  
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
@@ -641,17 +632,14 @@ public class AuthenticationController {
                 
                 final String subject = "Password Reset Request";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-request-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
-                        subject, 
+                        mail.sendSimpleMessage(to,
+                        subject,
                         emailContent);
-                    }
-                };
-                thread.start();
-                 
+                });
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
             } else {
@@ -711,13 +699,10 @@ public class AuthenticationController {
                 final String subject = "Password Reset Request";
                 final String to = u.getEmail();
 
-                Thread thread = new Thread(){
-                    public void run(){
+                ManagedAsyncTasks.run("merchant-password-reset-request-email-" + to, () -> {
                         SendMail mail = new SendMail();
                         mail.sendSimpleMessage(to, subject, emailContent);
-                    }
-                };
-                thread.start();
+                });
 
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_000);
@@ -787,16 +772,13 @@ public class AuthenticationController {
                 
                 final String subject = "You have Reset your Password!";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-done-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
-                        subject, 
+                        mail.sendSimpleMessage(to,
+                        subject,
                         emailContent);
-                    }
-                };
-                thread.start();
+                });
                  
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_001);
@@ -870,16 +852,13 @@ public class AuthenticationController {
                 
                 final String subject = "You have Reset your Password!";
                 final String to = u.getEmail();
-                
-                Thread thread = new Thread(){
-                    public void run(){
+
+                ManagedAsyncTasks.run("password-reset-done-email-" + to, () -> {
                         SendMail mail = new SendMail();
-                        mail.sendSimpleMessage(to, 
-                        subject, 
+                        mail.sendSimpleMessage(to,
+                        subject,
                         emailContent);
-                    }
-                };
-                thread.start();
+                });
                  
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_001);

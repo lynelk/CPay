@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import net.citotech.cito.Model.*;
+import net.citotech.cito.async.ManagedAsyncTasks;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -2223,10 +2224,9 @@ public class TransactionsLogController {
                             }
                         } else if (txUpdatedDetails.getTransactionStatus().equals("FAILED")) {
 
-                            //Send callback request on another thread
+                            //Send callback request asynchronously
                             if (!tx.getCallback_url().isEmpty()) {
-                                Thread thread = new Thread(){
-                                    public void run(){
+                                ManagedAsyncTasks.run("txController-failed-callback-" + tx.getId(), () -> {
 
                                         String amountToSign = tx.getOriginal_amount()+"";
                                         String signedData = tx.getPayer_number()+amountToSign
@@ -2271,21 +2271,21 @@ public class TransactionsLogController {
 
                                             HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
                                             if (rs != null) {
-                                                 String sql_update_final =  sql_update+", callback_trace=:callback_trace "
+                                                 String failedCbTraceSql =  sql_update+", callback_trace=:callback_trace "
                                                         + " WHERE id=:id";
-                                                 MapSqlParameterSource parameters_ = new MapSqlParameterSource();
-                                                 parameters_.addValue("id", tx.getId());
-                                                 parameters_.addValue("tx_update_trace", tx.getTx_update_trace());
-                                                 parameters_.addValue("status", tx.getStatus());
-                                                 parameters_.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
-                                                 parameters_.addValue("callback_trace", rs.toString());
+                                                 MapSqlParameterSource failedCbTraceParams = new MapSqlParameterSource();
+                                                 failedCbTraceParams.addValue("id", tx.getId());
+                                                 failedCbTraceParams.addValue("tx_update_trace", tx.getTx_update_trace());
+                                                 failedCbTraceParams.addValue("status", tx.getStatus());
+                                                 failedCbTraceParams.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
+                                                 failedCbTraceParams.addValue("callback_trace", rs.toString());
 
                                                  //Now update the trace of this transaction.
-                                                 String result = template.execute(new TransactionCallback<String>() {
+                                                 String failedCbTraceResult = template.execute(new TransactionCallback<String>() {
                                                     @Override
                                                     public String doInTransaction(TransactionStatus status) {
                                                         try {
-                                                            jdbcTemplate.update(sql_update_final, parameters_);
+                                                            jdbcTemplate.update(failedCbTraceSql, failedCbTraceParams);
                                                             return "success";
                                                         } catch (Exception e) {
                                                             //transactionManager.rollback(status);
@@ -2297,7 +2297,7 @@ public class TransactionsLogController {
                                                         }
                                                     }
                                                  });
-                                                 Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: "+result, "");
+                                                 Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: "+failedCbTraceResult, "");
                                              }
 
                                         } catch (NoSuchAlgorithmException ex) {
@@ -2310,9 +2310,7 @@ public class TransactionsLogController {
                                             Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
                                         }
 
-                                    }
-                                };
-                                thread.start();
+                                });
                             }
 
                             //If it's a payout, reverse the money.
