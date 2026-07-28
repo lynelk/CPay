@@ -101,6 +101,7 @@ class MerchantSelfServiceControllerStatementsTest {
             mock(MerchantSelfServiceSignupService.class),
             mock(MerchantChannelCredentialService.class),
             mock(MerchantEnvironmentService.class),
+            mock(net.citotech.cito.reconciliation.MerchantSettlementPreferenceService.class),
             mock(SimpleRateLimitService.class),
             statementExportService,
             jdbcTemplate
