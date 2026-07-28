@@ -26,6 +26,15 @@ public class OperationalDataCleanupScheduler {
     @Value("${cpay.cleanup.callback-claim-retention-hours:24}")
     private long callbackClaimRetentionHours;
 
+    @Value("${cpay.cleanup.password-reset-token-retention-days:7}")
+    private long passwordResetTokenRetentionDays;
+
+    @Value("${cpay.cleanup.webhook-delivery-retention-days:30}")
+    private long webhookDeliveryRetentionDays;
+
+    @Value("${cpay.security.session-absolute-max-hours:12}")
+    private long sessionAbsoluteMaxHours;
+
     public OperationalDataCleanupScheduler(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -42,9 +51,21 @@ public class OperationalDataCleanupScheduler {
             int staleClaims = deleteOlderThan(
                     "DELETE FROM callback_task_claims WHERE claim_status='ACTIVE' AND created_at < :cutoff",
                     Instant.now().minus(callbackClaimRetentionHours, ChronoUnit.HOURS));
-            if (rateRows > 0 || staleClaims > 0) {
-                logger.log(Level.INFO, "Operational cleanup removed api_rate_limits={0}, stale_callback_claims={1}",
-                        new Object[]{rateRows, staleClaims});
+            int resetTokens = deleteOlderThan(
+                    "DELETE FROM password_reset_tokens WHERE created_at < :cutoff",
+                    Instant.now().minus(passwordResetTokenRetentionDays, ChronoUnit.DAYS));
+            int webhookDeliveries = deleteOlderThan(
+                    "DELETE FROM merchant_webhook_deliveries WHERE delivery_status IN ('DELIVERED','FAILED') AND created_at < :cutoff",
+                    Instant.now().minus(webhookDeliveryRetentionDays, ChronoUnit.DAYS));
+            // Spring Session only expires sessions by inactivity (EXPIRY_TIME); this enforces an
+            // absolute cap regardless of activity, so a session can't be kept alive indefinitely
+            // by staying active (audit E4).
+            int expiredSessions = expireSessionsOlderThan(
+                    Instant.now().minus(sessionAbsoluteMaxHours, ChronoUnit.HOURS));
+            if (rateRows > 0 || staleClaims > 0 || resetTokens > 0 || webhookDeliveries > 0 || expiredSessions > 0) {
+                logger.log(Level.INFO, "Operational cleanup removed api_rate_limits={0}, stale_callback_claims={1}, "
+                                + "password_reset_tokens={2}, webhook_deliveries={3}, sessions_past_absolute_max={4}",
+                        new Object[]{rateRows, staleClaims, resetTokens, webhookDeliveries, expiredSessions});
             }
         } catch (Exception ex) {
             logger.log(Level.WARNING, "Operational cleanup failed: " + ex.getMessage(), ex);
@@ -55,5 +76,12 @@ public class OperationalDataCleanupScheduler {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("cutoff", Timestamp.from(cutoff));
         return jdbcTemplate.update(sql, parameters);
+    }
+
+    private int expireSessionsOlderThan(Instant cutoff) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("cutoff", cutoff.toEpochMilli());
+        return jdbcTemplate.update(
+                "DELETE FROM SPRING_SESSION WHERE CREATION_TIME < :cutoff", parameters);
     }
 }
