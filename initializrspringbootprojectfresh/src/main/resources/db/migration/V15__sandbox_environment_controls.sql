@@ -2,11 +2,14 @@
 -- These controls keep sandbox easy for new integrators while protecting
 -- production traffic with a configurable daily cap.
 
-CALL add_column_if_missing('provider_endpoint_runs', 'merchant_number', 'VARCHAR(100) NULL');
-CALL add_column_if_missing('provider_endpoint_runs', 'environment', 'VARCHAR(40) NOT NULL DEFAULT ''SANDBOX''');
-CALL add_index_if_missing('provider_endpoint_runs', 'idx_provider_runs_merchant_env', 'INDEX `idx_provider_runs_merchant_env` (`merchant_number`, `environment`, `created_at`)');
+ALTER TABLE `provider_endpoint_runs`
+  ADD COLUMN `merchant_number` VARCHAR(100) NULL,
+  ADD COLUMN `environment` VARCHAR(40) NOT NULL DEFAULT 'SANDBOX';
 
-CREATE TABLE IF NOT EXISTS `merchant_environment_preferences` (
+ALTER TABLE `provider_endpoint_runs`
+  ADD INDEX  `idx_provider_runs_merchant_env` (`merchant_number`, `environment`, `created_at`);
+
+CREATE TABLE `merchant_environment_preferences` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `merchant_id` BIGINT UNSIGNED NOT NULL,
   `merchant_user_id` BIGINT UNSIGNED NULL,
