@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import net.citotech.cito.Model.KeyPairStrings;
+import net.citotech.cito.async.ManagedAsyncTasks;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.Model.Setting;
@@ -1216,8 +1217,7 @@ public class MerchantsController {
 
             Logger.getLogger(MerchantsController.class.getName()).log(Level.FINE, emailContent);
 
-            Thread thread = new Thread(){
-                public void run(){
+            ManagedAsyncTasks.run("merchant-user-credentials-email-" + to, () -> {
                     SendMail mail = new SendMail();
                     mail.sendSimpleMessage(
                         to,
@@ -1225,9 +1225,7 @@ public class MerchantsController {
                         emailContent,
                         jdbcTemplate
                     );
-                }
-            };
-            thread.start();
+            });
         } catch (Exception ex) {
             Logger.getLogger(MerchantsController.class.getName())
                     .log(Level.WARNING, "Merchant credentials email could not be queued.", ex);
