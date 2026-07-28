@@ -271,13 +271,20 @@ public class TransactionsLogController {
 
             if (!start_date.isEmpty() && !end_date.isEmpty()) {
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
-                parameters.addValue("start_date", start_date+" 00:00:00");
-                parameters.addValue("end_date", end_date+" 23:59:59");
+                // Audit F6: bind a native java.sql.Timestamp, not the raw request string - a
+                // malformed date now fails fast with a clear parse error instead of silently
+                // reaching the database as an unvalidated string.
+                try {
+                    parameters.addValue("start_date", java.sql.Timestamp.valueOf(start_date+" 00:00:00"));
+                    parameters.addValue("end_date", java.sql.Timestamp.valueOf(end_date+" 23:59:59"));
+                } catch (IllegalArgumentException ex) {
+                    return GeneralException.getError("101", "start_date/end_date must use YYYY-MM-DD.");
+                }
             } else {
                 LocalDateTime dt = LocalDateTime.now();
-                String end_date_ = dt.format(Common.getDateTimeFormater());
+                java.sql.Timestamp end_date_ = java.sql.Timestamp.valueOf(dt);
                 LocalDateTime last3Months = dt.minusMonths(3);
-                String start_date_ = last3Months.format(Common.getDateTimeFormater());
+                java.sql.Timestamp start_date_ = java.sql.Timestamp.valueOf(last3Months);
 
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
                 parameters.addValue("start_date", start_date_);
@@ -618,13 +625,20 @@ public class TransactionsLogController {
 
             if (!start_date.isEmpty() && !end_date.isEmpty()) {
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
-                parameters.addValue("start_date", start_date+" 00:00:00");
-                parameters.addValue("end_date", end_date+" 23:59:59");
+                // Audit F6: bind a native java.sql.Timestamp, not the raw request string - a
+                // malformed date now fails fast with a clear parse error instead of silently
+                // reaching the database as an unvalidated string.
+                try {
+                    parameters.addValue("start_date", java.sql.Timestamp.valueOf(start_date+" 00:00:00"));
+                    parameters.addValue("end_date", java.sql.Timestamp.valueOf(end_date+" 23:59:59"));
+                } catch (IllegalArgumentException ex) {
+                    return GeneralException.getError("101", "start_date/end_date must use YYYY-MM-DD.");
+                }
             } else {
                 LocalDateTime dt = LocalDateTime.now();
-                String end_date_ = dt.format(Common.getDateTimeFormater());
+                java.sql.Timestamp end_date_ = java.sql.Timestamp.valueOf(dt);
                 LocalDateTime last3Months = dt.minusMonths(3);
-                String start_date_ = last3Months.format(Common.getDateTimeFormater());
+                java.sql.Timestamp start_date_ = java.sql.Timestamp.valueOf(last3Months);
 
                 sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
                 parameters.addValue("start_date", start_date_);
@@ -760,21 +774,28 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         tx_type='"+Transaction.TX_TYPE_PAYIN+"' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS payins,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS payins,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         tx_type='"+Transaction.TX_TYPE_PAYOUT+"' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS payouts"
+                + "             created_on BETWEEN :start_date AND :end_date) AS payouts"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
@@ -889,9 +910,16 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
@@ -899,12 +927,12 @@ public class TransactionsLogController {
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' "
                 + "     AND tx_type='"+Transaction.TX_TYPE_PAYIN+"' "
                 + "         AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS payins,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS payins,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         tx_type='"+Transaction.TX_TYPE_PAYOUT+"' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS payouts"
+                + "             created_on BETWEEN :start_date AND :end_date) AS payouts"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
@@ -1019,21 +1047,28 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         gateway_id='MTNMoMoPaymentGateway' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS mtnmm,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS mtnmm,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         gateway_id='AirtelMMPaymentGateway' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS airtelmm"
+                + "             created_on BETWEEN :start_date AND :end_date) AS airtelmm"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
@@ -1235,21 +1270,28 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         gateway_id='MTNMoMoPaymentGateway' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS mtnmm,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS mtnmm,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         gateway_id='AirtelMMPaymentGateway' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS airtelmm"
+                + "             created_on BETWEEN :start_date AND :end_date) AS airtelmm"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
@@ -1364,31 +1406,38 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='SUCCESSFUL' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS successful,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS successful,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='FAILED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS failed,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS failed,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='PENDING' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS pending,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS pending,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='UNDETERMINED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
+                + "             created_on BETWEEN :start_date AND :end_date) AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
@@ -1508,31 +1557,38 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='SUCCESSFUL' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS successful,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS successful,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='FAILED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS failed,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS failed,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='PENDING' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS pending,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS pending,"
                 + " (SELECT COUNT(*) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='UNDETERMINED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
+                + "             created_on BETWEEN :start_date AND :end_date) AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
@@ -1652,31 +1708,38 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='SUCCESSFUL' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS successful,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS successful,"
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='FAILED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS failed,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS failed,"
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='PENDING' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS pending,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS pending,"
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE "
                 + "         status='UNDETERMINED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
+                + "             created_on BETWEEN :start_date AND :end_date) AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
@@ -1797,31 +1860,38 @@ public class TransactionsLogController {
             JSONObject searchValue = sObject.getJSONObject("searchingValue");*/
 
             LocalDateTime now = LocalDateTime.now();
-            String end_date = now.format(Common.getDateTimeFormater());
+            // Audit F6: bound as a native java.sql.Timestamp via a bind parameter, not a
+            // Java-formatted string spliced into the SQL text - the previous
+            // "BETWEEN '"+start_date+"'" form worked only by luck (MySQL happening to coerce a
+            // well-formed literal) and had no protection against a malformed/misformatted value
+            // silently mis-comparing instead of erroring.
+            java.sql.Timestamp end_date = java.sql.Timestamp.valueOf(now);
             LocalDateTime start_ = now.minusMonths(6);
-            String start_date = start_.format(Common.getDateTimeFormater());
+            java.sql.Timestamp start_date = java.sql.Timestamp.valueOf(start_);
+            parameters.addValue("start_date", start_date);
+            parameters.addValue("end_date", end_date);
 
             String sqlSelect = "SELECT "
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='SUCCESSFUL' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS successful,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS successful,"
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='FAILED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS failed,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS failed,"
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='PENDING' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS pending,"
+                + "             created_on BETWEEN :start_date AND :end_date) AS pending,"
                 + " (SELECT SUM(original_amount) "
                 + "     FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + "     WHERE  merchant_id='"+sessionUser.getMerchant_id()+"' AND "
                 + "         status='UNDETERMINED' AND "
-                + "             created_on BETWEEN '"+start_date+"' AND '"+end_date+"') AS undetermined"
+                + "             created_on BETWEEN :start_date AND :end_date) AS undetermined"
                 + " FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" ";
 
 
