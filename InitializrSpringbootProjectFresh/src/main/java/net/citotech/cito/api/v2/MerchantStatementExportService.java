@@ -1,9 +1,12 @@
 package net.citotech.cito.api.v2;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
@@ -30,6 +33,18 @@ public class MerchantStatementExportService {
     }
 
     public StatementExportResponse export(Merchant merchant, String merchantNumber, String startDate, String endDate, Integer limit) {
+        return export(merchant, merchantNumber, startDate, endDate, limit, null);
+    }
+
+    /**
+     * Cursor-paginated statement export (audit D4). A flat {@code limit} silently truncated large
+     * date ranges with no way for a client to fetch the rest; this adds an opaque keyset cursor
+     * (last row's created_on + id) over the existing {@code ORDER BY created_on DESC, id DESC} so
+     * pages are stable even as new statement rows are inserted concurrently - unlike offset/page-
+     * number pagination, which can skip or repeat rows under concurrent writes.
+     */
+    public StatementExportResponse export(Merchant merchant, String merchantNumber, String startDate, String endDate,
+            Integer limit, String cursor) {
         validateMerchant(merchant, merchantNumber);
         LocalDate start = parseDate(startDate, "startDate");
         LocalDate end = parseDate(endDate, "endDate");
@@ -37,6 +52,7 @@ public class MerchantStatementExportService {
             throw new PaymentGatewayException("endDate must be on or after startDate");
         }
         int boundedLimit = boundLimit(limit);
+        Cursor decodedCursor = decodeCursor(cursor);
 
         String sql = "SELECT ms.id, ms.created_on, ms.gateway_id, ms.tx_type, ms.description, ms.narrative, "
                 + "ms.amount, ms.currency, ms.mtnmm_balance, ms.airtelmm_balance, ms.safaricom_balance, ms.sms_balance, "
@@ -46,6 +62,10 @@ public class MerchantStatementExportService {
                 + "WHERE ms.merchant_id = :merchant_id "
                 + "AND ms.created_on >= :start_at "
                 + "AND ms.created_on < :end_at "
+                + (decodedCursor != null
+                    ? "AND (ms.created_on < :cursor_created_on "
+                        + "OR (ms.created_on = :cursor_created_on AND ms.id < :cursor_id)) "
+                    : "")
                 + "ORDER BY ms.created_on DESC, ms.id DESC "
                 + "LIMIT :limit";
 
@@ -53,9 +73,21 @@ public class MerchantStatementExportService {
         p.addValue("merchant_id", merchant.getId());
         p.addValue("start_at", Timestamp.valueOf(start.atStartOfDay()));
         p.addValue("end_at", Timestamp.valueOf(end.plusDays(1).atStartOfDay()));
-        p.addValue("limit", boundedLimit);
+        // Fetch one extra row so we can tell whether another page follows without a second query.
+        p.addValue("limit", boundedLimit + 1);
+        if (decodedCursor != null) {
+            p.addValue("cursor_created_on", decodedCursor.createdOn());
+            p.addValue("cursor_id", decodedCursor.id());
+        }
 
-        List<StatementRow> rows = jdbcTemplate.query(sql, p, rowMapper());
+        List<CursorRow> fetched = jdbcTemplate.query(sql, p, rowMapper());
+        boolean hasMore = fetched.size() > boundedLimit;
+        List<CursorRow> page = hasMore ? fetched.subList(0, boundedLimit) : fetched;
+
+        List<StatementRow> rows = new ArrayList<>(page.size());
+        for (CursorRow row : page) {
+            rows.add(row.row());
+        }
         auditService.record(merchant, "STATEMENT_EXPORT_READ", start + " to " + end + ", rows=" + rows.size());
 
         StatementExportResponse response = new StatementExportResponse();
@@ -64,7 +96,37 @@ public class MerchantStatementExportService {
         response.setEndDate(end.toString());
         response.setCount(rows.size());
         response.setRows(rows);
+        if (hasMore) {
+            CursorRow last = page.get(page.size() - 1);
+            response.setNextCursor(encodeCursor(last.createdOn(), last.row().getId()));
+        }
         return response;
+    }
+
+    private record Cursor(Timestamp createdOn, long id) {
+    }
+
+    private record CursorRow(StatementRow row, Timestamp createdOn) {
+    }
+
+    private String encodeCursor(Timestamp createdOn, long id) {
+        String raw = createdOn.getTime() + ":" + id;
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private Cursor decodeCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        try {
+            String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+            int sep = raw.indexOf(':');
+            long epochMillis = Long.parseLong(raw.substring(0, sep));
+            long id = Long.parseLong(raw.substring(sep + 1));
+            return new Cursor(new Timestamp(epochMillis), id);
+        } catch (RuntimeException ex) {
+            throw new PaymentGatewayException("cursor is invalid");
+        }
     }
 
     public String toCsv(StatementExportResponse response) {
@@ -90,10 +152,11 @@ public class MerchantStatementExportService {
         return csv.toString();
     }
 
-    private RowMapper<StatementRow> rowMapper() {
+    private RowMapper<CursorRow> rowMapper() {
         return (rs, rowNum) -> {
             StatementRow row = new StatementRow();
             row.setId(rs.getLong("id"));
+            Timestamp createdOn = rs.getTimestamp("created_on");
             row.setCreatedOn(value(rs.getString("created_on")));
             row.setGatewayId(value(rs.getString("gateway_id")));
             row.setTransactionType(value(rs.getString("tx_type")));
@@ -108,7 +171,7 @@ public class MerchantStatementExportService {
             row.setMerchantReference(value(rs.getString("tx_merchant_ref")));
             row.setTransactionId(value(rs.getString("tx_unique_id")));
             row.setTransactionStatus(value(rs.getString("status")));
-            return row;
+            return new CursorRow(row, createdOn);
         };
     }
 

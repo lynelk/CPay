@@ -154,10 +154,11 @@ public class PaymentsV2Controller {
                                         @RequestParam("endDate") String endDate,
                                         @RequestParam(value = "format", defaultValue = "json") String format,
                                         @RequestParam(value = "limit", required = false) Integer limit,
+                                        @RequestParam(value = "cursor", required = false) String cursor,
                                         HttpServletRequest servletRequest) {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
-            StatementExportResponse export = statementExportService.export(merchant, merchantNumber, startDate, endDate, limit);
+            StatementExportResponse export = statementExportService.export(merchant, merchantNumber, startDate, endDate, limit, cursor);
             if ("csv".equalsIgnoreCase(format)) {
                 String filename = "cpay-statement-" + merchantNumber + "-" + startDate + "-to-" + endDate + ".csv";
                 return ResponseEntity.ok()

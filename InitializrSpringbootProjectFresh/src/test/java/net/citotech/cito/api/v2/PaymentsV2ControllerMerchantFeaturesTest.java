@@ -63,7 +63,7 @@ class PaymentsV2ControllerMerchantFeaturesTest {
         StatementExportResponse export = statementExport();
 
         when(securityService.verify(any(), eq(""), eq("M100"))).thenReturn(merchant);
-        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(100)))
+        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(100), eq(null)))
             .thenReturn(export);
         when(statementExportService.toCsv(export)).thenReturn("id,created_on\n1,2026-07-16 09:30:00\n");
 
@@ -85,7 +85,7 @@ class PaymentsV2ControllerMerchantFeaturesTest {
         StatementExportResponse export = statementExport();
 
         when(securityService.verify(any(), eq(""), eq("M100"))).thenReturn(merchant);
-        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(null)))
+        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(null), eq(null)))
             .thenReturn(export);
 
         mockMvc().perform(get("/api/v2/statements")

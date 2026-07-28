@@ -9,6 +9,7 @@ public class StatementExportResponse {
     private String endDate;
     private int count;
     private List<StatementRow> rows;
+    private String nextCursor;
 
     public String getMerchantNumber() {
         return merchantNumber;
@@ -48,6 +49,15 @@ public class StatementExportResponse {
 
     public void setRows(List<StatementRow> rows) {
         this.rows = rows;
+    }
+
+    /** Opaque cursor to pass back as the {@code cursor} query param to fetch the next page; null when this is the last page. */
+    public String getNextCursor() {
+        return nextCursor;
+    }
+
+    public void setNextCursor(String nextCursor) {
+        this.nextCursor = nextCursor;
     }
 
     public static class StatementRow {
