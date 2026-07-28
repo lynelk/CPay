@@ -73,7 +73,7 @@ public class DoPayGateway {
         return null;
     }
     
-    static String getGatewayIdByMsisdn(String msisdn, NamedParameterJdbcTemplate jdbcTemplate) {
+    public static String getGatewayIdByMsisdn(String msisdn, NamedParameterJdbcTemplate jdbcTemplate) {
         
         if (MTNMoMoPaymentGateway.isValidMisdn(msisdn)) {
             return MTNMoMoPaymentGateway.gateway_id;

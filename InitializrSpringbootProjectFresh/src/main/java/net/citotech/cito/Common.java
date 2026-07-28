@@ -736,10 +736,15 @@ public class Common {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("beneficiary_id", beneficiaryId);
         parameters.addValue("batch_id", batch_id);
+        // ORDER BY id DESC (audit B8): a retried beneficiary gets a new transaction row rather
+        // than reusing the failed one, so this must return the most recent attempt - without
+        // this, a retry's fresh row would be invisible to every caller here, which always found
+        // the original (oldest, permanently FAILED) row instead.
         String sqlSelect = "SELECT *  FROM "+Common.DB_TABLE_MERCHANT_TRANSACTION_LOG+" "
                 + " WHERE beneficiary_id=:beneficiary_id "
-                + " AND merchant_batch_transactions_log_id=:batch_id ";
-        
+                + " AND merchant_batch_transactions_log_id=:batch_id "
+                + " ORDER BY id DESC LIMIT 1";
+
         RowMapper<Transaction> rm = Common.getTransactionRowMapper();
         List<Transaction> listTxs = jdbcTemplate.query(sqlSelect, parameters, rm);
         if (listTxs.size() > 0) {
