@@ -582,6 +582,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             headers.put("Authorization", "Basic "+Common.base64Encode(this.api_disbursements_user+":"+this.api_disbursements_key));
             headers.put("Ocp-Apim-Subscription-Key", this.api_disbursements_subscription);
         }
+        headers.put("X-Target-Environment", this.env);
         
         String url_string = this.global_url+"/"+this.segment+"/token/";
         
