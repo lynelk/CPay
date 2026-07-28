@@ -398,8 +398,16 @@ public class Common {
     * Returns HttpRequestREsponse class
     */
     
-    public static HttpRequestResponse doHttpRequest(String method, String url, 
+    public static HttpRequestResponse doHttpRequest(String method, String url,
             String data, Map<String, String> headers) {
+        // Audit H2: forward the current request's correlation id downstream (provider APIs,
+        // webhook/callback deliveries) so our logs and the receiving system's logs for the same
+        // call can be cross-referenced. Never overrides a header the caller explicitly set.
+        String requestId = org.slf4j.MDC.get("request_id");
+        if (requestId != null && !headers.containsKey(net.citotech.cito.config.RequestCorrelationFilter.REQUEST_ID_HEADER)) {
+            headers = new HashMap<>(headers);
+            headers.put(net.citotech.cito.config.RequestCorrelationFilter.REQUEST_ID_HEADER, requestId);
+        }
         HttpRequestResponse r = new HttpRequestResponse();
             r.setUrl(url);
             r.setRequestData(data);

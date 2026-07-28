@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
 /**
  * Covers audit B9/G5: legacy code previously fired callback/email work on a raw
@@ -14,6 +17,26 @@ import org.junit.jupiter.api.Test;
  * block the caller (the exception is caught and logged instead of propagating or disappearing).
  */
 class ManagedAsyncTasksTest {
+
+    @AfterEach
+    void clearMdc() {
+        MDC.clear();
+    }
+
+    @Test
+    void propagatesTheCallingThreadsMdcContextIntoTheTask() throws InterruptedException {
+        MDC.put("request_id", "req-123");
+        AtomicReference<String> seenInTask = new AtomicReference<>();
+        CountDownLatch ran = new CountDownLatch(1);
+
+        ManagedAsyncTasks.run("mdc-test-task", () -> {
+            seenInTask.set(MDC.get("request_id"));
+            ran.countDown();
+        });
+
+        assertThat(ran.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(seenInTask.get()).isEqualTo("req-123");
+    }
 
     @Test
     void runsTheTaskAsynchronously() throws InterruptedException {
