@@ -88,7 +88,6 @@ public class SettlementScheduleService {
         BigDecimal sweepAmount = available.subtract(retained);
         String reference = "settlement-" + schedule.id + "-" + runDate;
         if (sweepAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            insertRun(schedule.id, reference, "SKIPPED", BigDecimal.ZERO, "minimum retained balance not reached");
             return new SettlementSweepResult(reference, "SKIPPED", BigDecimal.ZERO, "minimum retained balance not reached");
         }
         if (insertRun(schedule.id, reference, "OPENED", sweepAmount, "settlement batch opened") == 0) {

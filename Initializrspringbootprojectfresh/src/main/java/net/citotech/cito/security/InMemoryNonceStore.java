@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "cpay.security.nonce-store", havingValue = "memory", matchIfMissing = true)
+@ConditionalOnProperty(name = "cpay.security.nonce-store", havingValue = "memory")
 public class InMemoryNonceStore implements NonceStore {
     private final Map<String, Instant> seenNonces = new ConcurrentHashMap<>();
 

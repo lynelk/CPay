@@ -9,7 +9,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "cpay.security.nonce-store", havingValue = "jdbc")
+@ConditionalOnProperty(name = "cpay.security.nonce-store", havingValue = "jdbc", matchIfMissing = true)
 public class JdbcNonceStore implements NonceStore {
     private final NamedParameterJdbcTemplate jdbcTemplate;
 

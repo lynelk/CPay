@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service;
 /**
  * Replay protection for /api/v2 signed requests.
  *
- * Default local mode uses an in-memory nonce store. Production can switch to
- * JDBC storage with cpay.security.nonce-store=jdbc so multiple app instances
- * share replay state.
+ * JDBC storage is the default so multiple app instances share replay state.
+ * The in-memory store is available only with cpay.security.nonce-store=memory
+ * for isolated local tests.
  */
 @Service
 public class ReplayProtectionService {

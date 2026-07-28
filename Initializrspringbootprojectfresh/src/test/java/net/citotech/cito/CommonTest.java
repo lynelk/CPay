@@ -45,6 +45,17 @@ class CommonTest {
     }
 
     @Test
+    void randomUrlSafeTokenUsesAtLeast128BitsOfEntropy() {
+        String token = Common.randomUrlSafeToken(32);
+
+        assertThat(token)
+            .hasSizeGreaterThanOrEqualTo(43)
+            .doesNotContain("+")
+            .doesNotContain("/")
+            .doesNotContain("=");
+    }
+
+    @Test
     void getIpAddressIgnoresForwardedHeadersFromAnUntrustedPeer() {
         // No trusted-proxy configured (or the peer isn't in it): a direct client can put anything
         // in X-Forwarded-For, so it must never be trusted - only the actual TCP peer address is safe.

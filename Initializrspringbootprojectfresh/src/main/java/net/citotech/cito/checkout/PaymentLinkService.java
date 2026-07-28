@@ -116,31 +116,38 @@ public class PaymentLinkService {
         if (payRequest == null || blank(payRequest.getPayerAccount())) {
             throw new PaymentGatewayException("payerAccount is required");
         }
-        Merchant merchant = Common.getMerchantById(String.valueOf(link.getMerchantId()), jdbcTemplate);
-        if (merchant == null) {
-            throw new PaymentGatewayException("Merchant for payment link was not found");
+        if (!reserveForPayment(link)) {
+            throw new PaymentGatewayException("Payment link is already being processed");
         }
+        PaymentResult result;
+        try {
+            Merchant merchant = Common.getMerchantById(String.valueOf(link.getMerchantId()), jdbcTemplate);
+            if (merchant == null) {
+                throw new PaymentGatewayException("Merchant for payment link was not found");
+            }
 
-        PaymentPartyRequest payer = new PaymentPartyRequest();
-        payer.setType("MSISDN");
-        payer.setValue(payRequest.getPayerAccount());
+            PaymentPartyRequest payer = new PaymentPartyRequest();
+            payer.setType("MSISDN");
+            payer.setValue(payRequest.getPayerAccount());
 
-        PaymentRequest request = new PaymentRequest();
-        request.setMerchantNumber(link.getMerchantNumber());
-        request.setAmount(link.getAmount().toPlainString());
-        request.setCurrency(link.getCurrency());
-        request.setCountry(link.getCountry());
-        request.setReference(link.getLinkReference());
-        request.setDescription(link.getDescription());
-        request.setCallbackUrl(link.getCallbackUrl());
-        request.setChannel(payRequest.getChannel());
-        request.setPayer(payer);
+            PaymentRequest request = new PaymentRequest();
+            request.setMerchantNumber(link.getMerchantNumber());
+            request.setAmount(link.getAmount().toPlainString());
+            request.setCurrency(link.getCurrency());
+            request.setCountry(link.getCountry());
+            request.setReference(link.getLinkReference());
+            request.setDescription(link.getDescription());
+            request.setCallbackUrl(link.getCallbackUrl());
+            request.setChannel(payRequest.getChannel());
+            request.setPayer(payer);
 
-        PaymentResult result = orchestrationService.collect(request, merchant, originateIp);
+            result = orchestrationService.collect(request, merchant, originateIp);
+        } catch (RuntimeException ex) {
+            releaseReservation(link);
+            throw ex;
+        }
         recordAttempt(link, payRequest.getPayerAccount(), payRequest.getChannel(), result);
-        jdbcTemplate.update(
-            "UPDATE payment_links SET link_status='PAID', paid_transaction_id=:tx_id WHERE id=:id AND link_status='ACTIVE'",
-            new MapSqlParameterSource("id", link.getId()).addValue("tx_id", result.getTransactionId()));
+        updatePaymentStatus(link, checkoutStatusFor(result), result.getTransactionId());
         return result;
     }
 
@@ -176,6 +183,38 @@ public class PaymentLinkService {
                 + "(payment_link_id, payer_account, channel_code, attempt_status, transaction_id, message) "
                 + "VALUES (:payment_link_id, :payer_account, :channel_code, :status, :transaction_id, :message)",
             p);
+    }
+
+    private boolean reserveForPayment(PaymentLinkRecord link) {
+        int updated = jdbcTemplate.update(
+            "UPDATE payment_links SET link_status='PROCESSING' WHERE id=:id AND link_status='ACTIVE'",
+            new MapSqlParameterSource("id", link.getId()));
+        return updated > 0;
+    }
+
+    private void updatePaymentStatus(PaymentLinkRecord link, String status, String transactionId) {
+        jdbcTemplate.update(
+            "UPDATE payment_links SET link_status=:status, paid_transaction_id=:tx_id WHERE id=:id AND link_status='PROCESSING'",
+            new MapSqlParameterSource("id", link.getId())
+                .addValue("status", status)
+                .addValue("tx_id", transactionId));
+    }
+
+    private void releaseReservation(PaymentLinkRecord link) {
+        jdbcTemplate.update(
+            "UPDATE payment_links SET link_status='ACTIVE' WHERE id=:id AND link_status='PROCESSING'",
+            new MapSqlParameterSource("id", link.getId()));
+    }
+
+    String checkoutStatusFor(PaymentResult result) {
+        String status = result == null ? "" : result.getStatus();
+        if ("SUCCESSFUL".equalsIgnoreCase(status)) {
+            return "PAID";
+        }
+        if ("FAILED".equalsIgnoreCase(status) || "ERROR".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
+            return "ACTIVE";
+        }
+        return "SUBMITTED";
     }
 
     private String token() {

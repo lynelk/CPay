@@ -350,33 +350,27 @@ paths:
       operationId: saveProviderToken
       security:
         - AdminBasicAuth: []
-      parameters:
-        - name: provider
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: segment
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: environment
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: token
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: expiresAt
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, segment, token]
+              properties:
+                provider:
+                  type: string
+                segment:
+                  type: string
+                environment:
+                  type: string
+                  default: PRODUCTION
+                token:
+                  type: string
+                  format: password
+                expiresAt:
+                  type: string
+                  format: date-time
       responses:
         '200':
           description: Provider token saved

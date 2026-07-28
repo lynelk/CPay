@@ -51,6 +51,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import net.citotech.cito.Model.*;
 import net.citotech.cito.async.ManagedAsyncTasks;
+import net.citotech.cito.callback.CallbackTaskRepository;
 import net.citotech.cito.merchant.MerchantKeyCryptoRegistry;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -199,6 +200,15 @@ public class Common {
             builder.append(NUMERIC_STRING.charAt(SECURE_RANDOM.nextInt(NUMERIC_STRING.length())));
         }
         return builder.toString();
+    }
+
+    public static String randomUrlSafeToken(int byteCount) {
+        if (byteCount < 16) {
+            throw new IllegalArgumentException("Token entropy must be at least 128 bits.");
+        }
+        byte[] bytes = new byte[byteCount];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
     
     
@@ -2197,6 +2207,91 @@ public class Common {
         return bd.doubleValue();
     }
 
+    public static void enqueueMerchantCallback(Transaction tx,
+                                               Merchant merchant,
+                                               NamedParameterJdbcTemplate jdbcTemplate) {
+        if (tx == null || merchant == null || jdbcTemplate == null
+                || tx.getCallback_url() == null || tx.getCallback_url().trim().isEmpty()) {
+            return;
+        }
+        try {
+            JSONObject requestBody = buildMerchantCallbackBody(tx, merchant);
+            CallbackTaskRepository repository = new CallbackTaskRepository(jdbcTemplate);
+            repository.enqueue(
+                merchant.getId(),
+                String.valueOf(tx.getId()),
+                tx.getTx_merchant_ref(),
+                tx.getCallback_url(),
+                requestBody.toString());
+
+            jdbcTemplate.update(
+                "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                    + " SET callback_status='QUEUED'"
+                    + " WHERE id=:id AND (callback_status IS NULL OR callback_status IN ('PENDING','RETRY','FAILED'))",
+                new MapSqlParameterSource("id", tx.getId()));
+        } catch (Exception ex) {
+            Logger.getLogger(Common.class.getName()).log(Level.SEVERE,
+                "Unable to enqueue merchant callback for transaction " + tx.getId(), ex);
+            jdbcTemplate.update(
+                "UPDATE " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                    + " SET callback_status='FAILED' WHERE id=:id AND callback_status != 'QUEUED'",
+                new MapSqlParameterSource("id", tx.getId()));
+        }
+    }
+
+    static JSONObject buildMerchantCallbackBody(Transaction tx, Merchant merchant) throws Exception {
+        String amountToSign = tx.getOriginal_amount() + "";
+        String signedData = tx.getPayer_number() + amountToSign
+                + tx.getCreated_on() + tx.getTx_merchant_ref() + tx.getStatus()
+                + tx.getTx_merchant_description() + tx.getTx_gateway_ref();
+
+        JSONObject body = new JSONObject();
+        body.put("amount", amountToSign);
+        body.put("payer_number", tx.getPayer_number());
+        body.put("reference", tx.getTx_merchant_ref());
+        body.put("network_ref", tx.getTx_gateway_ref());
+        body.put("status", tx.getStatus());
+        body.put("description", tx.getTx_merchant_description());
+        body.put("completed_on", tx.getUpdated_on());
+        body.put("created_on", tx.getCreated_on());
+        body.put("currency", tx.getCurrency());
+        body.put("SignedData", signedData);
+
+        String signature = legacyCallbackSignature(merchant, signedData);
+        if (!signature.isEmpty()) {
+            body.put("signature", signature);
+            body.put("signature_algorithm", merchant.getHmac_secret() != null && !merchant.getHmac_secret().trim().isEmpty()
+                ? "HMAC-SHA256"
+                : "RSA-SHA256");
+        }
+        return body;
+    }
+
+    private static String legacyCallbackSignature(Merchant merchant, String signedData) throws Exception {
+        if (merchant.getHmac_secret() != null && !merchant.getHmac_secret().trim().isEmpty()) {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(
+                merchant.getHmac_secret().getBytes(StandardCharsets.UTF_8),
+                "HmacSHA256"));
+            return Base64.getEncoder().encodeToString(mac.doFinal(signedData.getBytes(StandardCharsets.UTF_8)));
+        }
+        if (merchant.getPrivate_key() == null || merchant.getPrivate_key().trim().isEmpty()) {
+            return "";
+        }
+        Signature sign = Signature.getInstance("SHA256withRSA");
+        String cleanedKey = merchant.getPrivate_key()
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+            .replaceAll("\\s", "");
+        PrivateKey privateKey = Common.getPrivateKeyFromBase64String(cleanedKey);
+        if (privateKey == null) {
+            return "";
+        }
+        sign.initSign(privateKey);
+        sign.update(signedData.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(sign.sign());
+    }
+
     //
     public static String updateTx(Transaction tx,
                                 NamedParameterJdbcTemplate jdbcTemplate,
@@ -2327,92 +2422,7 @@ public class Common {
                 //If the transaction SUCCEEDED, then CREDIT THE CUSTOMER'S ACCOUNT
                 if (txUpdatedDetails.getTransactionStatus().equals("SUCCESSFUL")) {
 
-                    //Send callback request asynchronously
-                    if (tx.getCallback_url() != null && !tx.getCallback_url().isEmpty()) {
-                        ManagedAsyncTasks.run("updateTx-successful-callback-" + tx.getId(), () -> {
-                                String amountToSign = tx.getOriginal_amount()+"";
-                                String signedData = tx.getPayer_number()+amountToSign
-                                        +tx.getCreated_on()+tx.getTx_merchant_ref()+tx.getStatus()
-                                        +tx.getTx_merchant_description()+tx.getTx_gateway_ref();
-
-                                //String signedData_ = Common.generateSha256String(signedData);
-
-                                if (merchant.getPrivate_key()== null || merchant.getPrivate_key().isEmpty()) {
-                                    return;
-                                }
-                                try {
-                                    //Now verify signature.
-                                    Signature sign = Signature.getInstance("SHA256withRSA");
-                                    String base64_private_key = merchant.getPrivate_key();
-                                    base64_private_key = base64_private_key.replace("-----BEGIN PRIVATE KEY-----\n", "");
-                                    String base64_cleaned = base64_private_key.replace("\n-----END PRIVATE KEY-----\n", "");
-
-                                    PrivateKey privateKey = Common.getPrivateKeyFromBase64String(base64_cleaned);
-                                    if (privateKey == null) return;
-                                    sign.initSign(privateKey);
-                                    sign.update(signedData.getBytes());
-                                    byte[] digitalSignature = sign.sign();
-                                    JSONObject jObject = new JSONObject();
-                                    jObject.put("amount", amountToSign);
-                                    jObject.put("payer_number", tx.getPayer_number());
-                                    jObject.put("reference", tx.getTx_merchant_ref());
-                                    jObject.put("network_ref", tx.getTx_gateway_ref());
-                                    jObject.put("status", tx.getStatus());
-                                    jObject.put("description", tx.getTx_merchant_description());
-                                    jObject.put("completed_on", tx.getUpdated_on());
-                                    jObject.put("created_on", tx.getCreated_on());
-                                    jObject.put("SignedData", signedData);
-                                    jObject.put("signature", Base64.getEncoder().encodeToString(digitalSignature));
-
-
-                                    String requestData = jObject.toString();
-                                    String url = tx.getCallback_url();
-                                    //Now make the callback request.
-                                    Map<String, String> headers = new HashMap<>();
-                                    headers.put("Content-Type", "application/json");
-
-                                    HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
-                                    if (rs != null) {
-                                        String successTraceSql =  sql_update+", callback_trace=:callback_trace "
-                                                + " WHERE id=:id";
-                                        MapSqlParameterSource successTraceParams = new MapSqlParameterSource();
-                                        successTraceParams.addValue("id", tx.getId());
-                                        successTraceParams.addValue("tx_update_trace", tx.getTx_update_trace());
-                                        successTraceParams.addValue("status", tx.getStatus());
-                                        successTraceParams.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
-                                        successTraceParams.addValue("callback_trace", rs.toString());
-
-                                        //Now update the trace of this transaction.
-                                        String traceResult = template.execute(new TransactionCallback<String>() {
-                                            @Override
-                                            public String doInTransaction(TransactionStatus status) {
-                                                try {
-                                                    jdbcTemplate.update(successTraceSql, successTraceParams);
-                                                    return "success";
-                                                } catch (Exception e) {
-                                                    //transactionManager.rollback(status);
-                                                    status.setRollbackOnly();
-                                                    Logger.getLogger(AuthenticationController.class.getName())
-                                                            .log(Level.SEVERE, "INTERNAL ERROR: "+e.getMessage(), "");
-                                                    return GeneralException
-                                                            .getError("102", GeneralException.ERRORS_102);
-                                                }
-                                            }
-                                        });
-                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: "+traceResult, "");
-                                    }
-
-                                } catch (NoSuchAlgorithmException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                } catch (InvalidKeyException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                } catch (SignatureException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                } catch (JSONException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                }
-                        });
-                    }
+                    enqueueMerchantCallback(tx, merchant, jdbcTemplate);
 
                     //Record this transaction
                     String[] bType = Balance.getBalanceTypeByGatewayId(tx.getGateway_id());
@@ -2553,86 +2563,7 @@ public class Common {
                     }
                 } else if (txUpdatedDetails.getTransactionStatus().equals("FAILED")) {
 
-                    //Send callback request asynchronously
-                    if (tx.getCallback_url() != null && !tx.getCallback_url().isEmpty()) {
-                        ManagedAsyncTasks.run("updateTx-failed-callback-" + tx.getId(), () -> {
-                                String signedData = tx.getPayer_number() + tx.getOriginal_amount()
-                                        + tx.getCreated_on() + tx.getTx_merchant_ref() + tx.getStatus()
-                                        + tx.getTx_merchant_description() + tx.getTx_gateway_ref();
-
-                                if (merchant.getPrivate_key() == null || merchant.getPrivate_key().isEmpty()) {
-                                    return;
-                                }
-                                try {
-                                    //Now verify signature.
-                                    Signature sign = Signature.getInstance("SHA256withRSA");
-                                    String base64_private_key = merchant.getPrivate_key();
-                                    base64_private_key = base64_private_key.replace("-----BEGIN PRIVATE KEY-----\n", "");
-                                    String base64_cleaned = base64_private_key.replace("\n-----END PRIVATE KEY-----\n", "");
-
-                                    PrivateKey privateKey = Common.getPrivateKeyFromBase64String(base64_cleaned);
-                                    if (privateKey == null) return;
-                                    sign.initSign(privateKey);
-                                    sign.update(signedData.getBytes());
-                                    byte[] digitalSignature = sign.sign();
-                                    JSONObject jObject = new JSONObject();
-                                    jObject.put("amount", tx.getOriginal_amount());
-                                    jObject.put("payer_number", tx.getPayer_number());
-                                    jObject.put("reference", tx.getTx_merchant_ref());
-                                    jObject.put("network_ref", tx.getTx_gateway_ref());
-                                    jObject.put("status", tx.getStatus());
-                                    jObject.put("description", tx.getTx_merchant_description());
-                                    jObject.put("completed_on", tx.getUpdated_on());
-                                    jObject.put("created_on", tx.getCreated_on());
-                                    jObject.put("signature", Base64.getEncoder().encodeToString(digitalSignature));
-                                    String requestData = jObject.toString();
-                                    String url = tx.getCallback_url();
-                                    //Now make the callback request.
-                                    Map<String, String> headers = new HashMap<>();
-                                    headers.put("Content-Type", "application/json");
-
-                                    HttpRequestResponse rs = Common.doHttpRequest("POST", url, requestData, headers);
-                                    if (rs != null) {
-                                        String failedTraceSql = sql_update + ", callback_trace=:callback_trace "
-                                                + " WHERE id=:id";
-                                        MapSqlParameterSource failedTraceParams = new MapSqlParameterSource();
-                                        failedTraceParams.addValue("id", tx.getId());
-                                        failedTraceParams.addValue("tx_update_trace", tx.getTx_update_trace());
-                                        failedTraceParams.addValue("status", tx.getStatus());
-                                        failedTraceParams.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
-                                        failedTraceParams.addValue("callback_trace", rs.toString());
-
-                                        //Now update the trace of this transaction.
-                                        String traceResult = template.execute(new TransactionCallback<String>() {
-                                            @Override
-                                            public String doInTransaction(TransactionStatus status) {
-                                                try {
-                                                    jdbcTemplate.update(failedTraceSql, failedTraceParams);
-                                                    return "success";
-                                                } catch (Exception e) {
-                                                    //transactionManager.rollback(status);
-                                                    status.setRollbackOnly();
-                                                    Logger.getLogger(AuthenticationController.class.getName())
-                                                            .log(Level.SEVERE, "INTERNAL ERROR: " + e.getMessage(), "");
-                                                    return GeneralException
-                                                            .getError("102", GeneralException.ERRORS_102);
-                                                }
-                                            }
-                                        });
-                                        Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, "Callback Results: " + traceResult, "");
-                                    }
-
-                                } catch (NoSuchAlgorithmException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                } catch (InvalidKeyException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                } catch (SignatureException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                } catch (JSONException ex) {
-                                    Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-                                }
-                        });
-                    }
+                    enqueueMerchantCallback(tx, merchant, jdbcTemplate);
 
                     //If it's a payout, reverse the money.
                     Statement newTx = new Statement();

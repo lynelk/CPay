@@ -1,5 +1,7 @@
 package net.citotech.cito;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -60,6 +62,7 @@ import org.springframework.web.client.RestTemplate;
 @RestController 
 @RequestMapping(path="/auth", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class AuthenticationController {
+    private static final String RESET_TOKEN_HASH_PREFIX = "sha256:";
     
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -762,7 +765,9 @@ public class AuthenticationController {
             }
 
             String sql = "UPDATE "+Common.DB_TABLE_ADMIN+" "
-                +" SET `password`=:password "
+                +" SET `password`=:password, "
+                +" `email_verification_code`='', "
+                +" `email_verification_sent_on`=DATE_SUB(NOW(), INTERVAL 10 MINUTE) "
                 +" WHERE id = :id";
 
             Map<String, Object> parameters = new HashMap<String, Object>();
@@ -846,7 +851,9 @@ public class AuthenticationController {
             
             //Now set the time when the email verification has to be sent.
             String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_USERS+" "
-                +" SET `password`=:password "
+                +" SET `password`=:password, "
+                +" `email_verification_code`='', "
+                +" `email_verification_sent_on`=DATE_SUB(NOW(), INTERVAL 10 MINUTE) "
                 +" WHERE id = :id";
 
             Map<String, Object> parameters = new HashMap<String, Object>();
@@ -893,6 +900,31 @@ public class AuthenticationController {
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
+    }
+
+    String generatePasswordResetToken() {
+        return Common.randomUrlSafeToken(32);
+    }
+
+    String hashPasswordResetToken(String token) {
+        return RESET_TOKEN_HASH_PREFIX + Common.generateSha256String(token);
+    }
+
+    boolean passwordResetTokenMatches(String storedToken, String submittedToken) {
+        if (isBlank(storedToken) || isBlank(submittedToken)) {
+            return false;
+        }
+        if (!storedToken.startsWith(RESET_TOKEN_HASH_PREFIX)) {
+            return storedToken.equals(submittedToken);
+        }
+        String submittedHash = hashPasswordResetToken(submittedToken);
+        return MessageDigest.isEqual(
+            storedToken.getBytes(StandardCharsets.UTF_8),
+            submittedHash.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
     
     private String resetToken(String entityType, Long entityId, String email, String clientIp) {

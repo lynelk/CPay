@@ -41,4 +41,28 @@ class AuthenticationControllerTest {
         assertThat(json.getString("code")).isEqualTo("000");
         assertThat(json.getString("message")).isEqualTo("SUCCESS");
     }
+
+    @Test
+    void passwordResetTokensAreHashedAndMatchedWithoutPlaintextStorage() {
+        AuthenticationController controller = new AuthenticationController();
+
+        String token = controller.generatePasswordResetToken();
+        String storedToken = controller.hashPasswordResetToken(token);
+
+        assertThat(token).hasSizeGreaterThanOrEqualTo(43);
+        assertThat(storedToken)
+            .startsWith("sha256:")
+            .doesNotContain(token);
+        assertThat(controller.passwordResetTokenMatches(storedToken, token)).isTrue();
+        assertThat(controller.passwordResetTokenMatches(storedToken, token + "x")).isFalse();
+        assertThat(controller.passwordResetTokenMatches("", "")).isFalse();
+    }
+
+    @Test
+    void passwordResetTokenMatchingKeepsLegacyCodesDuringTransition() {
+        AuthenticationController controller = new AuthenticationController();
+
+        assertThat(controller.passwordResetTokenMatches("123456", "123456")).isTrue();
+        assertThat(controller.passwordResetTokenMatches("123456", "654321")).isFalse();
+    }
 }
