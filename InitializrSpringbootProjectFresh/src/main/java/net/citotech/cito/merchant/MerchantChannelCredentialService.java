@@ -118,6 +118,7 @@ public class MerchantChannelCredentialService {
 
     public Map<String, Object> save(MerchantUser user, Map<String, Object> body) {
         requireUser(user);
+        requireCanManageChannels(user);
         String channelCode = text(body.get("channelCode"));
         String environment = normalizedEnvironment(text(body.get("environment")));
         Map<String, Object> credentials = asMap(body.get("credentials"));
@@ -143,6 +144,7 @@ public class MerchantChannelCredentialService {
 
     public Map<String, Object> test(MerchantUser user, Map<String, Object> body) {
         requireUser(user);
+        requireCanManageChannels(user);
         String channelCode = text(body.get("channelCode"));
         String environment = normalizedEnvironment(text(body.get("environment")));
         Map<String, Object> saved = find(user.getMerchant_id(), channelCode, environment);
@@ -159,6 +161,7 @@ public class MerchantChannelCredentialService {
 
     public Map<String, Object> submitForApproval(MerchantUser user, Map<String, Object> body) {
         requireUser(user);
+        requireCanManageChannels(user);
         String channelCode = text(body.get("channelCode"));
         String environment = normalizedEnvironment(text(body.get("environment")));
         MapSqlParameterSource p = params(user.getMerchant_id(), channelCode, environment);
@@ -273,6 +276,22 @@ public class MerchantChannelCredentialService {
     }
 
     private void requireUser(MerchantUser user) { if (user == null || user.getMerchant_id() == null) throw new PaymentGatewayException("Merchant session is required"); }
+
+    /**
+     * Audit N7: channel credentials/API keys/webhook config are a DEVELOPER-level capability.
+     * FINANCE and VIEWER team members can view channel status (see {@link #list}) but must not be
+     * able to save, test, or submit-for-approval new channel credentials - that's config-changing,
+     * merchant-facing self-service mutation. A missing/unrecognized role fails open to OWNER (see
+     * {@link MerchantRole#fromString(String)}), so this only ever blocks a role that was
+     * explicitly, deliberately set to something less privileged - it never locks out a merchant
+     * user due to a null/unknown role value.
+     */
+    private void requireCanManageChannels(MerchantUser user) {
+        if (!MerchantRole.fromString(user.getRole()).canManageChannels()) {
+            throw new PaymentGatewayException("Your merchant role does not allow managing channel configuration");
+        }
+    }
+
     private String normalizedEnvironment(String environment) { return environmentService.normalizedEnvironment(environment); }
 
     @SuppressWarnings("unchecked")

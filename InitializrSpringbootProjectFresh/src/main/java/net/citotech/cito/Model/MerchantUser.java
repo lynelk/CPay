@@ -11,6 +11,22 @@ public class MerchantUser extends User implements java.io.Serializable {
     String merchant_name;
     String merchant_account_type;
     Long merchant_id;
+    /**
+     * Team role for this merchant user (audit N7) - raw stored value, see
+     * {@code net.citotech.cito.merchant.MerchantRole#fromString(String)} for the fail-open
+     * (defaults to OWNER) parsed capability check. Kept as a plain String here, matching how
+     * other status-like fields on this class (merchant_status, status) are stored, rather than
+     * embedding the enum type directly on this legacy model.
+     */
+    String role;
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 
     public String getMerchant_number() {
         return merchant_number;

@@ -349,12 +349,13 @@ public class AuthenticationController {
                 user.setUpdated_on(rs.getString("updated_on"));
                 user.setIs_verification_timedout(rs.getString("is_verification_timedout"));
                 user.setEmail_verification_code(rs.getString("email_verification_code"));
+                user.setRole(rs.getString("role"));
                 user.setPrivileges(getMerchantUserPrivileges(user));
                 return user;
             }
         };
 
-        //ResultSet rs; 
+        //ResultSet rs;
         List<MerchantUser> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
 
         if (listUsers.size() < 1) {

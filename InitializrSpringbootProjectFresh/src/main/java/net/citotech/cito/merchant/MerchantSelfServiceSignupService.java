@@ -66,8 +66,11 @@ public class MerchantSelfServiceSignupService {
         admin.addValue("phone", phone);
         admin.addValue("password", PasswordUtils.hashPassword(password));
         admin.addValue("status", "ACTIVE");
+        // Audit N7: the merchant who self-registers the account is, by construction, its OWNER -
+        // full access including managing other team members' roles once they're invited.
+        admin.addValue("role", MerchantRole.OWNER.name());
         KeyHolder adminKey = new GeneratedKeyHolder();
-        jdbcTemplate.update("INSERT INTO merchant_admins SET merchant_id=:merchant_id, name=:name, email=:email, phone=:phone, password=:password, status=:status", admin, adminKey);
+        jdbcTemplate.update("INSERT INTO merchant_admins SET merchant_id=:merchant_id, name=:name, email=:email, phone=:phone, password=:password, status=:status, role=:role", admin, adminKey);
         BigInteger adminId = generatedKey(adminKey);
         addPrivilege(adminId, "ACCESS_MERCHANT");
         addPrivilege(adminId, "MANAGE_CHANNELS");

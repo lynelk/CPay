@@ -349,6 +349,7 @@ public class MerchantsController {
                     user.setStatus(rs.getString("status"));
                     user.setIs_verification_timedout(rs.getString("is_verification_timedout"));
                     user.setEmail_verification_code(rs.getString("email_verification_code"));
+                    user.setRole(rs.getString("role"));
                     user.setPrivileges(getUserPrivileges(user));
                     return user;
                 }
@@ -883,6 +884,7 @@ public class MerchantsController {
                 u.setMerchant_name(rs.getString("merchant_name"));
                 u.setMerchant_status(rs.getString("merchant_status"));
                 u.setMerchant_account_type(rs.getString("merchant_account_type"));
+                u.setRole(rs.getString("role"));
                 return u;
             }
         };
@@ -923,6 +925,7 @@ public class MerchantsController {
                 u.setMerchant_name(rs.getString("merchant_name"));
                 u.setMerchant_status(rs.getString("merchant_status"));
                 u.setMerchant_account_type(rs.getString("merchant_account_type"));
+                u.setRole(rs.getString("role"));
                 return u;
             }
         };
@@ -1016,15 +1019,17 @@ public class MerchantsController {
                 +" `phone`=:phone, "
                 +" `email`=:email, "
                 +" `status`=:status, "
+                +" `role`=:role, "
                 +" `password`=:password "
                 +" ";
-            
+
             String sqlUpdateMerchantUser = "UPDATE "+Common.DB_TABLE_MERCHANT_USERS+" "
                 +" SET `merchant_id`=:merchant_id,"
                 +" `name`=:name, "
                 +" `phone`=:phone, "
                 +" `email`=:email, "
-                +" `status`=:status ";
+                +" `status`=:status, "
+                +" `role`=:role ";
             
             String sqlPrivilegesDropExistings = "DELETE FROM "+Common.DB_TABLE_MERCHANT_ADMIN_PRIVILEGES+" "
                 +" WHERE `admin_id`=:admin_id ";
@@ -1096,13 +1101,23 @@ public class MerchantsController {
                                 continue;
                             }
                             
+                            // Audit N7: whoever manages this merchant's team (an OWNER) can assign
+                            // each user's role here. A missing/unrecognized value fails open to
+                            // OWNER - never a more restrictive role - matching
+                            // net.citotech.cito.merchant.MerchantRole's fallback, so an existing
+                            // caller that doesn't send "role" yet keeps today's effective
+                            // full-access behavior instead of being silently locked out.
+                            String role = net.citotech.cito.merchant.MerchantRole
+                                    .fromString(userObject.optString("role", null)).name();
+
                             privParams = new MapSqlParameterSource();
                             privParams.addValue("merchant_id", id);
                             privParams.addValue("name", name);
                             privParams.addValue("email", email);
                             privParams.addValue("phone", phone);
                             privParams.addValue("status", status_);
-                            
+                            privParams.addValue("role", role);
+
                             if (row_id.isEmpty()) {
                                 //This is a new MerchantUser
                                 String password = passwordForMerchantAdmin(userObject);
