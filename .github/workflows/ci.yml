@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: InitializrSpringbootProjectFresh
+        working-directory: Initializrspringbootprojectfresh
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -47,14 +47,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-surefire-reports
-          path: InitializrSpringbootProjectFresh/target/surefire-reports/
+          path: Initializrspringbootprojectfresh/target/surefire-reports/
       - name: Upload backend SBOM
         uses: actions/upload-artifact@v4
         with:
           name: backend-sbom
           path: |
-            InitializrSpringbootProjectFresh/target/bom.json
-            InitializrSpringbootProjectFresh/target/bom.xml
+            Initializrspringbootprojectfresh/target/bom.json
+            Initializrspringbootprojectfresh/target/bom.xml
 
   migration-smoke:
     name: Migration Naming and Duplicate Check
@@ -64,7 +64,7 @@ jobs:
       - name: Check Flyway migration versions are unique
         run: |
           set -euo pipefail
-          files=$(find InitializrSpringbootProjectFresh/src/main/resources/db/migration -type f -name 'V*.sql' -printf '%f\n' | sort)
+          files=$(find Initializrspringbootprojectfresh/src/main/resources/db/migration -type f -name 'V*.sql' -printf '%f\n' | sort)
           echo "$files"
           versions=$(echo "$files" | sed -E 's/^V([0-9]+)__.*/\1/')
           dupes=$(echo "$versions" | sort | uniq -d)
@@ -80,11 +80,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate OpenAPI contract is present
         run: |
-          test -s docs/api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/native/payments/collect" docs/api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/recon-finance/summary" docs/api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/compliance/cases" docs/api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/provider-certification/evidence" docs/api/cpay-v2-openapi.yaml
+          test -s Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/native/payments/collect" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/recon-finance/summary" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/compliance/cases" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/provider-certification/evidence" Docs/Api/cpay-v2-openapi.yaml
 
   owasp:
     name: OWASP Dependency-Check
@@ -92,7 +92,7 @@ jobs:
     needs: backend
     defaults:
       run:
-        working-directory: InitializrSpringbootProjectFresh
+        working-directory: Initializrspringbootprojectfresh
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -112,7 +112,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: owasp-dependency-check-report
-          path: InitializrSpringbootProjectFresh/target/dependency-check-report.html
+          path: Initializrspringbootprojectfresh/target/dependency-check-report.html
 
   codeql:
     name: CodeQL Security Analysis
@@ -132,7 +132,7 @@ jobs:
           distribution: "temurin"
           cache: maven
       - name: Build for CodeQL
-        working-directory: InitializrSpringbootProjectFresh
+        working-directory: Initializrspringbootprojectfresh
         run: mvn -B compile --no-transfer-progress -DskipTests
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
@@ -144,7 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: clientside
+        working-directory: Clientside
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -152,7 +152,7 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: clientside/package-lock.json
+          cache-dependency-path: Clientside/package-lock.json
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
       - name: Run linter
@@ -180,6 +180,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Confirm production readiness checklist exists
         run: |
-          test -s docs/readiness/market-readiness-gates.md
-          test -s docs/runbooks/production-incident-response.md
-          test -s docs/runbooks/provider-certification-checklist.md
+          test -s Docs/Readiness/Market-readiness-gates.md
+          test -s Docs/Runbooks/Production-incident-response.md
+          test -s Docs/Runbooks/Provider-certification-checklist.md

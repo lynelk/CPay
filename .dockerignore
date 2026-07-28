@@ -4,8 +4,8 @@
 .runtime-logs
 logs
 target
-InitializrSpringbootProjectFresh/target
-clientside/node_modules
-clientside/dist
+Initializrspringbootprojectfresh/target
+Clientside/node_modules
+Clientside/dist
 *.log
 hs_err_pid*.log

@@ -18,7 +18,7 @@ services:
 
   backend:
     build:
-      context: ./InitializrSpringbootProjectFresh
+      context: ./Initializrspringbootprojectfresh
     depends_on:
       mysql:
         condition: service_healthy
