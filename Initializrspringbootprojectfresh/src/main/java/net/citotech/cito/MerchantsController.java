@@ -123,7 +123,7 @@ public class MerchantsController {
                     m.setCreated_by(rs.getString("created_by"));
                     m.setAccount_type(rs.getString("account_type"));
                     m.setUsers(getMerchantUsers(m));
-                    m.setPrivate_key(rs.getString("private_key"));
+                    m.setPrivate_key(net.citotech.cito.merchant.MerchantKeyCryptoRegistry.decryptForUse(rs.getString("private_key")));
                     m.setPublic_key(rs.getString("public_key"));
                     m.setShort_name(rs.getString("short_name"));
                     String allowed_apis_string = rs.getString("allowed_apis")!= null ? 
@@ -538,7 +538,7 @@ public class MerchantsController {
             KeyPairStrings keys = null;
             
             keys = Common.generateKeyPair();
-            parameters.addValue("private_key", keys.getPrivate_key());
+            parameters.addValue("private_key", net.citotech.cito.merchant.MerchantKeyCryptoRegistry.encryptForStorage(keys.getPrivate_key()));
             parameters.addValue("public_key", keys.getPublic_key());
             
             final String sql_ = sql;
@@ -728,7 +728,7 @@ public class MerchantsController {
             parameters.addValue("allowed_apis", allowed_apis);
             if (generate_new_keys) {
                 KeyPairStrings keys = Common.generateKeyPair();
-                parameters.addValue("private_key", keys.getPrivate_key());
+                parameters.addValue("private_key", net.citotech.cito.merchant.MerchantKeyCryptoRegistry.encryptForStorage(keys.getPrivate_key()));
                 parameters.addValue("public_key", keys.getPublic_key());
             }
             final String sql_ = sql;
@@ -1049,7 +1049,7 @@ public class MerchantsController {
             parameters.addValue("allowed_apis", allowed_apis);
             if (generate_new_keys) {
                 KeyPairStrings keys = Common.generateKeyPair();
-                parameters.addValue("private_key", keys.getPrivate_key());
+                parameters.addValue("private_key", net.citotech.cito.merchant.MerchantKeyCryptoRegistry.encryptForStorage(keys.getPrivate_key()));
                 parameters.addValue("public_key", keys.getPublic_key());
             }
             

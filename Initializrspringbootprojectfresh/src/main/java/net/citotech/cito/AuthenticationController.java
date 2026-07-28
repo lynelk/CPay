@@ -99,9 +99,9 @@ public class AuthenticationController {
             String username = requestBody.get("username");
             String password = requestBody.get("password");
 
-            // Rate-limit by IP address to prevent brute-force attacks
+            // Rate-limit by account+IP to prevent brute-force attacks
             String clientIp = Common.getIpAddress(request);
-            if (!rateLimiter.tryConsume(clientIp)) {
+            if (!rateLimiter.tryConsume(username, clientIp)) {
                 return GeneralException.getError("138",
                         "Too many login attempts. Please try again later.");
             }
@@ -146,7 +146,7 @@ public class AuthenticationController {
             newSession.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
                     SessionRevocationService.adminPrincipal(u.getId()));
 
-            rateLimiter.recordSuccess(clientIp);
+            rateLimiter.recordSuccess(username, clientIp);
 
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
@@ -210,9 +210,10 @@ public class AuthenticationController {
             String password = requestBody.get("password");
             String merchant_account = requestBody.get("account_number");
 
-            // Rate-limit by IP address to prevent brute-force attacks
+            // Rate-limit by account+IP to prevent brute-force attacks
             String clientIp = Common.getIpAddress(request);
-            if (!rateLimiter.tryConsume(clientIp)) {
+            String merchantLoginAccount = merchant_account + ":" + username;
+            if (!rateLimiter.tryConsume(merchantLoginAccount, clientIp)) {
                 return GeneralException.getError("138",
                         "Too many login attempts. Please try again later.");
             }
@@ -257,7 +258,7 @@ public class AuthenticationController {
             newSession.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
                     SessionRevocationService.merchantUserPrincipal(u.getId()));
 
-            rateLimiter.recordSuccess(clientIp);
+            rateLimiter.recordSuccess(merchantLoginAccount, clientIp);
 
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
@@ -538,12 +539,11 @@ public class AuthenticationController {
             HttpServletRequest request, HttpServletResponse response) {
         try {
             String clientIp = Common.getIpAddress(request);
-            if (!rateLimiter.tryConsume(clientIp)) {
-                return GeneralException.getError("138", "Too many requests. Please try again later.");
-            }
-
             String userEmail = requestBody.get("email");
             String account_number = requestBody.get("merchant_number");
+            if (!rateLimiter.tryConsume(account_number + ":" + userEmail, clientIp)) {
+                return GeneralException.getError("138", "Too many requests. Please try again later.");
+            }
 
             MerchantUser u  = getMerchantUserByEmail(account_number, userEmail);
             
@@ -608,11 +608,11 @@ public class AuthenticationController {
             HttpServletRequest request, HttpServletResponse response) {
         try {
             String clientIp = Common.getIpAddress(request);
-            if (!rateLimiter.tryConsume(clientIp)) {
+            String userEmail = requestBody.get("email");
+            if (!rateLimiter.tryConsume(userEmail, clientIp)) {
                 return GeneralException.getError("138", "Too many requests. Please try again later.");
             }
 
-            String userEmail = requestBody.get("email");
             User u  = getUserByEmail(userEmail);
             
             if (u == null) {
@@ -675,11 +675,11 @@ public class AuthenticationController {
             HttpServletRequest request, HttpServletResponse response) {
         try {
             String clientIp = Common.getIpAddress(request);
-            if (!rateLimiter.tryConsume(clientIp)) {
-                return GeneralException.getError("138", "Too many requests. Please try again later.");
-            }
             String userEmail = requestBody.get("email");
             String merchantNumber = requestBody.get("merchant_number");
+            if (!rateLimiter.tryConsume(merchantNumber + ":" + userEmail, clientIp)) {
+                return GeneralException.getError("138", "Too many requests. Please try again later.");
+            }
 
             MerchantUser u = getMerchantUserByEmail(merchantNumber, userEmail);
 
@@ -737,11 +737,11 @@ public class AuthenticationController {
             HttpServletRequest request, HttpServletResponse response) {
         try {
             String clientIp = Common.getIpAddress(request);
-            if (!rateLimiter.tryConsume(clientIp)) {
+            String userEmail = requestBody.get("email");
+            if (!rateLimiter.tryConsume(userEmail, clientIp)) {
                 return GeneralException.getError("138", "Too many requests. Please try again later.");
             }
 
-            String userEmail = requestBody.get("email");
             String verificationCode = requestBody.get("verification_code");
             String newPassword = requestBody.get("new_password");
 
@@ -818,11 +818,11 @@ public class AuthenticationController {
             HttpServletRequest request, HttpServletResponse response) {
         try {
             String clientIp = Common.getIpAddress(request);
-            if (!rateLimiter.tryConsume(clientIp)) {
+            String userEmail = requestBody.get("email");
+            if (!rateLimiter.tryConsume(userEmail, clientIp)) {
                 return GeneralException.getError("138", "Too many requests. Please try again later.");
             }
-            
-            String userEmail = requestBody.get("email");
+
             String verificationCode = requestBody.get("verification_code");
             String newPassword = requestBody.get("new_password");
             String merchant_number = requestBody.get("merchant_number");

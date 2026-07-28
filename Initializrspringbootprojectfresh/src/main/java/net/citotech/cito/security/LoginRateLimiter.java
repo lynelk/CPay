@@ -1,70 +1,81 @@
 package net.citotech.cito.security;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Simple in-memory rate-limiter for login endpoints.
- *
- * <p>Allows at most {@link #MAX_ATTEMPTS} attempts per identifier (typically an
- * IP address) within a rolling {@link #WINDOW_MS} window.  On a successful
- * authentication the caller should invoke {@link #recordSuccess(String)} to
- * reset the counter.
- *
- * <p>Note: this implementation is adequate for single-instance deployments. For
- * horizontally-scaled environments, replace with a distributed store such as
- * Redis.
+ * DB-backed rate-limiter for login/password-reset endpoints (audit E8). Previously in-memory
+ * (per-node, reset on restart) and keyed only on the client IP, which is spoofable behind an
+ * untrusted proxy. Now backed by the shared {@code api_rate_limits} table (so the limit holds
+ * across instances) and keyed on both the account and the IP independently - either budget being
+ * exhausted blocks the attempt, so neither "one IP hammering many accounts" nor "one account
+ * hammered from many IPs" bypasses the limit.
  */
 @Component
 public class LoginRateLimiter {
 
-    /** Maximum login attempts allowed inside a single time window. */
+    /** Maximum attempts allowed inside a single time window, per key. */
     static final int MAX_ATTEMPTS = 5;
 
-    /** Length of the sliding time window in milliseconds (15 minutes). */
-    static final long WINDOW_MS = 15 * 60 * 1_000L;
+    /** Length of the fixed window in minutes. */
+    static final long WINDOW_MINUTES = 15;
 
-    private final ConcurrentHashMap<String, Entry> state = new ConcurrentHashMap<>();
+    private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    /**
-     * Returns {@code true} if the request is within the allowed rate, and
-     * records the attempt.  Returns {@code false} when the limit is exceeded.
-     *
-     * @param identifier typically the client's IP address
-     */
-    public boolean tryConsume(String identifier) {
-        long now = System.currentTimeMillis();
-        Entry entry = state.compute(identifier, (key, existing) -> {
-            if (existing == null || now - existing.windowStart > WINDOW_MS) {
-                // New window
-                return new Entry(1, now);
-            }
-            // Cap at MAX_ATTEMPTS + 1 to prevent unbounded counter growth
-            int newCount = Math.min(existing.count + 1, MAX_ATTEMPTS + 1);
-            return new Entry(newCount, existing.windowStart);
-        });
-        return entry.count <= MAX_ATTEMPTS;
+    public LoginRateLimiter(NamedParameterJdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     /**
-     * Resets the counter for the given identifier after a successful login.
-     *
-     * @param identifier typically the client's IP address
+     * Returns {@code true} if the request is within the allowed rate for both the account and
+     * the IP, recording the attempt against both. Returns {@code false} when either is exhausted.
      */
-    public void recordSuccess(String identifier) {
-        state.remove(identifier);
+    public boolean tryConsume(String account, String clientIp) {
+        boolean ipAllowed = consume("ip:" + normalize(clientIp));
+        boolean accountAllowed = consume("acct:" + normalize(account));
+        return ipAllowed && accountAllowed;
     }
 
-    // -------------------------------------------------------------------------
+    /** Resets the counters for the given account and IP after a successful login. */
+    public void recordSuccess(String account, String clientIp) {
+        reset("ip:" + normalize(clientIp));
+        reset("acct:" + normalize(account));
+    }
 
-    private static final class Entry {
-        final int count;
-        final long windowStart;
+    private boolean consume(String rateKey) {
+        Instant windowStart = currentWindowStart();
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("rate_key", rateKey);
+        p.addValue("window_start", Timestamp.from(windowStart));
+        jdbcTemplate.update(
+            "INSERT INTO api_rate_limits (rate_key, window_start, request_count) VALUES (:rate_key, :window_start, 1) "
+                + "ON DUPLICATE KEY UPDATE request_count=request_count+1",
+            p);
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT request_count FROM api_rate_limits WHERE rate_key=:rate_key AND window_start=:window_start",
+            p, Integer.class);
+        return count == null || count <= MAX_ATTEMPTS;
+    }
 
-        Entry(int count, long windowStart) {
-            this.count = count;
-            this.windowStart = windowStart;
-        }
+    private void reset(String rateKey) {
+        Instant windowStart = currentWindowStart();
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("rate_key", rateKey);
+        p.addValue("window_start", Timestamp.from(windowStart));
+        jdbcTemplate.update("DELETE FROM api_rate_limits WHERE rate_key=:rate_key AND window_start=:window_start", p);
+    }
+
+    private Instant currentWindowStart() {
+        long epochMinutes = Instant.now().getEpochSecond() / 60;
+        long bucketMinutes = (epochMinutes / WINDOW_MINUTES) * WINDOW_MINUTES;
+        return Instant.EPOCH.plus(bucketMinutes, ChronoUnit.MINUTES);
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 }
-

@@ -55,7 +55,7 @@ public class MerchantSelfServiceSignupService {
         p.addValue("allowed_apis", Common.API_MOBILE_MONEY_PAYIN + "," + Common.API_MOBILE_MONEY_PAYOUT + "," + Common.API_TRANSACTION_CHECKSTATUS + "," + Common.API_BALANCE_CHECK + "," + Common.API_SEND_SMS);
         p.addValue("account_type", accountType);
         p.addValue("public_key", keys.getPublic_key());
-        p.addValue("private_key", keys.getPrivate_key());
+        p.addValue("private_key", MerchantKeyCryptoRegistry.encryptForStorage(keys.getPrivate_key()));
         KeyHolder merchantKey = new GeneratedKeyHolder();
         jdbcTemplate.update("INSERT INTO merchants SET name=:name, account_number=:account_number, created_by=:created_by, status=:status, short_name=:short_name, allowed_apis=:allowed_apis, account_type=:account_type, public_key=:public_key, private_key=:private_key", p, merchantKey);
         BigInteger merchantId = generatedKey(merchantKey);

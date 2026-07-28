@@ -51,6 +51,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import net.citotech.cito.Model.*;
 import net.citotech.cito.async.ManagedAsyncTasks;
+import net.citotech.cito.merchant.MerchantKeyCryptoRegistry;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -593,7 +594,7 @@ public class Common {
                 m.setCreated_by(rs.getString("created_by"));
                 m.setAccount_type(rs.getString("account_type"));
                 m.setPublic_key(rs.getString("public_key"));
-                m.setPrivate_key(rs.getString("private_key"));
+                m.setPrivate_key(MerchantKeyCryptoRegistry.decryptForUse(rs.getString("private_key")));
                 m.setHmac_secret(rs.getString("hmac_secret"));
                 String allowed_apis_string = rs.getString("allowed_apis")!= null ?
                         rs.getString("allowed_apis"): "";
@@ -763,7 +764,7 @@ public class Common {
                 m.setCreated_by(rs.getString("created_by"));
                 m.setAccount_type(rs.getString("account_type"));
                 m.setPublic_key(rs.getString("public_key"));
-                m.setPrivate_key(rs.getString("private_key"));
+                m.setPrivate_key(MerchantKeyCryptoRegistry.decryptForUse(rs.getString("private_key")));
                 m.setHmac_secret(rs.getString("hmac_secret"));
                 m.setShort_name(rs.getString("short_name"));
                 //Get allowed APIs
