@@ -15,6 +15,8 @@ import net.citotech.cito.security.LoginRateLimiter;
 import net.citotech.cito.security.MerchantMfaService;
 import net.citotech.cito.security.PasswordResetTokenService;
 import net.citotech.cito.security.PasswordUtils;
+import net.citotech.cito.security.SessionRevocationService;
+import org.springframework.session.FindByIndexNameSessionRepository;
 
 //import jdk.nashorn.internal.parser.JSONParser;
 //import jdk.nashorn.internal.runtime.Context;
@@ -73,6 +75,9 @@ public class AuthenticationController {
 
     @Autowired(required = false)
     PasswordResetTokenService passwordResetTokenService;
+
+    @Autowired(required = false)
+    SessionRevocationService sessionRevocationService;
 
     @PostMapping(path="/authenticate")
     public String authenticatedUser (@RequestBody Map<String, String> requestBody,
@@ -138,6 +143,8 @@ public class AuthenticationController {
             newSession.setAttribute("email", u.getEmail());
             newSession.setAttribute("phone", u.getPhone());
             newSession.setAttribute("user", u);
+            newSession.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
+                    SessionRevocationService.adminPrincipal(u.getId()));
 
             rateLimiter.recordSuccess(clientIp);
 
@@ -247,9 +254,11 @@ public class AuthenticationController {
             newSession.setAttribute("email", u.getEmail());
             newSession.setAttribute("phone", u.getPhone());
             newSession.setAttribute("merchantUser", u);
+            newSession.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
+                    SessionRevocationService.merchantUserPrincipal(u.getId()));
 
             rateLimiter.recordSuccess(clientIp);
-            
+
             JSONObject resJson = new JSONObject();
             resJson.put("code", "000");
             resJson.put("message", "SUCCESS");
@@ -755,22 +764,27 @@ public class AuthenticationController {
             String sql = "UPDATE "+Common.DB_TABLE_ADMIN+" "
                 +" SET `password`=:password "
                 +" WHERE id = :id";
-            
+
             Map<String, Object> parameters = new HashMap<String, Object>();
             parameters.put("password", PasswordUtils.hashPassword(newPassword));
             parameters.put("id", u.getId());
-            
+
             long retVal = jdbcTemplate.update(sql, parameters);
-            
+
             if (retVal > 0) {
-                
+
+                // A stolen/logged-in session must not survive a password reset.
+                if (sessionRevocationService != null) {
+                    sessionRevocationService.revokeAllForAdmin(u.getId());
+                }
+
                 //Now send verification email
                 Setting emailContentManage = Common
-                        .getSettings("email_tmp_on_password_reset_done", 
+                        .getSettings("email_tmp_on_password_reset_done",
                                 jdbcTemplate);
                 final String emailContent = emailContentManage.getSetting_value()
                         .replace("{name}", u.getName());
-                
+
                 final String subject = "You have Reset your Password!";
                 final String to = u.getEmail();
 
@@ -780,7 +794,7 @@ public class AuthenticationController {
                         subject,
                         emailContent);
                 });
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_001);
             } else {
@@ -834,23 +848,28 @@ public class AuthenticationController {
             String sql = "UPDATE "+Common.DB_TABLE_MERCHANT_USERS+" "
                 +" SET `password`=:password "
                 +" WHERE id = :id";
-            
+
             Map<String, Object> parameters = new HashMap<String, Object>();
-            
+
             parameters.put("password", PasswordUtils.hashPassword(newPassword));
             parameters.put("id", u.getId());
-            
+
             long retVal = jdbcTemplate.update(sql, parameters);
-            
+
             if (retVal > 0) {
-                
+
+                // A stolen/logged-in session must not survive a password reset.
+                if (sessionRevocationService != null) {
+                    sessionRevocationService.revokeAllForMerchantUser(u.getId());
+                }
+
                 //Now send verification email
                 Setting emailContentManage = Common
-                        .getSettings("email_tmp_on_password_reset_done", 
+                        .getSettings("email_tmp_on_password_reset_done",
                                 jdbcTemplate);
                 final String emailContent = emailContentManage.getSetting_value()
                         .replace("{name}", u.getName());
-                
+
                 final String subject = "You have Reset your Password!";
                 final String to = u.getEmail();
 
@@ -860,7 +879,7 @@ public class AuthenticationController {
                         subject,
                         emailContent);
                 });
-                 
+
                 return GeneralSuccessResponse
                     .getMessage("000", GeneralSuccessResponse.SUCCESS_001);
             } else {

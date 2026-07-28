@@ -51,6 +51,8 @@ public class MerchantsController {
     TransactionTemplate transactionTemplate;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired(required = false)
+    private net.citotech.cito.security.SessionRevocationService sessionRevocationService;
     
     
     
@@ -588,6 +590,11 @@ public class MerchantsController {
                             if (mU != null) {
                                 //Send an email with user's credentials
                                 sendEmailOnUpdatingMerchantUserPassword(mU, password);
+                                // The admin just set this user a new password - any session of
+                                // theirs still open under the old one must not survive it.
+                                if (sessionRevocationService != null) {
+                                    sessionRevocationService.revokeAllForMerchantUser(mU.getId());
+                                }
                             }
                         }
                     
@@ -773,6 +780,11 @@ public class MerchantsController {
                             if (mU != null) {
                                 //Send an email with user's credentials
                                 sendEmailOnUpdatingMerchantUserPassword(mU, password);
+                                // The admin just set this user a new password - any session of
+                                // theirs still open under the old one must not survive it.
+                                if (sessionRevocationService != null) {
+                                    sessionRevocationService.revokeAllForMerchantUser(mU.getId());
+                                }
                             }
                                
                         }
