@@ -59,6 +59,10 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     String publicKey = "";
 
     public static boolean isValidMisdn(String msisdn) {
+        Boolean fromRoutingTable = net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(gateway_id, msisdn);
+        if (fromRoutingTable != null) {
+            return fromRoutingTable;
+        }
         for (String p : prefix) {
             Matcher matcher = Pattern.compile("^" + p).matcher(msisdn);
             if (matcher.find()) {

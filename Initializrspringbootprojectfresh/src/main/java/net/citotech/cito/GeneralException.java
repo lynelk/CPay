@@ -3,6 +3,7 @@ package net.citotech.cito;
 import net.citotech.cito.Model.GateWayResponse;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.MDC;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,6 +68,18 @@ public class GeneralException {
             obj.put("state", "ERROR");
             obj.put("code", code);
             obj.put("message", message);
+            // Additive fields per the error catalog (audit D3): a stable machine-readable code,
+            // category, retryable flag, docs URL, and the request's correlation ID. Existing
+            // consumers that only read state/code/message are unaffected.
+            ErrorCatalog.Entry entry = ErrorCatalog.lookup(code);
+            obj.put("error_code", entry.stableCode());
+            obj.put("category", entry.categoryName());
+            obj.put("retryable", entry.retryable());
+            obj.put("docs_url", entry.docsUrl());
+            String requestId = MDC.get("request_id");
+            if (requestId != null) {
+                obj.put("request_id", requestId);
+            }
         } catch (JSONException ex) {
             Logger.getLogger(GeneralException.class.getName()).log(Level.SEVERE, null, ex);
         }

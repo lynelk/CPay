@@ -31,4 +31,13 @@ class GatewayBalanceTypeTest {
     void returnsNullForAnUnknownGateway() {
         assertThat(GatewayBalanceType.fromGatewayId("SomeUnknownGateway")).isNull();
     }
+
+    @Test
+    void exposesTheIsoCurrencyCodeEachBalanceIsDenominatedIn() {
+        assertThat(GatewayBalanceType.MTN_MOMO.currencyCode()).isEqualTo("UGX");
+        assertThat(GatewayBalanceType.AIRTEL_MONEY.currencyCode()).isEqualTo("UGX");
+        assertThat(GatewayBalanceType.AIRTEL_OPENAPI.currencyCode()).isEqualTo("UGX");
+        assertThat(GatewayBalanceType.SAFARICOM_MPESA.currencyCode()).isEqualTo("KES");
+        assertThat(GatewayBalanceType.SMS.currencyCode()).isEqualTo("UGX");
+    }
 }

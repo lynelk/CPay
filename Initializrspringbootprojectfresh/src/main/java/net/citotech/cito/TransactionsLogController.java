@@ -2867,23 +2867,25 @@ public class TransactionsLogController {
 
                     if (balanceList.size() > 0) {
                         Statement s = balanceList.get(0);
-                        mtn_balance = new Balance("UGX MTN MM",
+                        mtn_balance = new Balance(GatewayBalanceType.MTN_MOMO.label(),
                                 s.getMtnmm_balance(),
                                 MTNMoMoPaymentGateway.getGatewayId());
+                        mtn_balance.setBaseCurrency(GatewayBalanceType.MTN_MOMO.currencyCode());
 
-                        airtel_balance = new Balance("UGX AIRTEL MM",
+                        airtel_balance = new Balance(GatewayBalanceType.AIRTEL_MONEY.label(),
                                 s.getAirtelmm_balance(),
                                 AirtelMoneyPaymentGateway.getGatewayId()   );
-                        airtel_balance.setBaseCurrency("UGX");
+                        airtel_balance.setBaseCurrency(GatewayBalanceType.AIRTEL_MONEY.currencyCode());
                     } else {
-                        mtn_balance = new Balance("UGX MTN MM",
+                        mtn_balance = new Balance(GatewayBalanceType.MTN_MOMO.label(),
                                 0.00,
                                 MTNMoMoPaymentGateway.getGatewayId());
+                        mtn_balance.setBaseCurrency(GatewayBalanceType.MTN_MOMO.currencyCode());
 
-                        airtel_balance = new Balance("UGX AIRTEL MM",
+                        airtel_balance = new Balance(GatewayBalanceType.AIRTEL_MONEY.label(),
                                 0.00,
                                 AirtelMoneyPaymentGateway.getGatewayId() );
-                        airtel_balance.setBaseCurrency("UGX");
+                        airtel_balance.setBaseCurrency(GatewayBalanceType.AIRTEL_MONEY.currencyCode());
                     }
 
                     //New balance

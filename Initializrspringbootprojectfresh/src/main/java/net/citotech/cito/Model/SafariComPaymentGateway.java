@@ -135,6 +135,10 @@ public class SafariComPaymentGateway extends PaymentGateway {
     }
 
     public static boolean isValidMisdn(String msisdn) {
+        Boolean fromRoutingTable = net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(gateway_id, msisdn);
+        if (fromRoutingTable != null) {
+            return fromRoutingTable;
+        }
         for (int i=0; i <  prefix.length; i++) {
             String line = msisdn;
             String pattern = "^"+prefix[i]+"";

@@ -1114,43 +1114,45 @@ public class Common {
 
             if (balanceList.size() > 0) {
                 Statement s = balanceList.get(0);
-                mtn_balance = new Balance("UGX MTN MM",
+                mtn_balance = new Balance(GatewayBalanceType.MTN_MOMO.label(),
                         s.getMtnmm_balance(),
-                        "MTNMoMoPaymentGateway"   );
+                        GatewayBalanceType.MTN_MOMO.gatewayId());
+                mtn_balance.setBaseCurrency(GatewayBalanceType.MTN_MOMO.currencyCode());
 
-                airtel_balance = new Balance("UGX AIRTEL MM",
+                airtel_balance = new Balance(GatewayBalanceType.AIRTEL_MONEY.label(),
                         s.getAirtelmm_balance(),
-                        "AirtelMoneyPaymentGateway"   );
-                airtel_balance.setBaseCurrency("UGX");
+                        GatewayBalanceType.AIRTEL_MONEY.gatewayId());
+                airtel_balance.setBaseCurrency(GatewayBalanceType.AIRTEL_MONEY.currencyCode());
 
-                safaricom_balance = new Balance("KES MPESA",
+                safaricom_balance = new Balance(GatewayBalanceType.SAFARICOM_MPESA.label(),
                         s.getSafaricom_balance(),
-                        "SafariComPaymentGateway"   );
-                safaricom_balance.setBaseCurrency("KES");
+                        GatewayBalanceType.SAFARICOM_MPESA.gatewayId());
+                safaricom_balance.setBaseCurrency(GatewayBalanceType.SAFARICOM_MPESA.currencyCode());
 
-                sms_balance = new Balance("UGX SMS",
+                sms_balance = new Balance(GatewayBalanceType.SMS.label(),
                         s.getSms_balance(),
-                        "SmsGateway"   );
-                sms_balance.setBaseCurrency("UGX");
+                        GatewayBalanceType.SMS.gatewayId());
+                sms_balance.setBaseCurrency(GatewayBalanceType.SMS.currencyCode());
             } else {
-                mtn_balance = new Balance("UGX MTN MM",
+                mtn_balance = new Balance(GatewayBalanceType.MTN_MOMO.label(),
                         0.00,
-                        "MTNMoMoPaymentGateway");
+                        GatewayBalanceType.MTN_MOMO.gatewayId());
+                mtn_balance.setBaseCurrency(GatewayBalanceType.MTN_MOMO.currencyCode());
 
-                airtel_balance = new Balance("UGX AIRTEL MM",
+                airtel_balance = new Balance(GatewayBalanceType.AIRTEL_MONEY.label(),
                         0.00,
-                        "AirtelMoneyPaymentGateway");
-                airtel_balance.setBaseCurrency("UGX");
+                        GatewayBalanceType.AIRTEL_MONEY.gatewayId());
+                airtel_balance.setBaseCurrency(GatewayBalanceType.AIRTEL_MONEY.currencyCode());
 
-                safaricom_balance = new Balance("KES MPESA",
+                safaricom_balance = new Balance(GatewayBalanceType.SAFARICOM_MPESA.label(),
                         0.00,
-                        "SafariComPaymentGateway"   );
-                safaricom_balance.setBaseCurrency("KES");
+                        GatewayBalanceType.SAFARICOM_MPESA.gatewayId());
+                safaricom_balance.setBaseCurrency(GatewayBalanceType.SAFARICOM_MPESA.currencyCode());
 
-                sms_balance = new Balance("UGX SMS",
+                sms_balance = new Balance(GatewayBalanceType.SMS.label(),
                         0.00,
-                        "SmsGateway"   );
-                sms_balance.setBaseCurrency("UGX");
+                        GatewayBalanceType.SMS.gatewayId());
+                sms_balance.setBaseCurrency(GatewayBalanceType.SMS.currencyCode());
             }
 
             //New balance
@@ -2375,8 +2377,25 @@ public class Common {
 
             MapSqlParameterSource parameters_ = new MapSqlParameterSource();
             tx.setTx_update_trace(txUpdatedDetails.getRequestTrace());
+            String previousStatusValue = tx.getStatus();
             tx.setStatus(txUpdatedDetails.getTransactionStatus());
             tx.setTx_gateway_ref(txUpdatedDetails.getNetworkId());
+
+            // Explicit state-machine validation (audit B2): log when a provider/callback tries
+            // to move a transaction out of a terminal state. The SQL guard below is what actually
+            // enforces this (it's authoritative under concurrency); this is a named, testable
+            // check on top of it rather than the DB WHERE clause being the only place the rule
+            // "terminal states are final" is expressed.
+            net.citotech.cito.Model.TransactionStatus previousStatus =
+                    net.citotech.cito.Model.TransactionStatus.fromString(previousStatusValue);
+            net.citotech.cito.Model.TransactionStatus nextStatus =
+                    net.citotech.cito.Model.TransactionStatus.fromString(tx.getStatus());
+            if (previousStatus != null && nextStatus != null && !previousStatus.canTransitionTo(nextStatus)) {
+                Logger.getLogger(Common.class.getName()).log(Level.WARNING,
+                        "Rejected invalid transaction status transition for tx id=" + tx.getId()
+                                + ": " + previousStatus + " -> " + nextStatus
+                                + " (terminal statuses cannot transition again)", "");
+            }
 
             // Guard against re-delivered provider callbacks: only transition rows that are
             // still in a non-terminal state. If 0 rows are affected, this status update has
