@@ -19,6 +19,7 @@ import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.ledger.DoubleEntryLedgerService;
 import net.citotech.cito.ledger.LedgerEntryCommand;
+import net.citotech.cito.metrics.GatewayMetrics;
 import net.citotech.cito.money.MoneyAmount;
 import net.citotech.cito.webhook.MerchantWebhookService;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -33,19 +34,22 @@ public class PaymentOrchestrationService {
     private final RiskDecisionService riskDecisionService;
     private final DoubleEntryLedgerService ledgerService;
     private final MerchantWebhookService webhookService;
+    private final GatewayMetrics gatewayMetrics;
 
     public PaymentOrchestrationService(NamedParameterJdbcTemplate jdbcTemplate,
                                        PlatformTransactionManager transactionManager,
                                        PaymentChannelRegistry paymentChannelRegistry,
                                        RiskDecisionService riskDecisionService,
                                        DoubleEntryLedgerService ledgerService,
-                                       MerchantWebhookService webhookService) {
+                                       MerchantWebhookService webhookService,
+                                       GatewayMetrics gatewayMetrics) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
         this.paymentChannelRegistry = paymentChannelRegistry;
         this.riskDecisionService = riskDecisionService;
         this.ledgerService = ledgerService;
         this.webhookService = webhookService;
+        this.gatewayMetrics = gatewayMetrics;
     }
 
     public PaymentResult collect(PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
@@ -56,6 +60,11 @@ public class PaymentOrchestrationService {
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
         GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
+        // Audit H3: business metrics at the orchestration seam - GatewayMetrics already existed
+        // (used by callback delivery and rate limiting) but was never wired into the actual
+        // payment orchestration flow, so cpay.transaction.initiated/completed never recorded a
+        // single collection or payout.
+        gatewayMetrics.incrementTransactionInitiated(gatewayId, Transaction.TX_TYPE_PAYIN);
 
         Double amount = parseAmount(request.getAmount());
         Transaction tx = baseTransaction(request, merchant, gatewayId, originateIp, amount);
@@ -65,9 +74,16 @@ public class PaymentOrchestrationService {
         tx.setCharges(DoPayGateway.getCustomerInboundCharges(amount, chargeDetails));
         tx.setTx_cost(DoPayGateway.getCostOfInboundCharges(amount, chargeDetails));
 
-        String legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager);
+        String legacyResult;
+        try {
+            legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager);
+        } catch (RuntimeException ex) {
+            gatewayMetrics.incrementGatewayError(gatewayId);
+            throw ex;
+        }
         postLedgerEntries("COLLECT", request, merchant, gatewayId, tx, amount, tx.getCharges());
         PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
+        gatewayMetrics.incrementTransactionCompleted(gatewayId, Transaction.TX_TYPE_PAYIN, tx.getStatus());
         queueWebhook(merchant, "payment.pending", request, result);
         return result;
     }
@@ -80,6 +96,8 @@ public class PaymentOrchestrationService {
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
         GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
+        // Audit H3: see the matching comment in collect() above.
+        gatewayMetrics.incrementTransactionInitiated(gatewayId, Transaction.TX_TYPE_PAYOUT);
 
         Double amount = parseAmount(request.getAmount());
         Double charges = DoPayGateway.getCustomerOutboundCharges(amount, chargeDetails);
@@ -105,10 +123,12 @@ public class PaymentOrchestrationService {
             postLedgerEntries("PAYOUT", request, merchant, gatewayId, tx, amount, charges);
             ledgerService.captureReservation(reservationReference);
             PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
+            gatewayMetrics.incrementTransactionCompleted(gatewayId, Transaction.TX_TYPE_PAYOUT, tx.getStatus());
             queueWebhook(merchant, "payout.pending", request, result);
             return result;
         } catch (RuntimeException ex) {
             ledgerService.releaseReservation(reservationReference);
+            gatewayMetrics.incrementGatewayError(gatewayId);
             throw ex;
         }
     }
