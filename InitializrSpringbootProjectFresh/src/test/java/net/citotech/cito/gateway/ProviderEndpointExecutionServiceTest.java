@@ -27,7 +27,8 @@ class ProviderEndpointExecutionServiceTest {
     void sandboxCollectionDefaultsToSuccessfulWhenNoEndpointConfigured() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         ProviderTokenStoreService tokenStoreService = mock(ProviderTokenStoreService.class);
-        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(jdbcTemplate, tokenStoreService);
+        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(
+            jdbcTemplate, tokenStoreService, new ChannelCircuitBreaker());
         PaymentGatewayRequest request = new PaymentGatewayRequest(
             "M1", "256770000001", 1000.0, "REF-1", "test", "cb", Map.of());
 
@@ -42,7 +43,8 @@ class ProviderEndpointExecutionServiceTest {
     void sandboxCollectionFailsForMagicDeclinedAccountSuffix() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         ProviderTokenStoreService tokenStoreService = mock(ProviderTokenStoreService.class);
-        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(jdbcTemplate, tokenStoreService);
+        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(
+            jdbcTemplate, tokenStoreService, new ChannelCircuitBreaker());
         PaymentGatewayRequest request = new PaymentGatewayRequest(
             "M1", "256770000002", 1000.0, "REF-2", "test", "cb", Map.of());
 
@@ -55,7 +57,8 @@ class ProviderEndpointExecutionServiceTest {
     void sandboxPayoutFailsForMagicDeclinedAccountSuffix() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         ProviderTokenStoreService tokenStoreService = mock(ProviderTokenStoreService.class);
-        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(jdbcTemplate, tokenStoreService);
+        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(
+            jdbcTemplate, tokenStoreService, new ChannelCircuitBreaker());
         PaymentGatewayRequest request = new PaymentGatewayRequest(
             "M1", "256770000002", 500.0, "REF-3", "test", "cb", Map.of());
 
@@ -70,7 +73,8 @@ class ProviderEndpointExecutionServiceTest {
         // real payments through the canned sandbox scenarios.
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         ProviderTokenStoreService tokenStoreService = mock(ProviderTokenStoreService.class);
-        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(jdbcTemplate, tokenStoreService);
+        ProviderEndpointExecutionService service = new ProviderEndpointExecutionService(
+            jdbcTemplate, tokenStoreService, new ChannelCircuitBreaker());
         PaymentGatewayRequest request = new PaymentGatewayRequest(
             "M1", "256770000001", 1000.0, "REF-4", "test", "cb", Map.of("gatewayState", "PRODUCTION"));
 

@@ -17,11 +17,14 @@ import org.springframework.stereotype.Service;
 public class ProviderEndpointExecutionService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final ProviderTokenStoreService tokenStoreService;
+    private final ChannelCircuitBreaker circuitBreaker;
 
     public ProviderEndpointExecutionService(NamedParameterJdbcTemplate jdbcTemplate,
-                                            ProviderTokenStoreService tokenStoreService) {
+                                            ProviderTokenStoreService tokenStoreService,
+                                            ChannelCircuitBreaker circuitBreaker) {
         this.jdbcTemplate = jdbcTemplate;
         this.tokenStoreService = tokenStoreService;
+        this.circuitBreaker = circuitBreaker;
     }
 
     public GateWayResponse execute(String channelCode, String displayName, String operation, PaymentGatewayRequest request) {
@@ -37,6 +40,19 @@ public class ProviderEndpointExecutionService {
             record(channelCode, operation, request, endpointKey, scenario.httpStatus, scenario.runStatus, accepted.getMessage());
             return accepted;
         }
+
+        // Per-channel circuit breaker (audit B5): a provider outage previously meant every
+        // request paid the full connect/read timeout one at a time. Once enough consecutive
+        // failures accrue, short-circuit further calls to this channel for a cooldown window
+        // instead of hammering a known-down provider.
+        if (!circuitBreaker.allowRequest(channelCode)) {
+            String message = "Circuit breaker is open for " + channelCode + " - provider calls are temporarily suspended";
+            record(channelCode, operation, request, endpointUrl, 0, "CIRCUIT_OPEN", message);
+            GateWayResponse shortCircuited = response(channelCode, displayName, operation, request, 0, "FAILED", message);
+            shortCircuited.setRequestTrace("circuitBreakerState=" + circuitBreaker.stateOf(channelCode));
+            return shortCircuited;
+        }
+
         String body = body(channelCode, operation, request);
         try {
             HttpURLConnection connection = (HttpURLConnection) URI.create(endpointUrl).toURL().openConnection();
@@ -60,11 +76,17 @@ public class ProviderEndpointExecutionService {
             int httpStatus = connection.getResponseCode();
             String responseBody = read(httpStatus >= 200 && httpStatus < 300 ? connection.getInputStream() : connection.getErrorStream());
             String status = httpStatus >= 200 && httpStatus < 300 ? "SUBMITTED" : "FAILED";
+            if ("SUBMITTED".equals(status)) {
+                circuitBreaker.recordSuccess(channelCode);
+            } else {
+                circuitBreaker.recordFailure(channelCode);
+            }
             record(channelCode, operation, request, endpointUrl, httpStatus, status, responseBody);
             GateWayResponse result = response(channelCode, displayName, operation, request, httpStatus, status, trim(responseBody));
             result.setRequestTrace("requestHash=" + hash(body));
             return result;
         } catch (Exception e) {
+            circuitBreaker.recordFailure(channelCode);
             record(channelCode, operation, request, endpointUrl, 0, "FAILED", e.getMessage());
             throw new PaymentGatewayException("Provider endpoint execution failed: " + e.getMessage());
         }
