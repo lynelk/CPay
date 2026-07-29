@@ -38,6 +38,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -1981,9 +1982,33 @@ public class TransactionsLogController {
     }
 
 
+    // Audit G1: distributed lock (net.citotech.cito.config.SchedulerLockConfig) backed by the
+    // `shedlock` DB table (V29__shedlock.sql) - this method is both @Scheduled AND directly
+    // HTTP-triggerable via @PostMapping, and runs real payout/status-check ledger postings, so a
+    // multi-instance deployment must not run two copies of it concurrently (double-crediting or
+    // double-reversing a transaction). lockAtMostFor=15m is a generous crash-recovery ceiling:
+    // this loop processes up to 100 PENDING/UNDETERMINED transactions per run, each doing one
+    // synchronous gateway status-check HTTP call (worst case ~90s per call given
+    // Common.HTTP_REQUEST_TIMEOUT_MILLISECONDS=30s connect / HTTP_REQUEST_READTIMEOUT_MILLISECONDS=60s
+    // read), so 15 minutes safely covers a normal run while still releasing the lock well before
+    // an actually-crashed instance would otherwise starve the queue indefinitely. lockAtLeastFor=1m
+    // matches the 60s fixedDelay so a fast run can't have its lock immediately re-acquired by the
+    // same instance's next tick (or grabbed by another instance a moment later due to minor clock
+    // skew) before the configured interval has actually elapsed.
+    //
+    // The pre-existing local java.nio.channels.FileLock below (guarding
+    // Common.CLASS_PATH_CHECK_TX_LOCK) is kept as a defense-in-depth layer rather than removed:
+    // ShedLock is now the authoritative cross-instance guard (this method won't even be entered
+    // concurrently once the lock is held, since @SchedulerLock's AOP advice wraps the whole call),
+    // so the file lock becomes largely redundant under normal operation, but leaving it costs
+    // nothing and still catches same-JVM overlap if ShedLock's DB lock were ever unavailable.
+    // Rewriting this method's dozen mid-method `lock.release(); writer.close();` early-return
+    // points to remove it would be a much larger, higher-risk change to this money-movement path
+    // for no real benefit, so it stays as-is.
     @PostMapping(path="/testCheckstatusCron")
 
     @Scheduled(fixedDelay = 60000, initialDelay = 1000)
+    @SchedulerLock(name = "testCheckstatusCron", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     public String testCheckstatusCron (/*@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response*/) {
         //Set the response header
@@ -4664,9 +4689,28 @@ public class TransactionsLogController {
     @Value( "${custom.lockfiledirectory}" )
     private String lockfiledirectory;
 
+    // Audit G1: distributed lock (net.citotech.cito.config.SchedulerLockConfig) backed by the
+    // `shedlock` DB table (V29__shedlock.sql) - like testCheckstatusCron() above, this method is
+    // both @Scheduled AND directly HTTP-triggerable via @PostMapping, and it actually disburses
+    // money (Common.doPayOut per beneficiary), so two instances running it concurrently would mean
+    // the same batch's beneficiaries could be paid out twice. lockAtMostFor=20m: this loop pulls up
+    // to 20 PROCESSING batches per run, each with up to ~31 new beneficiary payouts triggered
+    // (ben_count capped at >30), so worst case ~620 synchronous gateway payout calls in one run;
+    // 20 minutes is a generous-but-bounded crash-recovery ceiling above realistic run time, chosen
+    // over an unbounded/very-long value so a genuinely crashed instance doesn't leave the payout
+    // queue stuck for hours. lockAtLeastFor=30s matches the 30s fixedDelay, for the same
+    // same-instance-immediate-reacquisition / clock-skew reason as testCheckstatusCron().
+    //
+    // The pre-existing local java.nio.channels.FileLock below (guarding
+    // Common.CLASS_PATH_PAYMENTS_CRON_TX_LOCK) is kept as defense-in-depth, not removed - see the
+    // longer note above testCheckstatusCron() for the reasoning (ShedLock is now the authoritative
+    // cross-instance guard; the file lock is redundant under normal operation but harmless to keep,
+    // and removing it would mean reworking several early-return points in this money-movement path
+    // for no real benefit).
     @PostMapping(path="/paymentsPayCron")
 
     @Scheduled(fixedDelay = 30000, initialDelay = 1000)
+    @SchedulerLock(name = "paymentsPayCron", lockAtMostFor = "PT20M", lockAtLeastFor = "PT30S")
     public String paymentsPayCron () {
         //Set the response header
 
