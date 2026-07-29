@@ -3,7 +3,6 @@ package net.citotech.cito.Model;
 import net.citotech.cito.Common;
 import net.citotech.cito.SettingsController;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.core.io.ClassPathResource;
@@ -17,7 +16,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.time.Instant;
 import java.security.*;
 import java.security.cert.CertificateException;
@@ -34,6 +32,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.citotech.cito.gateway.ProviderConversationReferenceStoreRegistry;
 import net.citotech.cito.gateway.ProviderToken;
 import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
 
@@ -68,9 +67,6 @@ public class SafariComPaymentGateway extends PaymentGateway {
     public static String gateway_id = "SafariComPaymentGateway";
 
     public static String gateway_currency_code = "MPESAMM";
-
-    @Value( "${custom.lockfiledirectory}" )
-    private String lockfiledirectory;
 
 
 
@@ -897,28 +893,16 @@ public class SafariComPaymentGateway extends PaymentGateway {
     }
 
     private void checkStatusResponseStorage(String ConversationID, String txRef) {
-
-        //Now save the new token
-        try {
-            JSONObject newTokenO = new JSONObject();
-            newTokenO.put("txRef", txRef);
-            newTokenO.put("ConversationID", ConversationID);
-            File resource = Common.safeLockFile(lockfiledirectory, ConversationID + ".json");
-            if (resource.createNewFile()) {
-                Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
-                        "SAFARICOM ConversationID File "+resource.getAbsolutePath()+" has been created.");
-            }
-            if (!resource.exists()) {
-                Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE,
-                        "SAFARICOM ConversationID File "+resource.getAbsolutePath()+" has not been created.");
-                return;
-            }
-            Files.writeString(resource.toPath(), newTokenO.toString());
-        } catch (IOException | JSONException ex) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName())
-                    .log(Level.SEVERE, ex.getMessage(), ex);
-            return;
-        }
+        // C1: this used to write a plaintext <ConversationID>.json file to local disk (via
+        // Common.safeLockFile) that Api.getPayoutConversationIdToken read back to resolve a
+        // TransactionStatusQuery callback's ConversationID to our own transaction reference.
+        // That file is genuinely read (Api.java's live /doSafaricomPayOutCallback handler
+        // depends on it) so it isn't dead weight to delete outright - but a per-instance local
+        // file can't be the source of truth once there is more than one app instance/pod, so
+        // the mapping now lives in the DB-backed provider_conversation_references table (see
+        // ProviderConversationReferenceStoreService), the same pattern already used for
+        // provider tokens in getToken() below.
+        ProviderConversationReferenceStoreRegistry.save(gateway_id, ConversationID, txRef);
     }
 
     public SafariComPaymentGateway.Token getToken() throws IOException {
