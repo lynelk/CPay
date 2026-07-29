@@ -17,6 +17,11 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Audit K1/K3: tests tagged "docker" (Testcontainers-backed) are excluded from the
+             default `mvn test`/`mvn verify` run so an unavailable Docker daemon never breaks the
+             build for contributors or CI lanes that don't provision one. A Docker-capable
+             environment opts in with: mvn test -Ddocker.tests.excludedGroups= -->
+        <docker.tests.excludedGroups>docker</docker.tests.excludedGroups>
     </properties>
 
     <dependencies>
@@ -108,6 +113,32 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Audit K1: Testcontainers-based DB integration tests. Versions are managed by the
+             org.testcontainers:testcontainers-bom that spring-boot-dependencies already imports
+             (see spring-boot-dependencies 4.1.0's <testcontainers.version>), so no explicit
+             version is declared here. These tests additionally require a running Docker daemon;
+             see the docker.tests.excludedGroups property below for how they are kept out of the
+             default `mvn test` run. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Audit K2: WireMock-based provider API mocking tests. wiremock-standalone shades its
+             own Jetty/Jackson/Guava so it cannot collide with the versions Spring Boot manages
+             for the application itself. Not covered by the Spring Boot BOM, so pinned explicitly
+             to the latest stable (non-beta) release. -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.13.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -115,6 +146,13 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${docker.tests.excludedGroups}</excludedGroups>
+                </configuration>
             </plugin>
         </plugins>
     </build>
