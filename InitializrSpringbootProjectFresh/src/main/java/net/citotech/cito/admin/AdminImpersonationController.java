@@ -8,6 +8,7 @@ import net.citotech.cito.Common;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,9 +25,14 @@ import org.springframework.web.bind.annotation.RestController;
  * the same convention). {@link AdminImpersonationService#start} additionally enforces the
  * {@link AdminImpersonationService#PERMISSION_CODE} permission via the existing
  * {@link AdminPermissionService#require} pattern before anything is written.
+ *
+ * <p>Audit E3: also carries a class-level {@code @PreAuthorize("hasRole('ADMIN')")} as
+ * defense-in-depth reinforcement of the path-level rule described above - additive only, not a
+ * replacement for either the path rule or {@link AdminPermissionService#require}.
  */
 @RestController
 @RequestMapping(path = "/api/v2/admin/impersonation")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminImpersonationController {
     private final AdminImpersonationService impersonationService;
     private final NamedParameterJdbcTemplate jdbcTemplate;

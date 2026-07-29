@@ -7,6 +7,7 @@ import net.citotech.cito.Model.Setting;
 import net.citotech.cito.SettingsRegistry;
 import net.citotech.cito.SettingsRegistry.Entry;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,9 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
  * printed for an entry whose name looks credential-shaped ({@link SettingsRegistry#isSecretLike});
  * none of the entries registered today are secrets, but this is a deliberate belt-and-suspenders
  * check rather than trusting every future registry entry to be non-sensitive.
+ *
+ * <p>Audit E3: now also carries a class-level {@code @PreAuthorize("hasRole('ADMIN')")} as
+ * defense-in-depth reinforcement of the path-level rule above.
  */
 @RestController
 @RequestMapping(path = "/api/v2/admin/settings/registry")
+@PreAuthorize("hasRole('ADMIN')")
 public class SettingsRegistryController {
 
     private static final String REDACTED = "***REDACTED***";

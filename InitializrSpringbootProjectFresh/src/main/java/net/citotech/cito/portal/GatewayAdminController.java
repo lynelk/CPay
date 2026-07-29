@@ -5,14 +5,18 @@ import net.citotech.cito.PaymentOrchestrationService;
 import net.citotech.cito.api.v2.dto.PaymentChannelResponse;
 import net.citotech.cito.callback.CallbackTaskService;
 import net.citotech.cito.reconciliation.ReconService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+// Audit E3: method-level reinforcement of the /api/v2/admin/** -> hasRole("ADMIN") rule already
+// enforced by SecurityConfig's filterChain (defense in depth, not a replacement for it).
 @RestController
 @RequestMapping(path = "/api/v2/admin/gateways")
+@PreAuthorize("hasRole('ADMIN')")
 public class GatewayAdminController {
     private final PaymentOrchestrationService paymentOrchestrationService;
     private final CallbackTaskService callbackTaskService;
