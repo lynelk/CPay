@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -29,6 +30,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
+// Audit E3: enables @PreAuthorize as defense-in-depth on top of the path-based rules in
+// filterChain() below. This is additive hardening only - every method-level check added under
+// this flag mirrors an existing path-matcher rule (e.g. hasRole("ADMIN") for /api/v2/admin/**),
+// so it can never grant access the path matcher wouldn't already grant; it only protects against
+// the path rule drifting or being bypassed by an internal forward/include.
+@EnableMethodSecurity
 public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000,http://[::1]:3000,http://localhost:2019,http://127.0.0.1:2019,http://[::1]:2019}")
     private String[] allowedOrigins;

@@ -3,13 +3,19 @@ package net.citotech.cito.reconciliation;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+// Audit E3: method-level reinforcement of the /api/v2/admin/** -> hasRole("ADMIN") rule already
+// enforced by SecurityConfig's filterChain (defense in depth, not a replacement for it). This
+// controller opens/closes settlement batches and runs settlement sweeps, so it is one of the
+// clearest "sensitive admin action" candidates for this hardening.
 @RestController
 @RequestMapping(path = "/api/v2/admin/reconciliation/settlements")
+@PreAuthorize("hasRole('ADMIN')")
 public class SettlementOpsController {
     private final SettlementOpsService service;
     private final SettlementScheduleService scheduleService;
