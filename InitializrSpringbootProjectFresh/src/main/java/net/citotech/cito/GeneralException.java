@@ -62,6 +62,7 @@ public class GeneralException {
     public static String ERRORS_146 = "Amount %s is out of the allowed range [%s, %s].";
     public static String ERRORS_147 = "Please verify your email address before logging in. Check your inbox for the verification code.";
     public static String ERRORS_148 = "Risk authorization declined this request: %s";
+    public static String ERRORS_149 = "This payout exceeds the step-up MFA threshold. Enable MFA on your account before starting it.";
     
     
     public static String getError(String code, String message) {

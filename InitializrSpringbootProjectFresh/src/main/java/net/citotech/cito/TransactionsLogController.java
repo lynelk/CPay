@@ -105,6 +105,8 @@ public class TransactionsLogController {
     private net.citotech.cito.ledger.DoubleEntryLedgerService ledgerService;
     @Autowired
     private net.citotech.cito.ledger.LegacyLedgerPostingService legacyLedgerPostingService;
+    @Autowired(required = false)
+    net.citotech.cito.security.MerchantMfaService merchantMfaService;
 
 
 
@@ -4432,12 +4434,25 @@ public class TransactionsLogController {
                             payment.getStatus()));
             }
 
+            boolean willStartOrResumeDisbursement = !pStatus.equals(Transaction.BATCH_PAYMENTS_PROCESSING);
             if (pStatus.equals(Transaction.BATCH_PAYMENTS_PROCESSING)) {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PAUSED);
             } else if (pStatus.equals(Transaction.BATCH_PAYMENTS_PAUSED)) {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PROCESSING);
             } else {
                 payment.setStatus(Transaction.BATCH_PAYMENTS_PROCESSING);
+            }
+
+            // Audit E2: step-up MFA for high-value payouts. This is the point where a logged-in
+            // human explicitly starts/resumes disbursement - paymentsPayCron processes the batch
+            // asynchronously afterward with nobody present to prompt, so this is the only place a
+            // fresh step-up challenge can meaningfully happen. Pausing an in-flight batch doesn't
+            // disburse anything, so it's not gated.
+            if (willStartOrResumeDisbursement) {
+                String stepUpError = requireStepUpMfaIfOverThreshold(sessionUser, payment, sObject);
+                if (stepUpError != null) {
+                    return stepUpError;
+                }
             }
 
             //Now add the user to database
@@ -4500,6 +4515,44 @@ public class TransactionsLogController {
         }
     }
 
+    /**
+     * Audit E2: returns null when this batch is allowed to start/resume disbursing, or an error
+     * response string when it's blocked. Only enforced above cpay.step_up_mfa.payout_threshold
+     * (setting name: step_up_mfa_payout_threshold; unset/<=0 disables the gate entirely). A
+     * merchant user without MFA enabled is blocked outright (fail closed) rather than silently
+     * allowed through - the whole point of a step-up control is to require it for this specific
+     * action, not to depend on whichever login-time MFA choice the user already made.
+     */
+    String requireStepUpMfaIfOverThreshold(MerchantUser sessionUser, Payment payment, JSONObject requestBody) {
+        Setting thresholdSetting = Common.getSettings("step_up_mfa_payout_threshold", jdbcTemplate);
+        double threshold = parseStepUpThreshold(thresholdSetting);
+        if (threshold <= 0 || payment.getTotal_amount() < threshold) {
+            return null;
+        }
+        if (merchantMfaService == null || !merchantMfaService.isEnabled(sessionUser.getId())) {
+            return GeneralException.getError("149", GeneralException.ERRORS_149);
+        }
+        String mfaCode = requestBody.optString("mfa_code", "");
+        if (mfaCode.trim().isEmpty() || !merchantMfaService.verifyCode(sessionUser.getId(), mfaCode.trim())) {
+            JSONObject resJson = new JSONObject();
+            resJson.put("code", "STEP_UP_MFA_REQUIRED");
+            resJson.put("message", "This payout's total (" + payment.getTotal_amount()
+                    + ") exceeds the step-up threshold. Provide a fresh mfa_code to continue.");
+            return resJson.toString();
+        }
+        return null;
+    }
+
+    private double parseStepUpThreshold(Setting setting) {
+        if (setting == null || setting.getSetting_value() == null || setting.getSetting_value().trim().isEmpty()) {
+            return 0;
+        }
+        try {
+            return Double.parseDouble(setting.getSetting_value().trim());
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
 
     /*
     * API to start a payment

@@ -84,6 +84,7 @@ public final class ErrorCatalog {
         register("146", "REQUEST_INVALID", Category.VALIDATION, false);
         register("147", "AUTH_EMAIL_NOT_VERIFIED", Category.AUTHENTICATION, false);
         register("148", "RISK_AUTHORIZATION_DECLINED", Category.BUSINESS_RULE, false);
+        register("149", "AUTH_STEP_UP_MFA_REQUIRED", Category.AUTHENTICATION, false);
     }
 
     private static void register(String legacyCode, String stableCode, Category category, boolean retryable) {
