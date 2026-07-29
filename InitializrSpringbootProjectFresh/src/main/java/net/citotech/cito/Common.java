@@ -1396,6 +1396,34 @@ public class Common {
     }
 
     /*
+    * Runs the same risk/fraud authorization the v2 orchestration path already runs (audit I1) -
+    * blocklist, sanctions screening, single-transaction cap, daily merchant cap - against this
+    * legacy request. Returns null when the request is allowed to proceed, or an error response
+    * string when RiskDecisionRegistry declines it. A no-op (returns null) only if the registry
+    * hasn't been wired by Spring (an uninitialized test context, not a real deployment).
+    */
+    private static String authorizeLegacyRisk(Transaction newTx, Merchant merchant, String direction) {
+        net.citotech.cito.api.v2.dto.PaymentRequest request = new net.citotech.cito.api.v2.dto.PaymentRequest();
+        request.setMerchantNumber(merchant.getAccount_number());
+        request.setAmount(String.valueOf(newTx.getOriginal_amount()));
+        request.setCurrency(newTx.getCurrency() == null || newTx.getCurrency().isEmpty() ? "UGX" : newTx.getCurrency());
+        request.setReference(newTx.getTx_merchant_ref());
+        net.citotech.cito.api.v2.dto.PaymentPartyRequest party = new net.citotech.cito.api.v2.dto.PaymentPartyRequest();
+        party.setValue(newTx.getPayer_number());
+        if ("PAYOUT".equalsIgnoreCase(direction)) {
+            request.setPayee(party);
+        } else {
+            request.setPayer(party);
+        }
+        try {
+            net.citotech.cito.compliance.RiskDecisionRegistry.authorize(merchant, request, direction);
+            return null;
+        } catch (net.citotech.cito.gateway.PaymentGatewayException ex) {
+            return GeneralException.getError("148", String.format(GeneralException.ERRORS_148, ex.getMessage()));
+        }
+    }
+
+    /*
     * DoPayIn makes a payin transaction.
     */
     public static String doPayIn(Transaction newTx,
@@ -1408,6 +1436,11 @@ public class Common {
         jdbcTemplate);
         if (tx != null) {
             return buildIdempotentReplayResponse(tx);
+        }
+
+        String riskError = authorizeLegacyRisk(newTx, merchant, "COLLECT");
+        if (riskError != null) {
+            return riskError;
         }
 
         boolean useMerchantCreds = Common.useMerchantProviderCredentials(jdbcTemplate);
@@ -1690,6 +1723,11 @@ public class Common {
         jdbcTemplate);
         if (tx != null) {
             return buildIdempotentReplayResponse(tx);
+        }
+
+        String riskError = authorizeLegacyRisk(newTx, merchant, "PAYOUT");
+        if (riskError != null) {
+            return riskError;
         }
 
         MapSqlParameterSource parametersBalanceSql = new MapSqlParameterSource();
