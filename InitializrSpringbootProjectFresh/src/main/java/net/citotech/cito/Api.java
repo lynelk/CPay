@@ -1,19 +1,18 @@
 package net.citotech.cito;
 
-import java.io.File;
-import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import net.citotech.cito.Model.*;
+import net.citotech.cito.gateway.ProviderConversationReferenceStoreRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.json.JSONArray;
@@ -57,9 +56,6 @@ public class Api {
     @Value( "${custom.gatewaystate}" )
     private String gatewaystate;
 
-    @Value( "${custom.lockfiledirectory}" )
-    private String lockfiledirectory;
-    
     /*
     * API to add a new admin to the database
     */
@@ -1318,50 +1314,28 @@ public class Api {
         }
     }
 
-    public String getPayoutConversationIdToken(String ConversationID) throws IOException {
-        File resource = Common.safeLockFile(lockfiledirectory, ConversationID + ".json");
-        if (!resource.exists()) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "ConversationID: "+resource.getAbsolutePath()+" DOES NOT EXISTS", "" );
+    public String getPayoutConversationIdToken(String ConversationID) {
+        // C1: was read back from a plaintext <ConversationID>.json file under
+        // custom.lockfiledirectory (written by SafariComPaymentGateway.checkStatusResponseStorage).
+        // That file is genuinely read here - this resolves a Safaricom TransactionStatusQuery
+        // callback's ConversationID back to our own transaction reference - so it wasn't dead
+        // code to delete; it's now backed by the provider_conversation_references DB table
+        // instead of a per-instance local file. See ProviderConversationReferenceStoreService.
+        Optional<String> reference = ProviderConversationReferenceStoreRegistry
+                .find(SafariComPaymentGateway.gateway_id, ConversationID);
+        if (reference.isEmpty()) {
+            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "ConversationID: "+ConversationID+" DOES NOT EXIST", "" );
             return "";
         }
-
-        String data = new String(
-                Files.readAllBytes(resource.toPath())
-        );
-
         Logger.getLogger(SettingsController.class.getName())
-                .log(Level.INFO, "ConversationID Data Stored "+data, " " );
-        JSONObject r = null;
-        try {
-            if (data.isEmpty()) {
-                //No token, request for a new one
-                return "";
-            }
-
-            r = new JSONObject(data);
-            if (!r.isNull("txRef") && !r.isNull("ConversationID")) {
-                if (r.getString("ConversationID").equals(ConversationID)) {
-                    return r.getString("txRef");
-                }
-            }
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "ID "+ConversationID+" does not match in "+data, "");
-            return "";
-        } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, null, ex.getMessage() );
-            return "";
-        }
+                .log(Level.INFO, "ConversationID Data Stored "+reference.get(), " " );
+        return reference.get();
     }
 
-    private void getPayoutConversationIdDeleteFile(String ConversationID) throws IOException {
-        File resource = Common.safeLockFile(lockfiledirectory, ConversationID + ".json");
-        if (resource.exists()) {
-            if (resource.delete()) {
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, "FILE: " + resource.getAbsolutePath() + " deleted", "");
-            }
-            return;
-        }
+    private void getPayoutConversationIdDeleteFile(String ConversationID) {
+        ProviderConversationReferenceStoreRegistry.delete(SafariComPaymentGateway.gateway_id, ConversationID);
     }
-    
+
     @PostMapping(path="/doAirtelMoneyPayInCallback")
     public String doAirtelMoneyPayInCallback(@RequestBody String requestBody,
             HttpServletRequest request, HttpServletResponse response) {
