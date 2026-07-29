@@ -103,6 +103,8 @@ public class TransactionsLogController {
     private PlatformTransactionManager transactionManager;
     @Autowired
     private net.citotech.cito.ledger.DoubleEntryLedgerService ledgerService;
+    @Autowired
+    private net.citotech.cito.ledger.LegacyLedgerPostingService legacyLedgerPostingService;
 
 
 
@@ -3659,6 +3661,10 @@ public class TransactionsLogController {
                 jdbcTemplate,
                 transactionManager);
 
+            // Audit A1/B1: this portal-initiated legacy call site never wrote to the double-entry
+            // ledger either - post the same entries the v2 orchestration path posts, for parity.
+            legacyLedgerPostingService.postPaymentEntries(Transaction.TX_TYPE_PAYIN, gateway_id, merchant, newTx, amount, charges);
+
             return result;
         }  catch (Exception ex) {
             ex.printStackTrace();
@@ -4811,6 +4817,13 @@ public class TransactionsLogController {
 
                                     Logger.getLogger(AuthenticationController.class.getName())
                                          .log(Level.SEVERE, "PAY RESULTS: "+resultPay, "");
+
+                                    // Audit A1/B1: reserve/capture/release above only manage the
+                                    // temporary funds-hold - they never wrote the permanent
+                                    // double-entry transaction (debit/credit account entries).
+                                    // Post it here, unconditionally like the v2 orchestration path
+                                    // does, keyed by tx_unique_id so it can never double-post.
+                                    legacyLedgerPostingService.postPaymentEntries(Transaction.TX_TYPE_PAYOUT, gateway_id, merchant, newTx, b.getAmount(), charges);
 
                                     //Now update this particular beneficiary
                                     JSONObject rObject = new JSONObject(resultPay);

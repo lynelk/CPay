@@ -76,7 +76,9 @@ public class PaymentOrchestrationService {
 
         String legacyResult;
         try {
-            legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager);
+            // skipRiskCheck=true: riskDecisionService.authorizePayment(...) already ran above for
+            // this exact request - Common.doPayIn must not evaluate and re-record it a second time.
+            legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager, true);
         } catch (RuntimeException ex) {
             gatewayMetrics.incrementGatewayError(gatewayId);
             throw ex;
@@ -119,7 +121,8 @@ public class PaymentOrchestrationService {
             reservedAmount,
             request.getCurrency());
         try {
-            String legacyResult = Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager);
+            // skipRiskCheck=true: see the matching comment in collect() above.
+            String legacyResult = Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager, true);
             postLedgerEntries("PAYOUT", request, merchant, gatewayId, tx, amount, charges);
             ledgerService.captureReservation(reservationReference);
             PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);

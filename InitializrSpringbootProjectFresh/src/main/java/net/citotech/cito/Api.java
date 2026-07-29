@@ -51,7 +51,9 @@ public class Api {
     private PlatformTransactionManager transactionManager;
     @Autowired
     RateLimiterService rateLimiterService;
-    
+    @Autowired
+    net.citotech.cito.ledger.LegacyLedgerPostingService legacyLedgerPostingService;
+
     @Value( "${custom.gatewaystate}" )
     private String gatewaystate;
 
@@ -260,17 +262,23 @@ public class Api {
                 merchant,
                 jdbcTemplate,
                 transactionManager);
-            
+
+            // Audit A1/B1: this legacy call site never wrote to the double-entry ledger at all
+            // (Common.java itself has zero ledger calls) - post the same entries the v2
+            // orchestration path posts for parity, keyed by tx_unique_id so a duplicate/replayed
+            // request never double-posts.
+            legacyLedgerPostingService.postPaymentEntries(Transaction.TX_TYPE_PAYIN, gateway_id, merchant, newTx, amount, charges);
+
             return result;
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, "INTERNAL ERROR: "+ex.getMessage(), ex);
             return GeneralException
                     .getError("102", GeneralException.ERRORS_102);
         }
     }
-    
+
     List<String> missingJsonFields(List<String> fields, JSONObject jObject) {
         List<String> missing = new ArrayList<String>();
         for (String field : fields) {
@@ -499,10 +507,14 @@ public class Api {
                 merchant,
                 jdbcTemplate,
                 transactionManager);
+
+            // Audit A1/B1: see the matching comment in doMobileMoneyPayIn above.
+            legacyLedgerPostingService.postPaymentEntries(Transaction.TX_TYPE_PAYOUT, gateway_id, merchant, newTx, amount, charges);
+
             return result;
-            
+
         }  catch (Exception ex) {
-            
+
             Logger.getLogger(AuthenticationController.class.getName())
                     .log(Level.SEVERE, "GENERAL INTERNAL ERROR: "+ex.getMessage(), ex);
             return GeneralException

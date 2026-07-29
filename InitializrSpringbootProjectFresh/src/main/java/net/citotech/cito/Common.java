@@ -1430,7 +1430,22 @@ public class Common {
             Merchant merchant,
             NamedParameterJdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager) {
-        
+        return doPayIn(newTx, merchant, jdbcTemplate, transactionManager, false);
+    }
+
+    /*
+    * @Param skipRiskCheck: true when the caller (PaymentOrchestrationService) already ran
+    * RiskDecisionService against this exact request before calling doPayIn - avoids evaluating
+    * (and recording a second risk_decisions audit row for) the same request twice. Legacy direct
+    * callers (Api.java, TransactionsLogController.java) never ran a risk check before, so they use
+    * the 4-arg overload above, which always runs it.
+    */
+    public static String doPayIn(Transaction newTx,
+            Merchant merchant,
+            NamedParameterJdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            boolean skipRiskCheck) {
+
         //First check if there is tx with this reference on merchant.
         Transaction tx = Common.getMerchantTxByTheirRef(newTx.getTx_merchant_ref(), merchant.getId()+"",
         jdbcTemplate);
@@ -1438,9 +1453,11 @@ public class Common {
             return buildIdempotentReplayResponse(tx);
         }
 
-        String riskError = authorizeLegacyRisk(newTx, merchant, "COLLECT");
-        if (riskError != null) {
-            return riskError;
+        if (!skipRiskCheck) {
+            String riskError = authorizeLegacyRisk(newTx, merchant, "COLLECT");
+            if (riskError != null) {
+                return riskError;
+            }
         }
 
         boolean useMerchantCreds = Common.useMerchantProviderCredentials(jdbcTemplate);
@@ -1711,6 +1728,18 @@ public class Common {
             Merchant merchant,
             NamedParameterJdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager) {
+        return doPayOut(newTx, merchant, jdbcTemplate, transactionManager, false);
+    }
+
+    /*
+    * @Param skipRiskCheck: see doPayIn's overload above - true only when the caller already ran
+    * RiskDecisionService against this exact request itself (PaymentOrchestrationService).
+    */
+    public static String doPayOut(Transaction newTx,
+            Merchant merchant,
+            NamedParameterJdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            boolean skipRiskCheck) {
 
         boolean useMerchantCreds = Common.useMerchantProviderCredentials(jdbcTemplate);
         Merchant[] gwAccounts = Common.resolveGatewayAccounts(useMerchantCreds, jdbcTemplate);
@@ -1725,9 +1754,11 @@ public class Common {
             return buildIdempotentReplayResponse(tx);
         }
 
-        String riskError = authorizeLegacyRisk(newTx, merchant, "PAYOUT");
-        if (riskError != null) {
-            return riskError;
+        if (!skipRiskCheck) {
+            String riskError = authorizeLegacyRisk(newTx, merchant, "PAYOUT");
+            if (riskError != null) {
+                return riskError;
+            }
         }
 
         MapSqlParameterSource parametersBalanceSql = new MapSqlParameterSource();

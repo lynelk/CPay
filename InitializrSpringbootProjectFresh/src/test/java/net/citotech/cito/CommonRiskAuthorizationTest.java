@@ -117,6 +117,33 @@ class CommonRiskAuthorizationTest {
         verify(riskService).authorizePayment(any(), any(), anyString());
     }
 
+    @Test
+    void skipRiskCheckOverloadNeverCallsTheRiskServiceAtAll() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+        stubNoExistingTxByRef(jdbcTemplate);
+        stubUseMerchantProviderCredentials(jdbcTemplate, true);
+        RiskDecisionService riskService = mock(RiskDecisionService.class);
+        new RiskDecisionRegistry(riskService);
+
+        Transaction newTx = new Transaction();
+        newTx.setTx_merchant_ref("ref-risk-4");
+        newTx.setOriginal_amount(1000.0);
+        Merchant merchant = new Merchant();
+        merchant.setId(12L);
+        merchant.setAccount_number("1000003");
+
+        // PaymentOrchestrationService already ran its own risk check before calling this overload -
+        // Common.doPayIn/doPayOut must not evaluate (or record a second risk_decisions row for) the
+        // same request again.
+        try {
+            Common.doPayIn(newTx, merchant, jdbcTemplate, transactionManager, true);
+        } catch (RuntimeException ignored) {
+            // Expected: the rest of doPayIn's flow isn't fully mocked here, and that's fine.
+        }
+        verify(riskService, never()).authorizePayment(any(), any(), anyString());
+    }
+
     private void stubNoExistingTxByRef(NamedParameterJdbcTemplate jdbcTemplate) {
         when(jdbcTemplate.query(contains("tx_merchant_ref=:tx_merchant_ref"), any(MapSqlParameterSource.class), any(RowMapper.class)))
             .thenReturn(List.of());
