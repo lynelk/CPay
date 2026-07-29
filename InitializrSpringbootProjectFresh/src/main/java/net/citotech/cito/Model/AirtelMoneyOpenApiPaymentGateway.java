@@ -167,6 +167,13 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             }
             Map<String, String> headers = standardHeaders(token);
             HttpRequestResponse response = Common.doHttpRequest("GET", balanceUrl(), "", headers);
+            if (response != null && response.getStatusCode() == 401) {
+                // Audit C2: see the matching comment in submit() above.
+                Token refreshed = requestToken();
+                if (refreshed != null) {
+                    response = Common.doHttpRequest("GET", balanceUrl(), "", standardHeaders(refreshed));
+                }
+            }
             if (response == null || response.getStatusCode() != 200 || response.getResponse().isEmpty()) {
                 return 0.0;
             }
@@ -298,6 +305,16 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 return gatewayError("Failed to obtain Airtel OpenAPI token", "UNDETERMINED", "");
             }
             HttpRequestResponse response = Common.doHttpRequest(method, url, data, standardHeaders(token));
+            if (response != null && response.getStatusCode() == 401) {
+                // Audit C2: the provider rejected this token even though our own TTL-based check
+                // (getToken()) considered it still valid - revoked early, clock skew, or a
+                // provider-side session invalidation. Force a fresh token and retry exactly once
+                // rather than failing a transaction we could still complete.
+                Token refreshed = requestToken();
+                if (refreshed != null) {
+                    response = Common.doHttpRequest(method, url, data, standardHeaders(refreshed));
+                }
+            }
             if (response == null) {
                 return gatewayError("No response from Airtel OpenAPI", "UNDETERMINED", url + data);
             }
