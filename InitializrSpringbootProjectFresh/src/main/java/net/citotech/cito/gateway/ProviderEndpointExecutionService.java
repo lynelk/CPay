@@ -8,6 +8,9 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import net.citotech.cito.Model.GateWayResponse;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -76,13 +79,32 @@ public class ProviderEndpointExecutionService {
             int httpStatus = connection.getResponseCode();
             String responseBody = read(httpStatus >= 200 && httpStatus < 300 ? connection.getInputStream() : connection.getErrorStream());
             String status = httpStatus >= 200 && httpStatus < 300 ? "SUBMITTED" : "FAILED";
+            String runStatus = status;
+            String recordMessage = responseBody;
+
+            // Audit C9: Yo! Payments has no inbound webhook wired into CPay - collect/payout both
+            // resolve through this synchronous HTTP response, and every response header used to be
+            // discarded here, so a tampered/forged 2xx body would have been trusted outright. Verify
+            // the response signature (when the provider actually sent one) before honouring a
+            // "success" status. Scoped to yo_payments specifically: it is the only channel driven by
+            // this service that has a signing secret (apiKey) already sitting in its merchant channel
+            // credentials with no other verification in front of it. See YoPaymentsCallbackVerifier.
+            if ("SUBMITTED".equals(status) && YoPaymentsAdapter.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+                Map<String, String> responseHeaders = headers(connection);
+                if (!YoPaymentsCallbackVerifier.verify(responseHeaders, responseBody, request.getMetadata())) {
+                    status = "FAILED";
+                    runStatus = "SIGNATURE_INVALID";
+                    recordMessage = "Provider response signature verification failed - response rejected as untrusted";
+                }
+            }
+
             if ("SUBMITTED".equals(status)) {
                 circuitBreaker.recordSuccess(channelCode);
             } else {
                 circuitBreaker.recordFailure(channelCode);
             }
-            record(channelCode, operation, request, endpointUrl, httpStatus, status, responseBody);
-            GateWayResponse result = response(channelCode, displayName, operation, request, httpStatus, status, trim(responseBody));
+            record(channelCode, operation, request, endpointUrl, httpStatus, runStatus, recordMessage);
+            GateWayResponse result = response(channelCode, displayName, operation, request, httpStatus, status, trim(recordMessage));
             result.setRequestTrace("requestHash=" + hash(body));
             return result;
         } catch (Exception e) {
@@ -151,6 +173,16 @@ public class ProviderEndpointExecutionService {
 
     private String body(String channelCode, String operation, PaymentGatewayRequest request) {
         return "{\"channelCode\":\"" + esc(channelCode) + "\",\"operation\":\"" + esc(operation) + "\",\"merchantNumber\":\"" + esc(request.getMerchantNumber()) + "\",\"accountIdentifier\":\"" + esc(request.getAccountIdentifier()) + "\",\"amount\":" + request.getAmount() + ",\"reference\":\"" + esc(request.getReference()) + "\",\"description\":\"" + esc(request.getDescription()) + "\",\"callbackUrl\":\"" + esc(request.getCallbackUrl()) + "\"}";
+    }
+
+    /** Flattens the provider HTTP response headers into a simple case-preserving map (first value wins per name). */
+    private Map<String, String> headers(HttpURLConnection connection) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Map.Entry<String, List<String>> entry : connection.getHeaderFields().entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null || entry.getValue().isEmpty()) continue;
+            result.put(entry.getKey(), entry.getValue().get(0));
+        }
+        return result;
     }
 
     private String read(InputStream inputStream) throws Exception {
