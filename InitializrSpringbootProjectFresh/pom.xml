@@ -103,9 +103,36 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
+        <!-- Audit G1: distributed locking for crons that are both @Scheduled and directly
+             HTTP-triggerable (TransactionsLogController.testCheckstatusCron / .paymentsPayCron),
+             so a multi-instance/HA deployment can't run the same money-movement batch on two
+             instances at once. 7.7.0 pinned (not the 5.x line) because it targets Spring
+             Framework 7.0.x/Spring Boot 4.x, matching this app's spring-boot-starter-parent
+             4.1.0 (Spring Framework 7.0.8); shedlock-spring 5.x targets Spring Framework 6.1 and
+             is not the right match here. Verified both artifacts resolve cleanly from Maven
+             Central at 7.7.0 via `mvn dependency:get`. -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>7.7.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>7.7.0</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Test-only embedded DB for SchedulerLockConfigTest: exercises the real
+             JdbcTemplateLockProvider/shedlock table against a real (if in-memory) SQL engine,
+             since the app otherwise only runs against MySQL and no MySQL instance is available
+             in the test environment. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
