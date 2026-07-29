@@ -7,6 +7,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import net.citotech.cito.Model.GateWayResponse;
 import org.junit.jupiter.api.Test;
 
@@ -63,5 +69,53 @@ class YoPaymentsAdapterTest {
 
         assertThat(result.getStatus()).isEqualTo("SUCCESS");
         verify(executionService).execute("yo_payments", "Yo! Payments", "PAYOUT", request);
+    }
+
+    // Audit C9: PaymentChannelAdapter#verifyCallback defaults to a no-op for every other
+    // adapter, but Yo! Payments has real signature material (its configured apiKey) available
+    // to check a provider response against, so it overrides the default. These tests cover
+    // that override end-to-end through the adapter, not just the underlying verifier helper.
+
+    @Test
+    void verifyCallbackAcceptsAResponseSignedWithTheConfiguredApiKey() {
+        YoPaymentsAdapter adapter = new YoPaymentsAdapter(mock(ProviderEndpointExecutionService.class));
+        String body = "{\"status\":\"ok\"}";
+        Map<String, String> headers = new HashMap<>();
+        headers.put("X-Yo-Signature", sign("yo-api-key", body));
+
+        boolean verified = adapter.verifyCallback(headers, body, Map.of("apiKey", "yo-api-key"));
+
+        assertThat(verified).isTrue();
+    }
+
+    @Test
+    void verifyCallbackRejectsAResponseSignedWithTheWrongSecret() {
+        YoPaymentsAdapter adapter = new YoPaymentsAdapter(mock(ProviderEndpointExecutionService.class));
+        String body = "{\"status\":\"ok\"}";
+        Map<String, String> headers = new HashMap<>();
+        headers.put("X-Yo-Signature", sign("wrong-key", body));
+
+        boolean verified = adapter.verifyCallback(headers, body, Map.of("apiKey", "yo-api-key"));
+
+        assertThat(verified).isFalse();
+    }
+
+    @Test
+    void verifyCallbackIsPermissiveWhenNoSignatureMaterialIsAvailable() {
+        YoPaymentsAdapter adapter = new YoPaymentsAdapter(mock(ProviderEndpointExecutionService.class));
+
+        boolean verified = adapter.verifyCallback(new HashMap<>(), "{\"status\":\"ok\"}", Map.of());
+
+        assertThat(verified).isTrue();
+    }
+
+    private static String sign(String secret, String payload) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return Base64.getEncoder().encodeToString(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 }
