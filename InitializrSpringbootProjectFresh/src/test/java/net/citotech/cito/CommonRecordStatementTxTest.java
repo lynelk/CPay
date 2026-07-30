@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import net.citotech.cito.Model.Statement;
@@ -36,6 +37,7 @@ class CommonRecordStatementTxTest {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         stubExistingBalanceRow(jdbcTemplate, 5000.0, 1000.0, 200.0, 50.0);
         List<MapSqlParameterSource> inserted = captureInsertParameters(jdbcTemplate);
+        List<MapSqlParameterSource> readModelRows = captureReadModelParameters(jdbcTemplate);
         PlatformTransactionManager transactionManager = transactionManager();
 
         Statement tx = statement(1L, "CR", 1000.0);
@@ -45,6 +47,13 @@ class CommonRecordStatementTxTest {
         assertThat(inserted).hasSize(1);
         assertThat((Double) inserted.get(0).getValue("mtnmm_balance")).isEqualTo(6000.0);
         assertThat((Double) inserted.get(0).getValue("airtelmm_balance")).isEqualTo(1000.0);
+        assertThat(inserted.get(0).getValue("currency")).isEqualTo("UGX");
+        assertThat(readModelRows).hasSize(1);
+        assertThat(readModelRows.get(0).getValue("channel_code")).isEqualTo("mtn_momo");
+        assertThat(readModelRows.get(0).getValue("gateway_id")).isEqualTo("MTNMoMoPaymentGateway");
+        assertThat(readModelRows.get(0).getValue("currency")).isEqualTo("UGX");
+        assertThat(readModelRows.get(0).getValue("available_balance")).isEqualTo(new BigDecimal("6000.0000"));
+        assertThat(readModelRows.get(0).getValue("ledger_balance")).isEqualTo(new BigDecimal("6000.0000"));
     }
 
     @Test
@@ -84,6 +93,7 @@ class CommonRecordStatementTxTest {
         when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
             .thenReturn((List) List.of());
         List<MapSqlParameterSource> inserted = captureInsertParameters(jdbcTemplate);
+        List<MapSqlParameterSource> readModelRows = captureReadModelParameters(jdbcTemplate);
         PlatformTransactionManager transactionManager = transactionManager();
 
         Statement tx = statement(1L, "CR", 250.0);
@@ -92,6 +102,10 @@ class CommonRecordStatementTxTest {
         assertThat(result).isEqualTo("success");
         assertThat((Double) inserted.get(0).getValue("safaricom_balance")).isEqualTo(250.0);
         assertThat((Double) inserted.get(0).getValue("mtnmm_balance")).isEqualTo(0.0);
+        assertThat(inserted.get(0).getValue("currency")).isEqualTo("KES");
+        assertThat(readModelRows.get(0).getValue("channel_code")).isEqualTo("safaricom_mpesa");
+        assertThat(readModelRows.get(0).getValue("currency")).isEqualTo("KES");
+        assertThat(readModelRows.get(0).getValue("available_balance")).isEqualTo(new BigDecimal("250.0000"));
     }
 
     @Test
@@ -135,6 +149,22 @@ class CommonRecordStatementTxTest {
             .isEqualTo((Double) insertedB.get(0).getValue("airtelmm_balance"));
     }
 
+    @Test
+    void rejectsUnknownBalanceTypeBeforeWritingEitherBalanceStore() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+        TransactionStatus transactionStatus = mock(TransactionStatus.class);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(transactionStatus);
+
+        Statement tx = statement(1L, "CR", 1000.0);
+        String result = Common.recordStatementTx(tx, "unknown_balance", jdbcTemplate, transactionManager);
+
+        assertThat(result).contains("102");
+        verify(transactionStatus).setRollbackOnly();
+        verify(jdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class), any(KeyHolder.class));
+        verify(jdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
+    }
+
     private PlatformTransactionManager transactionManager() {
         PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
         TransactionStatus transactionStatus = mock(TransactionStatus.class);
@@ -145,6 +175,16 @@ class CommonRecordStatementTxTest {
     private List<MapSqlParameterSource> captureInsertParameters(NamedParameterJdbcTemplate jdbcTemplate) {
         List<MapSqlParameterSource> inserted = new ArrayList<>();
         when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class), any(KeyHolder.class)))
+            .thenAnswer(invocation -> {
+                inserted.add(invocation.getArgument(1));
+                return 1;
+            });
+        return inserted;
+    }
+
+    private List<MapSqlParameterSource> captureReadModelParameters(NamedParameterJdbcTemplate jdbcTemplate) {
+        List<MapSqlParameterSource> inserted = new ArrayList<>();
+        when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class)))
             .thenAnswer(invocation -> {
                 inserted.add(invocation.getArgument(1));
                 return 1;

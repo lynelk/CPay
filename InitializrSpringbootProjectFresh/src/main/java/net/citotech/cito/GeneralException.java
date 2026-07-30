@@ -74,15 +74,7 @@ public class GeneralException {
             // Additive fields per the error catalog (audit D3): a stable machine-readable code,
             // category, retryable flag, docs URL, and the request's correlation ID. Existing
             // consumers that only read state/code/message are unaffected.
-            ErrorCatalog.Entry entry = ErrorCatalog.lookup(code);
-            obj.put("error_code", entry.stableCode());
-            obj.put("category", entry.categoryName());
-            obj.put("retryable", entry.retryable());
-            obj.put("docs_url", entry.docsUrl());
-            String requestId = MDC.get("request_id");
-            if (requestId != null) {
-                obj.put("request_id", requestId);
-            }
+            addErrorCatalogFields(obj, code);
         } catch (JSONException ex) {
             Logger.getLogger(GeneralException.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -113,11 +105,24 @@ public class GeneralException {
             txObject.put("networkRef", gwResponse.getNetworkId());
             txObject.put("message", gwResponse.getMessage());
             obj.put("txDetails", txObject);
+            addErrorCatalogFields(obj, code);
             
         } catch (JSONException ex) {
             Logger.getLogger(GeneralException.class.getName()).log(Level.SEVERE, null, ex);
         }
         return obj.toString();
+    }
+
+    private static void addErrorCatalogFields(JSONObject obj, String code) throws JSONException {
+        ErrorCatalog.Entry entry = ErrorCatalog.lookup(code);
+        obj.put("error_code", entry.stableCode());
+        obj.put("category", entry.categoryName());
+        obj.put("retryable", entry.retryable());
+        obj.put("docs_url", entry.docsUrl());
+        String requestId = MDC.get("request_id");
+        if (requestId != null) {
+            obj.put("request_id", requestId);
+        }
     }
 }
 

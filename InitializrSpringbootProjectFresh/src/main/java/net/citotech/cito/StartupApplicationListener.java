@@ -99,13 +99,23 @@ public class StartupApplicationListener {
 
     @Value("${cpay.legacy-dbchanges.enabled:false}")
     private boolean legacyDbChangesEnabled;
+
+    @Value("${cpay.legacy-dbchanges.lock-timeout-seconds:30}")
+    private int legacyDbChangesLockTimeoutSeconds;
     
     public String updateDb() {
+        boolean lockHeld = false;
         try {
             if (!legacyDbChangesEnabled) {
                 java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
                     .log(Level.INFO, "Legacy DB change XML runner disabled; Flyway is the canonical migration path.");
                 return "Disabled";
+            }
+            lockHeld = acquireStartupMigrationLock();
+            if (!lockHeld) {
+                java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
+                    .log(Level.WARNING, "Legacy DB change XML runner skipped; another instance holds the startup migration lock.");
+                return "Locked";
             }
             if (resources == null || resources.length == 0) {
                 java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
@@ -124,6 +134,32 @@ public class StartupApplicationListener {
             java.util.logging.Logger.getLogger(TransactionsLogController.class.getName())
                             .log(Level.INFO, "Executed Rollback " + ex.getStackTrace(), ex);
             return ex.getMessage();
+        } finally {
+            if (lockHeld) {
+                releaseStartupMigrationLock();
+            }
+        }
+    }
+
+    private boolean acquireStartupMigrationLock() {
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("lock_name", "cpay:legacy-dbchanges");
+        parameters.addValue("timeout_seconds", Math.max(0, legacyDbChangesLockTimeoutSeconds));
+        Number locked = jdbcTemplate.queryForObject(
+            "SELECT GET_LOCK(:lock_name, :timeout_seconds)",
+            parameters,
+            Number.class);
+        return locked != null && locked.intValue() == 1;
+    }
+
+    private void releaseStartupMigrationLock() {
+        try {
+            MapSqlParameterSource parameters = new MapSqlParameterSource();
+            parameters.addValue("lock_name", "cpay:legacy-dbchanges");
+            jdbcTemplate.queryForObject("SELECT RELEASE_LOCK(:lock_name)", parameters, Number.class);
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(StartupApplicationListener.class.getName())
+                .log(Level.WARNING, "Failed to release legacy DB changes startup lock: " + ex.getMessage(), ex);
         }
     }
     

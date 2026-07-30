@@ -16,11 +16,13 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.bind.annotation.PostMapping;
 
 /**
- * Covers audit G1: TransactionsLogController.testCheckstatusCron()/paymentsPayCron() are both
- * @Scheduled AND directly HTTP-triggerable, and were previously only guarded by a local-filesystem
- * lock that does nothing across multiple app instances. This proves the real distributed-lock
+ * Covers audit G1/G6: TransactionsLogController.testCheckstatusCron()/paymentsPayCron() are
+ * scheduler-only money jobs protected by ShedLock, not direct HTTP-triggered crons guarded only
+ * by a local-filesystem lock. This proves the real distributed-lock
  * mechanics against a real (if in-memory, since no MySQL is available in this test environment)
  * SQL engine: the same lock name can't be held twice concurrently, and releases correctly.
  */
@@ -103,17 +105,23 @@ class SchedulerLockConfigTest {
     }
 
     @Test
-    void bothMoneyMovementCronsCarryASchedulerLockAnnotation() throws NoSuchMethodException {
+    void bothMoneyMovementCronsAreScheduledLockedAndNotHttpMapped() throws NoSuchMethodException {
         Method statusCheckCron = TransactionsLogController.class.getDeclaredMethod("testCheckstatusCron");
         Method payoutCron = TransactionsLogController.class.getDeclaredMethod("paymentsPayCron");
 
         SchedulerLock statusCheckLock = statusCheckCron.getAnnotation(SchedulerLock.class);
         SchedulerLock payoutLock = payoutCron.getAnnotation(SchedulerLock.class);
+        Scheduled statusCheckSchedule = statusCheckCron.getAnnotation(Scheduled.class);
+        Scheduled payoutSchedule = payoutCron.getAnnotation(Scheduled.class);
 
+        assertThat(statusCheckSchedule).isNotNull();
         assertThat(statusCheckLock).isNotNull();
         assertThat(statusCheckLock.name()).isEqualTo("testCheckstatusCron");
+        assertThat(payoutSchedule).isNotNull();
         assertThat(payoutLock).isNotNull();
         assertThat(payoutLock.name()).isEqualTo("paymentsPayCron");
+        assertThat(statusCheckCron.getAnnotation(PostMapping.class)).isNull();
+        assertThat(payoutCron.getAnnotation(PostMapping.class)).isNull();
         // Both must exceed their own @Scheduled fixedDelay (60s / 30s respectively) so a crashed
         // instance's lock reliably expires before starving the queue, and lockAtLeastFor must be
         // >= fixedDelay so a fast run's lock can't be immediately re-acquired before the next

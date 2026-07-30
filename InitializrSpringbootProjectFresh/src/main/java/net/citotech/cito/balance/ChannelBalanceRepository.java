@@ -15,7 +15,7 @@ public class ChannelBalanceRepository {
     }
 
     public List<ChannelBalance> findByMerchant(long merchantId) {
-        String sql = "SELECT merchant_id, channel_code, gateway_id, currency, available_balance, ledger_balance, reserved_balance "
+        String sql = "SELECT merchant_id, channel_code, gateway_id, currency, available_balance, ledger_balance, pending_balance "
                 + "FROM merchant_channel_balances WHERE merchant_id=:merchant_id ORDER BY channel_code, currency";
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("merchant_id", merchantId);
@@ -27,7 +27,7 @@ public class ChannelBalanceRepository {
             balance.setCurrency(rs.getString("currency"));
             balance.setAvailableBalance(rs.getBigDecimal("available_balance"));
             balance.setLedgerBalance(rs.getBigDecimal("ledger_balance"));
-            balance.setPendingBalance(rs.getBigDecimal("reserved_balance"));
+            balance.setPendingBalance(rs.getBigDecimal("pending_balance"));
             return balance;
         });
     }
@@ -35,10 +35,10 @@ public class ChannelBalanceRepository {
     public void upsert(long merchantId, String channelCode, String gatewayId, String currency,
                        BigDecimal availableBalance, BigDecimal ledgerBalance, BigDecimal pendingBalance) {
         String sql = "INSERT INTO merchant_channel_balances "
-                + "(merchant_id, channel_code, gateway_id, currency, available_balance, ledger_balance, reserved_balance) "
-                + "VALUES (:merchant_id, :channel_code, :gateway_id, :currency, :available_balance, :ledger_balance, :reserved_balance) "
+                + "(merchant_id, channel_code, gateway_id, currency, available_balance, ledger_balance, pending_balance) "
+                + "VALUES (:merchant_id, :channel_code, :gateway_id, :currency, :available_balance, :ledger_balance, :pending_balance) "
                 + "ON DUPLICATE KEY UPDATE gateway_id=:gateway_id, available_balance=:available_balance, "
-                + "ledger_balance=:ledger_balance, reserved_balance=:reserved_balance";
+                + "ledger_balance=:ledger_balance, pending_balance=:pending_balance";
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("merchant_id", merchantId);
         parameters.addValue("channel_code", channelCode);
@@ -46,7 +46,7 @@ public class ChannelBalanceRepository {
         parameters.addValue("currency", currency);
         parameters.addValue("available_balance", availableBalance);
         parameters.addValue("ledger_balance", ledgerBalance);
-        parameters.addValue("reserved_balance", pendingBalance);
+        parameters.addValue("pending_balance", pendingBalance);
         jdbcTemplate.update(sql, parameters);
     }
 }

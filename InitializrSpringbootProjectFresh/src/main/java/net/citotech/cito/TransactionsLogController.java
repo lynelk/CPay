@@ -1983,10 +1983,9 @@ public class TransactionsLogController {
 
 
     // Audit G1: distributed lock (net.citotech.cito.config.SchedulerLockConfig) backed by the
-    // `shedlock` DB table (V29__shedlock.sql) - this method is both @Scheduled AND directly
-    // HTTP-triggerable via @PostMapping, and runs real payout/status-check ledger postings, so a
-    // multi-instance deployment must not run two copies of it concurrently (double-crediting or
-    // double-reversing a transaction). lockAtMostFor=15m is a generous crash-recovery ceiling:
+    // `shedlock` DB table (V29__shedlock.sql) - this method runs real payout/status-check ledger
+    // postings, so it must only be triggered by the scheduler and must not expose a direct HTTP
+    // entry point that could be called repeatedly. lockAtMostFor=15m is a generous crash-recovery ceiling:
     // this loop processes up to 100 PENDING/UNDETERMINED transactions per run, each doing one
     // synchronous gateway status-check HTTP call (worst case ~90s per call given
     // Common.HTTP_REQUEST_TIMEOUT_MILLISECONDS=30s connect / HTTP_REQUEST_READTIMEOUT_MILLISECONDS=60s
@@ -2005,8 +2004,6 @@ public class TransactionsLogController {
     // Rewriting this method's dozen mid-method `lock.release(); writer.close();` early-return
     // points to remove it would be a much larger, higher-risk change to this money-movement path
     // for no real benefit, so it stays as-is.
-    @PostMapping(path="/testCheckstatusCron")
-
     @Scheduled(fixedDelay = 60000, initialDelay = 1000)
     @SchedulerLock(name = "testCheckstatusCron", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     public String testCheckstatusCron (/*@RequestBody String requestBody,
@@ -4691,8 +4688,7 @@ public class TransactionsLogController {
 
     // Audit G1: distributed lock (net.citotech.cito.config.SchedulerLockConfig) backed by the
     // `shedlock` DB table (V29__shedlock.sql) - like testCheckstatusCron() above, this method is
-    // both @Scheduled AND directly HTTP-triggerable via @PostMapping, and it actually disburses
-    // money (Common.doPayOut per beneficiary), so two instances running it concurrently would mean
+    // scheduler-only and actually disburses money (Common.doPayOut per beneficiary), so two instances running it concurrently would mean
     // the same batch's beneficiaries could be paid out twice. lockAtMostFor=20m: this loop pulls up
     // to 20 PROCESSING batches per run, each with up to ~31 new beneficiary payouts triggered
     // (ben_count capped at >30), so worst case ~620 synchronous gateway payout calls in one run;
@@ -4707,8 +4703,6 @@ public class TransactionsLogController {
     // cross-instance guard; the file lock is redundant under normal operation but harmless to keep,
     // and removing it would mean reworking several early-return points in this money-movement path
     // for no real benefit).
-    @PostMapping(path="/paymentsPayCron")
-
     @Scheduled(fixedDelay = 30000, initialDelay = 1000)
     @SchedulerLock(name = "paymentsPayCron", lockAtMostFor = "PT20M", lockAtLeastFor = "PT30S")
     public String paymentsPayCron () {

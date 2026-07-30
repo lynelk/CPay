@@ -7,19 +7,21 @@ package net.citotech.cito.Model;
  * literal column-name strings.
  */
 public enum GatewayBalanceType {
-    MTN_MOMO("MTNMoMoPaymentGateway", "mtnmm_balance", "UGX MTN MM", "UGX"),
-    AIRTEL_MONEY("AirtelMoneyPaymentGateway", "airtelmm_balance", "UGX AIRTEL MM", "UGX"),
-    AIRTEL_OPENAPI("AirtelMoneyOpenApiPaymentGateway", "airtelmm_balance", "UGX AIRTEL MM", "UGX"),
-    SAFARICOM_MPESA("SafariComPaymentGateway", "safaricom_balance", "KES MPESA", "KES"),
-    SMS("SmsGateway", "sms_balance", "UGX SMS", "UGX");
+    MTN_MOMO("MTNMoMoPaymentGateway", "mtn_momo", "mtnmm_balance", "UGX MTN MM", "UGX"),
+    AIRTEL_MONEY("AirtelMoneyPaymentGateway", "airtel_money", "airtelmm_balance", "UGX AIRTEL MM", "UGX"),
+    AIRTEL_OPENAPI("AirtelMoneyOpenApiPaymentGateway", "airtel_open_api", "airtelmm_balance", "UGX AIRTEL MM", "UGX"),
+    SAFARICOM_MPESA("SafariComPaymentGateway", "safaricom_mpesa", "safaricom_balance", "KES MPESA", "KES"),
+    SMS("SmsGateway", "sms", "sms_balance", "UGX SMS", "UGX");
 
     private final String gatewayId;
+    private final String channelCode;
     private final String columnName;
     private final String label;
     private final String currencyCode;
 
-    GatewayBalanceType(String gatewayId, String columnName, String label, String currencyCode) {
+    GatewayBalanceType(String gatewayId, String channelCode, String columnName, String label, String currencyCode) {
         this.gatewayId = gatewayId;
+        this.channelCode = channelCode;
         this.columnName = columnName;
         this.label = label;
         this.currencyCode = currencyCode;
@@ -27,6 +29,10 @@ public enum GatewayBalanceType {
 
     public String gatewayId() {
         return gatewayId;
+    }
+
+    public String channelCode() {
+        return channelCode;
     }
 
     public String columnName() {
@@ -45,6 +51,15 @@ public enum GatewayBalanceType {
     public static GatewayBalanceType fromGatewayId(String gatewayId) {
         for (GatewayBalanceType type : values()) {
             if (type.gatewayId.equals(gatewayId)) {
+                return type;
+            }
+        }
+        return null;
+    }
+
+    public static GatewayBalanceType fromColumnName(String columnName) {
+        for (GatewayBalanceType type : values()) {
+            if (type.columnName.equals(columnName)) {
                 return type;
             }
         }

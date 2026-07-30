@@ -4,9 +4,10 @@ Welcome to the CPay merchant integration docs. CPay is a payments gateway for mo
 collections, payouts, status checks, balances, callbacks, and reconciliation across MTN MoMo,
 Airtel Money, Airtel OpenAPI, and Safaricom M-Pesa.
 
-This page is a scaffold for a real hosted docs site. There is no hosting/build pipeline behind it
-yet (see "About this page" at the bottom) — it exists so merchants and integrators have one place to
-start instead of hunting through the `Docs/` folder. It follows the documentation-portal outline
+This page is the source Markdown for the static developer docs portal published by
+`.github/workflows/docs-site.yml`. The workflow publishes the `Docs/` tree to GitHub Pages, with
+`Docs/index.html` redirecting to `Docs/site/index.html`. It gives merchants and integrators one place
+to start instead of hunting through the `Docs/` folder. It follows the documentation-portal outline
 already agreed in [`Docs/Developer-experience.md`](../Developer-experience.md#documentation-portal):
 quickstart, request signing, idempotency, collections, payouts, refunds, account validation,
 statement export, webhook verification, test mode, and the error catalog.
@@ -87,9 +88,9 @@ want a fully generated client (more endpoint coverage, typed models) instead, se
 
 ## About this page
 
-This is a static Markdown scaffold, not a built/hosted site. There is no site generator, search
-index, or versioned-docs pipeline wired up here — that is out of scope for now. What it gives you
-today:
+This is a lightweight static docs site rather than a generated documentation app. The Pages workflow
+publishes the repository's `Docs/` tree directly, so links to Markdown, OpenAPI, and Postman assets
+continue to work as static files. What it gives you today:
 
 - One landing page that links every merchant-facing doc that already exists in this repo, instead of
   requiring you to browse `Docs/` folder-by-folder.
@@ -98,8 +99,8 @@ today:
 
 What it does **not** do yet, so a future engineer doesn't assume otherwise:
 
-- No static site generator (Docusaurus, MkDocs, VitePress, etc.) is wired up. This file renders as
-  plain Markdown on GitHub today; it is not deployed anywhere as HTML.
+- No static site generator (Docusaurus, MkDocs, VitePress, etc.) is wired up. The HTML entry point is
+  hand-maintained in `Docs/site/index.html`.
 - No search, versioning, or navigation sidebar beyond the tables above.
-- The OpenAPI spec and Postman collection are linked as static files, not rendered inline; a real
-  docs site would embed a Swagger UI/Redoc viewer for the OpenAPI spec.
+- The OpenAPI spec and Postman collection are linked as static files, not rendered inline; a fuller
+  docs app would embed a Swagger UI/Redoc viewer for the OpenAPI spec.

@@ -1083,6 +1083,15 @@ public class Common {
             NamedParameterJdbcTemplate jdbcTemplate,
             TransactionStatus status) {
         try {
+            String normalizedBalanceType = balance_type == null ? "" : balance_type.trim();
+            GatewayBalanceType statementBalanceType = resolveStatementBalanceType(tx, normalizedBalanceType);
+            if (statementBalanceType == null) {
+                status.setRollbackOnly();
+                return GeneralException
+                        .getError("102", GeneralException.ERRORS_102
+                                +" "+balance_type);
+            }
+
             //Balance query
             String balanceSql = "SELECT * FROM "+Common.DB_TABLE_MERCHANT_STATEMENT
                     +" WHERE merchant_id = :merchant_id "
@@ -1099,6 +1108,7 @@ public class Common {
                 +" `description`=:description,"
                 +" `recorded_by`=:recorded_by,"
                 +" `amount`=:amount,"
+                +" `currency`=:currency,"
                 +" `tx_type`=:tx_type,"
                 +" `narrative`=:narrative,"
                 +" `airtelmm_balance`=:airtelmm_balance,"
@@ -1115,6 +1125,7 @@ public class Common {
             parameters.addValue("gateway_id", tx.getGateway_id());
             parameters.addValue("description", tx.getDescription());
             parameters.addValue("amount", tx.getAmount());
+            parameters.addValue("currency", statementBalanceType.currencyCode());
             parameters.addValue("tx_type", tx.getTx_type());
             parameters.addValue("narrative", tx.getNarritive());
             parameters.addValue("recorded_by", tx.getRecorded_by());
@@ -1193,28 +1204,28 @@ public class Common {
 
             //New balance
             if (tx.getTx_type().contains("CR")) {
-                if (balance_type.equals("mtnmm_balance")) {
+                if (normalizedBalanceType.equals("mtnmm_balance")) {
                     Double nBalance = tx.getAmount() + mtn_balance.getAmount();
                     parameters.addValue("mtnmm_balance", nBalance);
                     parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
                     parameters.addValue("sms_balance", sms_balance.getAmount());
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
-                if (balance_type.equals("airtelmm_balance")) {
+                if (normalizedBalanceType.equals("airtelmm_balance")) {
                     Double nBalance = tx.getAmount() + airtel_balance.getAmount();
                     parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
                     parameters.addValue("airtelmm_balance", nBalance);
                     parameters.addValue("sms_balance", sms_balance.getAmount());
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
-                if (balance_type.equals("safaricom_balance")) {
+                if (normalizedBalanceType.equals("safaricom_balance")) {
                     Double nBalance = tx.getAmount() + safaricom_balance.getAmount();
                     parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
                     parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
                     parameters.addValue("sms_balance", sms_balance.getAmount());
                     parameters.addValue("safaricom_balance", nBalance);
                 }
-                if (balance_type.equals("sms_balance")) {
+                if (normalizedBalanceType.equals("sms_balance")) {
                     Double nBalance = tx.getAmount() + sms_balance.getAmount();
                     parameters.addValue("mtnmm_balance", mtn_balance.getAmount());
                     parameters.addValue("airtelmm_balance", airtel_balance.getAmount());
@@ -1222,7 +1233,7 @@ public class Common {
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
             } else {
-                if (balance_type.equals("mtnmm_balance")) {
+                if (normalizedBalanceType.equals("mtnmm_balance")) {
                     //Check if there is enough balance for this transaction
                     if (tx.getAmount() > mtn_balance.getAmount()) {
                         status.setRollbackOnly();
@@ -1239,7 +1250,7 @@ public class Common {
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
 
-                if (balance_type.equals("airtelmm_balance")) {
+                if (normalizedBalanceType.equals("airtelmm_balance")) {
                     if (tx.getAmount() > airtel_balance.getAmount()) {
                         status.setRollbackOnly();
                         return GeneralException
@@ -1255,7 +1266,7 @@ public class Common {
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
 
-                if (balance_type.equals("sms_balance")) {
+                if (normalizedBalanceType.equals("sms_balance")) {
                     if (tx.getAmount() > sms_balance.getAmount()) {
                         status.setRollbackOnly();
                         return GeneralException
@@ -1270,7 +1281,7 @@ public class Common {
                     parameters.addValue("sms_balance", nBalance);
                     parameters.addValue("safaricom_balance", safaricom_balance.getAmount());
                 }
-                if (balance_type.equals("safaricom_balance")) {
+                if (normalizedBalanceType.equals("safaricom_balance")) {
                     if (tx.getAmount() > safaricom_balance.getAmount()) {
                         status.setRollbackOnly();
                         return GeneralException
@@ -1288,7 +1299,8 @@ public class Common {
                 //More balances
             }
 
-            if (parameters.getParameterNames().length <= 0) {
+            if (!parameters.hasValue(statementBalanceType.columnName())) {
+                status.setRollbackOnly();
                 return GeneralException
                         .getError("102", GeneralException.ERRORS_102
                                 +" "+balance_type);
@@ -1299,6 +1311,7 @@ public class Common {
             jdbcTemplate.update(sql_final, parameters, keyHolder);
             //Now insert privileges
             BigInteger statementId = (BigInteger)keyHolder.getKey();
+            refreshMerchantChannelBalanceReadModel(tx, statementBalanceType, parameters, jdbcTemplate);
 
             return "success";
         } catch (Exception e) {
@@ -1307,6 +1320,45 @@ public class Common {
             return GeneralException
                 .getError("102", GeneralException.ERRORS_102);
         }
+    }
+
+    private static GatewayBalanceType resolveStatementBalanceType(Statement tx, String balanceTypeColumn) {
+        GatewayBalanceType gatewayType = tx == null ? null : GatewayBalanceType.fromGatewayId(tx.getGateway_id());
+        if (gatewayType != null && gatewayType.columnName().equals(balanceTypeColumn)) {
+            return gatewayType;
+        }
+        return GatewayBalanceType.fromColumnName(balanceTypeColumn);
+    }
+
+    private static void refreshMerchantChannelBalanceReadModel(Statement tx,
+            GatewayBalanceType balanceType,
+            MapSqlParameterSource statementParameters,
+            NamedParameterJdbcTemplate jdbcTemplate) {
+        Object value = statementParameters.getValue(balanceType.columnName());
+        BigDecimal balance = decimal(value);
+        String sql = "INSERT INTO merchant_channel_balances "
+                + "(merchant_id, channel_code, gateway_id, currency, available_balance, ledger_balance, pending_balance) "
+                + "VALUES (:merchant_id, :channel_code, :gateway_id, :currency, :available_balance, :ledger_balance, 0) "
+                + "ON DUPLICATE KEY UPDATE gateway_id=:gateway_id, "
+                + "available_balance=:available_balance, ledger_balance=:ledger_balance";
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("merchant_id", tx.getMerchant_id());
+        parameters.addValue("channel_code", balanceType.channelCode());
+        parameters.addValue("gateway_id", balanceType.gatewayId());
+        parameters.addValue("currency", balanceType.currencyCode());
+        parameters.addValue("available_balance", balance);
+        parameters.addValue("ledger_balance", balance);
+        jdbcTemplate.update(sql, parameters);
+    }
+
+    private static BigDecimal decimal(Object value) {
+        if (value instanceof BigDecimal decimal) {
+            return decimal.setScale(4, RoundingMode.HALF_UP);
+        }
+        if (value == null) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        }
+        return new BigDecimal(String.valueOf(value)).setScale(4, RoundingMode.HALF_UP);
     }
     
     

@@ -2,6 +2,7 @@ package net.citotech.cito;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import net.citotech.cito.Model.GateWayResponse;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -50,6 +51,26 @@ class ErrorCatalogTest {
         assertThat(json.getString("category")).isEqualTo("business_rule");
         assertThat(json.getBoolean("retryable")).isFalse();
         assertThat(json.getString("docs_url")).contains("Error-catalog.md#payment_insufficient_funds");
+    }
+
+    @Test
+    void getApiTxMessageIncludesCatalogFieldsWithoutBreakingTransactionDetails() {
+        GateWayResponse gatewayResponse = new GateWayResponse();
+        gatewayResponse.setStatus("ERROR");
+        gatewayResponse.setTransactionStatus("FAILED");
+        gatewayResponse.setNetworkId("network-1");
+        gatewayResponse.setMessage("declined");
+
+        String response = GeneralException.getApiTxMessage("143", "Provider declined", gatewayResponse);
+        JSONObject json = new JSONObject(response);
+
+        assertThat(json.getString("state")).isEqualTo("ERROR");
+        assertThat(json.getString("code")).isEqualTo("143");
+        assertThat(json.getString("error_code")).isEqualTo("PROVIDER_DECLINED");
+        assertThat(json.getString("category")).isEqualTo("provider");
+        assertThat(json.getBoolean("retryable")).isFalse();
+        assertThat(json.getString("docs_url")).contains("Error-catalog.md#provider_declined");
+        assertThat(json.getJSONObject("txDetails").getString("networkRef")).isEqualTo("network-1");
     }
 
     @Test
