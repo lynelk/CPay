@@ -12,6 +12,7 @@ import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.api.v2.MerchantStatementExportService;
 import net.citotech.cito.api.v2.dto.StatementExportResponse;
+import net.citotech.cito.export.TabularExportService;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.reconciliation.MerchantSettlementPreference;
 import net.citotech.cito.reconciliation.MerchantSettlementPreferenceService;
@@ -226,8 +227,15 @@ public class MerchantSelfServiceController {
                 String filename = "cpay-statement-" + merchant.getAccount_number() + "-" + startDate + "-to-" + endDate + ".csv";
                 return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.parseMediaType("text/csv"))
+                    .contentType(MediaType.parseMediaType(TabularExportService.CSV_CONTENT_TYPE))
                     .body(statementExportService.toCsv(export));
+            }
+            if ("xlsx".equalsIgnoreCase(format)) {
+                String filename = "cpay-statement-" + merchant.getAccount_number() + "-" + startDate + "-to-" + endDate + ".xlsx";
+                return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType(TabularExportService.XLSX_CONTENT_TYPE))
+                    .body(statementExportService.toXlsx(export));
             }
             return ResponseEntity.ok(export);
         } catch (PaymentGatewayException e) {

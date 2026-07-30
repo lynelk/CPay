@@ -14,6 +14,7 @@ import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
 import net.citotech.cito.api.v2.dto.PaymentStatusResponse;
 import net.citotech.cito.api.v2.dto.StatementExportResponse;
+import net.citotech.cito.export.TabularExportService;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -163,8 +164,15 @@ public class PaymentsV2Controller {
                 String filename = "cpay-statement-" + merchantNumber + "-" + startDate + "-to-" + endDate + ".csv";
                 return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.parseMediaType("text/csv"))
+                    .contentType(MediaType.parseMediaType(TabularExportService.CSV_CONTENT_TYPE))
                     .body(statementExportService.toCsv(export));
+            }
+            if ("xlsx".equalsIgnoreCase(format)) {
+                String filename = "cpay-statement-" + merchantNumber + "-" + startDate + "-to-" + endDate + ".xlsx";
+                return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType(TabularExportService.XLSX_CONTENT_TYPE))
+                    .body(statementExportService.toXlsx(export));
             }
             return ResponseEntity.ok(export);
         } catch (V2RequestSecurityException e) {

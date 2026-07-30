@@ -3,14 +3,10 @@ import Messager from '../../StableMessager';
 import { withRouter } from '../../../shared/router/compat';
 import common from "../../Common";
 import strings from '../../locale';
-import ReactExport from "../../../shared/export/ExcelExport";
 import { Card, Toolbar, Table, Sheet, Button, DateField, Icons } from '../../../ui';
 
 import { apiFetch } from '../../../shared/api/httpClient';
-
-const ExcelFile = ReactExport.ExcelFile;
-const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
-const ExcelColumn = ReactExport.ExcelFile.ExcelColumn;
+import { downloadStatementExport } from '../../../shared/export/statementExport';
 
 class MerchantModuleMerchantAccouuntC extends React.Component {
     constructor(props) {
@@ -127,7 +123,11 @@ class MerchantModuleMerchantAccouuntC extends React.Component {
                         <Button variant="ghost" className="ios-btn--sm" onClick={() => this.setState({ searchOpen: true })}>
                             <Icons.SearchIcon size={16} />{strings.search}
                         </Button>
-                        <Download data={this.state.data} />
+                        <Download
+                            startDate={this.state.search_rules.start_date}
+                            endDate={this.state.search_rules.end_date}
+                            onError={(msg) => this.messagerAlert({ title: "Error", icon: "error", msg })}
+                        />
                     </Toolbar>
                 </div>
                 <Table
@@ -144,27 +144,45 @@ class MerchantModuleMerchantAccouuntC extends React.Component {
     }
 }
 
+/**
+ * Statement download control (audit M5). Previously this built a CSV client-side, from
+ * whatever rows were already loaded in the table, via the `ExcelExport.js` shim. It now asks the
+ * server-side statement export endpoint (the same cursor-paginated service the signed v2 API
+ * uses) for the full requested date range, in either CSV or XLSX.
+ */
 class Download extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { busyFormat: null };
+    }
+
+    async download(format) {
+        const { startDate, endDate, onError } = this.props;
+        if (!startDate || !endDate) {
+            if (onError) onError('Select a start and end date (Search) before downloading a statement.');
+            return;
+        }
+        this.setState({ busyFormat: format });
+        try {
+            await downloadStatementExport({ startDate, endDate, format });
+        } catch (error) {
+            if (onError) onError(error.message);
+        } finally {
+            this.setState({ busyFormat: null });
+        }
+    }
+
     render() {
+        const { busyFormat } = this.state;
         return (
-            <ExcelFile
-                filename="Account_Statement"
-                ref={ref => this.excelRef = ref}
-                element={
-                    <Button variant="ghost" className="ios-btn--sm" onClick={() => this.excelRef.download()}>
-                        <Icons.DownloadIcon size={16} />{strings.download}
-                    </Button>
-                }>
-                <ExcelSheet data={this.props.data} name="Statement">
-                    <ExcelColumn label="Date time" value="created_on" />
-                    <ExcelColumn label="Description" value="description" />
-                    <ExcelColumn label="Account" value="payer_number" />
-                    <ExcelColumn label="Amount" value="amount" />
-                    <ExcelColumn label="MTN MM BAL" value="mtnmm_balance" />
-                    <ExcelColumn label="AIRTEL MM BAL" value="airtelmm_balance" />
-                    <ExcelColumn label="SMS BAL" value="sms_balance" />
-                </ExcelSheet>
-            </ExcelFile>
+            <>
+                <Button variant="ghost" className="ios-btn--sm" disabled={!!busyFormat} onClick={() => this.download('csv')}>
+                    <Icons.DownloadIcon size={16} />{strings.download} CSV
+                </Button>
+                <Button variant="ghost" className="ios-btn--sm" disabled={!!busyFormat} onClick={() => this.download('xlsx')}>
+                    <Icons.DownloadIcon size={16} />{strings.download} XLSX
+                </Button>
+            </>
         );
     }
 }

@@ -80,6 +80,31 @@ class PaymentsV2ControllerMerchantFeaturesTest {
     }
 
     @Test
+    void statementsCanBeExportedAsXlsx() throws Exception {
+        Merchant merchant = merchant(Common.API_STATEMENT_EXPORT);
+        StatementExportResponse export = statementExport();
+        byte[] xlsxBytes = {0x50, 0x4B, 0x03, 0x04};
+
+        when(securityService.verify(any(), eq(""), eq("M100"))).thenReturn(merchant);
+        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(100), eq(null)))
+            .thenReturn(export);
+        when(statementExportService.toXlsx(export)).thenReturn(xlsxBytes);
+
+        mockMvc().perform(get("/api/v2/statements")
+                .param("merchantNumber", "M100")
+                .param("startDate", "2026-07-01")
+                .param("endDate", "2026-07-16")
+                .param("format", "xlsx")
+                .param("limit", "100"))
+            .andExpect(status().isOk())
+            .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.xlsx\""))
+            .andExpect(header().string(HttpHeaders.CONTENT_TYPE,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .andExpect(content().bytes(xlsxBytes));
+    }
+
+    @Test
     void statementsDefaultToJson() throws Exception {
         Merchant merchant = merchant(Common.API_STATEMENT_EXPORT);
         StatementExportResponse export = statementExport();
