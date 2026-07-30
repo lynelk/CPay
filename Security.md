@@ -20,14 +20,18 @@ CPay uses several controls to support safe operation:
 - timestamp and nonce checks for v2 requests
 - idempotency keys for safer retries
 - merchant signup rate limiting
-- protected admin routes under `/api/v2/admin/**`
+- risk/fraud authorization on both the legacy and v2 pay-in/pay-out paths
+- step-up MFA (fresh TOTP code) required for merchant payout batches above a configurable amount threshold
+- protected admin routes under `/api/v2/admin/**`, enforced at both the URL-path level and the method level (`@PreAuthorize`) as defense-in-depth
 - protected monitoring routes under `/actuator/**`
 - JDBC-backed admin and merchant portal sessions with a 15 minute timeout
 - CSRF tokens for browser routes through `GET /auth/csrf`
 - route-specific CSRF exemptions for legacy/API integration routes instead of a global CSRF disable
 - restricted trusted origins for API access
 - signed callback messages
+- verified provider responses (e.g. Yo! Payments) before they are trusted
 - claim-based callback processing for scaled workers
+- distributed locking (ShedLock) so the status-check and payout crons cannot process the same batch twice across multiple instances
 - encrypted merchant channel setup values
 - masked display values in the merchant portal
 - disabled-by-default OpenAPI and Swagger UI endpoints
@@ -110,6 +114,7 @@ Before production launch, confirm that:
 - `CUSTOM_SSL_SKIP_VERIFY` is `false`
 - `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED` remain `false` unless a controlled environment explicitly enables them
 - clustered deployments use shared nonce storage such as `CPAY_SECURITY_NONCE_STORE=jdbc`
+- clustered deployments share one database so distributed cron locking (ShedLock) has something to coordinate through
 - dependency and code checks pass or have documented exceptions
 - operating-control review is available to administrators
 - security, finance, compliance, and business owners have approved launch readiness

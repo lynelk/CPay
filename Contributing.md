@@ -112,6 +112,23 @@ mvn test
 mvn verify
 ```
 
+`mvn test` excludes tests tagged `"docker"` by default, so an unavailable Docker daemon never
+blocks a normal contribution. If your change touches something a Testcontainers-based DB test or
+the `HealthEndpointE2ETest` end-to-end suite would cover, run them explicitly in a Docker-capable
+environment before submitting:
+
+```bash
+cd Initializrspringbootprojectfresh
+mvn test -Ddocker.tests.excludedGroups=
+```
+
+WireMock-based provider-mocking tests need no Docker and already run as part of the normal `mvn
+test`. A separate, fully opt-in Gatling load-testing toolchain lives under
+`src/test/java/net/citotech/cito/loadtest/` — it never runs as a side effect of `mvn test`/`mvn
+verify`/`mvn package`; only run it deliberately (`mvn gatling:test
+-Dgatling.simulationClass=net.citotech.cito.loadtest.<Simulation>`) against an environment you
+intend to load-test, never against shared infrastructure without warning its owners first.
+
 Frontend:
 
 ```bash

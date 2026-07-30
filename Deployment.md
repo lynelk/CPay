@@ -12,6 +12,16 @@ This guide covers a Linux service deployment for the CPay backend and the produc
 | Frontend | React 18, Vite 8, output in `Clientside/build` |
 | Database | MySQL 8 compatible |
 | Sessions | Spring Session JDBC tables managed by Flyway baseline migration |
+| Distributed locking | ShedLock, backed by the same MySQL database (`shedlock` table) |
+
+## Multiple Instances / High Availability
+
+The status-check and payout crons (`testCheckstatusCron`, `paymentsPayCron`) are safe to run across
+more than one backend instance behind a load balancer: they hold a distributed lock (ShedLock,
+backed by a `shedlock` row in the shared database) for the duration of each run, so two instances
+cannot process the same batch of pending transactions or payouts concurrently. This requires no
+extra configuration beyond every instance sharing the same database — do not point separate
+instances at separate databases, or the distributed lock has nothing shared to coordinate through.
 
 ## Build Artifacts
 

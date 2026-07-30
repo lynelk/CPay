@@ -29,6 +29,7 @@ The current gateway design supports the following adapter-backed channels:
 | Airtel Money | Uganda / Kenya | Collections, payouts, legacy API and OpenAPI support |
 | Airtel OpenAPI | Uganda | Collections, payouts, sandbox and certification preparation |
 | Safaricom M-Pesa | Kenya | STK Push, B2C payouts, balance checks |
+| Yo! Payments | Uganda | Collections, payouts (native v2 adapter, response signature verification) |
 
 Provider adapters can execute through merchant-configured endpoint URLs. In production mode, missing endpoint URLs should block execution.
 
@@ -141,6 +142,10 @@ The codebase now includes software controls for:
 - restricted trusted origins for API access
 - operating-control summary reporting
 - reconciliation and finance workflow foundations
+- risk/fraud authorization and double-entry ledger posting parity between the legacy and v2 payment paths
+- step-up MFA for high-value merchant payouts
+- distributed locking for multi-instance-safe money-movement crons
+- defense-in-depth method-level admin authorization alongside path-based access rules
 
 Readiness documentation is available in:
 
@@ -182,12 +187,16 @@ Manual signoff is still required for real provider sandbox certification, stagin
 | Timestamp and nonce checks | Helps prevent replay of old API requests. |
 | Idempotency keys | Helps merchants safely retry payment submissions without creating duplicates. |
 | Signup rate limiting | Reduces repeated automated merchant registration attempts. |
+| Risk/fraud authorization | Screens both the legacy and v2 payment paths before a pay-in or pay-out is submitted. |
+| Step-up MFA for high-value payouts | Requires a fresh TOTP code for merchant payout batches above a configurable amount threshold. |
 | JDBC-backed sessions | Stores admin and merchant portal sessions in the database for multi-worker operation. |
 | CSRF token endpoint | Provides browser CSRF tokens through `GET /auth/csrf`; legacy API groups are exempted route-by-route instead of globally disabling CSRF. |
-| Admin route protection | Restricts internal operations to authorized administrators. |
+| Admin route protection | Restricts internal operations to authorized administrators, enforced at both the URL-path level and the method level (`@PreAuthorize`). |
 | Trusted-origin API access | Limits browser access to configured origins. |
 | Signed callbacks | Allows merchants to verify that callback messages came from CPay. |
+| Provider response verification | Verifies signed provider responses (e.g. Yo! Payments) before trusting them. |
 | Callback task claims | Reduces duplicate callback delivery when multiple workers are running. |
+| Distributed cron locking | Prevents the status-check and payout crons from processing the same batch twice across multiple instances. |
 | Audit and readiness records | Supports operational tracking and post-incident review. |
 
 Never commit `.env` files, provider access values, production URLs, private keys, merchant signing material, or callback signing values to the repository.
@@ -264,6 +273,12 @@ cd Initializrspringbootprojectfresh
 mvn test
 mvn verify
 ```
+
+`mvn test` excludes tests tagged `"docker"` (Testcontainers-based DB integration tests, the
+end-to-end suite) by default so a missing Docker daemon never blocks the build; run
+`mvn test -Ddocker.tests.excludedGroups=` in a Docker-capable environment for full coverage. A
+separate opt-in Gatling load-testing toolchain (`mvn gatling:test -Dgatling.simulationClass=...`)
+is never part of the default build.
 
 ```bash
 cd Clientside

@@ -84,6 +84,8 @@ Recent production-control migrations include:
 - operating-control event records
 - API rate-limit windows
 - merchant channel setup records
+- provider conversation-reference lookups (e.g. Safaricom payout-callback correlation)
+- the ShedLock distributed-locking table
 
 For staging or production, always test migrations on a copy of the database before applying them to a live environment.
 
@@ -159,6 +161,23 @@ For development testing:
 cd Initializrspringbootprojectfresh
 mvn test
 mvn verify
+```
+
+`mvn test` skips tests tagged `"docker"` by default (Testcontainers-based database integration
+tests and the end-to-end suite), so a machine without a running Docker daemon can still build and
+test normally. If you have Docker Desktop (or an equivalent daemon) running, you can opt into the
+full set with:
+
+```bash
+mvn test -Ddocker.tests.excludedGroups=
+```
+
+A separate, opt-in Gatling load-testing toolchain also exists under
+`src/test/java/net/citotech/cito/loadtest/`; it is not part of `mvn test`/`mvn verify` and should
+only be run deliberately against an environment you intend to load-test:
+
+```bash
+mvn gatling:test -Dgatling.simulationClass=net.citotech.cito.loadtest.HealthCheckSimulation
 ```
 
 If the backend fails to start, check:

@@ -30,7 +30,7 @@ Sdk/, Deployment/, Setup/            SDK assets, deployment scripts, local setup
 
 ```bash
 mvn clean package                 # build
-mvn test                          # unit tests
+mvn test                          # unit tests (Docker-gated tests excluded by default)
 mvn verify                        # tests + verification bindings
 mvn test -Dtest=ClassName                       # single test class
 mvn test -Dtest=ClassName#methodName             # single test method
@@ -40,6 +40,15 @@ java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar   # run the built jar
 Runs on port `8081` by default (`HTTP_PORT`). Requires a MySQL 8 database and a `.env` populated from
 `.env.example` (or exported env vars) — see `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` and other keys
 documented in the root `Readme.md`.
+
+Tests tagged `"docker"` (Testcontainers-backed DB integration tests and the `HealthEndpointE2ETest`
+end-to-end suite) are excluded from the default `mvn test`/`mvn verify` run via the
+`docker.tests.excludedGroups` property, so an unavailable Docker daemon never breaks the build. Run
+them explicitly in a Docker-capable environment with `mvn test -Ddocker.tests.excludedGroups=`.
+WireMock-based provider mocking tests need no Docker and run as part of the normal suite. A separate,
+fully opt-in Gatling load-testing toolchain lives under `src/test/java/.../loadtest/` — it has no
+lifecycle binding, so it never runs as a side effect of `mvn test`/`mvn verify`/`mvn package`; invoke
+it explicitly with `mvn gatling:test -Dgatling.simulationClass=net.citotech.cito.loadtest.<Simulation>`.
 
 ### Frontend (`Clientside/`)
 
@@ -74,19 +83,32 @@ Base package: `net.citotech.cito`.
   `MerchantsController`, `SettingsController`, etc., plus request/response models under `Model/`
   (`Transaction`, `Payment`, `Merchant`, `*PaymentGateway` classes per provider). This is the original
   v1 implementation — provider logic here is hardcoded per-provider rather than adapter-based. Keep
-  `/api/v1` behavior stable; changes here need a migration plan.
+  `/api/v1` behavior stable; changes here need a migration plan. `Common.doPayIn`/`doPayOut` now run
+  risk/fraud authorization (`RiskDecisionRegistry`) and post to the double-entry ledger
+  (`LegacyLedgerPostingService`) directly, matching what `PaymentOrchestrationService` already did
+  for v2 — callers that already run their own risk check (like `PaymentOrchestrationService`) must
+  use the `skipRiskCheck` overload to avoid a duplicate `risk_decisions` row per transaction.
 - **`gateway/`** — the adapter pattern that new/v2 work should use. Each provider implements
   `PaymentChannelAdapter` (see `Docs/Gateway-adapter-guide.md`) and is looked up through
   `PaymentChannelRegistry`; `GatewayExecutionService` executes the selected adapter, loading
   merchant-specific channel credentials for the active `CUSTOM_GATEWAYSTATE` (`SANDBOX`/`PRODUCTION`).
   Adapters: `MtnMomoAdapter`, `AirtelMoneyAdapter`, `AirtelOpenApiAdapter`, `SafaricomMpesaAdapter`,
-  plus `LegacyGatewayAdapter` wrapping old provider classes for the transition period.
+  `YoPaymentsAdapter`, plus `LegacyGatewayAdapter` wrapping old provider classes for the transition
+  period. `PaymentChannelAdapter.verifyCallback(...)` is a default no-op capability adapters can
+  override to verify provider responses/callbacks are authentic (see `YoPaymentsCallbackVerifier`
+  for the HMAC-based reference implementation, enforced in `ProviderEndpointExecutionService`).
+  `ProviderConversationReferenceStoreService`/`Registry` map a provider's async callback
+  correlation id (e.g. Safaricom's `ConversationID`) back to CPay's own transaction reference via
+  the database — do not reintroduce a local-disk equivalent, it doesn't survive multiple instances.
 - **`api/v2/`** — v2 controllers/services: `PaymentsV2Controller` (compat `/api/v2/payments/*`),
   `NativePaymentsV2Controller` (adapter-backed `/api/v2/native/payments/*`), `V2RequestSecurityService`
   (request signing/nonce/idempotency enforcement), `IdempotencyService`, `PaymentStatusService`,
   `AccountValidationService`, `MerchantStatementExportService`. DTOs in `api/v2/dto/`.
 - **`security/`** — request signing, nonce replay protection (in-memory or JDBC via
-  `CPAY_SECURITY_NONCE_STORE`), admin MFA/TOTP, session/auth filters.
+  `CPAY_SECURITY_NONCE_STORE`), admin MFA/TOTP, session/auth filters. `MerchantMfaService` also
+  backs a step-up MFA check (`TransactionsLogController.requireStepUpMfaIfOverThreshold`) that
+  blocks a merchant payout batch above a configurable amount threshold unless a fresh TOTP code is
+  supplied — fails closed if the merchant has never enabled MFA at all.
 - **`callback/`** — provider and merchant callback processing; uses claim-based task assignment so
   multiple workers don't double-deliver.
 - **`reconciliation/`** — statement matching, settlement scheduling, finance daily-close support.
@@ -94,8 +116,11 @@ Base package: `net.citotech.cito`.
 - **`merchant/`** — merchant self-service signup, channel configuration.
 - **`balance/`**, **`compliance/`**, **`checkout/`** (payment links/hosted checkout), **`scheduler/`**
   (timeout scans, cleanup jobs), **`webhook/`**, **`metrics/`**, **`admin/`**, **`portal/`**,
-  **`config/`** (security/CORS/production-safety config + legacy deprecation header filter),
-  **`repository/`**.
+  **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and
+  `SchedulerLockConfig` — the ShedLock `LockProvider` backing `@SchedulerLock` on
+  `TransactionsLogController.testCheckstatusCron()`/`paymentsPayCron()`, both of which are
+  directly HTTP-triggerable *and* `@Scheduled`; the pre-existing local file lock is kept as a
+  secondary, same-instance-only safeguard), **`repository/`**.
 
 Config: `application.properties` (defaults, `SANDBOX` gateway state) and
 `application-production.properties` (production profile guardrails — gateway mode and SSL verification
@@ -109,7 +134,12 @@ merchant channel encryption key, etc.).
   a `withRouter`/`useHistory` compat shim exists at `src/shared/router/compat.tsx` for legacy class
   components only — do not use it in new code).
 - `src/shared/api/httpClient.ts` — all new HTTP calls go through this; `src/shared/api/hooks.ts` for
-  TanStack Query-based server state.
+  TanStack Query-based server state (dashboard summaries, chart series, transaction lists/mutations —
+  not yet wired into every module; see `Clientside/Migration.md`'s follow-ups).
+- `src/shared/useAuth.ts` — centralized read of the logged-in admin/merchant principal out of
+  `localStorage` (`useAuth('admin' | 'merchant')`), with a typed `hasPrivilege()` helper. Does not
+  perform authentication itself; mirrors whatever `Login.tsx`/`LoginMerchant.tsx` last wrote. Prefer
+  this over re-implementing the inline `localStorage.getItem('user'|'merchantUser')` read.
 - `src/shared/csrfFetch.ts` — CSRF-aware fetch wrapper (backend CSRF token comes from `GET /auth/csrf`).
 - `src/shared/config.ts` — `API_BASE` / `apiUrl()`; set via `VITE_API_BASE` (defaults to same-origin, so
   the dev proxy handles it).
