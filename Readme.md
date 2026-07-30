@@ -142,6 +142,9 @@ The codebase now includes software controls for:
 - adapter-backed provider endpoint execution using centralized `RestClient` transport
 - database-backed signup rate limiting
 - claim-based callback processing for multiple workers
+- distributed ShedLock coverage for every active scheduled job
+- bounded cleanup for API rate-limit rows, callback claims/tasks/signatures, reset tokens, terminal webhook deliveries, provider run logs, and expired sessions
+- capped legacy-ledger repair sweep for successful pay-in/pay-out rows missing normalized ledger entries
 - restricted trusted origins for API access
 - operating-control summary reporting
 - reconciliation and finance workflow foundations
@@ -157,6 +160,7 @@ The codebase now includes software controls for:
 - a per-merchant go-live readiness checklist alongside the existing platform-wide readiness dashboard
 - ledger-refreshed channel-balance read models for dashboard balance cards
 - automatic dependency-update pull requests (Dependabot) and a CI formatting check
+- Prometheus backlog gauges and alerts for parked callback tasks and failed merchant webhook deliveries
 
 Readiness documentation is available in:
 
@@ -209,7 +213,10 @@ Manual signoff is still required for real provider sandbox certification, stagin
 | Provider response verification | Verifies signed provider responses (e.g. Yo! Payments) before trusting them. |
 | Merchant-safe error messages | Translates raw provider responses and internal exceptions into a stable, generic message before they reach a merchant — the raw detail stays internal. |
 | Callback task claims | Reduces duplicate callback delivery when multiple workers are running. |
-| Distributed cron locking | Prevents the status-check and payout crons from processing the same batch twice across multiple instances. |
+| Distributed cron locking | Prevents scheduled jobs from processing the same work twice across multiple instances. |
+| Operational cleanup | Keeps short-lived API, reset-token, callback, webhook, provider-run, and session rows bounded. |
+| Callback redelivery guard | Prevents repeated terminal provider callbacks with the same provider reference from re-applying statement or ledger effects. |
+| Ledger repair sweep | Backfills missing normalized ledger postings for successful legacy payment rows using an idempotent ledger reference. |
 | Audit and readiness records | Supports operational tracking and post-incident review. |
 
 Never commit `.env` files, provider access values, production URLs, private keys, merchant signing material, or callback signing values to the repository.

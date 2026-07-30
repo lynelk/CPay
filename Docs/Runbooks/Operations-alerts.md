@@ -31,6 +31,7 @@ Actions:
 Signals:
 
 - `callback_tasks.task_status='PARKED'`
+- Prometheus alert `CPayCallbackParkedBacklog`
 - merchant reports missing status updates
 - callback retry queue stops draining
 
@@ -47,6 +48,7 @@ Actions:
 Signals:
 
 - retry queue count rising for more than one scheduler interval
+- Prometheus alert `CPayCallbackPendingBacklogHigh`
 - callbacks or payments remaining in retry
 
 Actions:
@@ -56,6 +58,22 @@ Actions:
 3. Avoid manual bulk retry while provider responses are unstable.
 4. Confirm idempotency behavior before replaying payouts.
 5. Escalate to SEV1 when customer money movement is broadly blocked.
+
+## Merchant webhook delivery failures
+
+Signals:
+
+- Prometheus alert `CPayWebhookFailedBacklog`
+- `merchant_webhook_deliveries.delivery_status='FAILED'`
+- merchant reports no callback even though CPay transaction status is terminal
+
+Actions:
+
+1. Open the merchant webhook delivery log and identify the failing endpoint.
+2. Confirm the merchant endpoint is reachable and accepts CPay's signed callback payload.
+3. Ask the merchant to fix authentication, allowlisting, certificate, or response-code issues.
+4. Replay only the failed delivery after the endpoint issue is fixed.
+5. Verify the failed backlog gauge returns to zero and the delivery is marked terminal success.
 
 ## Reconciliation exceptions
 

@@ -11,7 +11,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments statement imports with shared CSV/XLSX parsing support.
 - Added a ledger-refreshed channel-balance read model so dashboard balance views no longer need to recompute every card directly from statement rows.
 - Added request correlation IDs and structured JSON console logging for backend observability.
-- Added bounded operational cleanup for `api_rate_limits` and stale callback task claims.
+- Added bounded operational cleanup for `api_rate_limits`, stale callback task claims, password reset tokens, terminal webhook deliveries, completed callback tasks/signatures, provider run logs, and sessions past their absolute lifetime.
 - Added documentation for backend architecture, schema snapshots, alert runbooks, ADRs, retention, and observability.
 - Added API versioning, error catalog, pagination, webhook event, SDK, provider, security, testing, ledger, process-flow, and reliability docs.
 - Added Docker Compose onboarding with MySQL and backend services.
@@ -25,7 +25,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added forced token refresh and a single retry when a provider rejects an Airtel OpenAPI request with an unexpected 401.
 - Added response signature verification for Yo! Payments provider responses before trusting them.
 - Added method-level authorization (`@PreAuthorize`) across admin controllers as defense-in-depth alongside existing path-based access rules.
-- Added distributed locking (ShedLock, database-backed) for the status-check and payout crons so multi-instance/HA deployments cannot process the same batch twice.
+- Added distributed locking (ShedLock, database-backed) for scheduled jobs so multi-instance/HA deployments cannot process the same batch, timeout scan, settlement sweep, cleanup, reporting aggregate, webhook delivery, ledger, float-alert, invoice-expiry, or provider-routing refresh twice.
 - Added a database-backed store for Safaricom payout-callback conversation-reference lookups, replacing a local, per-instance plaintext file.
 - Added error catalog codes `148` (risk-declined) and `149` (step-up MFA required).
 - Added Testcontainers-based database integration tests, WireMock-based provider API mocking tests, and a first end-to-end test suite (opt-in, Docker-gated — see `Contributing.md`).
@@ -42,6 +42,9 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added a reconciliation manual-match workbench (admin UI) that pairs unmatched provider statement rows with a candidate CPay transaction, backed by a new `GET /api/v2/admin/reconciliation/candidate-transactions` search endpoint; built on the TanStack Query hooks pattern from the start.
 - Added method-level authorization (`@PreAuthorize("hasRole('ADMIN')")`) to the reconciliation statement-import, statement-check, and auto-match endpoints, matching the existing reconciliation review/finance controllers.
 - Added a per-merchant go-live readiness checklist (`GET /api/v2/admin/readiness/merchants/{merchantId}`) alongside the existing platform-wide readiness dashboard, scoped to each merchant's configured channels, callback secret, and compliance records.
+- Added Micrometer gauges for parked/pending callback tasks, failed/pending merchant webhook deliveries, and open operations alerts, with Prometheus alert rules for callback and webhook backlog visibility.
+- Added a capped legacy-ledger repair sweep that backfills missing normalized ledger postings for successful legacy pay-in/pay-out rows before daily trial balance work.
+- Added atomic FX quote claiming for cross-border transfer intents so an active quote cannot be replayed or bound twice by concurrent requests.
 
 ### Changed
 
@@ -51,6 +54,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Removed safe unused Java imports, locals, and an empty application shell class.
 - Made transaction timeout scans and timeout minutes configurable.
 - Enabled graceful shutdown defaults.
+- Tightened legacy SMS scheduling to compare `send_time` with `java.time` while preserving the existing `yyyy-MM-dd HH:mm:ss` API format.
 - Tightened CORS headers and added standard security headers.
 - The pre-existing local scheduler file locks are now a secondary safeguard behind ShedLock's distributed lock, rather than the only protection against concurrent cron execution.
 - Bumped `org.json` (20240303 → 20260719), Apache POI (5.2.5 → 5.5.1), and Bucket4j (7.6.0 → 8.0.1, switched from the now-relocated `com.github.vladimir-bukhtoyarov` Maven coordinates to the current `com.bucket4j` ones) after a dependency-currency review.
@@ -61,8 +65,10 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Fixed client IP extraction to avoid concatenating proxy headers and null values.
 - Added visible spreadsheet upload limits for size, type, and row count.
 - Removed the runtime TLS verification bypass path; local development should use trusted test certificates or provider sandboxes instead of a global trust-all switch.
+- Added a legacy callback terminal-state/provider-reference guard to avoid re-applying the ledger/statement path when a provider redelivers the same terminal callback.
+- Fixed SMS provider rejection handling so non-2xx provider responses are marked `REJECTED` and refunded instead of being recorded as sent.
 
 ### Operational
 
-- Added `Docs/Schema/snapshots/2026-07-16-cpayadmin.sql` as the current no-data schema snapshot.
+- Confirmed the schema documentation currently tracks Flyway through V30 and points operators to regenerate a real `mysqldump` snapshot from a migrated database before release tagging.
 - Added Flyway migrations `V29__provider_conversation_references.sql` and `V30__shedlock.sql`.

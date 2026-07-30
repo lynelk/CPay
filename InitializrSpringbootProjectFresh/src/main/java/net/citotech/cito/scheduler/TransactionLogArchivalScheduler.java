@@ -2,6 +2,7 @@ package net.citotech.cito.scheduler;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -14,7 +15,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class TransactionLogArchivalScheduler {
-    private static final Logger logger = Logger.getLogger(TransactionLogArchivalScheduler.class.getName());
+    private static final Logger logger =
+            Logger.getLogger(TransactionLogArchivalScheduler.class.getName());
     private static final int MAX_BATCHES_PER_RUN = 20;
 
     private final TransactionLogArchivalService archivalService;
@@ -39,19 +41,26 @@ public class TransactionLogArchivalScheduler {
     }
 
     @Scheduled(cron = "${cpay.archival.transactions-log.cron:0 30 2 * * *}")
+    @SchedulerLock(name = "transactionLogArchival", lockAtMostFor = "PT1H", lockAtLeastFor = "PT5M")
     public void run() {
         if (!enabled) {
             return;
         }
         try {
             int archived = drain(() -> archivalService.archiveBatch(retentionDays, batchSize));
-            int purged = purgeEnabled ? drain(() -> archivalService.purgeBatch(purgeAfterDays, batchSize)) : 0;
+            int purged =
+                    purgeEnabled
+                            ? drain(() -> archivalService.purgeBatch(purgeAfterDays, batchSize))
+                            : 0;
             if (archived > 0 || purged > 0) {
-                logger.log(Level.INFO, "Transaction log archival: archived={0}, purged={1}",
-                        new Object[]{archived, purged});
+                logger.log(
+                        Level.INFO,
+                        "Transaction log archival: archived={0}, purged={1}",
+                        new Object[] {archived, purged});
             }
         } catch (Exception ex) {
-            logger.log(Level.WARNING, "Transaction log archival run failed: " + ex.getMessage(), ex);
+            logger.log(
+                    Level.WARNING, "Transaction log archival run failed: " + ex.getMessage(), ex);
         }
     }
 

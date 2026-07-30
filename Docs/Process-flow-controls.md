@@ -8,11 +8,14 @@ This document maps the specific process weaknesses found in the audit to target 
 - Persist the request before external provider calls.
 - Reserve funds before payout provider calls.
 - Route all merchant callbacks through the callback task queue.
-- Run a repair sweep that compares transaction state to ledger entries.
+- Run `LegacyLedgerRepairService` from `LedgerOperationsScheduler` to backfill successful legacy
+  pay-in/pay-out rows missing their idempotent `payment:<tx_unique_id>` ledger posting before the
+  daily trial-balance check runs.
 
 ## Provider Callbacks
 
-- Deduplicate inbound callbacks by provider reference, provider status, and merchant transaction.
+- Deduplicate inbound callbacks by provider reference and terminal status before statement/ledger
+  effects are applied.
 - Reject invalid state regressions.
 - Preserve raw provider payloads for audit, but expose normalized events to merchants.
 
@@ -33,3 +36,8 @@ This document maps the specific process weaknesses found in the audit to target 
 
 - Matched statements should visibly update transaction/reconciliation state.
 - Mismatch correction must be auditable and reversible.
+
+## Cross-border Transfers
+
+- Claim an FX quote atomically (`ACTIVE` to `BOUND`) before inserting the transfer intent so expired,
+  stale, or concurrently reused quotes cannot be replayed.

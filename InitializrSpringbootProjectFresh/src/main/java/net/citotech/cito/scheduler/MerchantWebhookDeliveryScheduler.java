@@ -3,14 +3,19 @@ package net.citotech.cito.scheduler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.citotech.cito.webhook.MerchantWebhookService;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(value = "cpay.webhooks.delivery.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+        value = "cpay.webhooks.delivery.enabled",
+        havingValue = "true",
+        matchIfMissing = true)
 public class MerchantWebhookDeliveryScheduler {
-    private static final Logger logger = Logger.getLogger(MerchantWebhookDeliveryScheduler.class.getName());
+    private static final Logger logger =
+            Logger.getLogger(MerchantWebhookDeliveryScheduler.class.getName());
 
     private final MerchantWebhookService webhookService;
 
@@ -19,6 +24,10 @@ public class MerchantWebhookDeliveryScheduler {
     }
 
     @Scheduled(fixedDelayString = "${cpay.webhooks.delivery.fixed-delay-ms:60000}")
+    @SchedulerLock(
+            name = "merchantWebhookDelivery",
+            lockAtMostFor = "PT5M",
+            lockAtLeastFor = "PT30S")
     public void deliverDue() {
         try {
             webhookService.deliverDue(50);

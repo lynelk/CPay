@@ -134,6 +134,17 @@ Never commit `.env` files or real access values to the repository.
 | `SPRINGDOC_API_DOCS_ENABLED` | Enables `/v3/api-docs`; defaults to `false`. |
 | `SPRINGDOC_SWAGGER_UI_ENABLED` | Enables Swagger UI; defaults to `false`. |
 | `CPAY_SECURITY_NONCE_STORE` | Set to `jdbc` for shared v2 replay protection in clustered environments; local default is in-memory. |
+| `CPAY_CLEANUP_ENABLED` | Enables the scheduled operational cleanup pass. Defaults to `true`. |
+| `CPAY_API_RATE_LIMIT_RETENTION_MINUTES` | Retention window for API rate-limit rows. Defaults to `1440`. |
+| `CPAY_CALLBACK_CLAIM_RETENTION_HOURS` | Retention window for stale active callback task claims. Defaults to `24`. |
+| `CPAY_PASSWORD_RESET_TOKEN_RETENTION_DAYS` | Retention window for password reset tokens. Defaults to `7`. |
+| `CPAY_WEBHOOK_DELIVERY_RETENTION_DAYS` | Retention window for terminal merchant webhook delivery rows. Defaults to `30`. |
+| `CPAY_CALLBACK_TASK_RETENTION_DAYS` | Retention window for completed callback tasks. Defaults to `30`. |
+| `CPAY_CALLBACK_SIGNATURE_RETENTION_DAYS` | Retention window for callback delivery signatures whose task is completed. Defaults to `30`. |
+| `CPAY_PROVIDER_RUN_RETENTION_DAYS` | Retention window for provider endpoint, sandbox, and statement-validation run logs. Defaults to `90`. |
+| `CPAY_SESSION_ABSOLUTE_MAX_HOURS` | Absolute JDBC session lifetime cap regardless of activity. Defaults to `12`. |
+| `CPAY_LEDGER_REPAIR_LIMIT` | Maximum successful legacy pay-in/pay-out rows the ledger repair sweep backfills per run. Defaults to `100`. |
+| `SHUTDOWN_PHASE_TIMEOUT` | Graceful shutdown drain window. Defaults to `30s`. |
 | `ADMIN_API_USERNAME` | Username for admin API access. |
 | `ADMIN_API_PASSWORD` | Password for admin API access. |
 | `CALLBACK_SIGNING_SECRET` | Fallback value for signing merchant callbacks where merchant-specific values are not configured. |
@@ -155,6 +166,12 @@ ACTUATOR_PASSWORD=change_me
 SPRINGDOC_API_DOCS_ENABLED=false
 SPRINGDOC_SWAGGER_UI_ENABLED=false
 CPAY_SECURITY_NONCE_STORE=memory
+CPAY_CLEANUP_ENABLED=true
+CPAY_CALLBACK_TASK_RETENTION_DAYS=30
+CPAY_CALLBACK_SIGNATURE_RETENTION_DAYS=30
+CPAY_PROVIDER_RUN_RETENTION_DAYS=90
+CPAY_SESSION_ABSOLUTE_MAX_HOURS=12
+CPAY_LEDGER_REPAIR_LIMIT=100
 ADMIN_API_USERNAME=local-admin
 ADMIN_API_PASSWORD=change_me
 CALLBACK_SIGNING_SECRET=change_me

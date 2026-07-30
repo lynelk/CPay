@@ -159,16 +159,32 @@ Base package: `net.citotech.cito`.
 - **`balance/`**, **`compliance/`**, **`checkout/`** (payment links/hosted checkout), **`scheduler/`**
   (timeout scans, cleanup jobs), **`metrics/`**, **`portal/`**,
   **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and
-  `SchedulerLockConfig` — the ShedLock `LockProvider` backing `@SchedulerLock` on
-  `TransactionsLogController.testCheckstatusCron()`/`paymentsPayCron()`, both of which are
-  directly HTTP-triggerable *and* `@Scheduled`; the pre-existing local file lock is kept as a
-  secondary, same-instance-only safeguard), **`repository/`**.
+  `SchedulerLockConfig` — the ShedLock `LockProvider` backing every active `@Scheduled` job. Keep
+  any new scheduled job annotated with `@SchedulerLock`; the older local file locks are only
+  secondary, same-instance safeguards on legacy cron code), **`repository/`**.
 
 Config: `application.properties` (defaults, `SANDBOX` gateway state) and
 `application-production.properties` (production profile guardrails — gateway mode and SSL verification
 are locked down here). Most values are externalized as `${ENV_VAR:default}` — see the root `Readme.md`
 "Key environment variables" table for the full list (DB, mail, actuator, admin API, callback signing,
 merchant channel encryption key, etc.).
+
+Operational cleanup is handled by `OperationalDataCleanupScheduler`; keep `Docs/Data-retention.md`,
+`Installation.md`, `Readme.md`, and `compose.yaml` in sync when adding a new cleanup property. Current
+cleanup coverage includes `api_rate_limits`, stale callback claims, `password_reset_tokens`, terminal
+merchant webhook deliveries, completed callback tasks/signatures, provider run logs, and sessions past
+their absolute lifetime. Money movement, statement, reconciliation, and audit-evidence tables remain
+append-oriented unless finance/compliance explicitly approve archival.
+
+`LedgerOperationsScheduler` also runs `LegacyLedgerRepairService` before daily trial balance work,
+backfilling successful legacy pay-in/pay-out rows that are missing their idempotent
+`payment:<tx_unique_id>` normalized ledger transaction. Keep the sweep capped by
+`CPAY_LEDGER_REPAIR_LIMIT` and do not broaden it to failed or non-terminal rows without an explicit
+accounting decision.
+
+Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V30`; do not mark a
+snapshot as a real release snapshot unless it was generated from a freshly migrated database with the
+documented `mysqldump --no-data` command.
 
 ## Frontend architecture
 

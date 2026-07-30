@@ -6,15 +6,20 @@ Flyway migrations are the canonical schema source for CPay.
 
 | Path | Purpose |
 |---|---|
-| `Initializrspringbootprojectfresh/src/main/resources/db/migration` | Versioned Flyway migrations applied at backend startup |
+| `InitializrSpringbootProjectFresh/src/main/resources/db/migration` | Versioned Flyway migrations applied at backend startup |
 | `Docs/Schema/snapshots` | No-data schema snapshots generated from a migrated database for review |
-| `Initializrspringbootprojectfresh/src/main/resources/dbchanges` | Legacy XML DB-change location, disabled by default |
+| `InitializrSpringbootProjectFresh/src/main/resources/dbchanges` | Legacy XML DB-change location, disabled by default |
 
 The legacy XML runner is gated by `CPAY_LEGACY_DBCHANGES_ENABLED=false` by default. New schema work should use Flyway.
 
 ## Current snapshot
 
-`Docs/Schema/snapshots/2026-07-28-cpayadmin.sql` is the current snapshot (84 tables across V1-V18). Unlike the July 16 snapshot below, no live migrated database was available when it was written, so it was hand-reconstructed by reading every migration file in order and applying each one's DDL rather than produced with `mysqldump`. Treat it as accurate to the migrations as authored, but re-run the real `mysqldump` recipe below against a freshly migrated database the next time one is available, to catch any drift between the migrations as authored and what was actually applied.
+Flyway is currently at `V30`. `Docs/Schema/snapshots/2026-07-28-cpayadmin.sql` is the latest committed
+snapshot, but it predates later migrations (`V19` through `V30`). Unlike the July 16 snapshot below,
+no live migrated database was available when it was written, so it was hand-reconstructed by reading
+the migration DDL rather than produced with `mysqldump`. Treat it as a review aid, not the release
+baseline. Regenerate a real no-data snapshot against a freshly migrated database before tagging a
+release so the snapshot catches drift between authored migrations and applied schema.
 
 `Docs/Schema/snapshots/2026-07-16-cpayadmin.sql` is the previous real `mysqldump` snapshot, generated from the local migrated `cpayadmin` database on July 16, 2026. It reflects schema state through V1, V2, and V5 only (the 19 baseline tables, plus the 24 tables added by V2, plus `feature_flags` from V5) — it predates V3's `merchant_transactions_log.currency` widening and everything from V7 onward, so it is missing 40 tables (ledger, risk, compliance, FX/treasury, payment links/checkout, webhooks, sandbox/environment controls, channel routing, fee schedules, and the payout compensation saga). Kept for history; prefer the 2026-07-28 snapshot.
 
@@ -91,7 +96,8 @@ merchants_audit_trail
 ```
 
 Tables added since the original 19-table V1 baseline are grouped by the migration that introduced
-them in the header comment of `Docs/Schema/snapshots/2026-07-28-cpayadmin.sql`.
+them in the header comment of `Docs/Schema/snapshots/2026-07-28-cpayadmin.sql`; update that snapshot
+after generating a real migrated-database dump for the next release.
 
 ## Migration rules
 

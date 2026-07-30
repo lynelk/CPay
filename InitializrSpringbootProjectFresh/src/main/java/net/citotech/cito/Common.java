@@ -2845,6 +2845,20 @@ public class Common {
                                 "");
             }
 
+            if (nextStatus != null
+                    && nextStatus.isTerminal()
+                    && providerReferenceAlreadyApplied(tx, jdbcTemplate)) {
+                Logger.getLogger(Common.class.getName())
+                        .log(
+                                Level.WARNING,
+                                "Ignoring duplicate provider status update for tx id="
+                                        + tx.getId()
+                                        + ", provider ref="
+                                        + tx.getTx_gateway_ref()
+                                        + " - another terminal transaction already used it");
+                return "success";
+            }
+
             // Guard against re-delivered provider callbacks: only transition rows that are
             // still in a non-terminal state. If 0 rows are affected, this status update has
             // already been applied (or the tx is otherwise terminal) - do not re-run the
@@ -3187,5 +3201,37 @@ public class Common {
             }
         }
         return "error";
+    }
+
+    private static boolean providerReferenceAlreadyApplied(
+            Transaction tx, NamedParameterJdbcTemplate jdbcTemplate) {
+        if (tx == null
+                || tx.getId() == 0
+                || tx.getGateway_id() == null
+                || tx.getGateway_id().isBlank()
+                || tx.getTx_gateway_ref() == null
+                || tx.getTx_gateway_ref().isBlank()) {
+            return false;
+        }
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("id", tx.getId());
+        parameters.addValue("gateway_id", tx.getGateway_id());
+        parameters.addValue("tx_gateway_ref", tx.getTx_gateway_ref());
+        try {
+            Integer count =
+                    jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM "
+                                    + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                                    + " WHERE id<>:id AND gateway_id=:gateway_id "
+                                    + "AND tx_gateway_ref=:tx_gateway_ref "
+                                    + "AND status IN ('SUCCESSFUL','FAILED')",
+                            parameters,
+                            Integer.class);
+            return count != null && count > 0;
+        } catch (Exception ex) {
+            Logger.getLogger(Common.class.getName())
+                    .log(Level.WARNING, "Could not verify provider reference deduplication", ex);
+            return false;
+        }
     }
 }

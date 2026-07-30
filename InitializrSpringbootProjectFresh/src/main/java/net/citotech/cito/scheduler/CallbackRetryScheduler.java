@@ -7,6 +7,7 @@ import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.callback.CallbackTaskService;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -20,12 +21,14 @@ public class CallbackRetryScheduler {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final CallbackTaskService taskService;
 
-    public CallbackRetryScheduler(NamedParameterJdbcTemplate jdbcTemplate, CallbackTaskService taskService) {
+    public CallbackRetryScheduler(
+            NamedParameterJdbcTemplate jdbcTemplate, CallbackTaskService taskService) {
         this.jdbcTemplate = jdbcTemplate;
         this.taskService = taskService;
     }
 
     @Scheduled(fixedDelay = 60000)
+    @SchedulerLock(name = "callbackRetry", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
     public void run() {
         try {
             enqueueFinalRows();
@@ -36,10 +39,13 @@ public class CallbackRetryScheduler {
     }
 
     private void enqueueFinalRows() {
-        String sql = "SELECT * FROM "
-                + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                + " WHERE callback_url IS NOT NULL AND callback_url != '' AND status IN ('SUCCESSFUL','FAILED') AND (callback_status IS NULL OR callback_status='PENDING' OR callback_status='RETRY') LIMIT 50";
-        List<Transaction> rows = jdbcTemplate.query(sql, new MapSqlParameterSource(), Common.getTransactionRowMapper());
+        String sql =
+                "SELECT * FROM "
+                        + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                        + " WHERE callback_url IS NOT NULL AND callback_url != '' AND status IN ('SUCCESSFUL','FAILED') AND (callback_status IS NULL OR callback_status='PENDING' OR callback_status='RETRY') LIMIT 50";
+        List<Transaction> rows =
+                jdbcTemplate.query(
+                        sql, new MapSqlParameterSource(), Common.getTransactionRowMapper());
         for (Transaction row : rows) enqueue(row);
     }
 
@@ -52,4 +58,3 @@ public class CallbackRetryScheduler {
         }
     }
 }
-

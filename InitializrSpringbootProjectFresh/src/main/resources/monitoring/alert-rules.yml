@@ -14,34 +14,18 @@
 #      (see InitializrSpringbootProjectFresh/src/main/resources/application.properties) — no custom
 #      registration needed for these.
 #
-# IMPORTANT gap found while writing this file: GatewayMetrics.java defines
-# incrementTransactionInitiated(gatewayId, txType), incrementTransactionCompleted(gatewayId, txType,
-# status), and incrementGatewayError(gatewayId) — i.e. cpay_transaction_initiated_total,
-# cpay_transaction_completed_total, and cpay_gateway_error_total exist as counters. A repo-wide
-# search found NO call sites for any of these three methods outside GatewayMetrics.java itself: only
-# incrementCallbackDelivery(...) (from CallbackTaskService) and incrementRateLimitHit(...) (from
-# SimpleRateLimitService) are ever actually invoked. In other words, the transaction/gateway-error
-# series are wired up in Micrometer but nothing in the codebase increments them today, so they will
-# either be permanently absent from /actuator/prometheus (Micrometer only exports a Counter once it
-# has been touched at least once) or permanently zero. Alerting on them would be pure theater — the
-# alert would never fire not because things are healthy, but because no code path feeds it. No rules
-# are defined against these three series below; wiring up those increment calls at the real
-# transaction/gateway-error call sites is a prerequisite before any such alert would mean anything.
+# Transaction counters are wired at PaymentOrchestrationService's v2/v2-native orchestration seam:
+# cpay_transaction_initiated_total, cpay_transaction_completed_total, and cpay_gateway_error_total
+# are meaningful for those paths. Legacy direct controller paths are still being migrated, so treat
+# transaction-rate alerts as a v2 signal until legacy money movement is fully retired.
 #
-# Runbook alerts with NO backing metric at all (checked: GatewayMetrics.java is the only place in the
-# whole backend that registers any custom Micrometer meter — no Gauge/Timer/Counter exists anywhere
-# else, e.g. nothing for float/balance runway, reconciliation exceptions, daily-close status, or
-# operating_control_events / operations_alerts row counts). These runbook sections have no
-# corresponding rule in this file, and none should be faked:
+# OperationsGaugeMetrics now exposes queue/backlog gauges over callback_tasks,
+# merchant_webhook_deliveries, and operations_alerts. Runbook alerts with no backing metric yet:
 #   - "Float below threshold" (FloatAlertScheduler) — no float/balance metric is emitted anywhere.
 #   - "Reconciliation exceptions" — no reconciliation metric is emitted anywhere; the only signal
 #     today is the `operations_alerts` / `reconciliation_records.match_status` DB rows themselves,
 #     which nothing exports as a Prometheus series (a DB-polling exporter or a custom Gauge would be
-#     needed).
-#   - "Retry queue growth" is only approximated below via the RETRY-status delivery *counter*, which
-#     is a proxy for retry throughput, not an actual queue-depth gauge (there is no gauge for how many
-#     callback_tasks rows are currently PENDING/RETRY) — treat CPayCallbackRetryVolumeHigh as
-#     directional, not authoritative.
+#     needed for category-specific reconciliation detail).
 #
 # Also note: management.metrics.distribution.percentiles-histogram is not configured anywhere in
 # application.properties, so http_server_requests_seconds and jvm_gc_pause_seconds are exposed as
@@ -84,6 +68,41 @@ groups:
             Follow the "Retry queue growth" section of Docs/Runbooks/Operations-alerts.md: check
             provider status before any bulk retry, and avoid manual replay of payouts without
             confirming idempotency behavior. Tune the threshold to real traffic volume.
+
+      - alert: CPayCallbackParkedBacklog
+        expr: cpay_callback_tasks{status="PARKED"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay has parked callback tasks"
+          description: >-
+            One or more callback_tasks rows are PARKED. Follow the "Callback parked" section of
+            Docs/Runbooks/Operations-alerts.md before requeueing: confirm merchant reachability,
+            signing secret, and endpoint allowlists first.
+
+      - alert: CPayCallbackPendingBacklogHigh
+        expr: cpay_callback_tasks{status="PENDING_OR_RETRY"} > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay callback task backlog is high"
+          description: >-
+            More than 100 callback_tasks rows are pending or retrying. Check provider/network
+            status, callback scheduler logs, and recent deploys before manual replay.
+
+      - alert: CPayWebhookFailedBacklog
+        expr: cpay_webhook_deliveries{status="FAILED"} > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPay has failed merchant webhook deliveries"
+          description: >-
+            One or more merchant_webhook_deliveries rows are FAILED. Use the merchant-visible
+            delivery log or admin delivery ops screen to inspect and replay after fixing the
+            endpoint issue.
 
       - alert: CPayCallbackDeliverySilent
         expr: |

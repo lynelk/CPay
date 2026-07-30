@@ -21,11 +21,10 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +80,8 @@ import org.xml.sax.InputSource;
 public class TransactionsLogController {
     private static final long MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
     private static final int MAX_UPLOAD_ROWS = 5000;
+    private static final DateTimeFormatter SMS_SEND_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired NamedParameterJdbcTemplate jdbcTemplate;
     @Autowired TransactionTemplate transactionTemplate;
@@ -4213,12 +4214,9 @@ public class TransactionsLogController {
             Boolean multiple = sObject.isNull("multiple") ? false : true;
             String send_time = sObject.getString("send_time");
 
-            // Check send_time is passed
-            SimpleDateFormat sdformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            Date d1 = sdformat.parse(send_time);
-            Date d2 = new Date();
-
-            if (d2.compareTo(d1) > 0) {
+            // Keep the external timestamp format unchanged, but compare with java.time.
+            LocalDateTime requestedSendTime = LocalDateTime.parse(send_time, SMS_SEND_TIME_FORMAT);
+            if (LocalDateTime.now().isAfter(requestedSendTime)) {
                 return GeneralException.getError("135", GeneralException.ERRORS_135);
             }
 
@@ -6727,7 +6725,7 @@ public class TransactionsLogController {
                     .log(
                             Level.SEVERE,
                             "HANDLING_SMS_SERVICE OverlappingFileLockException: " + ex.getMessage(),
-                            "");
+                            ex);
 
             return "OverlappingFileLockException";
         }

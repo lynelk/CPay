@@ -34,7 +34,9 @@ CPay uses several controls to support safe operation:
 - centralized outbound provider transport with configured timeouts and no global TLS verification bypass
 - merchant self-service webhook management (register, rotate secret, view delivery log, replay a failed delivery), scoped so one merchant can never act on another's webhook
 - claim-based callback processing for scaled workers
-- distributed locking (ShedLock) so the status-check and payout crons cannot process the same batch twice across multiple instances
+- distributed locking (ShedLock) so scheduled jobs cannot process the same work twice across multiple instances
+- provider callback terminal-state and provider-reference guards to reduce duplicate ledger/statement application on redelivery
+- scheduled cleanup of short-lived API, reset-token, callback, webhook, provider-run, and session records
 - encrypted merchant channel setup values
 - masked display values in the merchant portal
 - disabled-by-default OpenAPI and Swagger UI endpoints
@@ -118,7 +120,8 @@ Before production launch, confirm that:
 - provider TLS verification is enforced; development environments should use trusted local certificates or provider sandbox endpoints
 - `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED` remain `false` unless a controlled environment explicitly enables them
 - clustered deployments use shared nonce storage such as `CPAY_SECURITY_NONCE_STORE=jdbc`
-- clustered deployments share one database so distributed cron locking (ShedLock) has something to coordinate through
+- clustered deployments share one database so distributed scheduler locking (ShedLock) has something to coordinate through
+- retention settings are explicitly configured for the deployment and reviewed against finance/compliance needs
 - dependency and code checks pass or have documented exceptions; Dependabot pull requests are reviewed and merged rather than left open indefinitely
 - operating-control review is available to administrators
 - security, finance, compliance, and business owners have approved launch readiness
