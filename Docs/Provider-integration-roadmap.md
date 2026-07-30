@@ -26,8 +26,8 @@ The orchestration layer owns:
 1. Do not add new provider logic to `Common.doPayIn` or `Common.doPayOut`.
 2. Move token caches from local JSON files to encrypted DB rows or Redis with TTL.
 3. Replace hand-rolled HTTP calls with a configured Spring client.
-4. Remove `custom.ssl.skip-verify` from all production paths.
-5. Store phone-prefix routing in data once the adapter migration is complete.
+4. Keep outbound TLS on the JVM trust store. `custom.ssl.skip-verify` has been removed from code and configuration.
+5. Store phone-prefix routing in data and keep provider-class prefix arrays only as startup/unmigrated-database fallbacks.
 
 ## Health Visibility
 

@@ -81,7 +81,7 @@ The backend emits JSON logs through `logback-spring.xml`, propagates `X-Request-
 
 ## Production safeguards
 
-Production profiles (`prod` or `production`) require `custom.gatewaystate=PRODUCTION` and reject `custom.ssl.skip-verify=true`. Graceful shutdown is enabled by default, and transaction timeout settings are configurable with `CPAY_TRANSACTION_TIMEOUT_MINUTES` and `CPAY_TRANSACTION_TIMEOUT_SCAN_DELAY_MS`.
+Production profiles (`prod` or `production`) require `custom.gatewaystate=PRODUCTION` and a durable nonce store. Outbound HTTPS uses the JVM trust store only; there is no skip-verify mode. Graceful shutdown is enabled by default, and transaction timeout settings are configurable with `CPAY_TRANSACTION_TIMEOUT_MINUTES` and `CPAY_TRANSACTION_TIMEOUT_SCAN_DELAY_MS`.
 
 ## Prerequisites
 

@@ -20,8 +20,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -43,10 +41,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.security.SecureRandom;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import jakarta.servlet.http.HttpServletRequest;
 
 import net.citotech.cito.Model.*;
@@ -116,8 +110,12 @@ public class Common {
     public static final String CLASS_PATH_UPLOAD_DIRECTORY = "uploadDir";
     public static final String CLASS_PATH_PAYMENTS_CRON_TX_LOCK = "payments_cron_tx.lock";
     
-    /** Set to {@code true} only in local development (via {@code custom.ssl.skip-verify=true}). */
-    private static volatile boolean skipSslVerify = false;
+    @FunctionalInterface
+    public interface OutboundHttpExecutor {
+        HttpRequestResponse execute(String method, String url, String data, Map<String, String> headers);
+    }
+
+    private static volatile OutboundHttpExecutor outboundHttpExecutor;
 
     /** Application base URL used in outbound email links (e.g. password-reset). */
     private static volatile String appBaseUrl = "";
@@ -163,13 +161,8 @@ public class Common {
         return value == null ? defaultValue : String.valueOf(value);
     }
 
-    public static void setSslSkipVerify(boolean skip) {
-        skipSslVerify = skip;
-        if (skip) {
-            Logger.getLogger(Common.class.getName()).log(Level.WARNING,
-                "SECURITY WARNING: SSL certificate verification is DISABLED "
-                + "(custom.ssl.skip-verify=true). Do NOT use in production.");
-        }
+    public static void setOutboundHttpExecutor(OutboundHttpExecutor executor) {
+        outboundHttpExecutor = executor;
     }
 
 
@@ -403,32 +396,34 @@ public class Common {
         // Audit H2: forward the current request's correlation id downstream (provider APIs,
         // webhook/callback deliveries) so our logs and the receiving system's logs for the same
         // call can be cross-referenced. Never overrides a header the caller explicitly set.
+        Map<String, String> requestHeaders = headers == null ? new HashMap<>() : new HashMap<>(headers);
         String requestId = org.slf4j.MDC.get("request_id");
-        if (requestId != null && !headers.containsKey(net.citotech.cito.config.RequestCorrelationFilter.REQUEST_ID_HEADER)) {
-            headers = new HashMap<>(headers);
-            headers.put(net.citotech.cito.config.RequestCorrelationFilter.REQUEST_ID_HEADER, requestId);
+        if (requestId != null && !requestHeaders.containsKey(net.citotech.cito.config.RequestCorrelationFilter.REQUEST_ID_HEADER)) {
+            requestHeaders.put(net.citotech.cito.config.RequestCorrelationFilter.REQUEST_ID_HEADER, requestId);
         }
+
+        OutboundHttpExecutor executor = outboundHttpExecutor;
+        if (executor != null) {
+            try {
+                return executor.execute(method, url, data, requestHeaders);
+            } catch (Exception ex) {
+                Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+                return failedHttpResponse(url, data, requestHeaders, ex);
+            }
+        }
+
+        return doHttpRequestWithUrlConnection(method, url, data, requestHeaders);
+    }
+
+    private static HttpRequestResponse doHttpRequestWithUrlConnection(String method, String url,
+            String data, Map<String, String> headers) {
         HttpRequestResponse r = new HttpRequestResponse();
             r.setUrl(url);
             r.setRequestData(data);
             r.setRequestHeaders(headers);
         try {
             URL rquestUrl = URI.create(url).toURL();
-            HttpURLConnection con;
-
-            if ("https".equalsIgnoreCase(rquestUrl.getProtocol())) {
-                HttpsURLConnection httpsConn = (HttpsURLConnection) rquestUrl.openConnection();
-                if (skipSslVerify) {
-                    // Development-only bypass – do NOT enable in production.
-                    SSLContext sc = SSLContext.getInstance("SSL");
-                    sc.init(null, getTrustmanager(), new java.security.SecureRandom());
-                    httpsConn.setSSLSocketFactory(sc.getSocketFactory());
-                    httpsConn.setHostnameVerifier((hostname, session) -> true);
-                }
-                con = httpsConn;
-            } else {
-                con = (HttpURLConnection) rquestUrl.openConnection();
-            }
+            HttpURLConnection con = (HttpURLConnection) rquestUrl.openConnection();
             
             con.setRequestMethod(method);
             
@@ -520,11 +515,6 @@ public class Common {
             r.setErrorMessage(ex.getMessage());
             Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
             return r;
-        } catch (KeyManagementException ex) {
-            r.setResponse("");
-            r.setErrorMessage(ex.getMessage());
-            Logger.getLogger(Common.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-            return r;
         } catch (Exception ex) {
             r.setResponse("");
             r.setErrorMessage(ex.getMessage());
@@ -532,24 +522,16 @@ public class Common {
             return r;
         }
     }
-    
-    public static TrustManager[] getTrustmanager() {
-        TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
 
-            @Override
-            public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
-                // Not implemented
-            }
-
-            @Override
-            public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
-                // Not implemented
-            }
-        } };
-        return trustAllCerts;
+    private static HttpRequestResponse failedHttpResponse(
+            String url, String data, Map<String, String> headers, Exception ex) {
+        HttpRequestResponse r = new HttpRequestResponse();
+        r.setUrl(url);
+        r.setRequestData(data);
+        r.setRequestHeaders(headers);
+        r.setResponse("");
+        r.setErrorMessage(ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
+        return r;
     }
     
     public static String base64Encode(String content) {

@@ -1,14 +1,12 @@
 package net.citotech.cito.gateway;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.Map;
+import net.citotech.cito.Common;
 import net.citotech.cito.Model.GateWayResponse;
+import net.citotech.cito.Model.HttpRequestResponse;
 
 public final class ProviderEndpointClient {
     private ProviderEndpointClient() {}
@@ -33,22 +31,15 @@ public final class ProviderEndpointClient {
         }
         try {
             String payload = jsonPayload(channelCode, operation, request);
-            HttpURLConnection connection =
-                    (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(30000);
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("X-CPay-Channel", channelCode);
-            connection.setRequestProperty("X-CPay-Reference", request.getReference());
-            addOptionalHeader(connection, request, "authHeaderName", "authHeaderValue");
-            try (OutputStream os = connection.getOutputStream()) {
-                os.write(payload.getBytes(StandardCharsets.UTF_8));
-            }
-            int code = connection.getResponseCode();
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Content-Type", "application/json");
+            headers.put("X-CPay-Channel", channelCode);
+            headers.put("X-CPay-Reference", request.getReference());
+            addOptionalHeader(headers, request, "authHeaderName", "authHeaderValue");
+            HttpRequestResponse httpResponse = Common.doHttpRequest("POST", endpoint, payload, headers);
+            int code = httpResponse.getStatusCode();
             boolean ok = code >= 200 && code < 300;
-            String body = read(ok ? connection.getInputStream() : connection.getErrorStream());
+            String body = httpResponse.getResponse() == null ? "" : httpResponse.getResponse();
             GateWayResponse result = new GateWayResponse();
             result.setStatus(ok ? "SUCCESS" : "FAILED");
             result.setTransactionStatus(ok ? "SUBMITTED" : "FAILED");
@@ -84,13 +75,13 @@ public final class ProviderEndpointClient {
     }
 
     private static void addOptionalHeader(
-            HttpURLConnection connection,
+            Map<String, String> headers,
             PaymentGatewayRequest request,
             String nameKey,
             String valueKey) {
         String name = request.getMetadata().get(nameKey);
         String value = request.getMetadata().get(valueKey);
-        if (!isBlank(name) && !isBlank(value)) connection.setRequestProperty(name, value);
+        if (!isBlank(name) && !isBlank(value)) headers.put(name, value);
     }
 
     private static GateWayResponse accepted(
@@ -136,17 +127,6 @@ public final class ProviderEndpointClient {
                 + escape(request.getCallbackUrl())
                 + "\""
                 + "}";
-    }
-
-    private static String read(InputStream inputStream) throws Exception {
-        if (inputStream == null) return "";
-        try (BufferedReader reader =
-                new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) builder.append(line);
-            return builder.toString();
-        }
     }
 
     private static String sha256(String value) throws Exception {

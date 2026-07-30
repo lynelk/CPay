@@ -15,24 +15,11 @@ class ProductionSafetyConfigTest {
         environment.setActiveProfiles("production");
 
         ApplicationRunner guard = new ProductionSafetyConfig()
-            .productionSafetyGuard(environment, "SANDBOX", false, "jdbc");
+            .productionSafetyGuard(environment, "SANDBOX", "jdbc");
 
         assertThatThrownBy(() -> guard.run(null))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("custom.gatewaystate=PRODUCTION");
-    }
-
-    @Test
-    void productionProfileRejectsSslBypass() {
-        MockEnvironment environment = new MockEnvironment();
-        environment.setActiveProfiles("prod");
-
-        ApplicationRunner guard = new ProductionSafetyConfig()
-            .productionSafetyGuard(environment, "PRODUCTION", true, "jdbc");
-
-        assertThatThrownBy(() -> guard.run(null))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("custom.ssl.skip-verify");
     }
 
     @Test
@@ -41,7 +28,7 @@ class ProductionSafetyConfigTest {
         environment.setActiveProfiles("dev");
 
         ApplicationRunner guard = new ProductionSafetyConfig()
-            .productionSafetyGuard(environment, "SANDBOX", true, "memory");
+            .productionSafetyGuard(environment, "SANDBOX", "memory");
 
         assertThatCode(() -> guard.run(null)).doesNotThrowAnyException();
     }
@@ -52,7 +39,7 @@ class ProductionSafetyConfigTest {
         environment.setActiveProfiles("production");
 
         ApplicationRunner guard = new ProductionSafetyConfig()
-            .productionSafetyGuard(environment, "PRODUCTION", false, "memory");
+            .productionSafetyGuard(environment, "PRODUCTION", "memory");
 
         assertThatThrownBy(() -> guard.run(null))
             .isInstanceOf(IllegalStateException.class)

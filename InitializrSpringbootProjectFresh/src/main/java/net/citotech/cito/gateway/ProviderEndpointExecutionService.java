@@ -1,17 +1,12 @@
 package net.citotech.cito.gateway;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import net.citotech.cito.Common;
 import net.citotech.cito.Model.GateWayResponse;
+import net.citotech.cito.Model.HttpRequestResponse;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -87,35 +82,25 @@ public class ProviderEndpointExecutionService {
 
         String body = body(channelCode, operation, request);
         try {
-            HttpURLConnection connection =
-                    (HttpURLConnection) URI.create(endpointUrl).toURL().openConnection();
-            connection.setRequestMethod("POST");
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(30000);
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("X-CPay-Channel", channelCode);
-            connection.setRequestProperty("X-CPay-Reference", request.getReference());
+            Map<String, String> requestHeaders = new LinkedHashMap<>();
+            requestHeaders.put("Content-Type", "application/json");
+            requestHeaders.put("X-CPay-Channel", channelCode);
+            requestHeaders.put("X-CPay-Reference", request.getReference());
             tokenStoreService
                     .findValid(channelCode, operation, gatewayState)
                     .ifPresent(
                             token ->
-                                    connection.setRequestProperty(
+                                    requestHeaders.put(
                                             "Authorization", "Bearer " + token.getTokenValue()));
             String headerName = request.getMetadata().get("authHeaderName");
             String headerValue = request.getMetadata().get("authHeaderValue");
             if (!isBlank(headerName) && !isBlank(headerValue)) {
-                connection.setRequestProperty(headerName, headerValue);
+                requestHeaders.put(headerName, headerValue);
             }
-            try (OutputStream outputStream = connection.getOutputStream()) {
-                outputStream.write(body.getBytes(StandardCharsets.UTF_8));
-            }
-            int httpStatus = connection.getResponseCode();
-            String responseBody =
-                    read(
-                            httpStatus >= 200 && httpStatus < 300
-                                    ? connection.getInputStream()
-                                    : connection.getErrorStream());
+            HttpRequestResponse httpResponse =
+                    Common.doHttpRequest("POST", endpointUrl, body, requestHeaders);
+            int httpStatus = httpResponse.getStatusCode();
+            String responseBody = httpResponse.getResponse() == null ? "" : httpResponse.getResponse();
             String status = httpStatus >= 200 && httpStatus < 300 ? "SUBMITTED" : "FAILED";
             String runStatus = status;
             String recordMessage = responseBody;
@@ -133,7 +118,10 @@ public class ProviderEndpointExecutionService {
             // YoPaymentsCallbackVerifier.
             if ("SUBMITTED".equals(status)
                     && YoPaymentsAdapter.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
-                Map<String, String> responseHeaders = headers(connection);
+                Map<String, String> responseHeaders =
+                        httpResponse.getResponseHeaders() == null
+                                ? Map.of()
+                                : httpResponse.getResponseHeaders();
                 if (!YoPaymentsCallbackVerifier.verify(
                         responseHeaders, responseBody, request.getMetadata())) {
                     status = "FAILED";
@@ -319,31 +307,6 @@ public class ProviderEndpointExecutionService {
                 + "\",\"callbackUrl\":\""
                 + esc(request.getCallbackUrl())
                 + "\"}";
-    }
-
-    /**
-     * Flattens the provider HTTP response headers into a simple case-preserving map (first value
-     * wins per name).
-     */
-    private Map<String, String> headers(HttpURLConnection connection) {
-        Map<String, String> result = new LinkedHashMap<>();
-        for (Map.Entry<String, List<String>> entry : connection.getHeaderFields().entrySet()) {
-            if (entry.getKey() == null || entry.getValue() == null || entry.getValue().isEmpty())
-                continue;
-            result.put(entry.getKey(), entry.getValue().get(0));
-        }
-        return result;
-    }
-
-    private String read(InputStream inputStream) throws Exception {
-        if (inputStream == null) return "";
-        try (BufferedReader reader =
-                new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) builder.append(line);
-            return builder.toString();
-        }
     }
 
     private String hash(String value) throws Exception {
