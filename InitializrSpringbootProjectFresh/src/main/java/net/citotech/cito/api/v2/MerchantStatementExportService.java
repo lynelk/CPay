@@ -12,7 +12,10 @@ import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.api.v2.dto.StatementExportResponse;
 import net.citotech.cito.api.v2.dto.StatementExportResponse.StatementRow;
+import net.citotech.cito.export.ExportColumn;
+import net.citotech.cito.export.TabularExportService;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -23,13 +26,44 @@ public class MerchantStatementExportService {
     private static final int DEFAULT_LIMIT = 1000;
     private static final int MAX_LIMIT = 5000;
 
+    /**
+     * Column layout shared by the CSV and XLSX export paths (audit M5) - declared once here so
+     * both formats stay in sync instead of each hand-rolling its own column list.
+     */
+    private static final List<ExportColumn<StatementRow>> EXPORT_COLUMNS = List.of(
+        ExportColumn.of("id", StatementRow::getId),
+        ExportColumn.of("created_on", StatementRow::getCreatedOn),
+        ExportColumn.of("gateway_id", StatementRow::getGatewayId),
+        ExportColumn.of("transaction_type", StatementRow::getTransactionType),
+        ExportColumn.of("amount", StatementRow::getAmount),
+        ExportColumn.of("currency", StatementRow::getCurrency),
+        ExportColumn.of("merchant_reference", StatementRow::getMerchantReference),
+        ExportColumn.of("transaction_id", StatementRow::getTransactionId),
+        ExportColumn.of("status", StatementRow::getTransactionStatus),
+        ExportColumn.of("description", StatementRow::getDescription),
+        ExportColumn.of("narrative", StatementRow::getNarrative),
+        ExportColumn.of("mtn_balance", StatementRow::getMtnBalance),
+        ExportColumn.of("airtel_balance", StatementRow::getAirtelBalance),
+        ExportColumn.of("safaricom_balance", StatementRow::getSafaricomBalance),
+        ExportColumn.of("sms_balance", StatementRow::getSmsBalance)
+    );
+
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final MerchantReadAuditService auditService;
+    private final TabularExportService tabularExportService;
 
     public MerchantStatementExportService(NamedParameterJdbcTemplate jdbcTemplate,
                                           MerchantReadAuditService auditService) {
+        this(jdbcTemplate, auditService, new TabularExportService());
+    }
+
+    @Autowired
+    public MerchantStatementExportService(NamedParameterJdbcTemplate jdbcTemplate,
+                                          MerchantReadAuditService auditService,
+                                          TabularExportService tabularExportService) {
         this.jdbcTemplate = jdbcTemplate;
         this.auditService = auditService;
+        this.tabularExportService = tabularExportService;
     }
 
     public StatementExportResponse export(Merchant merchant, String merchantNumber, String startDate, String endDate, Integer limit) {
@@ -148,27 +182,24 @@ public class MerchantStatementExportService {
         }
     }
 
+    /**
+     * CSV rendering of a statement export page (audit M5: routed through the shared
+     * {@link TabularExportService} instead of hand-building the CSV string here, so this stays in
+     * lockstep with the XLSX rendering below and with every other export surface that adopts the
+     * same helper).
+     */
     public String toCsv(StatementExportResponse response) {
-        StringBuilder csv = new StringBuilder();
-        csv.append("id,created_on,gateway_id,transaction_type,amount,currency,merchant_reference,transaction_id,status,description,narrative,mtn_balance,airtel_balance,safaricom_balance,sms_balance\n");
-        for (StatementRow row : response.getRows()) {
-            csv.append(row.getId()).append(',')
-                .append(csv(row.getCreatedOn())).append(',')
-                .append(csv(row.getGatewayId())).append(',')
-                .append(csv(row.getTransactionType())).append(',')
-                .append(csv(row.getAmount())).append(',')
-                .append(csv(row.getCurrency())).append(',')
-                .append(csv(row.getMerchantReference())).append(',')
-                .append(csv(row.getTransactionId())).append(',')
-                .append(csv(row.getTransactionStatus())).append(',')
-                .append(csv(row.getDescription())).append(',')
-                .append(csv(row.getNarrative())).append(',')
-                .append(csv(row.getMtnBalance())).append(',')
-                .append(csv(row.getAirtelBalance())).append(',')
-                .append(csv(row.getSafaricomBalance())).append(',')
-                .append(csv(row.getSmsBalance())).append('\n');
-        }
-        return csv.toString();
+        byte[] bytes = tabularExportService.toCsv(EXPORT_COLUMNS, response.getRows());
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * XLSX rendering of the same statement export page (audit M5), using the identical column
+     * layout as {@link #toCsv(StatementExportResponse)} so CSV and XLSX downloads of the same
+     * request never drift apart.
+     */
+    public byte[] toXlsx(StatementExportResponse response) {
+        return tabularExportService.toXlsx("Statement", EXPORT_COLUMNS, response.getRows());
     }
 
     private RowMapper<CursorRow> rowMapper() {
@@ -242,14 +273,6 @@ public class MerchantStatementExportService {
             throw new PaymentGatewayException("limit must be greater than 0");
         }
         return Math.min(limit, MAX_LIMIT);
-    }
-
-    private String csv(Object value) {
-        String text = value == null ? "" : String.valueOf(value);
-        if (text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
-            return "\"" + text.replace("\"", "\"\"") + "\"";
-        }
-        return text;
     }
 
     private BigDecimal decimal(BigDecimal value) {
