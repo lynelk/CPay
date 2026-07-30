@@ -22,6 +22,12 @@
              build for contributors or CI lanes that don't provision one. A Docker-capable
              environment opts in with: mvn test -Ddocker.tests.excludedGroups= -->
         <docker.tests.excludedGroups>docker</docker.tests.excludedGroups>
+        <!-- Audit K5: load-testing toolchain. gatling-maven-plugin's own version scheme
+             (4.x) is independent from the Gatling engine version (3.x); 4.21.10 / 3.15.1
+             are the current releases of each as of this addition and are the pairing
+             Gatling's own documentation and release cadence recommend. -->
+        <gatling.version>3.15.1</gatling.version>
+        <gatling-maven-plugin.version>4.21.10</gatling-maven-plugin.version>
     </properties>
 
     <dependencies>
@@ -172,6 +178,19 @@
             <version>3.13.2</version>
             <scope>test</scope>
         </dependency>
+        <!-- Audit K5: Gatling load-testing simulations under src/test/java/.../loadtest.
+             Test-scoped only: pulls in gatling-app (Java DSL, engine) and the
+             highcharts report writer transitively. This does NOT make Gatling run as
+             part of `mvn test`: JUnit/Surefire only picks up classes matching its
+             default *Test/*Tests/*TestCase naming patterns, and our simulation classes
+             are named *Simulation, so they are compiled but never executed by `mvn
+             test` or `mvn verify`. Run them explicitly with `mvn gatling:test`. -->
+        <dependency>
+            <groupId>io.gatling.highcharts</groupId>
+            <artifactId>gatling-charts-highcharts</artifactId>
+            <version>${gatling.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -186,6 +205,17 @@
                 <configuration>
                     <excludedGroups>${docker.tests.excludedGroups}</excludedGroups>
                 </configuration>
+            </plugin>
+            <!-- Audit K5: deliberately NO <executions> block here. Without one, this
+                 plugin's `test` goal is not bound to any lifecycle phase, so it never
+                 runs as a side effect of `mvn compile` / `mvn test` / `mvn verify` /
+                 `mvn package`. It only runs on an explicit `mvn gatling:test`
+                 invocation (which itself forks the build up to test-compile first, so
+                 simulations under src/test/java are freshly compiled before running). -->
+            <plugin>
+                <groupId>io.gatling</groupId>
+                <artifactId>gatling-maven-plugin</artifactId>
+                <version>${gatling-maven-plugin.version}</version>
             </plugin>
         </plugins>
     </build>
