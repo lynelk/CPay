@@ -217,6 +217,39 @@
                 <artifactId>gatling-maven-plugin</artifactId>
                 <version>${gatling-maven-plugin.version}</version>
             </plugin>
+            <!-- Audit J6: formatting enforcement, introduced carefully on a codebase that has
+                 never had one - AOSP style (4-space indent) is used, not Google's default 2-space,
+                 because it matches this codebase's existing indentation and so minimizes the diff
+                 the FIRST time an existing file is touched after this lands. ratchetFrom=origin/main
+                 means spotless:check only validates files that actually differ from origin/main -
+                 untouched legacy files are grandfathered in rather than requiring an immediate,
+                 disruptive mass-reformat of the whole codebase. Deliberately bound to the `verify`
+                 phase (not `compile`/`test`) so a local `mvn test` iteration loop is never blocked
+                 by formatting while still gating `mvn verify`/CI. Run `mvn spotless:apply` to
+                 auto-fix a file this flags. -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.46.1</version>
+                <configuration>
+                    <ratchetFrom>origin/main</ratchetFrom>
+                    <java>
+                        <googleJavaFormat>
+                            <version>1.22.0</version>
+                            <style>AOSP</style>
+                        </googleJavaFormat>
+                        <removeUnusedImports/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

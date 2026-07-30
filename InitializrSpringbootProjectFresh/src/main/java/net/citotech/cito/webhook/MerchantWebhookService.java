@@ -25,20 +25,24 @@ public class MerchantWebhookService {
     private final MerchantChannelCryptoService cryptoService;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public MerchantWebhookService(NamedParameterJdbcTemplate jdbcTemplate,
-                                  MerchantChannelCryptoService cryptoService) {
+    public MerchantWebhookService(
+            NamedParameterJdbcTemplate jdbcTemplate, MerchantChannelCryptoService cryptoService) {
         this.jdbcTemplate = jdbcTemplate;
         this.cryptoService = cryptoService;
     }
 
     @Transactional
-    public Map<String, Object> registerEndpoint(long merchantId, String eventType, String endpointUrl, String actor) {
+    public Map<String, Object> registerEndpoint(
+            long merchantId, String eventType, String endpointUrl, String actor) {
         if (merchantId <= 0 || blank(eventType) || blank(endpointUrl)) {
-            throw new PaymentGatewayException("merchantId, eventType, and endpointUrl are required");
+            throw new PaymentGatewayException(
+                    "merchantId, eventType, and endpointUrl are required");
         }
         if (!WebhookEventCatalog.isKnown(eventType)) {
             throw new PaymentGatewayException(
-                "Unknown webhook event type: " + eventType + ". See GET /api/v2/webhooks/events for the catalog.");
+                    "Unknown webhook event type: "
+                            + eventType
+                            + ". See GET /api/v2/webhooks/events for the catalog.");
         }
         String secret = generateSecret();
         MapSqlParameterSource p = new MapSqlParameterSource();
@@ -49,20 +53,20 @@ public class MerchantWebhookService {
         p.addValue("secret_value", cryptoService.encrypt(secret));
         p.addValue("actor", blank(actor) ? "system" : actor.trim());
         jdbcTemplate.update(
-            "INSERT INTO merchant_webhook_endpoints "
-                + "(merchant_id, event_type, endpoint_url, secret_hash, secret_value, endpoint_status) "
-                + "VALUES (:merchant_id, :event_type, :endpoint_url, :secret_hash, :secret_value, 'ACTIVE') "
-                + "ON DUPLICATE KEY UPDATE endpoint_url=:endpoint_url, secret_hash=:secret_hash, "
-                + "secret_value=:secret_value, endpoint_status='ACTIVE'",
-            p);
+                "INSERT INTO merchant_webhook_endpoints "
+                        + "(merchant_id, event_type, endpoint_url, secret_hash, secret_value, endpoint_status) "
+                        + "VALUES (:merchant_id, :event_type, :endpoint_url, :secret_hash, :secret_value, 'ACTIVE') "
+                        + "ON DUPLICATE KEY UPDATE endpoint_url=:endpoint_url, secret_hash=:secret_hash, "
+                        + "secret_value=:secret_value, endpoint_status='ACTIVE'",
+                p);
         return Map.of("code", "000", "eventType", normalizeEvent(eventType), "secret", secret);
     }
 
     public List<Map<String, Object>> listEndpoints(long merchantId) {
         return jdbcTemplate.queryForList(
-            "SELECT id, merchant_id, event_type, endpoint_url, secret_hash, endpoint_status, created_at, updated_at "
-                + "FROM merchant_webhook_endpoints WHERE merchant_id=:merchant_id ORDER BY event_type",
-            new MapSqlParameterSource("merchant_id", merchantId));
+                "SELECT id, merchant_id, event_type, endpoint_url, secret_hash, endpoint_status, created_at, updated_at "
+                        + "FROM merchant_webhook_endpoints WHERE merchant_id=:merchant_id ORDER BY event_type",
+                new MapSqlParameterSource("merchant_id", merchantId));
     }
 
     @Transactional
@@ -72,10 +76,11 @@ public class MerchantWebhookService {
         p.addValue("id", endpointId);
         p.addValue("secret_hash", CanonicalRequestSigner.sha256Hex(secret));
         p.addValue("secret_value", cryptoService.encrypt(secret));
-        int updated = jdbcTemplate.update(
-            "UPDATE merchant_webhook_endpoints SET secret_hash=:secret_hash, secret_value=:secret_value "
-                + "WHERE id=:id AND endpoint_status='ACTIVE'",
-            p);
+        int updated =
+                jdbcTemplate.update(
+                        "UPDATE merchant_webhook_endpoints SET secret_hash=:secret_hash, secret_value=:secret_value "
+                                + "WHERE id=:id AND endpoint_status='ACTIVE'",
+                        p);
         if (updated == 0) {
             throw new PaymentGatewayException("Webhook endpoint was not found");
         }
@@ -97,10 +102,11 @@ public class MerchantWebhookService {
         p.addValue("merchant_id", merchantId);
         p.addValue("secret_hash", CanonicalRequestSigner.sha256Hex(secret));
         p.addValue("secret_value", cryptoService.encrypt(secret));
-        int updated = jdbcTemplate.update(
-            "UPDATE merchant_webhook_endpoints SET secret_hash=:secret_hash, secret_value=:secret_value "
-                + "WHERE id=:id AND merchant_id=:merchant_id AND endpoint_status='ACTIVE'",
-            p);
+        int updated =
+                jdbcTemplate.update(
+                        "UPDATE merchant_webhook_endpoints SET secret_hash=:secret_hash, secret_value=:secret_value "
+                                + "WHERE id=:id AND merchant_id=:merchant_id AND endpoint_status='ACTIVE'",
+                        p);
         if (updated == 0) {
             throw new PaymentGatewayException("Webhook endpoint was not found");
         }
@@ -108,9 +114,14 @@ public class MerchantWebhookService {
     }
 
     @Transactional
-    public int enqueue(long merchantId, String eventType, String eventReference, String payloadJson) {
-        EventDefinition definition = WebhookEventCatalog.lookup(eventType)
-            .orElseThrow(() -> new PaymentGatewayException("Unknown webhook event type: " + eventType));
+    public int enqueue(
+            long merchantId, String eventType, String eventReference, String payloadJson) {
+        EventDefinition definition =
+                WebhookEventCatalog.lookup(eventType)
+                        .orElseThrow(
+                                () ->
+                                        new PaymentGatewayException(
+                                                "Unknown webhook event type: " + eventType));
         String envelopedPayload = envelope(definition, payloadJson);
         List<EndpointRow> endpoints = activeEndpoints(merchantId, eventType);
         int queued = 0;
@@ -121,11 +132,12 @@ public class MerchantWebhookService {
             p.addValue("event_type", normalizeEvent(eventType));
             p.addValue("event_reference", eventReference);
             p.addValue("payload_json", envelopedPayload);
-            queued += jdbcTemplate.update(
-                "INSERT IGNORE INTO merchant_webhook_deliveries "
-                    + "(merchant_id, endpoint_id, event_type, event_reference, payload_json, delivery_status, next_attempt_at) "
-                    + "VALUES (:merchant_id, :endpoint_id, :event_type, :event_reference, :payload_json, 'PENDING', CURRENT_TIMESTAMP)",
-                p);
+            queued +=
+                    jdbcTemplate.update(
+                            "INSERT IGNORE INTO merchant_webhook_deliveries "
+                                    + "(merchant_id, endpoint_id, event_type, event_reference, payload_json, delivery_status, next_attempt_at) "
+                                    + "VALUES (:merchant_id, :endpoint_id, :event_type, :event_reference, :payload_json, 'PENDING', CURRENT_TIMESTAMP)",
+                            p);
         }
         return queued;
     }
@@ -146,9 +158,9 @@ public class MerchantWebhookService {
     @Transactional
     public int replay(long deliveryId) {
         return jdbcTemplate.update(
-            "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
-                + "WHERE id=:id AND delivery_status IN ('FAILED','DELIVERED')",
-            new MapSqlParameterSource("id", deliveryId));
+                "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
+                        + "WHERE id=:id AND delivery_status IN ('FAILED','DELIVERED')",
+                new MapSqlParameterSource("id", deliveryId));
     }
 
     /**
@@ -162,9 +174,9 @@ public class MerchantWebhookService {
         p.addValue("id", deliveryId);
         p.addValue("merchant_id", merchantId);
         return jdbcTemplate.update(
-            "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
-                + "WHERE id=:id AND merchant_id=:merchant_id AND delivery_status IN ('FAILED','DELIVERED')",
-            p);
+                "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
+                        + "WHERE id=:id AND merchant_id=:merchant_id AND delivery_status IN ('FAILED','DELIVERED')",
+                p);
     }
 
     /**
@@ -177,11 +189,11 @@ public class MerchantWebhookService {
         p.addValue("merchant_id", merchantId);
         p.addValue("limit", Math.max(1, Math.min(limit, 200)));
         return jdbcTemplate.queryForList(
-            "SELECT id, endpoint_id, event_type, event_reference, delivery_status, attempt_count, "
-                + "last_http_status, last_response_summary, next_attempt_at, created_at, updated_at "
-                + "FROM merchant_webhook_deliveries WHERE merchant_id=:merchant_id "
-                + "ORDER BY created_at DESC LIMIT :limit",
-            p);
+                "SELECT id, endpoint_id, event_type, event_reference, delivery_status, attempt_count, "
+                        + "last_http_status, last_response_summary, next_attempt_at, created_at, updated_at "
+                        + "FROM merchant_webhook_deliveries WHERE merchant_id=:merchant_id "
+                        + "ORDER BY created_at DESC LIMIT :limit",
+                p);
     }
 
     @Transactional
@@ -197,17 +209,32 @@ public class MerchantWebhookService {
 
     private void deliver(DeliveryRow delivery) {
         try {
-            Map<String, String> headers = Map.of(
-                "Content-Type", "application/json",
-                "X-CPay-Event", delivery.eventType(),
-                "X-CPay-Reference", delivery.eventReference(),
-                "X-CPay-Signature", CanonicalRequestSigner.sha256Hex(delivery.payloadJson() + "." + delivery.secret()));
-            HttpRequestResponse response = Common.doHttpRequest("POST", delivery.endpointUrl(), delivery.payloadJson(), headers);
+            Map<String, String> headers =
+                    Map.of(
+                            "Content-Type", "application/json",
+                            "X-CPay-Event", delivery.eventType(),
+                            "X-CPay-Reference", delivery.eventReference(),
+                            "X-CPay-Signature",
+                                    CanonicalRequestSigner.sha256Hex(
+                                            delivery.payloadJson() + "." + delivery.secret()));
+            HttpRequestResponse response =
+                    Common.doHttpRequest(
+                            "POST", delivery.endpointUrl(), delivery.payloadJson(), headers);
             int status = response == null ? 0 : response.getStatusCode();
             boolean ok = status >= 200 && status < 300;
-            updateDelivery(delivery.id(), ok ? "DELIVERED" : nextStatus(delivery.attemptCount() + 1), delivery.attemptCount() + 1, status, response == null ? "No response" : response.getResponse());
+            updateDelivery(
+                    delivery.id(),
+                    ok ? "DELIVERED" : nextStatus(delivery.attemptCount() + 1),
+                    delivery.attemptCount() + 1,
+                    status,
+                    response == null ? "No response" : response.getResponse());
         } catch (Exception ex) {
-            updateDelivery(delivery.id(), nextStatus(delivery.attemptCount() + 1), delivery.attemptCount() + 1, 0, ex.getMessage());
+            updateDelivery(
+                    delivery.id(),
+                    nextStatus(delivery.attemptCount() + 1),
+                    delivery.attemptCount() + 1,
+                    0,
+                    ex.getMessage());
         }
     }
 
@@ -215,20 +242,24 @@ public class MerchantWebhookService {
         return attemptCount >= 5 ? "FAILED" : "PENDING";
     }
 
-    private void updateDelivery(long id, String status, int attempts, int httpStatus, String responseSummary) {
+    private void updateDelivery(
+            long id, String status, int attempts, int httpStatus, String responseSummary) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("id", id);
         p.addValue("status", status);
         p.addValue("attempts", attempts);
         p.addValue("http_status", httpStatus);
         p.addValue("response", trim(responseSummary));
-        p.addValue("next_attempt", Timestamp.from(Instant.now().plus(Math.min(60, attempts * 5L), ChronoUnit.MINUTES)));
+        p.addValue(
+                "next_attempt",
+                Timestamp.from(
+                        Instant.now().plus(Math.min(60, attempts * 5L), ChronoUnit.MINUTES)));
         jdbcTemplate.update(
-            "UPDATE merchant_webhook_deliveries SET delivery_status=:status, attempt_count=:attempts, "
-                + "last_http_status=:http_status, last_response_summary=:response, "
-                + "next_attempt_at=CASE WHEN :status='PENDING' THEN :next_attempt ELSE next_attempt_at END "
-                + "WHERE id=:id",
-            p);
+                "UPDATE merchant_webhook_deliveries SET delivery_status=:status, attempt_count=:attempts, "
+                        + "last_http_status=:http_status, last_response_summary=:response, "
+                        + "next_attempt_at=CASE WHEN :status='PENDING' THEN :next_attempt ELSE next_attempt_at END "
+                        + "WHERE id=:id",
+                p);
     }
 
     private List<EndpointRow> activeEndpoints(long merchantId, String eventType) {
@@ -236,30 +267,32 @@ public class MerchantWebhookService {
         p.addValue("merchant_id", merchantId);
         p.addValue("event_type", normalizeEvent(eventType));
         return jdbcTemplate.query(
-            "SELECT id FROM merchant_webhook_endpoints "
-                + "WHERE merchant_id=:merchant_id AND event_type=:event_type AND endpoint_status='ACTIVE'",
-            p,
-            (rs, rowNum) -> new EndpointRow(rs.getLong("id")));
+                "SELECT id FROM merchant_webhook_endpoints "
+                        + "WHERE merchant_id=:merchant_id AND event_type=:event_type AND endpoint_status='ACTIVE'",
+                p,
+                (rs, rowNum) -> new EndpointRow(rs.getLong("id")));
     }
 
     private List<DeliveryRow> dueDeliveries(int limit) {
-        MapSqlParameterSource p = new MapSqlParameterSource("limit", Math.max(1, Math.min(limit, 100)));
+        MapSqlParameterSource p =
+                new MapSqlParameterSource("limit", Math.max(1, Math.min(limit, 100)));
         return jdbcTemplate.query(
-            "SELECT d.id, d.event_type, d.event_reference, d.payload_json, d.attempt_count, "
-                + "e.endpoint_url, e.secret_value "
-                + "FROM merchant_webhook_deliveries d "
-                + "JOIN merchant_webhook_endpoints e ON e.id=d.endpoint_id "
-                + "WHERE d.delivery_status='PENDING' AND d.next_attempt_at <= CURRENT_TIMESTAMP "
-                + "AND e.endpoint_status='ACTIVE' ORDER BY d.id ASC LIMIT :limit",
-            p,
-            (rs, rowNum) -> new DeliveryRow(
-                rs.getLong("id"),
-                rs.getString("event_type"),
-                rs.getString("event_reference"),
-                rs.getString("payload_json"),
-                rs.getInt("attempt_count"),
-                rs.getString("endpoint_url"),
-                decrypt(rs.getString("secret_value"))));
+                "SELECT d.id, d.event_type, d.event_reference, d.payload_json, d.attempt_count, "
+                        + "e.endpoint_url, e.secret_value "
+                        + "FROM merchant_webhook_deliveries d "
+                        + "JOIN merchant_webhook_endpoints e ON e.id=d.endpoint_id "
+                        + "WHERE d.delivery_status='PENDING' AND d.next_attempt_at <= CURRENT_TIMESTAMP "
+                        + "AND e.endpoint_status='ACTIVE' ORDER BY d.id ASC LIMIT :limit",
+                p,
+                (rs, rowNum) ->
+                        new DeliveryRow(
+                                rs.getLong("id"),
+                                rs.getString("event_type"),
+                                rs.getString("event_reference"),
+                                rs.getString("payload_json"),
+                                rs.getInt("attempt_count"),
+                                rs.getString("endpoint_url"),
+                                decrypt(rs.getString("secret_value"))));
     }
 
     private String decrypt(String value) {
@@ -291,15 +324,14 @@ public class MerchantWebhookService {
         return value == null || value.trim().isEmpty();
     }
 
-    private record EndpointRow(long id) {
-    }
+    private record EndpointRow(long id) {}
 
-    private record DeliveryRow(long id,
-                               String eventType,
-                               String eventReference,
-                               String payloadJson,
-                               int attemptCount,
-                               String endpointUrl,
-                               String secret) {
-    }
+    private record DeliveryRow(
+            long id,
+            String eventType,
+            String eventReference,
+            String payloadJson,
+            int attemptCount,
+            String endpointUrl,
+            String secret) {}
 }

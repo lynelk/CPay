@@ -32,6 +32,12 @@ jobs:
         working-directory: Initializrspringbootprojectfresh
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Audit J6: spotless's ratchetFrom=origin/main (bound to the `verify` phase this job
+          # already runs) needs origin/main's actual history to diff against; the default shallow
+          # (depth-1) checkout only fetches the ref under test and would leave origin/main
+          # unresolvable on PR builds.
+          fetch-depth: 0
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:

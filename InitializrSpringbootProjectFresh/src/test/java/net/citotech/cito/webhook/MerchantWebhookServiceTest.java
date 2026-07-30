@@ -26,10 +26,13 @@ class MerchantWebhookServiceTest {
     void registersEndpointAndReturnsPlainSecretOnce() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
-        when(cryptoService.encrypt(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
+        when(cryptoService.encrypt(anyString()))
+                .thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
-        Map<String, Object> result = service.registerEndpoint(15L, "payment.pending", "https://merchant.test/webhook", "tester");
+        Map<String, Object> result =
+                service.registerEndpoint(
+                        15L, "payment.pending", "https://merchant.test/webhook", "tester");
 
         assertThat(result.get("code")).isEqualTo("000");
         assertThat((String) result.get("secret")).hasSizeGreaterThan(40);
@@ -41,13 +44,15 @@ class MerchantWebhookServiceTest {
     void enqueueCreatesDeliveryForEveryActiveEndpoint() throws Exception {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
-        when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenAnswer(invocation -> {
-                RowMapper mapper = invocation.getArgument(2);
-                ResultSet rs = mock(ResultSet.class);
-                when(rs.getLong("id")).thenReturn(99L);
-                return List.of(mapper.mapRow(rs, 0));
-            });
+        when(jdbcTemplate.query(
+                        anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            ResultSet rs = mock(ResultSet.class);
+                            when(rs.getLong("id")).thenReturn(99L);
+                            return List.of(mapper.mapRow(rs, 0));
+                        });
         when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
@@ -60,9 +65,15 @@ class MerchantWebhookServiceTest {
         MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
-        assertThatThrownBy(() -> service.registerEndpoint(15L, "payment.pendingg", "https://merchant.test/webhook", "tester"))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining("Unknown webhook event type");
+        assertThatThrownBy(
+                        () ->
+                                service.registerEndpoint(
+                                        15L,
+                                        "payment.pendingg",
+                                        "https://merchant.test/webhook",
+                                        "tester"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("Unknown webhook event type");
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -73,8 +84,8 @@ class MerchantWebhookServiceTest {
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
         assertThatThrownBy(() -> service.enqueue(15L, "not.a.real.event", "TX-1", "{}"))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining("Unknown webhook event type");
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("Unknown webhook event type");
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -82,18 +93,21 @@ class MerchantWebhookServiceTest {
     void enqueueAddsTheVersionedEnvelopeFieldsOnTopOfTheCallersPayload() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
-        when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenAnswer(invocation -> {
-                RowMapper mapper = invocation.getArgument(2);
-                ResultSet rs = mock(ResultSet.class);
-                when(rs.getLong("id")).thenReturn(99L);
-                return List.of(mapper.mapRow(rs, 0));
-            });
+        when(jdbcTemplate.query(
+                        anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            ResultSet rs = mock(ResultSet.class);
+                            when(rs.getLong("id")).thenReturn(99L);
+                            return List.of(mapper.mapRow(rs, 0));
+                        });
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
         service.enqueue(15L, "payment.pending", "TX-1", "{\"reference\":\"TX-1\"}");
 
-        ArgumentCaptor<MapSqlParameterSource> captor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        ArgumentCaptor<MapSqlParameterSource> captor =
+                ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(jdbcTemplate).update(anyString(), captor.capture());
         JSONObject stored = new JSONObject((String) captor.getValue().getValue("payload_json"));
         assertThat(stored.getString("reference")).isEqualTo("TX-1");
@@ -106,14 +120,16 @@ class MerchantWebhookServiceTest {
     void merchantScopedRotateSecretIncludesMerchantIdInTheUpdate() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
-        when(cryptoService.encrypt(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
+        when(cryptoService.encrypt(anyString()))
+                .thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
         when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
         Map<String, Object> result = service.rotateSecret(15L, 99L);
 
         assertThat(result.get("code")).isEqualTo("000");
-        ArgumentCaptor<MapSqlParameterSource> captor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        ArgumentCaptor<MapSqlParameterSource> captor =
+                ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(jdbcTemplate).update(anyString(), captor.capture());
         assertThat(captor.getValue().getValue("merchant_id")).isEqualTo(15L);
         assertThat(captor.getValue().getValue("id")).isEqualTo(99L);
@@ -129,8 +145,8 @@ class MerchantWebhookServiceTest {
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
         assertThatThrownBy(() -> service.rotateSecret(15L, 99L))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining("not found");
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("not found");
     }
 
     @Test
@@ -143,7 +159,8 @@ class MerchantWebhookServiceTest {
         int updated = service.replay(15L, 42L);
 
         assertThat(updated).isEqualTo(1);
-        ArgumentCaptor<MapSqlParameterSource> captor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        ArgumentCaptor<MapSqlParameterSource> captor =
+                ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(jdbcTemplate).update(anyString(), captor.capture());
         assertThat(captor.getValue().getValue("merchant_id")).isEqualTo(15L);
         assertThat(captor.getValue().getValue("id")).isEqualTo(42L);
@@ -163,12 +180,14 @@ class MerchantWebhookServiceTest {
     void listDeliveriesQueriesByMerchantIdAndClampsTheLimit() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
-        when(jdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class))).thenReturn(List.of());
+        when(jdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class)))
+                .thenReturn(List.of());
         MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
 
         service.listDeliveries(15L, 500);
 
-        ArgumentCaptor<MapSqlParameterSource> captor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        ArgumentCaptor<MapSqlParameterSource> captor =
+                ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(jdbcTemplate).queryForList(anyString(), captor.capture());
         assertThat(captor.getValue().getValue("merchant_id")).isEqualTo(15L);
         assertThat(captor.getValue().getValue("limit")).isEqualTo(200);

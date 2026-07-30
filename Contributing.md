@@ -129,6 +129,11 @@ verify`/`mvn package`; only run it deliberately (`mvn gatling:test
 -Dgatling.simulationClass=net.citotech.cito.loadtest.<Simulation>`) against an environment you
 intend to load-test, never against shared infrastructure without warning its owners first.
 
+`mvn verify` also runs a Spotless (`google-java-format`, AOSP style) formatting check, but only
+against files that actually differ from `origin/main` (`ratchetFrom`) — untouched legacy files are
+grandfathered in, so you'll only ever be asked to format files you've actually modified. If it
+fails, run `mvn spotless:apply` to auto-fix.
+
 Frontend:
 
 ```bash
