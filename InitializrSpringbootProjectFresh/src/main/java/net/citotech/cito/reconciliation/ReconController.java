@@ -25,13 +25,16 @@ public class ReconController {
      * {@link AbstractTabularStatementParser}); previously this only accepted a raw CSV text body.
      */
     @PostMapping(path = "/import")
-    public long importStatement(@RequestParam("provider") String provider,
-                                @RequestParam(value = "importedBy", defaultValue = "system") String importedBy,
-                                @RequestPart("file") MultipartFile file) {
+    public long importStatement(
+            @RequestParam("provider") String provider,
+            @RequestParam(value = "importedBy", defaultValue = "system") String importedBy,
+            @RequestPart("file") MultipartFile file) {
         try {
-            return service.importStatement(provider, file.getOriginalFilename(), importedBy, file.getBytes());
+            return service.importStatement(
+                    provider, file.getOriginalFilename(), importedBy, file.getBytes());
         } catch (IOException e) {
-            throw new PaymentGatewayException("Unable to read uploaded statement file: " + e.getMessage());
+            throw new PaymentGatewayException(
+                    "Unable to read uploaded statement file: " + e.getMessage());
         }
     }
 
@@ -41,16 +44,17 @@ public class ReconController {
     }
 
     @GetMapping(path = "/unmatched")
-    public List<ReconciliationRecord> unmatched(@RequestParam(value = "limit", defaultValue = "100") int limit) {
+    public List<ReconciliationRecord> unmatched(
+            @RequestParam(value = "limit", defaultValue = "100") int limit) {
         return service.unmatched(limit);
     }
 
     @PostMapping(path = "/manual-match")
-    public String manualMatch(@RequestParam("recordId") long recordId,
-                              @RequestParam("transactionId") String transactionId,
-                              @RequestParam(value = "reason", required = false) String reason) {
+    public String manualMatch(
+            @RequestParam("recordId") long recordId,
+            @RequestParam("transactionId") String transactionId,
+            @RequestParam(value = "reason", required = false) String reason) {
         service.approveMatch(recordId, transactionId, reason);
         return "updated";
     }
 }
-

@@ -21,10 +21,12 @@ class ReconServiceTest {
         ReconciliationRepository repository = mock(ReconciliationRepository.class);
         ReconService service = new ReconService(repository, new ProviderStatementParserRegistry());
         String csv = "provider_reference,amount,currency\nPR-1,1000,UGX\nPR-2,2000,UGX\n";
-        when(repository.createImport(eq("MTN"), eq("mtn_momo"), anyString(), anyString(), eq(2))).thenReturn(42L);
+        when(repository.createImport(eq("MTN"), eq("mtn_momo"), anyString(), anyString(), eq(2)))
+                .thenReturn(42L);
 
-        long importId = service.importStatement("MTN", "statement.csv", "ops-user",
-            csv.getBytes(StandardCharsets.UTF_8));
+        long importId =
+                service.importStatement(
+                        "MTN", "statement.csv", "ops-user", csv.getBytes(StandardCharsets.UTF_8));
 
         assertThat(importId).isEqualTo(42L);
         verify(repository, times(2)).insertStatementRow(eq(42L), any(StatementRow.class));
@@ -36,9 +38,11 @@ class ReconServiceTest {
         ReconciliationRepository repository = mock(ReconciliationRepository.class);
         ReconService service = new ReconService(repository, new ProviderStatementParserRegistry());
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                service.importStatement("NOT_REAL", "statement.csv", "ops-user", new byte[0]))
-            .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () ->
+                                service.importStatement(
+                                        "NOT_REAL", "statement.csv", "ops-user", new byte[0]))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

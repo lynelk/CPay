@@ -26,18 +26,26 @@ class ReconControllerTest {
     @Test
     void importAcceptsAMultipartFileUploadAndReturnsTheImportId() throws Exception {
         ReconService service = mock(ReconService.class);
-        when(service.importStatement(eq("MTN"), anyString(), eq("ops-user"), any(byte[].class))).thenReturn(99L);
+        when(service.importStatement(eq("MTN"), anyString(), eq("ops-user"), any(byte[].class)))
+                .thenReturn(99L);
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new ReconController(service)).build();
-        MockMultipartFile file = new MockMultipartFile("file", "statement.csv", "text/csv",
-            "provider_reference,amount,currency\nPR-1,100,UGX\n".getBytes(StandardCharsets.UTF_8));
+        MockMultipartFile file =
+                new MockMultipartFile(
+                        "file",
+                        "statement.csv",
+                        "text/csv",
+                        "provider_reference,amount,currency\nPR-1,100,UGX\n"
+                                .getBytes(StandardCharsets.UTF_8));
 
-        mockMvc.perform(multipart("/api/v2/admin/reconciliation/import")
-                .file(file)
-                .param("provider", "MTN")
-                .param("importedBy", "ops-user"))
-            .andExpect(status().isOk())
-            .andExpect(content().string("99"));
+        mockMvc.perform(
+                        multipart("/api/v2/admin/reconciliation/import")
+                                .file(file)
+                                .param("provider", "MTN")
+                                .param("importedBy", "ops-user"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("99"));
 
-        verify(service).importStatement(eq("MTN"), eq("statement.csv"), eq("ops-user"), any(byte[].class));
+        verify(service)
+                .importStatement(eq("MTN"), eq("statement.csv"), eq("ops-user"), any(byte[].class));
     }
 }

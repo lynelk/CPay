@@ -8,15 +8,23 @@ public class ReconService {
     private final ReconciliationRepository repository;
     private final ProviderStatementParserRegistry parserRegistry;
 
-    public ReconService(ReconciliationRepository repository, ProviderStatementParserRegistry parserRegistry) {
+    public ReconService(
+            ReconciliationRepository repository, ProviderStatementParserRegistry parserRegistry) {
         this.repository = repository;
         this.parserRegistry = parserRegistry;
     }
 
-    public long importStatement(String providerCode, String fileName, String importedBy, byte[] content) {
+    public long importStatement(
+            String providerCode, String fileName, String importedBy, byte[] content) {
         ProviderStatementParser parser = parserRegistry.get(providerCode);
         List<StatementRow> rows = parser.parse(content, fileName);
-        long importId = repository.createImport(parser.providerCode(), parser.channelCode(), fileName, importedBy, rows.size());
+        long importId =
+                repository.createImport(
+                        parser.providerCode(),
+                        parser.channelCode(),
+                        fileName,
+                        importedBy,
+                        rows.size());
         for (StatementRow row : rows) {
             repository.insertStatementRow(importId, row);
         }
@@ -33,7 +41,7 @@ public class ReconService {
     }
 
     public void approveMatch(long recordId, String transactionId, String reason) {
-        repository.markOperatorMatch(recordId, transactionId, reason == null ? "operator-approved" : reason);
+        repository.markOperatorMatch(
+                recordId, transactionId, reason == null ? "operator-approved" : reason);
     }
 }
-

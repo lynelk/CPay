@@ -26,13 +26,12 @@ class ProviderStatementParserRegistryTest {
     @Test
     void rejectsAnUnknownProviderCode() {
         assertThatThrownBy(() -> registry.get("NOT_A_REAL_PROVIDER"))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("NOT_A_REAL_PROVIDER");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("NOT_A_REAL_PROVIDER");
     }
 
     @Test
     void rejectsANullProviderCode() {
-        assertThatThrownBy(() -> registry.get(null))
-            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> registry.get(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

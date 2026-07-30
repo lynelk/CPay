@@ -21,11 +21,11 @@ public class ProviderStatementParserRegistry {
     }
 
     public ProviderStatementParser get(String providerCode) {
-        ProviderStatementParser parser = parsers.get(providerCode == null ? "" : providerCode.toUpperCase());
+        ProviderStatementParser parser =
+                parsers.get(providerCode == null ? "" : providerCode.toUpperCase());
         if (parser == null) {
             throw new IllegalArgumentException("Unsupported provider statement: " + providerCode);
         }
         return parser;
     }
 }
-

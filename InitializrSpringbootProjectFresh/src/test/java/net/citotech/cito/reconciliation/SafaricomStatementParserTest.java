@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Covers audit O1: Safaricom M-Pesa statements commonly use "Receipt No.", "Completion Time", and
- * "Paid In" rather than the generic aliases the other providers share (see
- * {@link SafaricomStatementParser}'s javadoc) - this proves those extra aliases are actually wired
- * up, on top of (not instead of) the shared generic ones.
+ * "Paid In" rather than the generic aliases the other providers share (see {@link
+ * SafaricomStatementParser}'s javadoc) - this proves those extra aliases are actually wired up, on
+ * top of (not instead of) the shared generic ones.
  */
 class SafaricomStatementParserTest {
 
@@ -19,9 +19,11 @@ class SafaricomStatementParserTest {
 
     @Test
     void parsesTheMpesaStyleColumnNames() {
-        String csv = "Receipt No.,Completion Time,Paid In,currency\nQA12345,2026-07-01 10:00,1500,KES\n";
+        String csv =
+                "Receipt No.,Completion Time,Paid In,currency\nQA12345,2026-07-01 10:00,1500,KES\n";
 
-        List<StatementRow> rows = parser.parse(csv.getBytes(StandardCharsets.UTF_8), "statement.csv");
+        List<StatementRow> rows =
+                parser.parse(csv.getBytes(StandardCharsets.UTF_8), "statement.csv");
 
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).providerCode).isEqualTo("SAFARICOM");
@@ -35,7 +37,8 @@ class SafaricomStatementParserTest {
     void stillAcceptsTheSharedGenericColumnNames() {
         String csv = "provider_reference,amount,currency\nPR-1,1000,KES\n";
 
-        List<StatementRow> rows = parser.parse(csv.getBytes(StandardCharsets.UTF_8), "statement.csv");
+        List<StatementRow> rows =
+                parser.parse(csv.getBytes(StandardCharsets.UTF_8), "statement.csv");
 
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).providerReference).isEqualTo("PR-1");

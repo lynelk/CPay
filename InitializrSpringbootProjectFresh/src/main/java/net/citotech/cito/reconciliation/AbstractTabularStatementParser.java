@@ -16,13 +16,13 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 /**
- * Audit O1: shared CSV/XLSX parsing mechanics for a provider's statement file. Concrete per-provider
- * subclasses (one per adapter/channel — see {@link ProviderStatementParserRegistry}) supply only
- * {@link #columnAliases()}, so a provider-specific column-naming quirk can be fixed in one place
- * without touching how any other provider's statements are read. Column aliases are currently
- * identical across providers (no real per-provider statement samples were available to diverge them
- * further) — this class exists specifically so that changes, when a real quirk is reported, land in
- * one small subclass instead of a shared parser used by every provider at once.
+ * Audit O1: shared CSV/XLSX parsing mechanics for a provider's statement file. Concrete
+ * per-provider subclasses (one per adapter/channel — see {@link ProviderStatementParserRegistry})
+ * supply only {@link #columnAliases()}, so a provider-specific column-naming quirk can be fixed in
+ * one place without touching how any other provider's statements are read. Column aliases are
+ * currently identical across providers (no real per-provider statement samples were available to
+ * diverge them further) — this class exists specifically so that changes, when a real quirk is
+ * reported, land in one small subclass instead of a shared parser used by every provider at once.
  */
 public abstract class AbstractTabularStatementParser implements ProviderStatementParser {
     private final String providerCode;
@@ -49,8 +49,14 @@ public abstract class AbstractTabularStatementParser implements ProviderStatemen
      */
     protected Map<String, String[]> columnAliases() {
         Map<String, String[]> aliases = new HashMap<>();
-        aliases.put("providerReference", new String[] {"provider_reference", "transaction_id", "receipt", "reference"});
-        aliases.put("merchantReference", new String[] {"merchant_reference", "external_id", "client_reference", "merchant_ref"});
+        aliases.put(
+                "providerReference",
+                new String[] {"provider_reference", "transaction_id", "receipt", "reference"});
+        aliases.put(
+                "merchantReference",
+                new String[] {
+                    "merchant_reference", "external_id", "client_reference", "merchant_ref"
+                });
         aliases.put("amount", new String[] {"amount", "value", "transaction_amount"});
         aliases.put("currency", new String[] {"currency", "ccy"});
         aliases.put("transactionDate", new String[] {"transaction_date", "date", "completed_on"});
@@ -108,7 +114,8 @@ public abstract class AbstractTabularStatementParser implements ProviderStatemen
                 rows.add(buildRow(field -> cellValue(row, index, field)));
             }
         } catch (IOException e) {
-            throw new IllegalArgumentException("Unable to read XLSX statement: " + e.getMessage(), e);
+            throw new IllegalArgumentException(
+                    "Unable to read XLSX statement: " + e.getMessage(), e);
         }
         return rows;
     }
@@ -120,9 +127,10 @@ public abstract class AbstractTabularStatementParser implements ProviderStatemen
         row.providerReference = valueOf.apply("providerReference");
         row.merchantReference = valueOf.apply("merchantReference");
         String amountText = valueOf.apply("amount");
-        row.amount = amountText == null || amountText.isBlank()
-                ? null
-                : new BigDecimal(amountText.replace(",", ""));
+        row.amount =
+                amountText == null || amountText.isBlank()
+                        ? null
+                        : new BigDecimal(amountText.replace(",", ""));
         row.currency = valueOf.apply("currency");
         row.transactionDate = valueOf.apply("transactionDate");
         return row;
@@ -193,7 +201,8 @@ public abstract class AbstractTabularStatementParser implements ProviderStatemen
 
     private String formulaText(Cell cell) {
         try {
-            return cell.getCellType() == CellType.FORMULA && cell.getCachedFormulaResultType() == CellType.NUMERIC
+            return cell.getCellType() == CellType.FORMULA
+                            && cell.getCachedFormulaResultType() == CellType.NUMERIC
                     ? String.valueOf(cell.getNumericCellValue())
                     : cell.getStringCellValue();
         } catch (Exception e) {

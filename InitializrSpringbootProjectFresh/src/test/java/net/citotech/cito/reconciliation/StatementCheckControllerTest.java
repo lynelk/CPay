@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -20,16 +19,23 @@ class StatementCheckControllerTest {
     @Test
     void checkAcceptsAMultipartFileUploadAndReturnsTheValidationRunId() throws Exception {
         ProviderStatementValidator validator = mock(ProviderStatementValidator.class);
-        when(validator.validate(eq("SAFARICOM"), eq("statement.xlsx"), any(byte[].class))).thenReturn(7L);
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new StatementCheckController(validator)).build();
-        MockMultipartFile file = new MockMultipartFile("file", "statement.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", new byte[] {1, 2, 3});
+        when(validator.validate(eq("SAFARICOM"), eq("statement.xlsx"), any(byte[].class)))
+                .thenReturn(7L);
+        MockMvc mockMvc =
+                MockMvcBuilders.standaloneSetup(new StatementCheckController(validator)).build();
+        MockMultipartFile file =
+                new MockMultipartFile(
+                        "file",
+                        "statement.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        new byte[] {1, 2, 3});
 
-        mockMvc.perform(multipart("/api/v2/admin/statements/check")
-                .file(file)
-                .param("provider", "SAFARICOM"))
-            .andExpect(status().isOk())
-            .andExpect(content().string("7"));
+        mockMvc.perform(
+                        multipart("/api/v2/admin/statements/check")
+                                .file(file)
+                                .param("provider", "SAFARICOM"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("7"));
 
         verify(validator).validate(eq("SAFARICOM"), eq("statement.xlsx"), any(byte[].class));
     }

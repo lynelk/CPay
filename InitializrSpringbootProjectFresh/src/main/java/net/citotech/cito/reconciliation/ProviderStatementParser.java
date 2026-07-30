@@ -17,6 +17,8 @@ public interface ProviderStatementParser {
     List<StatementRow> parse(byte[] content, String fileName);
 
     default List<StatementRow> parse(String csvText) {
-        return parse(csvText == null ? new byte[0] : csvText.getBytes(StandardCharsets.UTF_8), "statement.csv");
+        return parse(
+                csvText == null ? new byte[0] : csvText.getBytes(StandardCharsets.UTF_8),
+                "statement.csv");
     }
 }

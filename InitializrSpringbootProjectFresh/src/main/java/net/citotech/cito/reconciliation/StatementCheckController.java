@@ -23,13 +23,13 @@ public class StatementCheckController {
      * {@link AbstractTabularStatementParser}); previously this only accepted a raw CSV text body.
      */
     @PostMapping(path = "/check")
-    public long check(@RequestParam("provider") String provider,
-                      @RequestPart("file") MultipartFile file) {
+    public long check(
+            @RequestParam("provider") String provider, @RequestPart("file") MultipartFile file) {
         try {
             return validator.validate(provider, file.getOriginalFilename(), file.getBytes());
         } catch (IOException e) {
-            throw new PaymentGatewayException("Unable to read uploaded statement file: " + e.getMessage());
+            throw new PaymentGatewayException(
+                    "Unable to read uploaded statement file: " + e.getMessage());
         }
     }
 }
-
