@@ -82,6 +82,31 @@ public class MerchantWebhookService {
         return Map.of("code", "000", "secret", secret);
     }
 
+    /**
+     * Audit N6: merchant self-service equivalent of {@link #rotateSecret(long)}. The admin-facing
+     * overload above trusts the caller (an authenticated admin) to pass any endpointId; this one is
+     * called from a merchant's own session, so it scopes the UPDATE to the merchant's own row - a
+     * merchant supplying another merchant's endpointId simply finds no matching row rather than
+     * rotating someone else's webhook secret.
+     */
+    @Transactional
+    public Map<String, Object> rotateSecret(long merchantId, long endpointId) {
+        String secret = generateSecret();
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("id", endpointId);
+        p.addValue("merchant_id", merchantId);
+        p.addValue("secret_hash", CanonicalRequestSigner.sha256Hex(secret));
+        p.addValue("secret_value", cryptoService.encrypt(secret));
+        int updated = jdbcTemplate.update(
+            "UPDATE merchant_webhook_endpoints SET secret_hash=:secret_hash, secret_value=:secret_value "
+                + "WHERE id=:id AND merchant_id=:merchant_id AND endpoint_status='ACTIVE'",
+            p);
+        if (updated == 0) {
+            throw new PaymentGatewayException("Webhook endpoint was not found");
+        }
+        return Map.of("code", "000", "secret", secret);
+    }
+
     @Transactional
     public int enqueue(long merchantId, String eventType, String eventReference, String payloadJson) {
         EventDefinition definition = WebhookEventCatalog.lookup(eventType)
@@ -124,6 +149,39 @@ public class MerchantWebhookService {
             "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
                 + "WHERE id=:id AND delivery_status IN ('FAILED','DELIVERED')",
             new MapSqlParameterSource("id", deliveryId));
+    }
+
+    /**
+     * Audit N6: merchant self-service equivalent of {@link #replay(long)} - see the matching note
+     * on the merchant-scoped {@code rotateSecret} overload above for why this needs its own
+     * merchant_id-scoped query rather than reusing the admin-facing one.
+     */
+    @Transactional
+    public int replay(long merchantId, long deliveryId) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("id", deliveryId);
+        p.addValue("merchant_id", merchantId);
+        return jdbcTemplate.update(
+            "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
+                + "WHERE id=:id AND merchant_id=:merchant_id AND delivery_status IN ('FAILED','DELIVERED')",
+            p);
+    }
+
+    /**
+     * Audit N6: the merchant-facing webhook delivery log (self-service replay + rotation UI). The
+     * schema (V14) already carried a merchant_id column and index on merchant_webhook_deliveries
+     * specifically for this query; only the service method and endpoint were missing.
+     */
+    public List<Map<String, Object>> listDeliveries(long merchantId, int limit) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("merchant_id", merchantId);
+        p.addValue("limit", Math.max(1, Math.min(limit, 200)));
+        return jdbcTemplate.queryForList(
+            "SELECT id, endpoint_id, event_type, event_reference, delivery_status, attempt_count, "
+                + "last_http_status, last_response_summary, next_attempt_at, created_at, updated_at "
+                + "FROM merchant_webhook_deliveries WHERE merchant_id=:merchant_id "
+                + "ORDER BY created_at DESC LIMIT :limit",
+            p);
     }
 
     @Transactional

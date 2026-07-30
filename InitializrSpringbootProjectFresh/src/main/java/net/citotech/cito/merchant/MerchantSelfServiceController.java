@@ -16,12 +16,14 @@ import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.reconciliation.MerchantSettlementPreference;
 import net.citotech.cito.reconciliation.MerchantSettlementPreferenceService;
 import net.citotech.cito.security.SimpleRateLimitService;
+import net.citotech.cito.webhook.MerchantWebhookService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,6 +42,7 @@ public class MerchantSelfServiceController {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final MerchantNotificationPreferenceService notificationPreferenceService;
     private final MerchantEmailVerificationService emailVerificationService;
+    private final MerchantWebhookService webhookService;
 
     public MerchantSelfServiceController(MerchantSelfServiceSignupService signupService,
                                          MerchantChannelCredentialService channelService,
@@ -49,7 +52,8 @@ public class MerchantSelfServiceController {
                                          MerchantStatementExportService statementExportService,
                                          NamedParameterJdbcTemplate jdbcTemplate,
                                          MerchantNotificationPreferenceService notificationPreferenceService,
-                                         MerchantEmailVerificationService emailVerificationService) {
+                                         MerchantEmailVerificationService emailVerificationService,
+                                         MerchantWebhookService webhookService) {
         this.signupService = signupService;
         this.channelService = channelService;
         this.environmentService = environmentService;
@@ -59,6 +63,7 @@ public class MerchantSelfServiceController {
         this.jdbcTemplate = jdbcTemplate;
         this.notificationPreferenceService = notificationPreferenceService;
         this.emailVerificationService = emailVerificationService;
+        this.webhookService = webhookService;
     }
 
     @PostMapping(path = "/signup")
@@ -274,6 +279,69 @@ public class MerchantSelfServiceController {
             return ResponseEntity.ok(notificationPreferenceService.save(user.getMerchant_id(), eventType, channel, notifyAddress));
         } catch (PaymentGatewayException e) {
             return ResponseEntity.badRequest().body(error("NOTIFICATION_PREFERENCE_REJECTED", e.getMessage()));
+        }
+    }
+
+    /**
+     * Audit N6: the rotate-secret/replay mechanics already existed (admin-only, under
+     * /api/v2/admin/webhooks/**) but had no merchant self-service equivalent - a merchant could
+     * only get their webhook secret rotated or a failed delivery replayed by asking an admin to do
+     * it on their behalf. These five endpoints expose the same capability directly to the merchant,
+     * scoped to their own merchant_id so one merchant can never rotate or replay another's webhook.
+     */
+    @GetMapping(path = "/webhooks")
+    public ResponseEntity<?> webhookEndpoints(HttpServletRequest request) {
+        try {
+            long merchantId = requireMerchantId(currentMerchantUser(request));
+            return ResponseEntity.ok(webhookService.listEndpoints(merchantId));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
+        }
+    }
+
+    @PostMapping(path = "/webhooks")
+    public ResponseEntity<?> registerWebhookEndpoint(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        try {
+            MerchantUser user = currentMerchantUser(request);
+            long merchantId = requireMerchantId(user);
+            return ResponseEntity.ok(webhookService.registerEndpoint(
+                merchantId, text(body.get("eventType")), text(body.get("endpointUrl")), user.getEmail()));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.badRequest().body(error("WEBHOOK_REJECTED", e.getMessage()));
+        }
+    }
+
+    @PostMapping(path = "/webhooks/{endpointId}/rotate-secret")
+    public ResponseEntity<?> rotateWebhookSecret(@PathVariable("endpointId") long endpointId, HttpServletRequest request) {
+        try {
+            long merchantId = requireMerchantId(currentMerchantUser(request));
+            return ResponseEntity.ok(webhookService.rotateSecret(merchantId, endpointId));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("WEBHOOK_NOT_FOUND", e.getMessage()));
+        }
+    }
+
+    @GetMapping(path = "/webhooks/deliveries")
+    public ResponseEntity<?> webhookDeliveries(@RequestParam(name = "limit", required = false) Integer limit, HttpServletRequest request) {
+        try {
+            long merchantId = requireMerchantId(currentMerchantUser(request));
+            return ResponseEntity.ok(webhookService.listDeliveries(merchantId, limit == null ? 50 : limit));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
+        }
+    }
+
+    @PostMapping(path = "/webhooks/deliveries/{deliveryId}/replay")
+    public ResponseEntity<?> replayWebhookDelivery(@PathVariable("deliveryId") long deliveryId, HttpServletRequest request) {
+        try {
+            long merchantId = requireMerchantId(currentMerchantUser(request));
+            int updated = webhookService.replay(merchantId, deliveryId);
+            if (updated == 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("WEBHOOK_DELIVERY_NOT_FOUND", "Delivery was not found or is not eligible for replay"));
+            }
+            return ResponseEntity.ok(Map.of("updated", updated));
+        } catch (PaymentGatewayException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));
         }
     }
 

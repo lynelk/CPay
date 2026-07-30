@@ -101,4 +101,76 @@ class MerchantWebhookServiceTest {
         assertThat(stored.getString("eventId")).isNotBlank();
         assertThat(stored.getString("createdAt")).isNotBlank();
     }
+
+    @Test
+    void merchantScopedRotateSecretIncludesMerchantIdInTheUpdate() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
+        when(cryptoService.encrypt(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
+        when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
+        MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
+
+        Map<String, Object> result = service.rotateSecret(15L, 99L);
+
+        assertThat(result.get("code")).isEqualTo("000");
+        ArgumentCaptor<MapSqlParameterSource> captor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        verify(jdbcTemplate).update(anyString(), captor.capture());
+        assertThat(captor.getValue().getValue("merchant_id")).isEqualTo(15L);
+        assertThat(captor.getValue().getValue("id")).isEqualTo(99L);
+    }
+
+    @Test
+    void merchantScopedRotateSecretRejectsAnEndpointBelongingToAnotherMerchant() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
+        // Simulates the WHERE id=:id AND merchant_id=:merchant_id clause matching zero rows because
+        // endpoint 99 belongs to a different merchant than 15.
+        when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(0);
+        MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
+
+        assertThatThrownBy(() -> service.rotateSecret(15L, 99L))
+            .isInstanceOf(PaymentGatewayException.class)
+            .hasMessageContaining("not found");
+    }
+
+    @Test
+    void merchantScopedReplayIncludesMerchantIdInTheUpdate() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
+        when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
+        MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
+
+        int updated = service.replay(15L, 42L);
+
+        assertThat(updated).isEqualTo(1);
+        ArgumentCaptor<MapSqlParameterSource> captor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        verify(jdbcTemplate).update(anyString(), captor.capture());
+        assertThat(captor.getValue().getValue("merchant_id")).isEqualTo(15L);
+        assertThat(captor.getValue().getValue("id")).isEqualTo(42L);
+    }
+
+    @Test
+    void merchantScopedReplayReturnsZeroForADeliveryBelongingToAnotherMerchant() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
+        when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(0);
+        MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
+
+        assertThat(service.replay(15L, 42L)).isZero();
+    }
+
+    @Test
+    void listDeliveriesQueriesByMerchantIdAndClampsTheLimit() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantChannelCryptoService cryptoService = mock(MerchantChannelCryptoService.class);
+        when(jdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class))).thenReturn(List.of());
+        MerchantWebhookService service = new MerchantWebhookService(jdbcTemplate, cryptoService);
+
+        service.listDeliveries(15L, 500);
+
+        ArgumentCaptor<MapSqlParameterSource> captor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        verify(jdbcTemplate).queryForList(anyString(), captor.capture());
+        assertThat(captor.getValue().getValue("merchant_id")).isEqualTo(15L);
+        assertThat(captor.getValue().getValue("limit")).isEqualTo(200);
+    }
 }
