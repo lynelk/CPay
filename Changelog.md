@@ -39,6 +39,9 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added a Spotless (`google-java-format`, AOSP style) formatting check to `mvn verify`/CI, ratcheted against `origin/main` so existing legacy files are not force-reformatted.
 - Added `.github/dependabot.yml` (Maven, npm, and GitHub Actions ecosystems) for automatic dependency-update pull requests.
 - Migrated the admin dashboard and admin/merchant transaction list modules onto the TanStack Query hooks added earlier — the first real consumers of that infrastructure.
+- Added a reconciliation manual-match workbench (admin UI) that pairs unmatched provider statement rows with a candidate CPay transaction, backed by a new `GET /api/v2/admin/reconciliation/candidate-transactions` search endpoint; built on the TanStack Query hooks pattern from the start.
+- Added method-level authorization (`@PreAuthorize("hasRole('ADMIN')")`) to the reconciliation statement-import, statement-check, and auto-match endpoints, matching the existing reconciliation review/finance controllers.
+- Added a per-merchant go-live readiness checklist (`GET /api/v2/admin/readiness/merchants/{merchantId}`) alongside the existing platform-wide readiness dashboard, scoped to each merchant's configured channels, callback secret, and compliance records.
 
 ### Changed
 

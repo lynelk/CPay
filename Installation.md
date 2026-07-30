@@ -264,6 +264,17 @@ The operating-control summary is available at:
 /api/v2/admin/operating-controls/summary
 ```
 
+The readiness dashboard is available both platform-wide and per merchant:
+
+```text
+/api/v2/admin/readiness/summary
+/api/v2/admin/readiness/merchants/{merchantId}
+```
+
+The reconciliation manual-match workbench (pairing unmatched provider statement rows with a CPay
+transaction, or triggering auto-match) is available in the admin portal, backed by
+`/api/v2/admin/reconciliation/**`.
+
 ## 10. Provider and merchant channel setup
 
 Provider channel setup is managed per merchant through the merchant portal:

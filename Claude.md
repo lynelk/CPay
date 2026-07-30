@@ -142,10 +142,22 @@ Base package: `net.citotech.cito`.
   surface.
 - **`reconciliation/`** — statement matching, settlement scheduling, finance daily-close support,
   and provider-specific CSV/XLSX statement parsers built on the shared tabular parser.
+  `ReconController`/`StatementCheckController` carry `@PreAuthorize("hasRole('ADMIN')")` like the
+  other reconciliation controllers; `GET /api/v2/admin/reconciliation/candidate-transactions` backs
+  the admin manual-match workbench's transaction search
+  (`clientside/src/components/modules/ModuleReconciliation.tsx`), which pairs unmatched provider
+  statement rows (`GET /unmatched`) with a CPay transaction via `POST /manual-match`.
 - **`ledger/`** — double-entry ledger service (`DoubleEntryLedgerServiceTest` covers invariants).
 - **`merchant/`** — merchant self-service signup, channel configuration.
+- **`admin/`** — `ReadinessDashboardService.summary()` is the platform-wide go-live readiness view
+  (provider sandbox/statement-validation/certification, callback secrets, operations alerts,
+  compliance cases, etc.); `merchantSummary(merchantId)` is a separate, genuinely per-merchant
+  checklist scoped to that merchant's configured channels (`merchant_channel_credentials`),
+  callback secret, and `entity_type='MERCHANT'` compliance records — platform-wide-only checks
+  (operations alerts, daily close, admin audit events) are intentionally excluded from the
+  per-merchant view since they carry no merchant reference at all.
 - **`balance/`**, **`compliance/`**, **`checkout/`** (payment links/hosted checkout), **`scheduler/`**
-  (timeout scans, cleanup jobs), **`metrics/`**, **`admin/`**, **`portal/`**,
+  (timeout scans, cleanup jobs), **`metrics/`**, **`portal/`**,
   **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and
   `SchedulerLockConfig` — the ShedLock `LockProvider` backing `@SchedulerLock` on
   `TransactionsLogController.testCheckstatusCron()`/`paymentsPayCron()`, both of which are
@@ -164,12 +176,14 @@ merchant channel encryption key, etc.).
   a `withRouter`/`useHistory` compat shim exists at `src/shared/router/compat.tsx` for legacy class
   components only — do not use it in new code).
 - `src/shared/api/httpClient.ts` — all new HTTP calls go through this; `src/shared/api/hooks.ts` for
-  TanStack Query-based server state (dashboard summaries, chart series, transaction lists/mutations).
+  TanStack Query-based server state (dashboard summaries, chart series, transaction lists/mutations,
+  and the reconciliation workbench's unmatched-records/candidate-transaction search/match mutations).
   Consumed today by `ModuleDashboard.jsx` (a class-to-function conversion was required — hooks can't
-  be used in class components) and `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`; most
-  other modules still hand-roll `fetch`/`useState` and are good candidates for the same migration
-  (see `clientside/Migration.md`'s follow-ups). `LegacyRequestError` (carrying the original `code`)
-  is thrown by `postLegacyJson` for any non-`"000"` legacy response code other than `"107"`/`"110"`.
+  be used in class components), `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`, and
+  `ModuleReconciliation.tsx`; most other modules still hand-roll `fetch`/`useState` and are good
+  candidates for the same migration (see `clientside/Migration.md`'s follow-ups).
+  `LegacyRequestError` (carrying the original `code`) is thrown by `postLegacyJson` for any
+  non-`"000"` legacy response code other than `"107"`/`"110"`.
 - `src/shared/useAuth.ts` — centralized read of the logged-in admin/merchant principal out of
   `localStorage` (`useAuth('admin' | 'merchant')`), with a typed `hasPrivilege()` helper. Does not
   perform authentication itself; mirrors whatever `Login.tsx`/`LoginMerchant.tsx` last wrote. Prefer
