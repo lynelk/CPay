@@ -44,6 +44,22 @@ export class AccessDeniedError extends Error {
   }
 }
 
+/**
+ * Thrown by `postLegacyJson` for any non-"000" code that isn't "107"/"110"
+ * (including a missing/`undefined` code, e.g. a raw Spring error body coming
+ * back from a legacy endpoint that normally always answers 200). Carries the
+ * original `code` so callers can rebuild the exact `"Error " + code` style
+ * titles the old hand-rolled `fetch` call sites rendered.
+ */
+export class LegacyRequestError extends Error {
+  readonly code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'LegacyRequestError';
+    this.code = code;
+  }
+}
+
 interface LegacyEnvelope<T> {
   code?: string;
   message?: string;
@@ -60,8 +76,11 @@ interface LegacyEnvelope<T> {
  * Preserves the exact request shape the hand-rolled `fetch` calls used
  * (`mode: 'cors'`, `credentials: 'include'`, etc.) so backend behavior is
  * unaffected. Throws `SessionExpiredError` / `AccessDeniedError` for codes
- * `"107"`/`"110"`; any other non-`"000"` code throws a plain `Error` carrying
- * the server's message.
+ * `"107"`/`"110"`; any other code that isn't exactly `"000"` — including a
+ * missing `code` — throws `LegacyRequestError`, mirroring every hand-rolled
+ * call site's `if (res.code === "000") { success } else { error }` branching
+ * (a codeless/raw-error response body was always treated as a failure, never
+ * as an implicit success).
  */
 async function postLegacyJson<T = unknown>(path: string, body: unknown): Promise<LegacyEnvelope<T>> {
   const response = await apiFetch(path, {
@@ -83,8 +102,10 @@ async function postLegacyJson<T = unknown>(path: string, body: unknown): Promise
   }
   if (parsed.code === '107') throw new SessionExpiredError(parsed.message);
   if (parsed.code === '110') throw new AccessDeniedError(parsed.message);
-  if (parsed.code && parsed.code !== '000') {
-    throw new Error(parsed.message || parsed.error || `Request failed with code ${parsed.code}`);
+  if (parsed.code !== '000') {
+    const message =
+      parsed.message || parsed.error || (parsed.code ? `Request failed with code ${parsed.code}` : 'Request failed.');
+    throw new LegacyRequestError(message, parsed.code);
   }
   return parsed;
 }
