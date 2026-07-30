@@ -6,6 +6,8 @@ Spring Boot 4.1.0 · Java 21+ · MySQL 8
 
 The backend is the system of record for merchant accounts, payment execution, callbacks, reconciliation, operations controls, and settings. It keeps the legacy `/api` and `/api/v1` surfaces available while newer code moves toward `/api/v2` services and gateway adapters.
 
+For the full cross-system architecture, operational flows, and ERD, see `../Docs/Architecture/Overview.md`.
+
 ```text
 Controller layer
   AdminsController, Api, ApiV1Controller, SettingsController, portal/*, api/v2/*

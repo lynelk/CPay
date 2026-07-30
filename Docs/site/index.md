@@ -68,6 +68,7 @@ Python client from the OpenAPI spec below.
 | Guide | What it's for |
 |---|---|
 | [Merchant self-service onboarding](../Merchant-self-service.md) | Signing up and configuring payment channels from the merchant portal without an admin creating the account manually. |
+| [Architecture overview](../Architecture/Overview.md) | End-to-end runtime map, payment and reconciliation flows, and the core data model. |
 | [Developer experience](../Developer-experience.md) | The intended SDK/documentation-portal shape this page is the first step toward. |
 | [Gateway adapter guide](../Gateway-adapter-guide.md) | For provider integration work, not merchant integration — how a payment channel adapter is implemented internally. |
 | [CitoConnect integration](../Citoconnect-integration.md) | The contract between CPay and CitoConnect specifically, if you are integrating as CitoConnect rather than as a standalone merchant. |

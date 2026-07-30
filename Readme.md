@@ -155,6 +155,7 @@ The codebase now includes software controls for:
 
 Readiness documentation is available in:
 
+- `Docs/Architecture/Overview.md`
 - `Docs/Production-code-controls.md`
 - `Docs/Observability.md`
 - `Docs/Data-retention.md`
@@ -311,6 +312,7 @@ The CI pipeline is expected to cover:
 |---|---|
 | `Docs/Api/cpay-v2-openapi.yaml` | Machine-readable v2 API contract. |
 | `Docs/Api/cpay-v2-postman-collection.json` | Starter Postman collection for v2. |
+| `Docs/Architecture/Overview.md` | End-to-end system architecture, operational flows, and core ERD. |
 | `Docs/Api-v2-signing.md` | v2 request-signing rules. |
 | `Docs/Api-v2-examples.md` | Example v2 API requests. |
 | `Docs/Api-versioning-deprecation.md` | Versioning rules and legacy deprecation headers. |
