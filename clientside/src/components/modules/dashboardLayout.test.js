@@ -35,8 +35,8 @@ describe('admin dashboard card layout', () => {
 
     expect(dashboard).toContain('export const defaultSnapshotCards = []');
     expect(dashboard).toContain('cpay-admin-dashboard-snapshots-v2');
-    expect(dashboard).toContain('this.state.visibleSnapshotCards.length > 0');
-    expect(dashboard).toContain('visibleSnapshotCards.map(cardId => this.renderSnapshotCard(cardId))');
+    expect(dashboard).toContain('visibleSnapshotCards.length > 0');
+    expect(dashboard).toContain('visibleSnapshotCards.map(cardId => renderSnapshotCard(cardId))');
   });
 
   test('uses an adaptive dashboard canvas with scroll-safe cards', () => {

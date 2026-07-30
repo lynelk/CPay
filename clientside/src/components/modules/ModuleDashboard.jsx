@@ -1,11 +1,18 @@
-import React from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Messager from '../StableMessager';
 import { withRouter } from '../../shared/router/compat';
-import common from "../Common";
 import { CardsIcon, CheckIcon, CloseIcon } from "../ShellIcons";
 import LinearChart from './LinearChart';
 
-import { apiFetch } from '../../shared/api/httpClient';
+import {
+    useAdminDashboardCharts,
+    usePortalDashboardSummary,
+    useLoaderSync,
+    useRefreshSignal,
+    SessionExpiredError,
+    AccessDeniedError,
+    LegacyRequestError,
+} from '../../shared/api/hooks';
 
 export const dashboardErrorDetails = (res) => {
     const hasCode = res && res.code !== undefined && res.code !== null && String(res.code).trim() !== "";
@@ -118,215 +125,123 @@ const sanitizeSnapshotCards = (cards) => {
     return unique;
 };
 
-class ModuleDashboardC extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            chartData: null,
-            chartDataTxTypes: null,
-            chartDataTxVolumes: null,
-            chartDataTxNetworkBalances: null,
-            portalSummary: null,
-            activeInsight: null,
-            visibleSnapshotCards: this.loadSnapshotCards(),
-            showSnapshotPicker: false,
-            fetchErrors: []
-        };
-        this._balanceInterval = null;
+function loadSnapshotCards() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return sanitizeSnapshotCards(saved ? JSON.parse(saved) : defaultSnapshotCards);
+    } catch {
+        return defaultSnapshotCards;
     }
+}
 
-    componentDidMount() {
-        this.refreshDashboardData();
-        this._balanceInterval = setInterval(() => {
-            this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
-        }, 240000);
+function saveSnapshotCards(cards) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    } catch {
+        // Local storage is optional; the dashboard still works without persistence.
     }
+}
 
-    componentDidUpdate(prevProps) {
-        if (prevProps.refreshSignal !== this.props.refreshSignal) {
-            this.refreshDashboardData();
-        }
-    }
-
-    componentWillUnmount() {
-        if (this._balanceInterval) {
-            clearInterval(this._balanceInterval);
-        }
-    }
-
-    loadSnapshotCards() {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            return sanitizeSnapshotCards(saved ? JSON.parse(saved) : defaultSnapshotCards);
-        } catch {
-            return defaultSnapshotCards;
-        }
-    }
-
-    saveSnapshotCards(cards) {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-        } catch {
-            // Local storage is optional; the dashboard still works without persistence.
-        }
-    }
-
-    refreshDashboardData() {
-        this.getData("chartData", "getDashboardDetailsPayinsVsPayouts");
-        this.getData("chartDataTxTypes", "getDashboardDetailsTransactionTypes");
-        this.getData("chartDataTxVolumes", "getDashboardDetailsTxVolumes");
-        this.getData("chartDataTxNetworkBalances", "getDashboardDetailsNetworkBalances");
-        this.getPortalSummary();
-    }
-
-    async getPortalSummary() {
-        try {
-            const response = await apiFetch(common.base_url + "/api/v2/portal/dashboard/summary", {
-                method: 'GET',
-                mode: 'cors',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            const summary = await response.json();
-            if (response.ok) {
-                this.setState({ portalSummary: summary });
-            }
-        } catch (error) {
-            this.addFetchError(error.message);
-        }
-    }
-
-    addSnapshotCard(cardId) {
-        this.setState(prevState => {
-            const nextCards = sanitizeSnapshotCards([...prevState.visibleSnapshotCards, cardId]);
-            this.saveSnapshotCards(nextCards);
-            return { visibleSnapshotCards: nextCards, showSnapshotPicker: false };
-        });
-    }
-
-    removeSnapshotCard(cardId) {
-        this.setState(prevState => {
-            const nextCards = sanitizeSnapshotCards(prevState.visibleSnapshotCards.filter(activeId => activeId !== cardId));
-            this.saveSnapshotCards(nextCards);
-            return { visibleSnapshotCards: nextCards };
-        });
-    }
-
-    toggleSnapshotCard(cardId) {
-        this.setState(prevState => {
-            const isActive = prevState.visibleSnapshotCards.includes(cardId);
-            if (!isActive && prevState.visibleSnapshotCards.length >= MAX_SNAPSHOT_CARDS) {
-                return { showSnapshotPicker: true };
-            }
-
-            const nextCards = isActive
-                ? sanitizeSnapshotCards(prevState.visibleSnapshotCards.filter(activeId => activeId !== cardId))
-                : sanitizeSnapshotCards([...prevState.visibleSnapshotCards, cardId]);
-            this.saveSnapshotCards(nextCards);
-            return { visibleSnapshotCards: nextCards };
-        });
-    }
-
-    getData(chartType, api) {
-        this.props.loader("START");
-        const searchData = {
-            pageSize: this.state.pageSize,
-            searchingValue: this.state.searchingValue,
-            sort: 'asc'
-        };
-        apiFetch(common.base_url + "/transactions/" + api, {
-            method: 'POST',
-            mode: 'cors',
-            cache: 'no-cache',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            redirect: 'follow',
-            referrer: 'no-referrer',
-            body: JSON.stringify(searchData)
-        }).then((response) => {
-            return response.text();
-        }).then((response_) => {
-            this.props.loader("STOP");
-            let res;
-            try {
-                res = JSON.parse(response_);
-                if (res.code === "000") {
-                    this.setChartData(chartType, res.chartData);
-                } else {
-                    if (res.code === "107") {
-                        this.props.sessionExpired();
-                        return;
-                    }
-                    if (res.code === "110") {
-                        this.accessNotAllowed(res.message);
-                        return;
-                    }
-                    const errorDetails = dashboardErrorDetails(res);
-                    this.addFetchError(errorDetails.message);
-                    this.messager.alert({
-                        title: errorDetails.title,
-                        icon: "error",
-                        msg: errorDetails.message
-                    });
-                }
-            } catch (Error) {
-                this.addFetchError(Error.message);
-                this.messager.alert({
-                    title: "Error",
-                    icon: "error",
-                    msg: Error.message
-                });
-            }
-        }).catch((error) => {
-            this.props.loader("STOP");
-            this.addFetchError(error.message);
-            this.messager.alert({
-                title: "Error",
-                icon: "error",
-                msg: error.message
-            });
-        });
-    }
-
-    setChartData(chartType, chartData) {
-        switch (chartType) {
-            case "chartData":
-                this.setState({ chartData });
-                break;
-            case "chartDataTxTypes":
-                this.setState({ chartDataTxTypes: chartData });
-                break;
-            case "chartDataTxVolumes":
-                this.setState({ chartDataTxVolumes: chartData });
-                break;
-            case "chartDataTxNetworkBalances":
-                this.setState({ chartDataTxNetworkBalances: chartData });
-                break;
-            default:
-                break;
-        }
-    }
-
-    addFetchError(message) {
-        if (!message) {
+/**
+ * React to a query's `error` the same way the old imperative
+ * `getData().then(...)` callback reacted to a failed fetch: a one-shot
+ * `messager.alert(...)` the moment the error appears, `sessionExpired()` for
+ * code "107", an "Access Denied" alert for code "110", and otherwise append
+ * to the rolling `fetchErrors` list rendered by the Action Center / failure
+ * panels. Only re-runs when `error` itself changes (a new failed attempt),
+ * not on every render — same one-alert-per-failure behavior as before.
+ */
+function useDashboardQueryErrorEffect(error, messagerRef, sessionExpired, addFetchError) {
+    useEffect(() => {
+        if (!error) return;
+        if (error instanceof SessionExpiredError) {
+            sessionExpired?.();
             return;
         }
-        this.setState(prevState => ({
-            fetchErrors: [message, ...prevState.fetchErrors.filter(existing => existing !== message)].slice(0, 3)
-        }));
-    }
-
-    accessNotAllowed(msg) {
-        this.messager.alert({
-            title: "Access Denied",
-            icon: "error",
-            msg
+        if (error instanceof AccessDeniedError) {
+            messagerRef.current?.alert({ title: "Access Denied", icon: "error", msg: error.message });
+            return;
+        }
+        const errorDetails = dashboardErrorDetails({
+            code: error instanceof LegacyRequestError ? error.code : undefined,
+            message: error.message,
         });
+        addFetchError(errorDetails.message);
+        messagerRef.current?.alert({ title: errorDetails.title, icon: "error", msg: errorDetails.message });
+        // Intentionally only re-run when the error itself changes; the
+        // callbacks are stable in behavior even when their identity changes
+        // across renders (bound methods from the parent Layout).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [error]);
+}
+
+function ModuleDashboardC(props) {
+    const { loader, refreshSignal, sessionExpired } = props;
+    const messagerRef = useRef(null);
+
+    const [visibleSnapshotCards, setVisibleSnapshotCards] = useState(loadSnapshotCards);
+    const [showSnapshotPicker, setShowSnapshotPicker] = useState(false);
+    const [activeInsight, setActiveInsight] = useState(null);
+    const [fetchErrors, setFetchErrors] = useState([]);
+
+    const charts = useAdminDashboardCharts();
+    const portalSummaryQuery = usePortalDashboardSummary();
+
+    const chartData = charts.payinsVsPayouts.data ?? null;
+    const chartDataTxTypes = charts.txTypes.data ?? null;
+    const chartDataTxVolumes = charts.txVolumes.data ?? null;
+    const chartDataTxNetworkBalances = charts.networkBalances.data ?? null;
+    const portalSummary = portalSummaryQuery.data ?? null;
+
+    useLoaderSync(
+        loader,
+        charts.payinsVsPayouts.isFetching
+        || charts.txTypes.isFetching
+        || charts.txVolumes.isFetching
+        || charts.networkBalances.isFetching
+        || portalSummaryQuery.isFetching,
+    );
+
+    useRefreshSignal(refreshSignal, [
+        charts.payinsVsPayouts.refetch,
+        charts.txTypes.refetch,
+        charts.txVolumes.refetch,
+        charts.networkBalances.refetch,
+        portalSummaryQuery.refetch,
+    ]);
+
+    function addFetchError(message) {
+        if (!message) return;
+        setFetchErrors(prev => [message, ...prev.filter(existing => existing !== message)].slice(0, 3));
     }
 
-    renderChart(data, emptyText) {
+    useDashboardQueryErrorEffect(charts.payinsVsPayouts.error, messagerRef, sessionExpired, addFetchError);
+    useDashboardQueryErrorEffect(charts.txTypes.error, messagerRef, sessionExpired, addFetchError);
+    useDashboardQueryErrorEffect(charts.txVolumes.error, messagerRef, sessionExpired, addFetchError);
+    useDashboardQueryErrorEffect(charts.networkBalances.error, messagerRef, sessionExpired, addFetchError);
+    useDashboardQueryErrorEffect(portalSummaryQuery.error, messagerRef, sessionExpired, addFetchError);
+
+    function removeSnapshotCard(cardId) {
+        const nextCards = sanitizeSnapshotCards(visibleSnapshotCards.filter(activeId => activeId !== cardId));
+        saveSnapshotCards(nextCards);
+        setVisibleSnapshotCards(nextCards);
+    }
+
+    function toggleSnapshotCard(cardId) {
+        const isActive = visibleSnapshotCards.includes(cardId);
+        if (!isActive && visibleSnapshotCards.length >= MAX_SNAPSHOT_CARDS) {
+            setShowSnapshotPicker(true);
+            return;
+        }
+
+        const nextCards = isActive
+            ? sanitizeSnapshotCards(visibleSnapshotCards.filter(activeId => activeId !== cardId))
+            : sanitizeSnapshotCards([...visibleSnapshotCards, cardId]);
+        saveSnapshotCards(nextCards);
+        setVisibleSnapshotCards(nextCards);
+    }
+
+    function renderChart(data, emptyText) {
         return (
             <div className="cpay-dashboard-chart-shell">
                 <LinearChart data={data} title={emptyText} color="#1198C4" />
@@ -335,28 +250,7 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    renderNotifications() {
-        const messages = this.state.fetchErrors.length > 0
-            ? this.state.fetchErrors.map(message => ({ tone: 'danger', title: 'Data warning', text: message }))
-            : [
-                { tone: 'success', title: 'Balances refresh', text: 'Network balances refresh every 4 minutes.' },
-                { tone: 'info', title: 'MTN and Airtel', text: 'Review channel keys and float before production transactions.' },
-                { tone: 'info', title: 'Merchant snapshots', text: 'Use Customize cards to pin the cards your team checks most.' },
-            ];
-
-        return (
-            <ul className="cpay-dashboard-notifications">
-                {messages.map((item, index) => (
-                    <li key={`${item.title}-${index}`} className={`cpay-dashboard-notification cpay-dashboard-notification-${item.tone}`}>
-                        <strong>{item.title}</strong>
-                        <span>{item.text}</span>
-                    </li>
-                ))}
-            </ul>
-        );
-    }
-
-    renderSparkline(tone, points) {
+    function renderSparkline(tone, points) {
         return (
             <span className={`cpay-dashboard-sparkline cpay-dashboard-sparkline-${tone}`} aria-hidden="true">
                 {points.map((height, index) => (
@@ -366,13 +260,13 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    renderMetricCard({ id, tone, icon, label, value, comparison, delta }) {
+    function renderMetricCard({ id, tone, icon, label, value, comparison, delta }) {
         return (
             <button
                 type="button"
                 className={`cpay-dashboard-metric-card cpay-dashboard-metric-card-${tone}`}
-                aria-pressed={this.state.activeInsight?.id === id}
-                onClick={() => this.setState({ activeInsight: { id, label, value, comparison, delta } })}
+                aria-pressed={activeInsight?.id === id}
+                onClick={() => setActiveInsight({ id, label, value, comparison, delta })}
             >
                 <div className="cpay-dashboard-metric-icon" aria-hidden="true">{icon}</div>
                 <div className="cpay-dashboard-metric-copy">
@@ -380,13 +274,21 @@ class ModuleDashboardC extends React.Component {
                     <strong>{value}</strong>
                     <small>{comparison} <em>{delta}</em></small>
                 </div>
-                {this.renderSparkline(tone, metricSparkPoints[id] || metricSparkPoints.processed)}
+                {renderSparkline(tone, metricSparkPoints[id] || metricSparkPoints.processed)}
             </button>
         );
     }
 
-    renderMetricStrip(collectionTotal, balanceTotal, failedCount) {
-        const summary = this.state.portalSummary || {};
+    function computeActiveChannelCount() {
+        const activeChannels = Array.isArray(portalSummary?.activeChannels)
+            ? portalSummary.activeChannels
+            : [];
+        const active = activeChannels.filter(channel => ['ACTIVE', 'SANDBOX_TESTED', 'SUBMITTED_FOR_APPROVAL'].includes(channel.status));
+        return active.length || 4;
+    }
+
+    function renderMetricStrip(collectionTotal, balanceTotal, failedCount) {
+        const summary = portalSummary || {};
         const processedTotal = numberValue(summary.payIns) || collectionTotal || 24800000;
         const payoutTotal = numberValue(summary.payOuts);
         const transactionCount = numberValue(summary.transactions) || failedCount || 842;
@@ -397,30 +299,29 @@ class ModuleDashboardC extends React.Component {
             { id: 'success', tone: 'success', icon: 'SR', label: 'Success Rate', value: '96.7%', comparison: 'vs yesterday', delta: '+1.8pp' },
             { id: 'failed', tone: 'danger', icon: 'TX', label: 'Transactions', value: formatCount(transactionCount), comparison: 'all channels', delta: '+15.2%' },
             { id: 'held', tone: 'danger', icon: 'PO', label: 'Payout Value', value: formatAmount(payoutTotal || balanceTotal || 1720000), comparison: 'vs yesterday', delta: '+24.7%' },
-            { id: 'retry', tone: 'warning', icon: 'CH', label: 'Active Channels', value: formatCount(this.activeChannelCount()), comparison: 'configured', delta: '+1' },
+            { id: 'retry', tone: 'warning', icon: 'CH', label: 'Active Channels', value: formatCount(computeActiveChannelCount()), comparison: 'configured', delta: '+1' },
             { id: 'settlement', tone: 'warning', icon: 'LM', label: 'Production Limit', value: limit.enabled === false ? 'Off' : `${limit.limit || 10}/day`, comparison: `${limit.usedToday || 0} used`, delta: merchantCount ? `${formatCount(merchantCount)} merchants` : 'Ready' },
         ];
 
         return (
             <section className="cpay-dashboard-metrics" aria-label="Operational metrics">
-                {cards.map(card => this.renderMetricCard(card))}
+                {cards.map(card => renderMetricCard(card))}
             </section>
         );
     }
 
-    renderActiveInsight() {
-        const insight = this.state.activeInsight;
-        if (!insight) return null;
+    function renderActiveInsight() {
+        if (!activeInsight) return null;
         return (
             <section className="cpay-dashboard-insight" aria-live="polite">
-                <strong>{insight.label}</strong>
-                <span>{insight.value}</span>
-                <em>{insight.comparison} {insight.delta}</em>
+                <strong>{activeInsight.label}</strong>
+                <span>{activeInsight.value}</span>
+                <em>{activeInsight.comparison} {activeInsight.delta}</em>
             </section>
         );
     }
 
-    renderRunwayRow({ channel, value, status, threshold, tone, action }) {
+    function renderRunwayRow({ channel, value, status, threshold, tone, action }) {
         const percent = Math.max(0, Math.min(100, (value / 5) * 100));
         return (
             <div className="cpay-runway-row">
@@ -439,7 +340,7 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    renderFloatRunway() {
+    function renderFloatRunway() {
         const runway = [
             { channel: 'MTN', value: 3.8, status: 'Healthy', threshold: '> 1.0 days', tone: 'good' },
             { channel: 'Airtel', value: 0.7, status: 'Critical', threshold: '> 1.5 days', tone: 'warning', action: 'Top up' },
@@ -462,16 +363,16 @@ class ModuleDashboardC extends React.Component {
                         <span>Runway</span>
                         <span>Threshold</span>
                     </div>
-                    {runway.map(channel => this.renderRunwayRow(channel))}
+                    {runway.map(channel => renderRunwayRow(channel))}
                 </div>
                 <p id="float-runway-help" className="cpay-dashboard-footnote">Runway estimates how many days of payouts can be covered with current float.</p>
             </article>
         );
     }
 
-    renderActionCenter() {
-        const items = this.state.fetchErrors.length > 0
-            ? this.state.fetchErrors.map(message => ({ tone: 'critical', title: 'Data warning', meta: message, due: 'Now', action: 'Review' }))
+    function renderActionCenter() {
+        const items = fetchErrors.length > 0
+            ? fetchErrors.map(message => ({ tone: 'critical', title: 'Data warning', meta: message, due: 'Now', action: 'Review' }))
             : actionCenterItems;
 
         return (
@@ -501,7 +402,7 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    renderFailureAnalysis(failedCount) {
+    function renderFailureAnalysis(failedCount) {
         return (
             <article className="cpay-dashboard-card cpay-dashboard-panel-failure">
                 <header className="cpay-dashboard-card-header">
@@ -545,39 +446,9 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    renderChannelHealth() {
-        return (
-            <article className="cpay-dashboard-card cpay-dashboard-panel-health">
-                <header className="cpay-dashboard-card-header">
-                    <div>
-                        <span>Availability</span>
-                        <h3>Channel Health</h3>
-                    </div>
-                    <a href="#channel-health-table" className="cpay-dashboard-inline-link">View details</a>
-                </header>
-                <div className="cpay-health-table" id="channel-health-table">
-                    <div className="cpay-health-row cpay-health-head">
-                        <span>Channel</span>
-                        <span>Success Rate</span>
-                        <span>vs yesterday</span>
-                        <span>Avg. Latency</span>
-                    </div>
-                    {this.channelHealthRows().map(row => (
-                        <div className="cpay-health-row" key={row.channel}>
-                            <strong><span className={`cpay-channel-dot cpay-channel-dot-${row.tone}`} />{row.channel}</strong>
-                            <span>{row.success}</span>
-                            <em>{row.trend}</em>
-                            <mark>{row.latency}</mark>
-                        </div>
-                    ))}
-                </div>
-            </article>
-        );
-    }
-
-    channelHealthRows() {
-        const activeChannels = Array.isArray(this.state.portalSummary?.activeChannels)
-            ? this.state.portalSummary.activeChannels
+    function computeChannelHealthRows() {
+        const activeChannels = Array.isArray(portalSummary?.activeChannels)
+            ? portalSummary.activeChannels
             : [];
         if (activeChannels.length === 0) {
             return channelHealthRows;
@@ -596,15 +467,37 @@ class ModuleDashboardC extends React.Component {
         return rows.length ? rows : channelHealthRows;
     }
 
-    activeChannelCount() {
-        const activeChannels = Array.isArray(this.state.portalSummary?.activeChannels)
-            ? this.state.portalSummary.activeChannels
-            : [];
-        const active = activeChannels.filter(channel => ['ACTIVE', 'SANDBOX_TESTED', 'SUBMITTED_FOR_APPROVAL'].includes(channel.status));
-        return active.length || 4;
+    function renderChannelHealth() {
+        return (
+            <article className="cpay-dashboard-card cpay-dashboard-panel-health">
+                <header className="cpay-dashboard-card-header">
+                    <div>
+                        <span>Availability</span>
+                        <h3>Channel Health</h3>
+                    </div>
+                    <a href="#channel-health-table" className="cpay-dashboard-inline-link">View details</a>
+                </header>
+                <div className="cpay-health-table" id="channel-health-table">
+                    <div className="cpay-health-row cpay-health-head">
+                        <span>Channel</span>
+                        <span>Success Rate</span>
+                        <span>vs yesterday</span>
+                        <span>Avg. Latency</span>
+                    </div>
+                    {computeChannelHealthRows().map(row => (
+                        <div className="cpay-health-row" key={row.channel}>
+                            <strong><span className={`cpay-channel-dot cpay-channel-dot-${row.tone}`} />{row.channel}</strong>
+                            <span>{row.success}</span>
+                            <em>{row.trend}</em>
+                            <mark>{row.latency}</mark>
+                        </div>
+                    ))}
+                </div>
+            </article>
+        );
     }
 
-    renderQuickActions() {
+    function renderQuickActions() {
         return (
             <article className="cpay-dashboard-card cpay-dashboard-panel-quick">
                 <header className="cpay-dashboard-card-header">
@@ -625,21 +518,22 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    renderSnapshotCard(cardId) {
+    function renderSnapshotCard(cardId) {
         const card = availableSnapshotCards.find(candidate => candidate.id === cardId);
         if (!card) {
             return null;
         }
 
-        const chartData = card.chartKey ? this.state[card.chartKey] : null;
-        const volumeTotal = numericValues(this.state.chartDataTxVolumes).reduce((total, value) => total + value, 0);
-        const mixCount = numericValues(this.state.chartDataTxTypes).length;
+        const chartsByKey = { chartData, chartDataTxTypes, chartDataTxVolumes, chartDataTxNetworkBalances };
+        const cardChartData = card.chartKey ? chartsByKey[card.chartKey] : null;
+        const volumeTotal = numericValues(chartDataTxVolumes).reduce((total, value) => total + value, 0);
+        const mixCount = numericValues(chartDataTxTypes).length;
 
         let body;
         let metric = card.label;
 
         if (card.kind === 'chart') {
-            body = this.renderChart(chartData, `${card.title} will appear when data loads.`);
+            body = renderChart(cardChartData, `${card.title} will appear when data loads.`);
             metric = card.id === 'collectionVolume' ? formatAmount(volumeTotal) : `${mixCount} active series`;
         } else if (card.kind === 'status') {
             metric = 'Ready';
@@ -667,7 +561,7 @@ class ModuleDashboardC extends React.Component {
                         <span>{card.label}</span>
                         <h3>{card.title}</h3>
                     </div>
-                    <button type="button" title="Remove card" aria-label={`Remove ${card.title}`} onClick={() => this.removeSnapshotCard(card.id)}>
+                    <button type="button" title="Remove card" aria-label={`Remove ${card.title}`} onClick={() => removeSnapshotCard(card.id)}>
                         <CloseIcon />
                     </button>
                 </header>
@@ -677,14 +571,14 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    renderSnapshotPicker() {
-        if (!this.state.showSnapshotPicker) {
+    function renderSnapshotPicker() {
+        if (!showSnapshotPicker) {
             return null;
         }
 
-        const active = new Set(this.state.visibleSnapshotCards);
-        const canAdd = this.state.visibleSnapshotCards.length < MAX_SNAPSHOT_CARDS;
-        const activeCount = this.state.visibleSnapshotCards.length;
+        const active = new Set(visibleSnapshotCards);
+        const canAdd = visibleSnapshotCards.length < MAX_SNAPSHOT_CARDS;
+        const activeCount = visibleSnapshotCards.length;
 
         return (
             <div className="cpay-dashboard-picker" role="menu" aria-label="Customize dashboard cards">
@@ -703,7 +597,7 @@ class ModuleDashboardC extends React.Component {
                         aria-pressed={isActive}
                         disabled={disabled}
                         className={`cpay-dashboard-picker-option${isActive ? ' cpay-dashboard-picker-option-active' : ''}`}
-                        onClick={() => this.toggleSnapshotCard(card.id)}>
+                        onClick={() => toggleSnapshotCard(card.id)}>
                         <span className="cpay-dashboard-picker-state">{isActive ? <CheckIcon /> : <CardsIcon />}</span>
                         <span className="cpay-dashboard-picker-copy">
                         <strong>{card.title}</strong>
@@ -717,82 +611,80 @@ class ModuleDashboardC extends React.Component {
         );
     }
 
-    render() {
-        const balanceTotal = latestDatasetTotal(this.state.chartDataTxNetworkBalances);
-        const collectionTotal = numericValues(this.state.chartData).reduce((total, value) => total + value, 0);
-        const failedCount = numericValues(this.state.chartDataTxTypes).length * 97;
+    const balanceTotal = latestDatasetTotal(chartDataTxNetworkBalances);
+    const collectionTotal = numericValues(chartData).reduce((total, value) => total + value, 0);
+    const failedCount = numericValues(chartDataTxTypes).length * 97;
 
-        return (
-            <div className="cpay-dashboard cpay-dashboard--console">
-                <section className="cpay-dashboard-toolbar">
-                    <div className="cpay-dashboard-toolbar-copy">
-                        <h2>Operations Workspace</h2>
-                        <p>All metrics compare to the same elapsed time yesterday for a paced view of performance.</p>
+    return (
+        <div className="cpay-dashboard cpay-dashboard--console">
+            <section className="cpay-dashboard-toolbar">
+                <div className="cpay-dashboard-toolbar-copy">
+                    <h2>Operations Workspace</h2>
+                    <p>All metrics compare to the same elapsed time yesterday for a paced view of performance.</p>
+                </div>
+                <div className="cpay-dashboard-actions">
+                    <div className="cpay-dashboard-segmented" aria-label="Dashboard period">
+                        <button type="button" aria-pressed="true">Today</button>
+                        <button type="button" aria-pressed="false">7d</button>
+                        <button type="button" aria-pressed="false">30d</button>
                     </div>
-                    <div className="cpay-dashboard-actions">
-                        <div className="cpay-dashboard-segmented" aria-label="Dashboard period">
-                            <button type="button" aria-pressed="true">Today</button>
-                            <button type="button" aria-pressed="false">7d</button>
-                            <button type="button" aria-pressed="false">30d</button>
+                    <button
+                        className="cpay-card-manager-button"
+                        type="button"
+                        aria-expanded={showSnapshotPicker}
+                        aria-label="Customize dashboard cards"
+                        onClick={() => setShowSnapshotPicker(prev => !prev)}>
+                        <CardsIcon />
+                        <span>Customize cards</span>
+                        <em>{visibleSnapshotCards.length}/{MAX_SNAPSHOT_CARDS}</em>
+                    </button>
+                    {renderSnapshotPicker()}
+                </div>
+            </section>
+
+            {renderMetricStrip(collectionTotal, balanceTotal, failedCount)}
+            {renderActiveInsight()}
+
+            <section className="cpay-dashboard-grid cpay-dashboard-grid--console" aria-label="Dashboard operational panels">
+                <article className="cpay-dashboard-card cpay-dashboard-panel-chart">
+                    <header className="cpay-dashboard-card-header">
+                        <div>
+                            <span>Trend</span>
+                            <h3>Processed Value vs Failed Amount Held</h3>
                         </div>
-                        <button
-                            className="cpay-card-manager-button"
-                            type="button"
-                            aria-expanded={this.state.showSnapshotPicker}
-                            aria-label="Customize dashboard cards"
-                            onClick={() => this.setState(prevState => ({ showSnapshotPicker: !prevState.showSnapshotPicker }))}>
-                            <CardsIcon />
-                            <span>Customize cards</span>
-                            <em>{this.state.visibleSnapshotCards.length}/{MAX_SNAPSHOT_CARDS}</em>
-                        </button>
-                        {this.renderSnapshotPicker()}
+                        <strong>{formatAmount(collectionTotal || 24800000)}</strong>
+                    </header>
+                    <div className="cpay-dashboard-summary-pills">
+                        <span><em />Processed Value <strong>{formatAmount(collectionTotal || 24800000)}</strong></span>
+                        <span><em />Failed Amount Held <strong>{formatAmount(balanceTotal || 1720000)}</strong></span>
+                    </div>
+                    {renderChart(chartData, 'Processed value trends will appear when data loads.')}
+                </article>
+
+                {renderFloatRunway()}
+                {renderActionCenter()}
+                {renderFailureAnalysis(failedCount)}
+                {renderChannelHealth()}
+                {renderQuickActions()}
+            </section>
+
+            {visibleSnapshotCards.length > 0 ? (
+                <section className="cpay-dashboard-pinned" aria-label="Pinned dashboard cards">
+                    <header className="cpay-dashboard-section-header">
+                        <div>
+                            <span>Pinned cards</span>
+                            <h3>Custom Snapshot Cards</h3>
+                        </div>
+                        <p>Personalized operational views.</p>
+                    </header>
+                    <div className="cpay-dashboard-snapshot-grid">
+                        {visibleSnapshotCards.map(cardId => renderSnapshotCard(cardId))}
                     </div>
                 </section>
-
-                {this.renderMetricStrip(collectionTotal, balanceTotal, failedCount)}
-                {this.renderActiveInsight()}
-
-                <section className="cpay-dashboard-grid cpay-dashboard-grid--console" aria-label="Dashboard operational panels">
-                    <article className="cpay-dashboard-card cpay-dashboard-panel-chart">
-                        <header className="cpay-dashboard-card-header">
-                            <div>
-                                <span>Trend</span>
-                                <h3>Processed Value vs Failed Amount Held</h3>
-                            </div>
-                            <strong>{formatAmount(collectionTotal || 24800000)}</strong>
-                        </header>
-                        <div className="cpay-dashboard-summary-pills">
-                            <span><em />Processed Value <strong>{formatAmount(collectionTotal || 24800000)}</strong></span>
-                            <span><em />Failed Amount Held <strong>{formatAmount(balanceTotal || 1720000)}</strong></span>
-                        </div>
-                        {this.renderChart(this.state.chartData, 'Processed value trends will appear when data loads.')}
-                    </article>
-
-                    {this.renderFloatRunway()}
-                    {this.renderActionCenter()}
-                    {this.renderFailureAnalysis(failedCount)}
-                    {this.renderChannelHealth()}
-                    {this.renderQuickActions()}
-                </section>
-
-                {this.state.visibleSnapshotCards.length > 0 ? (
-                    <section className="cpay-dashboard-pinned" aria-label="Pinned dashboard cards">
-                        <header className="cpay-dashboard-section-header">
-                            <div>
-                                <span>Pinned cards</span>
-                                <h3>Custom Snapshot Cards</h3>
-                            </div>
-                            <p>Personalized operational views.</p>
-                        </header>
-                        <div className="cpay-dashboard-snapshot-grid">
-                            {this.state.visibleSnapshotCards.map(cardId => this.renderSnapshotCard(cardId))}
-                        </div>
-                    </section>
-                ) : null}
-                <Messager ref={ref => this.messager = ref}></Messager>
-            </div>
-        );
-    }
+            ) : null}
+            <Messager ref={messagerRef}></Messager>
+        </div>
+    );
 }
 
 const ModuleDashboard = withRouter(ModuleDashboardC);
