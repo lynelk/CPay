@@ -77,25 +77,39 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>3.0.3</version>
         </dependency>
+        <!-- Audit J8: dependency currency check. org.json was over two years behind (20240303 ->
+             20260719); org.json's frequent dated releases are almost entirely small parser/edge-case
+             fixes with no API surface changes, so this is a safe, low-risk bump. -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20240303</version>
+            <version>20260719</version>
         </dependency>
+        <!-- Audit J8: POI was 3 minor versions behind (5.2.5 -> 5.5.1); still within the 5.x line
+             (no OOXML/POIFS API break expected), used only by TabularExportService/
+             MerchantStatementExportService's XLSX writer and the spreadsheet-upload validation
+             path - both covered by existing tests. -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
-            <version>5.2.5</version>
+            <version>5.5.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.2.5</version>
+            <version>5.5.1</version>
         </dependency>
+        <!-- Audit J8: bucket4j-core was on 7.6.0 (com.github.vladimir-bukhtoyarov coordinates).
+             8.0.1 under those same coordinates is only a relocation stub - Maven prints
+             "has been relocated to com.bucket4j:bucket4j-core" - so this now points at the real,
+             current artifact directly rather than following the relocation transparently every
+             build. The Java package was already io.github.bucket4j.* (not com.github.bucket4j.*),
+             which is unchanged by this coordinate switch. RateLimiterService (the only consumer)
+             uses only Bandwidth/Bucket/Refill, all present and source-compatible in 8.0.1. -->
         <dependency>
-            <groupId>com.github.vladimir-bukhtoyarov</groupId>
+            <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
-            <version>7.6.0</version>
+            <version>8.0.1</version>
         </dependency>
         <dependency>
             <groupId>net.logstash.logback</groupId>

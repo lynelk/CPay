@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Audit J8: keep backend Maven dependencies (Apache POI, org.json, Bucket4j, springdoc, etc.)
+  # current automatically going forward, rather than relying on periodic manual audits.
+  - package-ecosystem: "maven"
+    directory: "/Initializrspringbootprojectfresh"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+
+  # Frontend (React/Vite) npm dependencies.
+  - package-ecosystem: "npm"
+    directory: "/Clientside"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  # GitHub Actions used by ci.yml and the other workflows under .github/workflows/.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
