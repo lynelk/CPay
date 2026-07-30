@@ -30,16 +30,17 @@ import org.junit.jupiter.api.Test;
  * invalidation) - previously every non-200 response, 401 included, was treated as a hard failure
  * with no retry.
  *
- * <p>Two things are verified with a real local HTTP server (so the actual request/response cycle
- * is exercised, not just the decision logic):
+ * <p>Two things are verified with a real local HTTP server (so the actual request/response cycle is
+ * exercised, not just the decision logic):
+ *
  * <ol>
- *   <li>a 401 triggers exactly one forced token refresh and retry;</li>
+ *   <li>a 401 triggers exactly one forced token refresh and retry;
  *   <li>single-flight: when multiple concurrent callers hit a 401 for the same gateway/segment at
- *   the same time, only one of them actually calls the provider's token endpoint - the lock table
- *   backing this is static (see SafariComPaymentGateway.TOKEN_REFRESH_LOCKS), not an instance field,
- *   because this gateway is constructed fresh per merchant channel config rather than held as a
- *   Spring singleton, so the test deliberately uses two separate gateway instances to prove the
- *   coordination is not merely per-instance.</li>
+ *       the same time, only one of them actually calls the provider's token endpoint - the lock
+ *       table backing this is static (see SafariComPaymentGateway.TOKEN_REFRESH_LOCKS), not an
+ *       instance field, because this gateway is constructed fresh per merchant channel config
+ *       rather than held as a Spring singleton, so the test deliberately uses two separate gateway
+ *       instances to prove the coordination is not merely per-instance.
  * </ol>
  */
 class SafariComPaymentGateway401RefreshTest {
@@ -53,32 +54,41 @@ class SafariComPaymentGateway401RefreshTest {
     void retriesExactlyOnceWithAFreshTokenAfterA401() throws Exception {
         AtomicInteger businessCalls = new AtomicInteger(0);
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        server.createContext("/oauth/v1/generate", exchange -> {
-            byte[] body = "{\"access_token\":\"fresh-token\",\"expires_in\":\"3599\"}".getBytes();
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        server.createContext("/mpesa/stkpush/v1/processrequest", exchange -> {
-            int callNumber = businessCalls.incrementAndGet();
-            String auth = exchange.getRequestHeaders().getFirst("Authorization");
-            byte[] body;
-            int status;
-            if (callNumber == 1) {
-                // First call: still carrying the stale token our store thought was valid.
-                assertThat(auth).isEqualTo("Bearer stale-token");
-                status = 401;
-                body = "{\"errorCode\":\"401.001\",\"errorMessage\":\"Invalid Access Token\"}".getBytes();
-            } else {
-                assertThat(auth).isEqualTo("Bearer fresh-token");
-                status = 200;
-                body = ("{\"ResponseCode\":\"0\",\"ResponseDescription\":\"Success\","
-                        + "\"CheckoutRequestID\":\"ws_1\"}").getBytes();
-            }
-            exchange.sendResponseHeaders(status, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
+        server.createContext(
+                "/oauth/v1/generate",
+                exchange -> {
+                    byte[] body =
+                            "{\"access_token\":\"fresh-token\",\"expires_in\":\"3599\"}".getBytes();
+                    exchange.sendResponseHeaders(200, body.length);
+                    exchange.getResponseBody().write(body);
+                    exchange.close();
+                });
+        server.createContext(
+                "/mpesa/stkpush/v1/processrequest",
+                exchange -> {
+                    int callNumber = businessCalls.incrementAndGet();
+                    String auth = exchange.getRequestHeaders().getFirst("Authorization");
+                    byte[] body;
+                    int status;
+                    if (callNumber == 1) {
+                        // First call: still carrying the stale token our store thought was valid.
+                        assertThat(auth).isEqualTo("Bearer stale-token");
+                        status = 401;
+                        body =
+                                "{\"errorCode\":\"401.001\",\"errorMessage\":\"Invalid Access Token\"}"
+                                        .getBytes();
+                    } else {
+                        assertThat(auth).isEqualTo("Bearer fresh-token");
+                        status = 200;
+                        body =
+                                ("{\"ResponseCode\":\"0\",\"ResponseDescription\":\"Success\","
+                                                + "\"CheckoutRequestID\":\"ws_1\"}")
+                                        .getBytes();
+                    }
+                    exchange.sendResponseHeaders(status, body.length);
+                    exchange.getResponseBody().write(body);
+                    exchange.close();
+                });
         server.start();
 
         try {
@@ -89,10 +99,11 @@ class SafariComPaymentGateway401RefreshTest {
                     .thenReturn(Optional.of(staleToken));
             new ProviderTokenStoreRegistry(tokenStoreService);
 
-            SafariComPaymentGateway gateway = newGateway(
-                    "http://localhost:" + server.getAddress().getPort());
+            SafariComPaymentGateway gateway =
+                    newGateway("http://localhost:" + server.getAddress().getPort());
 
-            GateWayResponse response = gateway.doPayIn(1000.0, "254700000000", "ref-1", "narrative");
+            GateWayResponse response =
+                    gateway.doPayIn(1000.0, "254700000000", "ref-1", "narrative");
 
             assertThat(businessCalls.get()).isEqualTo(2);
             assertThat(response.getTransactionStatus()).isEqualTo("PENDING");
@@ -107,29 +118,38 @@ class SafariComPaymentGateway401RefreshTest {
         AtomicInteger tokenEndpointCalls = new AtomicInteger(0);
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.setExecutor(Executors.newCachedThreadPool());
-        server.createContext("/oauth/v1/generate", exchange -> {
-            tokenEndpointCalls.incrementAndGet();
-            byte[] body = "{\"access_token\":\"fresh-token\",\"expires_in\":\"3599\"}".getBytes();
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        server.createContext("/mpesa/stkpush/v1/processrequest", exchange -> {
-            String auth = exchange.getRequestHeaders().getFirst("Authorization");
-            byte[] body;
-            int status;
-            if ("Bearer fresh-token".equals(auth)) {
-                status = 200;
-                body = ("{\"ResponseCode\":\"0\",\"ResponseDescription\":\"Success\","
-                        + "\"CheckoutRequestID\":\"ws_1\"}").getBytes();
-            } else {
-                status = 401;
-                body = "{\"errorCode\":\"401.001\",\"errorMessage\":\"Invalid Access Token\"}".getBytes();
-            }
-            exchange.sendResponseHeaders(status, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
+        server.createContext(
+                "/oauth/v1/generate",
+                exchange -> {
+                    tokenEndpointCalls.incrementAndGet();
+                    byte[] body =
+                            "{\"access_token\":\"fresh-token\",\"expires_in\":\"3599\"}".getBytes();
+                    exchange.sendResponseHeaders(200, body.length);
+                    exchange.getResponseBody().write(body);
+                    exchange.close();
+                });
+        server.createContext(
+                "/mpesa/stkpush/v1/processrequest",
+                exchange -> {
+                    String auth = exchange.getRequestHeaders().getFirst("Authorization");
+                    byte[] body;
+                    int status;
+                    if ("Bearer fresh-token".equals(auth)) {
+                        status = 200;
+                        body =
+                                ("{\"ResponseCode\":\"0\",\"ResponseDescription\":\"Success\","
+                                                + "\"CheckoutRequestID\":\"ws_1\"}")
+                                        .getBytes();
+                    } else {
+                        status = 401;
+                        body =
+                                "{\"errorCode\":\"401.001\",\"errorMessage\":\"Invalid Access Token\"}"
+                                        .getBytes();
+                    }
+                    exchange.sendResponseHeaders(status, body.length);
+                    exchange.getResponseBody().write(body);
+                    exchange.close();
+                });
         server.start();
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -138,15 +158,20 @@ class SafariComPaymentGateway401RefreshTest {
             // whatever save() last wrote, starting out with a token the provider will reject.
             AtomicReference<String> storedToken = new AtomicReference<>("stale-token");
             ProviderTokenStoreService tokenStoreService = mock(ProviderTokenStoreService.class);
-            when(tokenStoreService.findValid(anyString(), anyString(), anyString())).thenAnswer(invocation -> {
-                ProviderToken token = mock(ProviderToken.class);
-                when(token.getTokenValue()).thenReturn(storedToken.get());
-                return Optional.of(token);
-            });
-            doAnswer(invocation -> {
-                storedToken.set(invocation.getArgument(3, String.class));
-                return null;
-            }).when(tokenStoreService).save(anyString(), anyString(), anyString(), anyString(), any());
+            when(tokenStoreService.findValid(anyString(), anyString(), anyString()))
+                    .thenAnswer(
+                            invocation -> {
+                                ProviderToken token = mock(ProviderToken.class);
+                                when(token.getTokenValue()).thenReturn(storedToken.get());
+                                return Optional.of(token);
+                            });
+            doAnswer(
+                            invocation -> {
+                                storedToken.set(invocation.getArgument(3, String.class));
+                                return null;
+                            })
+                    .when(tokenStoreService)
+                    .save(anyString(), anyString(), anyString(), anyString(), any());
             new ProviderTokenStoreRegistry(tokenStoreService);
 
             String baseUrl = "http://localhost:" + server.getAddress().getPort();
@@ -155,16 +180,18 @@ class SafariComPaymentGateway401RefreshTest {
 
             CountDownLatch ready = new CountDownLatch(2);
             CountDownLatch go = new CountDownLatch(1);
-            Callable<GateWayResponse> taskA = () -> {
-                ready.countDown();
-                go.await();
-                return gatewayA.doPayIn(1000.0, "254700000001", "ref-a", "narrative");
-            };
-            Callable<GateWayResponse> taskB = () -> {
-                ready.countDown();
-                go.await();
-                return gatewayB.doPayIn(1000.0, "254700000002", "ref-b", "narrative");
-            };
+            Callable<GateWayResponse> taskA =
+                    () -> {
+                        ready.countDown();
+                        go.await();
+                        return gatewayA.doPayIn(1000.0, "254700000001", "ref-a", "narrative");
+                    };
+            Callable<GateWayResponse> taskB =
+                    () -> {
+                        ready.countDown();
+                        go.await();
+                        return gatewayB.doPayIn(1000.0, "254700000002", "ref-b", "narrative");
+                    };
 
             Future<GateWayResponse> futureA = pool.submit(taskA);
             Future<GateWayResponse> futureB = pool.submit(taskB);
@@ -189,8 +216,14 @@ class SafariComPaymentGateway401RefreshTest {
 
     private static SafariComPaymentGateway newGateway(String baseUrl) {
         SafariComPaymentGateway gateway = new SafariComPaymentGateway();
-        gateway.setApiDetails(baseUrl, "consumer-key", "consumer-secret", "174379",
-                "pass-key", "sandbox", "http://localhost/callbacks/");
+        gateway.setApiDetails(
+                baseUrl,
+                "consumer-key",
+                "consumer-secret",
+                "174379",
+                "pass-key",
+                "sandbox",
+                "http://localhost/callbacks/");
         gateway.setSegment("collection");
         return gateway;
     }

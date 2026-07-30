@@ -1,26 +1,14 @@
 package net.citotech.cito.Model;
 
-import net.citotech.cito.Common;
-import net.citotech.cito.SettingsController;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.util.ResourceUtils;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.time.Instant;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -34,20 +22,30 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import net.citotech.cito.Common;
+import net.citotech.cito.SettingsController;
 import net.citotech.cito.gateway.ProviderConversationReferenceStoreRegistry;
 import net.citotech.cito.gateway.ProviderToken;
 import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.ResourceUtils;
 
 public class SafariComPaymentGateway extends PaymentGateway {
     String xml_sent = "";
     String xml_returned = "";
     String mode = "TEST";
     String global_url = "https://sandbox.safaricom.co.ke";
-    String env = "mtnuganda";//sandbox
+    String env = "mtnuganda"; // sandbox
     String base_currency = "UGX";
-    String segment = "collection";//disbursement";
+    String segment = "collection"; // disbursement";
 
-    static public String BALANCE_TYPE = "safaricom_balance";
+    public static String BALANCE_TYPE = "safaricom_balance";
 
     String api_consumer_key = "";
     String api_consumer_secret = "";
@@ -64,22 +62,20 @@ public class SafariComPaymentGateway extends PaymentGateway {
     /** Daraja API version: "2" (default) or "3" */
     public String api_version = "2";
 
-    public static String[] prefix = {"25470","25471","25472", "25474", "25479", "25411"};
+    public static String[] prefix = {"25470", "25471", "25472", "25474", "25479", "25411"};
 
     public static String gateway_id = "SafariComPaymentGateway";
 
     public static String gateway_currency_code = "MPESAMM";
 
-
-
-    public void setApiDetails(String global_url,
-                                String api_consumer_key,
-                                String api_consumer_secret,
-                                String shortcode,
-                                String passKey,
-                                String env,
-                                String app_setting_app_ur
-                                ) {
+    public void setApiDetails(
+            String global_url,
+            String api_consumer_key,
+            String api_consumer_secret,
+            String shortcode,
+            String passKey,
+            String env,
+            String app_setting_app_ur) {
 
         this.app_setting_app_ur = app_setting_app_ur;
         this.global_url = global_url;
@@ -88,18 +84,17 @@ public class SafariComPaymentGateway extends PaymentGateway {
         this.env = env;
         this.passKey = passKey;
         this.shortcode = shortcode;
-
     }
 
-    public void setApiDetails(String global_url,
-                              String api_consumer_key,
-                              String api_consumer_secret,
-                              String initiatorUsername,
-                              String initiatorPassword,
-                              String shortcode,
-                              String env,
-                              String app_setting_app_ur
-    ) {
+    public void setApiDetails(
+            String global_url,
+            String api_consumer_key,
+            String api_consumer_secret,
+            String initiatorUsername,
+            String initiatorPassword,
+            String shortcode,
+            String env,
+            String app_setting_app_ur) {
 
         this.app_setting_app_ur = app_setting_app_ur;
         this.global_url = global_url;
@@ -109,18 +104,17 @@ public class SafariComPaymentGateway extends PaymentGateway {
         this.shortcode = shortcode;
         this.initiatorUsername = initiatorUsername;
         this.initiatorPassword = initiatorPassword;
-
     }
 
     public void setApiVersion(String version) {
         if (version != null && !version.isEmpty()) this.api_version = version;
     }
 
-    static public String getGatewayCurrencyCode() {
+    public static String getGatewayCurrencyCode() {
         return gateway_currency_code;
     }
 
-    static public String getGatewayId() {
+    public static String getGatewayId() {
         return gateway_id;
     }
 
@@ -133,16 +127,18 @@ public class SafariComPaymentGateway extends PaymentGateway {
     }
 
     public static boolean isValidMisdn(String msisdn) {
-        Boolean fromRoutingTable = net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(gateway_id, msisdn);
+        Boolean fromRoutingTable =
+                net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(
+                        gateway_id, msisdn);
         if (fromRoutingTable != null) {
             return fromRoutingTable;
         }
-        for (int i=0; i <  prefix.length; i++) {
+        for (int i = 0; i < prefix.length; i++) {
             String line = msisdn;
-            String pattern = "^"+prefix[i]+"";
+            String pattern = "^" + prefix[i] + "";
             Pattern r = Pattern.compile(pattern);
             Matcher m = r.matcher(line);
-            if (m.find( )) {
+            if (m.find()) {
                 return true;
             }
         }
@@ -162,9 +158,9 @@ public class SafariComPaymentGateway extends PaymentGateway {
             headers.put("Content-Type", "application/json");
             String url_string = "";
             if (this.segment.equals("collection")) {
-                url_string = this.global_url+"/mpesa/accountbalance/v1/query";
+                url_string = this.global_url + "/mpesa/accountbalance/v1/query";
             } else {
-                url_string = this.global_url+"/mpesa/accountbalance/v1/query";
+                url_string = this.global_url + "/mpesa/accountbalance/v1/query";
             }
 
             SafariComPaymentGateway.Token token;
@@ -172,56 +168,63 @@ public class SafariComPaymentGateway extends PaymentGateway {
             if (token == null) {
                 GateWayResponse gwResponse = new GateWayResponse();
                 gwResponse.setHttpStatus("0");
-                gwResponse.setMessage("Failed to obtain token for "+this.segment);
+                gwResponse.setMessage("Failed to obtain token for " + this.segment);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
                 gwResponse.setRequestTrace("");
                 return 0.0;
             }
 
-            headers.put("Authorization", "Bearer "+token.getToken());
+            headers.put("Authorization", "Bearer " + token.getToken());
 
             JSONObject jdata = new JSONObject();
             jdata.put("CommandID", "AccountBalance");
             jdata.put("Remarks", "Get Account Balance");
             jdata.put("PartyA", this.shortcode);
             jdata.put("IdentifierType", "4");
-            jdata.put("Initiator", this.initiatorUsername.isEmpty() ? "Cpay" : this.initiatorUsername);
+            jdata.put(
+                    "Initiator",
+                    this.initiatorUsername.isEmpty() ? "Cpay" : this.initiatorUsername);
             jdata.put("SecurityCredential", getEncyptedPassword(this.initiatorPassword));
-            jdata.put("QueueTimeOutURL", this.app_setting_app_ur+"api/doSafaricomAccountBalanceCallback");
-            jdata.put("ResultURL", this.app_setting_app_ur+"api/doSafaricomAccountBalanceCallback");
+            jdata.put(
+                    "QueueTimeOutURL",
+                    this.app_setting_app_ur + "api/doSafaricomAccountBalanceCallback");
+            jdata.put(
+                    "ResultURL", this.app_setting_app_ur + "api/doSafaricomAccountBalanceCallback");
             String data = jdata.toString();
 
-            //Now generate the response.
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
 
-            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
+            HttpRequestResponse rs =
+                    executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return 0.0;
             }
 
             if (rs.getStatusCode() != 200) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
 
                 String res = "";
                 String transaction_status = "";
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("code")) {
-                        res += "Code: "+rJson.getString("code")+" ";
+                        res += "Code: " + rJson.getString("code") + " ";
                         if (rJson.getString("code").equals("RESOURCE_NOT_FOUND")) {
                             transaction_status = "FAILED";
                         }
                     }
                     if (!rJson.isNull("message")) {
-                        res += "Message: "+rJson.getString("message");
+                        res += "Message: " + rJson.getString("message");
                     }
                 } else {
                     res = "No response data from the server.";
@@ -235,10 +238,10 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return 0.0;
             } else {
                 gwResponse.setTransactionStatus("PENDING");
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request submitted to the network successfully.");
                 gwResponse.setStatus("OK");
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     String tx_stataus = "";
                     if (!rJson.isNull("status")) {
@@ -260,7 +263,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return 0.0;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -269,7 +273,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace("");
             return 0.0;
         } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -290,30 +295,31 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
             SafariComPaymentGateway.Token token;
             token = this.getToken();
-            headers.put("Authorization", "Bearer "+token.getToken());
+            headers.put("Authorization", "Bearer " + token.getToken());
             JSONObject jdata = new JSONObject();
             jdata.put("InitiatorName", this.initiatorUsername);
-            //String timestamp = getTimeStamp();
+            // String timestamp = getTimeStamp();
             String password = getEncyptedPassword(this.initiatorPassword);
             jdata.put("SecurityCredential", password);
             jdata.put("CommandID", "BusinessPayment");
             jdata.put("Amount", amount);
             jdata.put("PartyA", this.shortcode);
             jdata.put("PartyB", payee);
-            jdata.put("ResultURL", app_setting_app_ur+"api/doSafaricomPayOutCallbackResults");
-            jdata.put("QueueTimeOutURL", app_setting_app_ur+"api/doSafaricomPayOutCallbackResults");
+            jdata.put("ResultURL", app_setting_app_ur + "api/doSafaricomPayOutCallbackResults");
+            jdata.put(
+                    "QueueTimeOutURL", app_setting_app_ur + "api/doSafaricomPayOutCallbackResults");
             jdata.put("Occassion", ref);
             jdata.put("Remarks", narrative);
-            //callbackBaseUrl
+            // callbackBaseUrl
             String data = jdata.toString();
 
-            String url_string = this.global_url+"/mpesa/b2c/v1/paymentrequest";
+            String url_string = this.global_url + "/mpesa/b2c/v1/paymentrequest";
 
-            //Now generate the response.
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
 
-
-            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
+            HttpRequestResponse rs =
+                    executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
 
                 gwResponse.setHttpStatus("0");
@@ -321,37 +327,38 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
                 gwResponse.setNetworkId("");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return gwResponse;
             }
 
             if (rs.getStatusCode() != 200) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
 
                 String res = "";
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("requestId")) {
-                        res += "requestId: "+rJson.getString("requestId");
+                        res += "requestId: " + rJson.getString("requestId");
                     }
                     if (!rJson.isNull("errorCode")) {
-                        res += "Code: "+rJson.getString("errorCode")+" ";
+                        res += "Code: " + rJson.getString("errorCode") + " ";
                     }
                     if (!rJson.isNull("errorMessage")) {
-                        res += "Message: "+rJson.getString("errorMessage");
+                        res += "Message: " + rJson.getString("errorMessage");
                     }
                 }
 
-                //gwResponse.setOurUniqueTxId();
+                // gwResponse.setOurUniqueTxId();
                 gwResponse.setMessage(res);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
                 gwResponse.setRequestTrace(rs.toString());
                 return gwResponse;
             } else {
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     String res = "";
                     String ConversationID = "";
                     String ResponseDescription = "";
@@ -373,7 +380,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                     }
 
                     if (ResponseCode.equals("0")) {
-                        gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                        gwResponse.setHttpStatus(rs.getStatusCode() + "");
                         gwResponse.setMessage("Request submitted to the network successfully.");
                         gwResponse.setStatus("OK");
                         gwResponse.setTransactionStatus("PENDING");
@@ -390,7 +397,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                     }
                 }
 
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request submitted to the network successfully.");
                 gwResponse.setStatus("OK");
                 gwResponse.setTransactionStatus("PENDING");
@@ -398,8 +405,10 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -408,7 +417,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException ex) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -436,7 +446,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 gwResponse.setRequestTrace("");
                 return gwResponse;
             }
-            headers.put("Authorization", "Bearer "+token.getToken());
+            headers.put("Authorization", "Bearer " + token.getToken());
 
             JSONObject jdata = new JSONObject();
             jdata.put("Initiator", this.initiatorUsername);
@@ -447,35 +457,39 @@ public class SafariComPaymentGateway extends PaymentGateway {
             jdata.put("Amount", amount);
             jdata.put("ReceiverParty", this.shortcode);
             jdata.put("ReceiverIdentifierType", "11");
-            jdata.put("ResultURL", app_setting_app_ur+"api/doSafaricomReversalCallback");
-            jdata.put("QueueTimeOutURL", app_setting_app_ur+"api/doSafaricomReversalCallback");
+            jdata.put("ResultURL", app_setting_app_ur + "api/doSafaricomReversalCallback");
+            jdata.put("QueueTimeOutURL", app_setting_app_ur + "api/doSafaricomReversalCallback");
             jdata.put("Remarks", narrative);
             jdata.put("Occasion", narrative);
 
             String data = jdata.toString();
-            String url_string = this.global_url+"/mpesa/reversal/v1/request";
+            String url_string = this.global_url + "/mpesa/reversal/v1/request";
 
             GateWayResponse gwResponse = new GateWayResponse();
-            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
+            HttpRequestResponse rs =
+                    executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
                 gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("HttpRequestResponse object is null.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return gwResponse;
             }
 
             if (rs.getStatusCode() != 200) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 String res = "";
                 if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
-                    if (!rJson.isNull("requestId")) res += "requestId: "+rJson.getString("requestId");
-                    if (!rJson.isNull("errorCode")) res += " Code: "+rJson.getString("errorCode");
-                    if (!rJson.isNull("errorMessage")) res += " Message: "+rJson.getString("errorMessage");
+                    if (!rJson.isNull("requestId"))
+                        res += "requestId: " + rJson.getString("requestId");
+                    if (!rJson.isNull("errorCode")) res += " Code: " + rJson.getString("errorCode");
+                    if (!rJson.isNull("errorMessage"))
+                        res += " Message: " + rJson.getString("errorMessage");
                 }
                 gwResponse.setMessage(res);
                 gwResponse.setStatus("ERROR");
@@ -485,11 +499,16 @@ public class SafariComPaymentGateway extends PaymentGateway {
             } else {
                 if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
-                    String ResponseCode = rJson.isNull("ResponseCode") ? "" : rJson.getString("ResponseCode");
-                    String ResponseDescription = rJson.isNull("ResponseDescription") ? "" : rJson.getString("ResponseDescription");
-                    String ConversationID = rJson.isNull("ConversationID") ? "" : rJson.getString("ConversationID");
+                    String ResponseCode =
+                            rJson.isNull("ResponseCode") ? "" : rJson.getString("ResponseCode");
+                    String ResponseDescription =
+                            rJson.isNull("ResponseDescription")
+                                    ? ""
+                                    : rJson.getString("ResponseDescription");
+                    String ConversationID =
+                            rJson.isNull("ConversationID") ? "" : rJson.getString("ConversationID");
                     if (ResponseCode.equals("0")) {
-                        gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                        gwResponse.setHttpStatus(rs.getStatusCode() + "");
                         gwResponse.setMessage("Reversal request submitted successfully.");
                         gwResponse.setStatus("OK");
                         gwResponse.setTransactionStatus("PENDING");
@@ -504,7 +523,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                         return gwResponse;
                     }
                 }
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Reversal request submitted.");
                 gwResponse.setStatus("OK");
                 gwResponse.setTransactionStatus("PENDING");
@@ -512,7 +531,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -546,11 +566,11 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
             SafariComPaymentGateway.Token token;
             token = this.getToken();
-            headers.put("Authorization", "Bearer "+token.getToken());
+            headers.put("Authorization", "Bearer " + token.getToken());
             JSONObject jdata = new JSONObject();
             jdata.put("BusinessShortCode", this.shortcode);
             String timestamp = getTimeStamp();
-            String password = Common.base64Encode(this.shortcode+this.passKey+timestamp);
+            String password = Common.base64Encode(this.shortcode + this.passKey + timestamp);
             jdata.put("Password", password);
             jdata.put("Timestamp", timestamp);
             jdata.put("TransactionType", "CustomerPayBillOnline");
@@ -558,20 +578,20 @@ public class SafariComPaymentGateway extends PaymentGateway {
             jdata.put("PartyA", payer);
             jdata.put("PartyB", this.shortcode);
             jdata.put("PhoneNumber", payer);
-            jdata.put("CallBackURL", app_setting_app_ur+"api/doSafaricomPayInCallbackResults");
-            //jdata.put("CallBackURL", app_setting_app_ur+"api/doSafaricomPayCallback");
+            jdata.put("CallBackURL", app_setting_app_ur + "api/doSafaricomPayInCallbackResults");
+            // jdata.put("CallBackURL", app_setting_app_ur+"api/doSafaricomPayCallback");
             jdata.put("AccountReference", ref.length() > 12 ? ref.substring(0, 12) : ref);
             jdata.put("TransactionDesc", narrative);
-            //callbackBaseUrl
+            // callbackBaseUrl
             String data = jdata.toString();
 
-            String url_string = this.global_url+"/mpesa/stkpush/v1/processrequest";
+            String url_string = this.global_url + "/mpesa/stkpush/v1/processrequest";
 
-            //Now generate the response.
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
 
-
-            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
+            HttpRequestResponse rs =
+                    executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
 
                 gwResponse.setHttpStatus("0");
@@ -579,37 +599,38 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
                 gwResponse.setNetworkId("");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return gwResponse;
             }
 
             if (rs.getStatusCode() != 200) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
 
                 String res = "";
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("requestId")) {
-                        res += "requestId: "+rJson.getString("requestId");
+                        res += "requestId: " + rJson.getString("requestId");
                     }
                     if (!rJson.isNull("errorCode")) {
-                        res += "Code: "+rJson.getString("errorCode")+" ";
+                        res += "Code: " + rJson.getString("errorCode") + " ";
                     }
                     if (!rJson.isNull("errorMessage")) {
-                        res += "Message: "+rJson.getString("errorMessage");
+                        res += "Message: " + rJson.getString("errorMessage");
                     }
                 }
 
-                //gwResponse.setOurUniqueTxId();
+                // gwResponse.setOurUniqueTxId();
                 gwResponse.setMessage(res);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
                 gwResponse.setRequestTrace(rs.toString());
                 return gwResponse;
             } else {
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     String res = "";
                     String ResponseCode = "";
                     String ResponseDescription = "";
@@ -631,7 +652,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                     }
 
                     if (ResponseCode.equals("0")) {
-                        gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                        gwResponse.setHttpStatus(rs.getStatusCode() + "");
                         gwResponse.setMessage("Request submitted to the network successfully.");
                         gwResponse.setStatus("OK");
                         gwResponse.setTransactionStatus("PENDING");
@@ -648,7 +669,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                         return gwResponse;
                     }
                 }
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request submitted to the network successfully.");
                 gwResponse.setStatus("OK");
                 gwResponse.setTransactionStatus("PENDING");
@@ -656,8 +677,10 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -666,7 +689,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException ex) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -684,9 +708,9 @@ public class SafariComPaymentGateway extends PaymentGateway {
             headers.put("Content-Type", "application/json");
             String url_string = "";
             if (this.segment.equals("collection")) {
-                url_string = this.global_url+"/mpesa/stkpushquery/v1/query";
+                url_string = this.global_url + "/mpesa/stkpushquery/v1/query";
             } else {
-                url_string = this.global_url+"/mpesa/transactionstatus/v1/query";
+                url_string = this.global_url + "/mpesa/transactionstatus/v1/query";
             }
 
             SafariComPaymentGateway.Token token;
@@ -694,14 +718,14 @@ public class SafariComPaymentGateway extends PaymentGateway {
             if (token == null) {
                 GateWayResponse gwResponse = new GateWayResponse();
                 gwResponse.setHttpStatus("0");
-                gwResponse.setMessage("Failed to obtain token for "+this.segment);
+                gwResponse.setMessage("Failed to obtain token for " + this.segment);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
                 gwResponse.setRequestTrace("");
                 return gwResponse;
             }
 
-            headers.put("Authorization", "Bearer "+token.getToken());
+            headers.put("Authorization", "Bearer " + token.getToken());
 
             JSONObject jdata = new JSONObject();
             String timestamp = getTimeStamp();
@@ -712,7 +736,7 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 jdata.put("Password", password);
                 jdata.put("CheckoutRequestID", ref);
                 jdata.put("Timestamp", timestamp);
-                //callbackBaseUrl
+                // callbackBaseUrl
                 data = jdata.toString();
             } else {
                 jdata.put("Initiator", this.initiatorUsername);
@@ -722,23 +746,24 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 jdata.put("TransactionID", ref);
                 jdata.put("PartyA", this.shortcode);
                 jdata.put("IdentifierType", "4");
-                jdata.put("ResultURL", app_setting_app_ur+"api/doSafaricomPayOutCallback");
-                jdata.put("QueueTimeOutURL", app_setting_app_ur+"api/doSafaricomPayOutCallback");
+                jdata.put("ResultURL", app_setting_app_ur + "api/doSafaricomPayOutCallback");
+                jdata.put("QueueTimeOutURL", app_setting_app_ur + "api/doSafaricomPayOutCallback");
                 jdata.put("Remarks", "check status");
                 jdata.put("Occasion", "Transaction check status");
                 data = jdata.toString();
             }
 
-            //Now generate the response.
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
 
-            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
+            HttpRequestResponse rs =
+                    executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return gwResponse;
             }
 
@@ -750,26 +775,30 @@ public class SafariComPaymentGateway extends PaymentGateway {
             String ResponseDescription = "";
             String ResponseCode = "";
             String tx_stataus = "";
-            String ConversationID = "";//Most for Payouts
+            String ConversationID = ""; // Most for Payouts
 
             if (rs.getStatusCode() != 200) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
 
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
 
                     if (!rJson.isNull("ResultCode")) {
-                        res += "ResultCode: "+rJson.getString("ResultCode")+" ";
+                        res += "ResultCode: " + rJson.getString("ResultCode") + " ";
                         ResultCode = rJson.getString("ResultCode");
                     }
                     if (!rJson.isNull("ResponseCode")) {
-                        res += "ResponseCode: "+rJson.getString("ResponseCode")+" ";
+                        res += "ResponseCode: " + rJson.getString("ResponseCode") + " ";
                         ResponseCode = rJson.getString("ResponseCode");
                     }
                     if (!rJson.isNull("ResultCode")) {
-                        res += "ResponseDescription: "+rJson.getString("ResponseDescription")+" ";
+                        res +=
+                                "ResponseDescription: "
+                                        + rJson.getString("ResponseDescription")
+                                        + " ";
                         ResponseDescription = rJson.getString("ResponseDescription");
                     }
 
@@ -785,61 +814,66 @@ public class SafariComPaymentGateway extends PaymentGateway {
                 return gwResponse;
             } else {
                 gwResponse.setTransactionStatus("PENDING");
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request response returned successfully.");
                 gwResponse.setStatus("OK");
                 String message = "";
-                if (!rs.getResponse().isEmpty())  {
-                    Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), "");
+                if (!rs.getResponse().isEmpty()) {
+                    Logger.getLogger(SettingsController.class.getName())
+                            .log(Level.SEVERE, rs.toString(), "");
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     //
                     if (!rJson.isNull("ConversationID")) {
-                        res += "ConversationID: "+rJson.getString("ConversationID")+" ";
+                        res += "ConversationID: " + rJson.getString("ConversationID") + " ";
                         ConversationID = rJson.getString("ConversationID");
                         if (this.segment.equals("disbursement")) {
                             checkStatusResponseStorage(ConversationID, ref);
                         }
                     }
                     if (!rJson.isNull("ResultCode")) {
-                        res += "ResultCode: "+rJson.getString("ResultCode")+" ";
+                        res += "ResultCode: " + rJson.getString("ResultCode") + " ";
                         ResultCode = rJson.getString("ResultCode");
                     }
                     if (!rJson.isNull("ResponseCode")) {
-                        res += "ResponseCode: "+rJson.getString("ResponseCode")+" ";
+                        res += "ResponseCode: " + rJson.getString("ResponseCode") + " ";
                         ResponseCode = rJson.getString("ResponseCode");
                     }
                     if (!rJson.isNull("ResultCode")) {
-                        res += "ResponseDescription: "+rJson.getString("ResponseDescription")+" ";
+                        res +=
+                                "ResponseDescription: "
+                                        + rJson.getString("ResponseDescription")
+                                        + " ";
                         ResponseDescription = rJson.getString("ResponseDescription");
                     }
                     if (!rJson.isNull("CheckoutRequestID")) {
-                        res += "CheckoutRequestID: "+rJson.getString("CheckoutRequestID")+" ";
+                        res += "CheckoutRequestID: " + rJson.getString("CheckoutRequestID") + " ";
                         CheckoutRequestID = rJson.getString("CheckoutRequestID");
                         gwResponse.setNetworkId(CheckoutRequestID);
                     }
                     if (!rJson.isNull("ResultDesc")) {
                         message = rJson.getString("ResultDesc");
                     }
-                    //CheckoutRequestID
+                    // CheckoutRequestID
                     res += ResponseDescription;
 
                     if (ResultCode.equals("0") && ResponseCode.equals("0")) {
                         gwResponse.setTransactionStatus("SUCCESSFUL");
-                    } if ( ResponseCode.equals("0") && !ResultCode.equals("0")) {
+                    }
+                    if (ResponseCode.equals("0") && !ResultCode.equals("0")) {
                         gwResponse.setTransactionStatus("FAILED");
                         gwResponse.setMessage(message);
                     } else {
                         gwResponse.setTransactionStatus("UNDETERMINED");
                     }
                     gwResponse.setMessage(res);
-
                 }
 
                 gwResponse.setRequestTrace(rs.toString());
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -848,7 +882,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
             gwResponse.setRequestTrace("");
             return gwResponse;
         } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -859,32 +894,41 @@ public class SafariComPaymentGateway extends PaymentGateway {
         }
     }
 
-    String getEncyptedPassword(String password) throws NoSuchAlgorithmException, NoSuchProviderException {
+    String getEncyptedPassword(String password)
+            throws NoSuchAlgorithmException, NoSuchProviderException {
         byte[] input = password.getBytes();
 
         Cipher cipher = null;
         try {
             cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
-            File file = ResourceUtils.getFile(new ClassPathResource("keystore/ProductionCertificate.cer").getPath());
+            File file =
+                    ResourceUtils.getFile(
+                            new ClassPathResource("keystore/ProductionCertificate.cer").getPath());
             FileInputStream fin = new FileInputStream(file);
             CertificateFactory f = CertificateFactory.getInstance("X.509");
-            X509Certificate certificate = (X509Certificate)f.generateCertificate(fin);
+            X509Certificate certificate = (X509Certificate) f.generateCertificate(fin);
             PublicKey pk = certificate.getPublicKey();
             cipher.init(Cipher.ENCRYPT_MODE, pk, new SecureRandom());
             byte[] cipherText = cipher.doFinal(input);
             return Base64.getEncoder().encodeToString(cipherText);
         } catch (NoSuchPaddingException e) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, e.getMessage(), e);
         } catch (FileNotFoundException e) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, e.getMessage(), e);
         } catch (IllegalBlockSizeException e) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, e.getMessage(), e);
         } catch (CertificateException e) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, e.getMessage(), e);
         } catch (BadPaddingException e) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, e.getMessage(), e);
         } catch (InvalidKeyException e) {
-            Logger.getLogger(SafariComPaymentGateway.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+            Logger.getLogger(SafariComPaymentGateway.class.getName())
+                    .log(Level.SEVERE, e.getMessage(), e);
         }
         return "";
     }
@@ -908,26 +952,41 @@ public class SafariComPaymentGateway extends PaymentGateway {
     }
 
     public SafariComPaymentGateway.Token getToken() throws IOException {
-        // Tokens live only in the encrypted provider_tokens DB store (see ProviderTokenStoreService) -
+        // Tokens live only in the encrypted provider_tokens DB store (see
+        // ProviderTokenStoreService) -
         // no plaintext on-disk cache.
-        Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+        Optional<ProviderToken> databaseToken =
+                ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
         if (databaseToken.isPresent()) {
-            return new SafariComPaymentGateway.Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
+            return new SafariComPaymentGateway.Token(
+                    databaseToken.get().getTokenValue(), LocalDateTime.now());
         }
         return this.requestToken();
     }
 
     public SafariComPaymentGateway.Token requestToken() throws JSONException {
         Map<String, String> headers = new HashMap<>();
-        //headers.put("Content-Type", "application/json");
+        // headers.put("Content-Type", "application/json");
         if (segment.equals("collection")) {
-            headers.put("Authorization", "Basic "+Common.base64Encode(this.api_consumer_key+":"+this.api_consumer_secret));
+            headers.put(
+                    "Authorization",
+                    "Basic "
+                            + Common.base64Encode(
+                                    this.api_consumer_key + ":" + this.api_consumer_secret));
         } else {
-            headers.put("Authorization", "Basic "+Common.base64Encode(this.api_consumer_key+":"+this.api_consumer_secret));
+            headers.put(
+                    "Authorization",
+                    "Basic "
+                            + Common.base64Encode(
+                                    this.api_consumer_key + ":" + this.api_consumer_secret));
         }
 
         String oauthVersion = "3".equals(this.api_version) ? "v2" : "v1";
-        String url_string = this.global_url+"/oauth/"+oauthVersion+"/generate?grant_type=client_credentials";
+        String url_string =
+                this.global_url
+                        + "/oauth/"
+                        + oauthVersion
+                        + "/generate?grant_type=client_credentials";
 
         HttpRequestResponse rs = Common.doHttpRequest("GET", url_string, "", headers);
         if (rs == null) {
@@ -938,7 +997,8 @@ public class SafariComPaymentGateway extends PaymentGateway {
 
         if (rs.getStatusCode() != 200) {
             String error = rs.toString();
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, rs.toString(), error);
             return null;
         } else {
             JSONObject jsToken = new JSONObject(rs.getResponse());
@@ -963,22 +1023,29 @@ public class SafariComPaymentGateway extends PaymentGateway {
     // land on separate instances, and a plain instance field would not coordinate them. The lock
     // table is static and keyed by gateway id + segment + environment, a small, fixed set of
     // combinations, so it cannot grow unbounded.
-    private static final ConcurrentHashMap<String, ReentrantLock> TOKEN_REFRESH_LOCKS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, ReentrantLock> TOKEN_REFRESH_LOCKS =
+            new ConcurrentHashMap<>();
 
-    private static ReentrantLock tokenRefreshLock(String gatewayId, String segment, String environment) {
-        return TOKEN_REFRESH_LOCKS.computeIfAbsent(gatewayId + "|" + segment + "|" + environment,
-                key -> new ReentrantLock());
+    private static ReentrantLock tokenRefreshLock(
+            String gatewayId, String segment, String environment) {
+        return TOKEN_REFRESH_LOCKS.computeIfAbsent(
+                gatewayId + "|" + segment + "|" + environment, key -> new ReentrantLock());
     }
 
     /**
      * Audit C2: executes the request and, if the provider responds with 401 even though our own
      * TTL-based getToken() considered the token still valid (revoked early, clock skew, or a
-     * provider-side session invalidation), forces a fresh token via {@link #forceRefreshToken}
-     * and retries exactly once with the refreshed Authorization header - rather than failing a
+     * provider-side session invalidation), forces a fresh token via {@link #forceRefreshToken} and
+     * retries exactly once with the refreshed Authorization header - rather than failing a
      * transaction we could still complete.
      */
-    private HttpRequestResponse executeWithTokenRetry(String method, String url, String data,
-            Map<String, String> headers, SafariComPaymentGateway.Token token) throws JSONException {
+    private HttpRequestResponse executeWithTokenRetry(
+            String method,
+            String url,
+            String data,
+            Map<String, String> headers,
+            SafariComPaymentGateway.Token token)
+            throws JSONException {
         HttpRequestResponse response = Common.doHttpRequest(method, url, data, headers);
         if (response != null && response.getStatusCode() == 401 && token != null) {
             SafariComPaymentGateway.Token refreshed = forceRefreshToken(token.getToken());
@@ -995,16 +1062,20 @@ public class SafariComPaymentGateway extends PaymentGateway {
      * one concurrent caller actually calls the provider's token endpoint. A caller that arrives
      * while another thread's refresh is already in flight waits for the lock, then re-checks the
      * DB-backed token store - since requestToken() always saves its result there - and reuses it if
-     * it differs from the token that just failed, instead of requesting a second fresh token itself.
+     * it differs from the token that just failed, instead of requesting a second fresh token
+     * itself.
      */
-    private SafariComPaymentGateway.Token forceRefreshToken(String failedTokenValue) throws JSONException {
+    private SafariComPaymentGateway.Token forceRefreshToken(String failedTokenValue)
+            throws JSONException {
         ReentrantLock lock = tokenRefreshLock(gateway_id, this.segment, tokenEnvironment());
         lock.lock();
         try {
             Optional<ProviderToken> current =
-                    ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+                    ProviderTokenStoreRegistry.findValid(
+                            gateway_id, this.segment, tokenEnvironment());
             if (current.isPresent() && !current.get().getTokenValue().equals(failedTokenValue)) {
-                return new SafariComPaymentGateway.Token(current.get().getTokenValue(), LocalDateTime.now());
+                return new SafariComPaymentGateway.Token(
+                        current.get().getTokenValue(), LocalDateTime.now());
             }
             return requestToken();
         } finally {
@@ -1044,9 +1115,10 @@ public class SafariComPaymentGateway extends PaymentGateway {
         }
 
         public String toString() {
-            return "Token: "+this.token+"\nCreated On: "+this.created_on.format(Common.getDateTimeFormater());
+            return "Token: "
+                    + this.token
+                    + "\nCreated On: "
+                    + this.created_on.format(Common.getDateTimeFormater());
         }
-
     }
 }
-

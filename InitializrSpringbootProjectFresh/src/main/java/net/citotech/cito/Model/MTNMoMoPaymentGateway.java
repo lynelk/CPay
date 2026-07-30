@@ -21,20 +21,19 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- *
  * @author josephtabajjwa
  */
-public class MTNMoMoPaymentGateway extends PaymentGateway{
+public class MTNMoMoPaymentGateway extends PaymentGateway {
     String xml_sent = "";
     String xml_returned = "";
     String mode = "TEST";
     String global_url = "https://ericssonbasicapi1.azure-api.net";
-    String env = "mtnuganda";//sandbox
+    String env = "mtnuganda"; // sandbox
     String base_currency = "EUR";
-    String segment = "collection";//disbursement";
-    
-    static public String BALANCE_TYPE = "mtnmm_balance";
-    
+    String segment = "collection"; // disbursement";
+
+    public static String BALANCE_TYPE = "mtnmm_balance";
+
     String api_collections_user = "";
     String api_collections_key = "";
     String api_collections_subscription = "";
@@ -42,35 +41,43 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     String api_disbursements_user = "";
     String api_disbursements_key = "";
     String api_disbursements_subscription = "";
-    
+
     public static String[] prefix = {"25677", "25678", "25676"};
-    
+
     public static String gateway_id = "MTNMoMoPaymentGateway";
-    
+
     public static String gateway_currency_code = "MTNMM";
 
     public static boolean isValidMisdn(String msisdn) {
-        Boolean fromRoutingTable = net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(gateway_id, msisdn);
+        Boolean fromRoutingTable =
+                net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(
+                        gateway_id, msisdn);
         if (fromRoutingTable != null) {
             return fromRoutingTable;
         }
-        for (int i=0; i <  prefix.length; i++) {
+        for (int i = 0; i < prefix.length; i++) {
             String line = msisdn;
-            String pattern = "^"+prefix[i]+"";
+            String pattern = "^" + prefix[i] + "";
             Pattern r = Pattern.compile(pattern);
             Matcher m = r.matcher(line);
-            if (m.find( )) {
+            if (m.find()) {
                 return true;
             }
         }
         return false;
     }
-    
-    public void setApiDetails(String global_url, String api_collections_user, 
-            String api_collections_key, String api_collections_subscription,
-            String api_disbursements_user, String api_disbursements_key,
-            String api_disbursements_subscription, String env, String base_currency) {
-        
+
+    public void setApiDetails(
+            String global_url,
+            String api_collections_user,
+            String api_collections_key,
+            String api_collections_subscription,
+            String api_disbursements_user,
+            String api_disbursements_key,
+            String api_disbursements_subscription,
+            String env,
+            String base_currency) {
+
         this.global_url = global_url;
         this.api_collections_user = api_collections_user;
         this.api_collections_key = api_collections_key;
@@ -80,14 +87,13 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
         this.api_disbursements_subscription = api_disbursements_subscription;
         this.base_currency = base_currency;
         this.env = env;
-        
     }
-    
-    static public String getGatewayCurrencyCode() {
+
+    public static String getGatewayCurrencyCode() {
         return gateway_currency_code;
     }
-    
-    static public String getGatewayId() {
+
+    public static String getGatewayId() {
         return gateway_id;
     }
 
@@ -99,16 +105,17 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
         this.segment = segment;
     }
 
-    
     @Override
     public Double getBalance() {
-        
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+
+        throw new UnsupportedOperationException(
+                "Not supported yet."); // To change body of generated methods, choose Tools |
+        // Templates.
     }
-    
+
     /*
-    * @Param account: Set this to disbursement | collections
-    */
+     * @Param account: Set this to disbursement | collections
+     */
     @Override
     public Double getBalance(String account) {
         try {
@@ -117,64 +124,65 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             String url_string = "";
             if (account.equals("collection")) {
                 headers.put("Ocp-Apim-Subscription-Key", this.api_collections_subscription);
-                url_string = this.global_url+"/"+this.segment+"/v1_0/account/balance";
+                url_string = this.global_url + "/" + this.segment + "/v1_0/account/balance";
             } else {
                 headers.put("Ocp-Apim-Subscription-Key", this.api_disbursements_subscription);
-                url_string = this.global_url+"/"+this.segment+"/v1_0/account/balance";
+                url_string = this.global_url + "/" + this.segment + "/v1_0/account/balance";
             }
-            
+
             Token token;
             token = this.getToken();
             if (token == null) {
                 GateWayResponse gwResponse = new GateWayResponse();
                 gwResponse.setHttpStatus("0");
-                gwResponse.setMessage("Failed to obtain token for "+this.segment);
+                gwResponse.setMessage("Failed to obtain token for " + this.segment);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
                 gwResponse.setRequestTrace("");
                 return 0.0;
             }
-            
-            headers.put("Authorization", "Bearer "+token.getToken());
+
+            headers.put("Authorization", "Bearer " + token.getToken());
             headers.put("X-Target-Environment", this.env);
-           
+
             String data = "";
-            
-            //Now generate the response.
+
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
-            
+
             HttpRequestResponse rs = executeWithTokenRetry("GET", url_string, data, headers, token);
             if (rs == null) {
                 gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return 0.0;
             }
-            
+
             if (rs.getStatusCode() != 200) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
-                
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
+
                 String res = "";
                 String transaction_status = "";
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("code")) {
-                        res += "Code: "+rJson.getString("code")+" ";
+                        res += "Code: " + rJson.getString("code") + " ";
                         if (rJson.getString("code").equals("RESOURCE_NOT_FOUND")) {
                             transaction_status = "FAILED";
                         }
                     }
                     if (!rJson.isNull("message")) {
-                        res += "Message: "+rJson.getString("message");
+                        res += "Message: " + rJson.getString("message");
                     }
                 } else {
                     res = "No response data from the server.";
                 }
-                
+
                 gwResponse.setMessage(res);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus(transaction_status);
@@ -183,13 +191,12 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                 return 0.0;
             } else {
                 gwResponse.setTransactionStatus("PENDING");
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request submitted to the network successfully.");
                 gwResponse.setStatus("OK");
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
-                    
-                    
+
                     String balance_string = "";
                     if (!rJson.isNull("availableBalance")) {
                         balance_string = rJson.getString("availableBalance");
@@ -197,11 +204,12 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                         return bal;
                     }
                 }
-                
+
                 return 0.0;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -210,7 +218,8 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             gwResponse.setRequestTrace("");
             return 0.0;
         } catch (IOException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -223,78 +232,79 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
 
     @Override
     public GateWayResponse doPayOut(Double amount, String payee, String ref, String narrative) {
-        
+
         try {
             Map<String, String> headers = new HashMap<>();
             headers.put("Content-Type", "application/json");
             this.segment = "disbursement";
-            
+
             Token token;
             token = this.getToken();
-            headers.put("Authorization", "Bearer "+token.getToken());
+            headers.put("Authorization", "Bearer " + token.getToken());
             headers.put("X-Reference-Id", ref);
             headers.put("Ocp-Apim-Subscription-Key", this.api_disbursements_subscription);
             headers.put("X-Target-Environment", this.env);
             headers.put("Ocp-Apim-Subscription-Key", this.api_disbursements_subscription);
-            
+
             JSONObject jdata = new JSONObject();
             jdata.put("amount", amount);
             jdata.put("currency", this.base_currency);
             jdata.put("externalId", ref);
-            
+
             JSONObject jdataPayer = new JSONObject();
             jdataPayer.put("partyIdType", "MSISDN");
             jdataPayer.put("partyId", payee);
             jdata.put("payee", jdataPayer);
-            
+
             jdata.put("payerMessage", narrative);
             jdata.put("payeeNote", narrative);
-            
+
             String data = jdata.toString();
-            
-            
-            String url_string = this.global_url+"/"+this.segment+"/v1_0/transfer";
-            
-            //Now generate the response.
+
+            String url_string = this.global_url + "/" + this.segment + "/v1_0/transfer";
+
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
-            
-            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
+
+            HttpRequestResponse rs =
+                    executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
 
                 gwResponse.setHttpStatus(null);
                 gwResponse.setMessage("");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return gwResponse;
             }
-            
+
             if (rs.getStatusCode() != 202) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
-                
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
+
                 String res = "";
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("code")) {
-                        res += "Code: "+rJson.getString("code")+" ";
+                        res += "Code: " + rJson.getString("code") + " ";
                     }
                     if (!rJson.isNull("statusCode")) {
-                        res += "Status Code: "+rJson.getString("statusCode")+" ";
+                        res += "Status Code: " + rJson.getString("statusCode") + " ";
                     }
                     if (!rJson.isNull("message")) {
-                        res += "Message: "+rJson.getString("message");
+                        res += "Message: " + rJson.getString("message");
                     }
                 }
-                
+
                 gwResponse.setMessage(res);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
                 gwResponse.setRequestTrace(rs.toString());
                 return gwResponse;
             } else {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request submitted to the network successfully.");
                 gwResponse.setStatus("OK");
                 gwResponse.setTransactionStatus("PENDING");
@@ -320,8 +330,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             return gwResponse;
         }
     }
-    
-    
+
     @Override
     public GateWayResponse checkStatus(String ref) {
         try {
@@ -330,64 +339,65 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             String url_string = "";
             if (this.segment.equals("collection")) {
                 headers.put("Ocp-Apim-Subscription-Key", this.api_collections_subscription);
-                url_string = this.global_url+"/"+this.segment+"/v1_0/requesttopay/"+ref;
+                url_string = this.global_url + "/" + this.segment + "/v1_0/requesttopay/" + ref;
             } else {
                 headers.put("Ocp-Apim-Subscription-Key", this.api_disbursements_subscription);
-                url_string = this.global_url+"/"+this.segment+"/v1_0/transfer/"+ref;
+                url_string = this.global_url + "/" + this.segment + "/v1_0/transfer/" + ref;
             }
-            
+
             Token token;
             token = this.getToken();
             if (token == null) {
                 GateWayResponse gwResponse = new GateWayResponse();
                 gwResponse.setHttpStatus("0");
-                gwResponse.setMessage("Failed to obtain token for "+this.segment);
+                gwResponse.setMessage("Failed to obtain token for " + this.segment);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
                 gwResponse.setRequestTrace("");
                 return gwResponse;
             }
-            
-            headers.put("Authorization", "Bearer "+token.getToken());
+
+            headers.put("Authorization", "Bearer " + token.getToken());
             headers.put("X-Target-Environment", this.env);
-           
+
             String data = "";
-            
-            //Now generate the response.
+
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
-            
+
             HttpRequestResponse rs = executeWithTokenRetry("GET", url_string, data, headers, token);
             if (rs == null) {
                 gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("UNDETERMINED");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return gwResponse;
             }
-            
+
             if (rs.getStatusCode() != 200) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
-                
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
+
                 String res = "";
                 String transaction_status = "";
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("code")) {
-                        res += "Code: "+rJson.getString("code")+" ";
+                        res += "Code: " + rJson.getString("code") + " ";
                         if (rJson.getString("code").equals("RESOURCE_NOT_FOUND")) {
                             transaction_status = "FAILED";
                         }
                     }
                     if (!rJson.isNull("message")) {
-                        res += "Message: "+rJson.getString("message");
+                        res += "Message: " + rJson.getString("message");
                     }
                 } else {
                     res = "No response data from the server.";
                 }
-                
+
                 gwResponse.setMessage(res);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus(transaction_status);
@@ -396,10 +406,10 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                 return gwResponse;
             } else {
                 gwResponse.setTransactionStatus("PENDING");
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request submitted to the network successfully.");
                 gwResponse.setStatus("OK");
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     String tx_stataus = "";
                     if (!rJson.isNull("status")) {
@@ -416,12 +426,13 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                         gwResponse.setNetworkId(rJson.getString("financialTransactionId"));
                     }
                 }
-                
+
                 gwResponse.setRequestTrace(rs.toString());
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -430,7 +441,8 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             gwResponse.setRequestTrace("");
             return gwResponse;
         } catch (IOException ex) {
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, ex.getMessage(), "");
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), "");
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -447,39 +459,37 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             Map<String, String> headers = new HashMap<>();
             headers.put("Content-Type", "application/json");
             this.segment = "collection";
-            
-            
+
             Token token;
             token = this.getToken();
-            headers.put("Authorization", "Bearer "+token.getToken());
+            headers.put("Authorization", "Bearer " + token.getToken());
             headers.put("X-Reference-Id", ref);
             headers.put("Ocp-Apim-Subscription-Key", this.api_collections_subscription);
             headers.put("X-Target-Environment", this.env);
             headers.put("Ocp-Apim-Subscription-Key", this.api_collections_subscription);
-            
+
             JSONObject jdata = new JSONObject();
             jdata.put("amount", amount);
             jdata.put("currency", this.base_currency);
             jdata.put("externalId", ref);
-            
+
             JSONObject jdataPayer = new JSONObject();
             jdataPayer.put("partyIdType", "MSISDN");
             jdataPayer.put("partyId", payer);
             jdata.put("payer", jdataPayer);
-            
+
             jdata.put("payerMessage", narrative);
             jdata.put("payeeNote", narrative);
-            
+
             String data = jdata.toString();
-            
-            
-            String url_string = this.global_url+"/"+this.segment+"/v1_0/requesttopay";
-            
-            //Now generate the response.
+
+            String url_string = this.global_url + "/" + this.segment + "/v1_0/requesttopay";
+
+            // Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
-            
-            
-            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
+
+            HttpRequestResponse rs =
+                    executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
 
                 gwResponse.setHttpStatus("0");
@@ -487,33 +497,34 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
                 gwResponse.setNetworkId("");
-                gwResponse.setRequestTrace(url_string+""+headers.toString()+""+data);
+                gwResponse.setRequestTrace(url_string + "" + headers.toString() + "" + data);
                 return gwResponse;
             }
-            
+
             if (rs.getStatusCode() != 202) {
                 String error = rs.toString();
-                Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
-                
+                Logger.getLogger(SettingsController.class.getName())
+                        .log(Level.SEVERE, rs.toString(), error);
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
+
                 String res = "";
-                if (!rs.getResponse().isEmpty())  {
+                if (!rs.getResponse().isEmpty()) {
                     JSONObject rJson = new JSONObject(rs.getResponse());
                     if (!rJson.isNull("code")) {
-                        res += "Code: "+rJson.getString("code")+" ";
+                        res += "Code: " + rJson.getString("code") + " ";
                     }
                     if (!rJson.isNull("message")) {
-                        res += "Message: "+rJson.getString("message");
+                        res += "Message: " + rJson.getString("message");
                     }
                 }
-                
+
                 gwResponse.setMessage(res);
                 gwResponse.setStatus("ERROR");
                 gwResponse.setTransactionStatus("FAILED");
                 gwResponse.setRequestTrace(rs.toString());
                 return gwResponse;
             } else {
-                gwResponse.setHttpStatus(rs.getStatusCode()+"");
+                gwResponse.setHttpStatus(rs.getStatusCode() + "");
                 gwResponse.setMessage("Request submitted to the network successfully.");
                 gwResponse.setStatus("OK");
                 gwResponse.setTransactionStatus("PENDING");
@@ -521,8 +532,10 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                 return gwResponse;
             }
         } catch (JSONException ex) {
-            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
-            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(MTNMoMoPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(MTNMoMoPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -531,7 +544,8 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             gwResponse.setRequestTrace(ex.getMessage());
             return gwResponse;
         } catch (IOException ex) {
-            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(MTNMoMoPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
             GateWayResponse gwResponse = new GateWayResponse();
             gwResponse.setHttpStatus("0");
             gwResponse.setMessage(ex.getMessage());
@@ -554,7 +568,11 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             headers.put("Ocp-Apim-Subscription-Key", this.api_collections_subscription);
             headers.put("X-Target-Environment", this.env);
 
-            String url = this.global_url + "/collection/v1_0/accountholder/msisdn/" + msisdn + "/basicuserinfo";
+            String url =
+                    this.global_url
+                            + "/collection/v1_0/accountholder/msisdn/"
+                            + msisdn
+                            + "/basicuserinfo";
             HttpRequestResponse rs = executeWithTokenRetry("GET", url, "", headers, token);
             if (rs == null || rs.getStatusCode() != 200) return info;
             JSONObject r = new JSONObject(rs.getResponse());
@@ -563,15 +581,18 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             if (!r.isNull("family_name")) info.setLastName(r.getString("family_name"));
             if (!r.isNull("status")) info.setStatus(r.getString("status"));
         } catch (Exception ex) {
-            Logger.getLogger(MTNMoMoPaymentGateway.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+            Logger.getLogger(MTNMoMoPaymentGateway.class.getName())
+                    .log(Level.SEVERE, ex.getMessage(), ex);
         }
         return info;
     }
-    
+
     public Token getToken() throws IOException {
-        // Tokens live only in the encrypted provider_tokens DB store (see ProviderTokenStoreService) -
+        // Tokens live only in the encrypted provider_tokens DB store (see
+        // ProviderTokenStoreService) -
         // no plaintext on-disk cache.
-        Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+        Optional<ProviderToken> databaseToken =
+                ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
         if (databaseToken.isPresent()) {
             return new Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
         }
@@ -582,26 +603,37 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         if (segment.equals("collection")) {
-            headers.put("Authorization", "Basic "+Common.base64Encode(this.api_collections_user+":"+this.api_collections_key));
+            headers.put(
+                    "Authorization",
+                    "Basic "
+                            + Common.base64Encode(
+                                    this.api_collections_user + ":" + this.api_collections_key));
             headers.put("Ocp-Apim-Subscription-Key", this.api_collections_subscription);
         } else {
-            headers.put("Authorization", "Basic "+Common.base64Encode(this.api_disbursements_user+":"+this.api_disbursements_key));
+            headers.put(
+                    "Authorization",
+                    "Basic "
+                            + Common.base64Encode(
+                                    this.api_disbursements_user
+                                            + ":"
+                                            + this.api_disbursements_key));
             headers.put("Ocp-Apim-Subscription-Key", this.api_disbursements_subscription);
         }
         headers.put("X-Target-Environment", this.env);
-        
-        String url_string = this.global_url+"/"+this.segment+"/token/";
-        
+
+        String url_string = this.global_url + "/" + this.segment + "/token/";
+
         HttpRequestResponse rs = Common.doHttpRequest("POST", url_string, "", headers);
         if (rs == null) {
             Logger.getLogger(SettingsController.class.getName())
                     .log(Level.SEVERE, "Failed to get token. ", "");
             return null;
         }
-        
+
         if (rs.getStatusCode() != 200) {
             String error = rs.toString();
-            Logger.getLogger(SettingsController.class.getName()).log(Level.SEVERE, rs.toString(), error);
+            Logger.getLogger(SettingsController.class.getName())
+                    .log(Level.SEVERE, rs.toString(), error);
             return null;
         } else {
             JSONObject jsToken = new JSONObject(rs.getResponse());
@@ -624,22 +656,25 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
     // land on separate instances, and a plain instance field would not coordinate them. The lock
     // table is static and keyed by gateway id + segment + environment, a small, fixed set of
     // combinations, so it cannot grow unbounded.
-    private static final ConcurrentHashMap<String, ReentrantLock> TOKEN_REFRESH_LOCKS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, ReentrantLock> TOKEN_REFRESH_LOCKS =
+            new ConcurrentHashMap<>();
 
-    private static ReentrantLock tokenRefreshLock(String gatewayId, String segment, String environment) {
-        return TOKEN_REFRESH_LOCKS.computeIfAbsent(gatewayId + "|" + segment + "|" + environment,
-                key -> new ReentrantLock());
+    private static ReentrantLock tokenRefreshLock(
+            String gatewayId, String segment, String environment) {
+        return TOKEN_REFRESH_LOCKS.computeIfAbsent(
+                gatewayId + "|" + segment + "|" + environment, key -> new ReentrantLock());
     }
 
     /**
      * Audit C2: executes the request and, if the provider responds with 401 even though our own
      * TTL-based getToken() considered the token still valid (revoked early, clock skew, or a
-     * provider-side session invalidation), forces a fresh token via {@link #forceRefreshToken}
-     * and retries exactly once with the refreshed Authorization header - rather than failing a
+     * provider-side session invalidation), forces a fresh token via {@link #forceRefreshToken} and
+     * retries exactly once with the refreshed Authorization header - rather than failing a
      * transaction we could still complete.
      */
-    private HttpRequestResponse executeWithTokenRetry(String method, String url, String data,
-            Map<String, String> headers, Token token) throws JSONException {
+    private HttpRequestResponse executeWithTokenRetry(
+            String method, String url, String data, Map<String, String> headers, Token token)
+            throws JSONException {
         HttpRequestResponse response = Common.doHttpRequest(method, url, data, headers);
         if (response != null && response.getStatusCode() == 401 && token != null) {
             Token refreshed = forceRefreshToken(token.getToken());
@@ -656,14 +691,16 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
      * one concurrent caller actually calls the provider's token endpoint. A caller that arrives
      * while another thread's refresh is already in flight waits for the lock, then re-checks the
      * DB-backed token store - since requestToken() always saves its result there - and reuses it if
-     * it differs from the token that just failed, instead of requesting a second fresh token itself.
+     * it differs from the token that just failed, instead of requesting a second fresh token
+     * itself.
      */
     private Token forceRefreshToken(String failedTokenValue) throws JSONException {
         ReentrantLock lock = tokenRefreshLock(gateway_id, this.segment, tokenEnvironment());
         lock.lock();
         try {
             Optional<ProviderToken> current =
-                    ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+                    ProviderTokenStoreRegistry.findValid(
+                            gateway_id, this.segment, tokenEnvironment());
             if (current.isPresent() && !current.get().getTokenValue().equals(failedTokenValue)) {
                 return new Token(current.get().getTokenValue(), LocalDateTime.now());
             }
@@ -677,13 +714,14 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
         if (this.mode != null && this.mode.toUpperCase().contains("PROD")) {
             return "PRODUCTION";
         }
-        if (this.global_url != null && !this.global_url.toLowerCase().contains("sandbox")
+        if (this.global_url != null
+                && !this.global_url.toLowerCase().contains("sandbox")
                 && !this.global_url.toLowerCase().contains("azure-api")) {
             return "PRODUCTION";
         }
         return "SANDBOX";
     }
-    
+
     public class Token {
         String token;
         LocalDateTime created_on;
@@ -692,16 +730,16 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             this.token = token;
             this.created_on = created_on;
         }
-        
+
         public String getToken() {
             return this.token;
         }
-        
-        public String toString() {
-            return "Token: "+this.token+"\nCreated On: "+this.created_on.format(Common.getDateTimeFormater());
-        }
-        
-    }
-    
-}
 
+        public String toString() {
+            return "Token: "
+                    + this.token
+                    + "\nCreated On: "
+                    + this.created_on.format(Common.getDateTimeFormater());
+        }
+    }
+}
