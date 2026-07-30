@@ -26,7 +26,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch, request } from './httpClient';
+import { ApiError, apiFetch, request } from './httpClient';
 
 /** Thrown when a legacy endpoint responds with code "107" (not logged in / session expired). */
 export class SessionExpiredError extends Error {
@@ -342,6 +342,171 @@ export function useAddPayInTransactionMutation() {
     mutationFn: (payload: AddPayInPayload) => postLegacyJson('/transactions/addPayInTransaction', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions', 'merchant'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Reconciliation manual-match workbench (audit O2)
+// ---------------------------------------------------------------------------
+//
+// Backed entirely by `/api/v2/admin/reconciliation/**` (`ReconController`), so
+// these go through `request()` directly like the rest of the v2 surface — no
+// legacy envelope here. One wrinkle: `POST /manual-match` (like a couple of
+// other admin write endpoints in this controller family) returns a bare
+// `String` body ("updated"), which is *not* valid JSON on its own — `request()`
+// would throw trying to `JSON.parse` it. `postForPlainText` below is a small
+// variant that reads the body as text instead, used only for that endpoint.
+
+export interface ReconciliationRecord {
+  id: number;
+  providerCode?: string;
+  channelCode?: string;
+  providerReference?: string;
+  merchantReference?: string;
+  transactionId?: string;
+  amount?: number;
+  currency?: string;
+  matchStatus?: string;
+  matchReason?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+export interface CandidateTransaction {
+  id: number;
+  txUniqueId?: string;
+  txMerchantRef?: string;
+  txGatewayRef?: string;
+  merchantId?: number;
+  originalAmount?: number;
+  currency?: string;
+  status?: string;
+  txType?: string;
+  createdOn?: string;
+  payerNumber?: string;
+  [key: string]: unknown;
+}
+
+/** POST helper for admin endpoints whose success body is plain text, not JSON. */
+async function postForPlainText(path: string): Promise<string> {
+  const response = await apiFetch(path, { method: 'POST' });
+  const text = await response.text();
+  if (!response.ok) {
+    let message = text || response.statusText;
+    try {
+      const parsed = JSON.parse(text) as { message?: string; error?: string };
+      message = parsed.message || parsed.error || message;
+    } catch {
+      // Error body wasn't JSON either; fall back to the raw text/statusText above.
+    }
+    throw new ApiError(message, response.status);
+  }
+  return text;
+}
+
+/** Unmatched provider statement rows for the workbench's left-hand panel. */
+export function useUnmatchedReconciliationRecords(limit = 100) {
+  return useQuery({
+    queryKey: ['reconciliation', 'unmatched', limit],
+    queryFn: () =>
+      request<ReconciliationRecord[]>(`/api/v2/admin/reconciliation/unmatched?limit=${limit}`),
+  });
+}
+
+export interface CandidateTransactionSearch {
+  reference?: string;
+  amount?: string;
+  currency?: string;
+  from?: string;
+  to?: string;
+}
+
+/** Whether `search` has enough to run a candidate-transaction query (mirrors the backend guard). */
+export function hasAnyCandidateFilter(search: CandidateTransactionSearch): boolean {
+  return Boolean(
+    search.reference?.trim() || search.amount?.trim() || search.from?.trim() || search.to?.trim(),
+  );
+}
+
+/**
+ * Candidate CPay transactions for the workbench's right-hand search panel.
+ * Mirrors the backend's own guard (`ReconService.candidateTransactions`):
+ * disabled until at least one filter is supplied, so an empty search box
+ * never triggers a query.
+ */
+export function useCandidateTransactions(search: CandidateTransactionSearch, limit = 25) {
+  const enabled = hasAnyCandidateFilter(search);
+  return useQuery({
+    queryKey: ['reconciliation', 'candidate-transactions', search, limit],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (search.reference?.trim()) params.set('reference', search.reference.trim());
+      if (search.amount?.trim()) params.set('amount', search.amount.trim());
+      if (search.currency?.trim()) params.set('currency', search.currency.trim());
+      if (search.from?.trim()) params.set('from', search.from.trim());
+      if (search.to?.trim()) params.set('to', search.to.trim());
+      params.set('limit', String(limit));
+      return request<CandidateTransaction[]>(
+        `/api/v2/admin/reconciliation/candidate-transactions?${params.toString()}`,
+      );
+    },
+    enabled,
+  });
+}
+
+export function useAutoMatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => request<number>('/api/v2/admin/reconciliation/auto-match', { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reconciliation', 'unmatched'] });
+    },
+  });
+}
+
+export interface ManualMatchPayload {
+  recordId: number;
+  transactionId: string;
+  reason?: string;
+}
+
+export function useManualMatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ recordId, transactionId, reason }: ManualMatchPayload) => {
+      const params = new URLSearchParams({ recordId: String(recordId), transactionId });
+      if (reason?.trim()) params.set('reason', reason.trim());
+      return postForPlainText(`/api/v2/admin/reconciliation/manual-match?${params.toString()}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reconciliation', 'unmatched'] });
+    },
+  });
+}
+
+export interface ImportStatementPayload {
+  provider: string;
+  importedBy?: string;
+  file: File;
+}
+
+/** Uploads a provider statement (CSV or XLSX) and triggers an auto-match pass server-side. */
+export function useImportStatementMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ provider, importedBy, file }: ImportStatementPayload) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const params = new URLSearchParams({ provider });
+      if (importedBy?.trim()) params.set('importedBy', importedBy.trim());
+      return request<number>(`/api/v2/admin/reconciliation/import?${params.toString()}`, {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reconciliation', 'unmatched'] });
     },
   });
 }
