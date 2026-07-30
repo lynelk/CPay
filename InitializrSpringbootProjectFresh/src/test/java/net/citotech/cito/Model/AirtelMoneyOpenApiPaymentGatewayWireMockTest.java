@@ -81,11 +81,15 @@ class AirtelMoneyOpenApiPaymentGatewayWireMockTest {
         GateWayResponse response = gateway().doPayOut(1000.0, "256700000000", "wm-ref-2", "narrative");
 
         assertThat(response.getTransactionStatus()).isEqualTo("FAILED");
-        assertThat(response.getMessage()).isEqualTo("Insufficient float");
+        // Audit C6: Airtel's own decline wording ("Insufficient float") is raw provider text and must
+        // not reach the merchant directly - only the translated, merchant-safe message does. The raw
+        // resultCode/message is still available internally via requestTrace for support diagnosis.
+        assertThat(response.getMessage()).isEqualTo("The payment provider declined this request.");
+        assertThat(response.getRequestTrace()).contains("Insufficient float").contains("ESB000010");
     }
 
     @Test
-    void aNonTwoHundredResponseIsMappedToFailedWithTheRawBodyAsTheMessage() throws Exception {
+    void aNonTwoHundredResponseIsMappedToFailedWithATranslatedMerchantSafeMessage() throws Exception {
         wireMockServer.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post(urlEqualTo("/standard/v2/disbursements/"))
             .willReturn(aResponse()
                 .withStatus(503)
@@ -96,7 +100,12 @@ class AirtelMoneyOpenApiPaymentGatewayWireMockTest {
 
         assertThat(response.getStatus()).isEqualTo("ERROR");
         assertThat(response.getTransactionStatus()).isEqualTo("FAILED");
-        assertThat(response.getMessage()).contains("service_unavailable");
+        // Audit C6: previously the raw response body ("{\"error\":\"service_unavailable\"}") was
+        // handed straight to the merchant as the message. A 503 is classified as a retryable provider
+        // outage rather than a hard decline; the raw body is preserved in requestTrace, not message.
+        assertThat(response.getMessage()).isEqualTo("The payment provider is temporarily unavailable, retry is safe.");
+        assertThat(response.getMessage()).doesNotContain("service_unavailable");
+        assertThat(response.getRequestTrace()).contains("service_unavailable");
     }
 
     @Test

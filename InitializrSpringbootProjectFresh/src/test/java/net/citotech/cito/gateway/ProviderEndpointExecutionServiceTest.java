@@ -139,7 +139,13 @@ class ProviderEndpointExecutionServiceTest {
 
             assertThat(response.getStatus()).isEqualTo("FAILED");
             assertThat(response.getTransactionStatus()).isEqualTo("FAILED");
-            assertThat(response.getMessage()).contains("signature verification failed");
+            // Audit C6/J7: the merchant-facing message must be the dedicated "response not
+            // verified as authentic" translation (ProviderErrorTranslator.SIGNATURE_VERIFICATION_FAILED),
+            // not the generic HTTP-status-based provider-declined message and never the raw
+            // signature-failure diagnostic string, which stays internal (provider_endpoint_runs).
+            assertThat(response.getMessage())
+                .contains(ProviderErrorTranslator.SIGNATURE_VERIFICATION_FAILED.merchantMessage())
+                .doesNotContain("signature verification failed");
             verify(jdbcTemplate).update(contains("provider_endpoint_runs"), any(MapSqlParameterSource.class));
         } finally {
             server.stop(0);
