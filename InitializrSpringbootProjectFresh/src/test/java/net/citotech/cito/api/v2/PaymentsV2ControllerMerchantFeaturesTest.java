@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.List;
 import net.citotech.cito.Common;
@@ -24,16 +25,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 class PaymentsV2ControllerMerchantFeaturesTest {
 
-    private final PaymentOrchestrationService orchestrationService = mock(PaymentOrchestrationService.class);
+    private final PaymentOrchestrationService orchestrationService =
+            mock(PaymentOrchestrationService.class);
     private final PaymentStatusService paymentStatusService = mock(PaymentStatusService.class);
     private final V2RequestSecurityService securityService = mock(V2RequestSecurityService.class);
     private final IdempotencyService idempotencyService = mock(IdempotencyService.class);
-    private final AccountValidationService accountValidationService = mock(AccountValidationService.class);
-    private final MerchantStatementExportService statementExportService = mock(MerchantStatementExportService.class);
+    private final AccountValidationService accountValidationService =
+            mock(AccountValidationService.class);
+    private final MerchantStatementExportService statementExportService =
+            mock(MerchantStatementExportService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -46,15 +49,18 @@ class PaymentsV2ControllerMerchantFeaturesTest {
         response.setStatus("ACTIVE");
 
         when(securityService.verify(any(), eq(body), eq("M100"))).thenReturn(merchant);
-        when(accountValidationService.validate(any(AccountValidationRequest.class), eq(merchant))).thenReturn(response);
+        when(accountValidationService.validate(any(AccountValidationRequest.class), eq(merchant)))
+                .thenReturn(response);
 
-        mockMvc().perform(post("/api/v2/accounts/validate")
-                .contentType("application/json")
-                .content(body))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.msisdn").value("256770000000"))
-            .andExpect(jsonPath("$.name").value("Jane Customer"))
-            .andExpect(jsonPath("$.status").value("ACTIVE"));
+        mockMvc()
+                .perform(
+                        post("/api/v2/accounts/validate")
+                                .contentType("application/json")
+                                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.msisdn").value("256770000000"))
+                .andExpect(jsonPath("$.name").value("Jane Customer"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test
@@ -63,20 +69,31 @@ class PaymentsV2ControllerMerchantFeaturesTest {
         StatementExportResponse export = statementExport();
 
         when(securityService.verify(any(), eq(""), eq("M100"))).thenReturn(merchant);
-        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(100), eq(null)))
-            .thenReturn(export);
-        when(statementExportService.toCsv(export)).thenReturn("id,created_on\n1,2026-07-16 09:30:00\n");
+        when(statementExportService.export(
+                        eq(merchant),
+                        eq("M100"),
+                        eq("2026-07-01"),
+                        eq("2026-07-16"),
+                        eq(100),
+                        eq(null)))
+                .thenReturn(export);
+        when(statementExportService.toCsv(export))
+                .thenReturn("id,created_on\n1,2026-07-16 09:30:00\n");
 
-        mockMvc().perform(get("/api/v2/statements")
-                .param("merchantNumber", "M100")
-                .param("startDate", "2026-07-01")
-                .param("endDate", "2026-07-16")
-                .param("format", "csv")
-                .param("limit", "100"))
-            .andExpect(status().isOk())
-            .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.csv\""))
-            .andExpect(content().string("id,created_on\n1,2026-07-16 09:30:00\n"));
+        mockMvc()
+                .perform(
+                        get("/api/v2/statements")
+                                .param("merchantNumber", "M100")
+                                .param("startDate", "2026-07-01")
+                                .param("endDate", "2026-07-16")
+                                .param("format", "csv")
+                                .param("limit", "100"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        header().string(
+                                        HttpHeaders.CONTENT_DISPOSITION,
+                                        "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.csv\""))
+                .andExpect(content().string("id,created_on\n1,2026-07-16 09:30:00\n"));
     }
 
     @Test
@@ -86,22 +103,34 @@ class PaymentsV2ControllerMerchantFeaturesTest {
         byte[] xlsxBytes = {0x50, 0x4B, 0x03, 0x04};
 
         when(securityService.verify(any(), eq(""), eq("M100"))).thenReturn(merchant);
-        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(100), eq(null)))
-            .thenReturn(export);
+        when(statementExportService.export(
+                        eq(merchant),
+                        eq("M100"),
+                        eq("2026-07-01"),
+                        eq("2026-07-16"),
+                        eq(100),
+                        eq(null)))
+                .thenReturn(export);
         when(statementExportService.toXlsx(export)).thenReturn(xlsxBytes);
 
-        mockMvc().perform(get("/api/v2/statements")
-                .param("merchantNumber", "M100")
-                .param("startDate", "2026-07-01")
-                .param("endDate", "2026-07-16")
-                .param("format", "xlsx")
-                .param("limit", "100"))
-            .andExpect(status().isOk())
-            .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.xlsx\""))
-            .andExpect(header().string(HttpHeaders.CONTENT_TYPE,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-            .andExpect(content().bytes(xlsxBytes));
+        mockMvc()
+                .perform(
+                        get("/api/v2/statements")
+                                .param("merchantNumber", "M100")
+                                .param("startDate", "2026-07-01")
+                                .param("endDate", "2026-07-16")
+                                .param("format", "xlsx")
+                                .param("limit", "100"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        header().string(
+                                        HttpHeaders.CONTENT_DISPOSITION,
+                                        "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.xlsx\""))
+                .andExpect(
+                        header().string(
+                                        HttpHeaders.CONTENT_TYPE,
+                                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(content().bytes(xlsxBytes));
     }
 
     @Test
@@ -110,28 +139,36 @@ class PaymentsV2ControllerMerchantFeaturesTest {
         StatementExportResponse export = statementExport();
 
         when(securityService.verify(any(), eq(""), eq("M100"))).thenReturn(merchant);
-        when(statementExportService.export(eq(merchant), eq("M100"), eq("2026-07-01"), eq("2026-07-16"), eq(null), eq(null)))
-            .thenReturn(export);
+        when(statementExportService.export(
+                        eq(merchant),
+                        eq("M100"),
+                        eq("2026-07-01"),
+                        eq("2026-07-16"),
+                        eq(null),
+                        eq(null)))
+                .thenReturn(export);
 
-        mockMvc().perform(get("/api/v2/statements")
-                .param("merchantNumber", "M100")
-                .param("startDate", "2026-07-01")
-                .param("endDate", "2026-07-16"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.merchantNumber").value("M100"))
-            .andExpect(jsonPath("$.count").value(1));
+        mockMvc()
+                .perform(
+                        get("/api/v2/statements")
+                                .param("merchantNumber", "M100")
+                                .param("startDate", "2026-07-01")
+                                .param("endDate", "2026-07-16"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.merchantNumber").value("M100"))
+                .andExpect(jsonPath("$.count").value(1));
     }
 
     private MockMvc mockMvc() {
-        PaymentsV2Controller controller = new PaymentsV2Controller(
-            orchestrationService,
-            paymentStatusService,
-            securityService,
-            idempotencyService,
-            accountValidationService,
-            statementExportService,
-            objectMapper
-        );
+        PaymentsV2Controller controller =
+                new PaymentsV2Controller(
+                        orchestrationService,
+                        paymentStatusService,
+                        securityService,
+                        idempotencyService,
+                        accountValidationService,
+                        statementExportService,
+                        objectMapper);
         return MockMvcBuilders.standaloneSetup(controller).build();
     }
 

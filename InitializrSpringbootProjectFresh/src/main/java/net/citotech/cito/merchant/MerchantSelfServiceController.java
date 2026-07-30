@@ -293,7 +293,8 @@ public class MerchantSelfServiceController {
                         .header(
                                 HttpHeaders.CONTENT_DISPOSITION,
                                 "attachment; filename=\"" + filename + "\"")
-                        .contentType(MediaType.parseMediaType(TabularExportService.CSV_CONTENT_TYPE))
+                        .contentType(
+                                MediaType.parseMediaType(TabularExportService.CSV_CONTENT_TYPE))
                         .body(statementExportService.toCsv(export));
             }
             if ("xlsx".equalsIgnoreCase(format)) {
@@ -309,7 +310,8 @@ public class MerchantSelfServiceController {
                         .header(
                                 HttpHeaders.CONTENT_DISPOSITION,
                                 "attachment; filename=\"" + filename + "\"")
-                        .contentType(MediaType.parseMediaType(TabularExportService.XLSX_CONTENT_TYPE))
+                        .contentType(
+                                MediaType.parseMediaType(TabularExportService.XLSX_CONTENT_TYPE))
                         .body(statementExportService.toXlsx(export));
             }
             return ResponseEntity.ok(export);

@@ -1,14 +1,15 @@
 package net.citotech.cito.api.v2;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import jakarta.servlet.http.HttpServletRequest;
 import net.citotech.cito.Model.Balance;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.PaymentOrchestrationService;
-import net.citotech.cito.api.v2.dto.ApiErrorResponse;
 import net.citotech.cito.api.v2.dto.AccountValidationRequest;
+import net.citotech.cito.api.v2.dto.ApiErrorResponse;
 import net.citotech.cito.api.v2.dto.PaymentChannelResponse;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping(path = "/api/v2")
@@ -40,13 +40,14 @@ public class PaymentsV2Controller {
     private final MerchantStatementExportService statementExportService;
     private final ObjectMapper objectMapper;
 
-    public PaymentsV2Controller(PaymentOrchestrationService paymentOrchestrationService,
-                                PaymentStatusService paymentStatusService,
-                                V2RequestSecurityService securityService,
-                                IdempotencyService idempotencyService,
-                                AccountValidationService accountValidationService,
-                                MerchantStatementExportService statementExportService,
-                                ObjectMapper objectMapper) {
+    public PaymentsV2Controller(
+            PaymentOrchestrationService paymentOrchestrationService,
+            PaymentStatusService paymentStatusService,
+            V2RequestSecurityService securityService,
+            IdempotencyService idempotencyService,
+            AccountValidationService accountValidationService,
+            MerchantStatementExportService statementExportService,
+            ObjectMapper objectMapper) {
         this.paymentOrchestrationService = paymentOrchestrationService;
         this.paymentStatusService = paymentStatusService;
         this.securityService = securityService;
@@ -60,13 +61,18 @@ public class PaymentsV2Controller {
     public ResponseEntity<?> collect(@RequestBody String body, HttpServletRequest servletRequest) {
         try {
             PaymentRequest request = objectMapper.readValue(body, PaymentRequest.class);
-            Merchant merchant = securityService.verify(servletRequest, body, request.getMerchantNumber());
+            Merchant merchant =
+                    securityService.verify(servletRequest, body, request.getMerchantNumber());
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
-            Optional<PaymentResult> existing = idempotencyService.findExisting(request.getMerchantNumber(), idempotencyKey, body);
+            Optional<PaymentResult> existing =
+                    idempotencyService.findExisting(
+                            request.getMerchantNumber(), idempotencyKey, body);
             if (existing.isPresent()) {
                 return ResponseEntity.ok(existing.get());
             }
-            PaymentResult result = paymentOrchestrationService.collect(request, merchant, servletRequest.getRemoteAddr());
+            PaymentResult result =
+                    paymentOrchestrationService.collect(
+                            request, merchant, servletRequest.getRemoteAddr());
             idempotencyService.record(request.getMerchantNumber(), idempotencyKey, body, result);
             return ResponseEntity.accepted().body(result);
         } catch (V2RequestSecurityException e) {
@@ -82,13 +88,18 @@ public class PaymentsV2Controller {
     public ResponseEntity<?> payout(@RequestBody String body, HttpServletRequest servletRequest) {
         try {
             PaymentRequest request = objectMapper.readValue(body, PaymentRequest.class);
-            Merchant merchant = securityService.verify(servletRequest, body, request.getMerchantNumber());
+            Merchant merchant =
+                    securityService.verify(servletRequest, body, request.getMerchantNumber());
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
-            Optional<PaymentResult> existing = idempotencyService.findExisting(request.getMerchantNumber(), idempotencyKey, body);
+            Optional<PaymentResult> existing =
+                    idempotencyService.findExisting(
+                            request.getMerchantNumber(), idempotencyKey, body);
             if (existing.isPresent()) {
                 return ResponseEntity.ok(existing.get());
             }
-            PaymentResult result = paymentOrchestrationService.payout(request, merchant, servletRequest.getRemoteAddr());
+            PaymentResult result =
+                    paymentOrchestrationService.payout(
+                            request, merchant, servletRequest.getRemoteAddr());
             idempotencyService.record(request.getMerchantNumber(), idempotencyKey, body, result);
             return ResponseEntity.accepted().body(result);
         } catch (V2RequestSecurityException e) {
@@ -106,8 +117,9 @@ public class PaymentsV2Controller {
     }
 
     @GetMapping(path = "/balances")
-    public ResponseEntity<?> balances(@RequestParam("merchantNumber") String merchantNumber,
-                                      HttpServletRequest servletRequest) {
+    public ResponseEntity<?> balances(
+            @RequestParam("merchantNumber") String merchantNumber,
+            HttpServletRequest servletRequest) {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
             List<Balance> balances = paymentOrchestrationService.balances(merchantNumber, merchant);
@@ -120,9 +132,10 @@ public class PaymentsV2Controller {
     }
 
     @GetMapping(path = "/payments/{reference}")
-    public ResponseEntity<?> status(@PathVariable("reference") String reference,
-                                    @RequestParam("merchantNumber") String merchantNumber,
-                                    HttpServletRequest servletRequest) {
+    public ResponseEntity<?> status(
+            @PathVariable("reference") String reference,
+            @RequestParam("merchantNumber") String merchantNumber,
+            HttpServletRequest servletRequest) {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
             PaymentStatusResponse status = paymentStatusService.getStatus(merchant, reference);
@@ -135,44 +148,73 @@ public class PaymentsV2Controller {
     }
 
     @PostMapping(path = "/accounts/validate")
-    public ResponseEntity<?> validateAccount(@RequestBody String body, HttpServletRequest servletRequest) {
+    public ResponseEntity<?> validateAccount(
+            @RequestBody String body, HttpServletRequest servletRequest) {
         try {
-            AccountValidationRequest request = objectMapper.readValue(body, AccountValidationRequest.class);
-            Merchant merchant = securityService.verify(servletRequest, body, request.getMerchantNumber());
+            AccountValidationRequest request =
+                    objectMapper.readValue(body, AccountValidationRequest.class);
+            Merchant merchant =
+                    securityService.verify(servletRequest, body, request.getMerchantNumber());
             return ResponseEntity.ok(accountValidationService.validate(request, merchant));
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.BAD_REQUEST, "ACCOUNT_VALIDATION_REJECTED", e.getMessage());
         } catch (Exception e) {
-            return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid account validation request");
+            return error(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_REQUEST",
+                    "Invalid account validation request");
         }
     }
 
     @GetMapping(path = "/statements")
-    public ResponseEntity<?> statements(@RequestParam("merchantNumber") String merchantNumber,
-                                        @RequestParam("startDate") String startDate,
-                                        @RequestParam("endDate") String endDate,
-                                        @RequestParam(value = "format", defaultValue = "json") String format,
-                                        @RequestParam(value = "limit", required = false) Integer limit,
-                                        @RequestParam(value = "cursor", required = false) String cursor,
-                                        HttpServletRequest servletRequest) {
+    public ResponseEntity<?> statements(
+            @RequestParam("merchantNumber") String merchantNumber,
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate,
+            @RequestParam(value = "format", defaultValue = "json") String format,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @RequestParam(value = "cursor", required = false) String cursor,
+            HttpServletRequest servletRequest) {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
-            StatementExportResponse export = statementExportService.export(merchant, merchantNumber, startDate, endDate, limit, cursor);
+            StatementExportResponse export =
+                    statementExportService.export(
+                            merchant, merchantNumber, startDate, endDate, limit, cursor);
             if ("csv".equalsIgnoreCase(format)) {
-                String filename = "cpay-statement-" + merchantNumber + "-" + startDate + "-to-" + endDate + ".csv";
+                String filename =
+                        "cpay-statement-"
+                                + merchantNumber
+                                + "-"
+                                + startDate
+                                + "-to-"
+                                + endDate
+                                + ".csv";
                 return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.parseMediaType(TabularExportService.CSV_CONTENT_TYPE))
-                    .body(statementExportService.toCsv(export));
+                        .header(
+                                HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"" + filename + "\"")
+                        .contentType(
+                                MediaType.parseMediaType(TabularExportService.CSV_CONTENT_TYPE))
+                        .body(statementExportService.toCsv(export));
             }
             if ("xlsx".equalsIgnoreCase(format)) {
-                String filename = "cpay-statement-" + merchantNumber + "-" + startDate + "-to-" + endDate + ".xlsx";
+                String filename =
+                        "cpay-statement-"
+                                + merchantNumber
+                                + "-"
+                                + startDate
+                                + "-to-"
+                                + endDate
+                                + ".xlsx";
                 return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.parseMediaType(TabularExportService.XLSX_CONTENT_TYPE))
-                    .body(statementExportService.toXlsx(export));
+                        .header(
+                                HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"" + filename + "\"")
+                        .contentType(
+                                MediaType.parseMediaType(TabularExportService.XLSX_CONTENT_TYPE))
+                        .body(statementExportService.toXlsx(export));
             }
             return ResponseEntity.ok(export);
         } catch (V2RequestSecurityException e) {
@@ -183,7 +225,7 @@ public class PaymentsV2Controller {
     }
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
-        return ResponseEntity.status(status).body(new ApiErrorResponse(code, message, UUID.randomUUID().toString()));
+        return ResponseEntity.status(status)
+                .body(new ApiErrorResponse(code, message, UUID.randomUUID().toString()));
     }
 }
-

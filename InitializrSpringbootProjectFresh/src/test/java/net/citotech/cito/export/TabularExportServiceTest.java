@@ -17,31 +17,29 @@ import org.junit.jupiter.api.Test;
  * Covers audit M5: a single, reusable place to render tabular data as either CSV or XLSX, backing
  * every export surface (merchant statements today; more can adopt it later) instead of each
  * hand-building its own CSV string or, worse, a client-side spreadsheet shim. Verifies genuinely
- * correct output for both formats - not just "doesn't throw" - by parsing the XLSX bytes back
- * with POI's {@link XSSFWorkbook} and asserting on cell values/types.
+ * correct output for both formats - not just "doesn't throw" - by parsing the XLSX bytes back with
+ * POI's {@link XSSFWorkbook} and asserting on cell values/types.
  */
 class TabularExportServiceTest {
 
-    private record SampleRow(long id, String name, BigDecimal amount, String notes) {
-    }
+    private record SampleRow(long id, String name, BigDecimal amount, String notes) {}
 
     private final TabularExportService service = new TabularExportService();
 
     private List<ExportColumn<SampleRow>> columns() {
         return List.of(
-            ExportColumn.of("id", SampleRow::id),
-            ExportColumn.of("name", SampleRow::name),
-            ExportColumn.of("amount", SampleRow::amount),
-            ExportColumn.of("notes", SampleRow::notes)
-        );
+                ExportColumn.of("id", SampleRow::id),
+                ExportColumn.of("name", SampleRow::name),
+                ExportColumn.of("amount", SampleRow::amount),
+                ExportColumn.of("notes", SampleRow::notes));
     }
 
     @Test
     void csvContainsTheHeaderRowFollowedByEachDataRowInOrder() {
-        List<SampleRow> rows = List.of(
-            new SampleRow(1L, "Alice", new BigDecimal("100.50"), "first"),
-            new SampleRow(2L, "Bob", new BigDecimal("200.00"), "second")
-        );
+        List<SampleRow> rows =
+                List.of(
+                        new SampleRow(1L, "Alice", new BigDecimal("100.50"), "first"),
+                        new SampleRow(2L, "Bob", new BigDecimal("200.00"), "second"));
 
         byte[] bytes = service.toCsv(columns(), rows);
         String csv = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
@@ -55,9 +53,8 @@ class TabularExportServiceTest {
 
     @Test
     void csvEscapesValuesContainingCommasQuotesOrNewlines() {
-        List<SampleRow> rows = List.of(
-            new SampleRow(1L, "Comma, and \"quote\"", BigDecimal.ONE, "line1\nline2")
-        );
+        List<SampleRow> rows =
+                List.of(new SampleRow(1L, "Comma, and \"quote\"", BigDecimal.ONE, "line1\nline2"));
 
         byte[] bytes = service.toCsv(columns(), rows);
         String csv = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
@@ -86,10 +83,10 @@ class TabularExportServiceTest {
 
     @Test
     void xlsxRoundTripsHeaderAndRowsThroughPoi() throws IOException {
-        List<SampleRow> rows = List.of(
-            new SampleRow(1L, "Alice", new BigDecimal("100.50"), "first"),
-            new SampleRow(2L, "Bob", new BigDecimal("200.00"), "second")
-        );
+        List<SampleRow> rows =
+                List.of(
+                        new SampleRow(1L, "Alice", new BigDecimal("100.50"), "first"),
+                        new SampleRow(2L, "Bob", new BigDecimal("200.00"), "second"));
 
         byte[] bytes = service.toXlsx("Sample Sheet", columns(), rows);
         assertThat(bytes).isNotEmpty();
@@ -125,7 +122,8 @@ class TabularExportServiceTest {
 
     @Test
     void xlsxRendersNullValuesAsEmptyStringCells() throws IOException {
-        byte[] bytes = service.toXlsx("Sheet1", columns(), List.of(new SampleRow(1L, null, null, null)));
+        byte[] bytes =
+                service.toXlsx("Sheet1", columns(), List.of(new SampleRow(1L, null, null, null)));
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
             Row row = workbook.getSheetAt(0).getRow(1);

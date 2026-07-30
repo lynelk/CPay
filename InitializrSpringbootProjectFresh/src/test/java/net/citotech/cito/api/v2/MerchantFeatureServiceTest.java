@@ -26,34 +26,44 @@ class MerchantFeatureServiceTest {
     @Test
     void accountValidationRequiresExplicitApiPrivilege() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        AccountValidationService service = new AccountValidationService(jdbcTemplate, mock(MerchantReadAuditService.class));
+        AccountValidationService service =
+                new AccountValidationService(jdbcTemplate, mock(MerchantReadAuditService.class));
         AccountValidationRequest request = new AccountValidationRequest();
         request.setMerchantNumber("M100");
         request.setMsisdn("256770000000");
 
         assertThatThrownBy(() -> service.validate(request, merchant(Common.API_BALANCE_CHECK)))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining(Common.API_ACCOUNT_VALIDATION);
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining(Common.API_ACCOUNT_VALIDATION);
         verifyNoInteractions(jdbcTemplate);
     }
 
     @Test
     void statementExportRequiresExplicitApiPrivilege() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        MerchantStatementExportService service = new MerchantStatementExportService(jdbcTemplate, mock(MerchantReadAuditService.class));
+        MerchantStatementExportService service =
+                new MerchantStatementExportService(
+                        jdbcTemplate, mock(MerchantReadAuditService.class));
 
-        assertThatThrownBy(() -> service.export(merchant(Common.API_BALANCE_CHECK), "M100", "2026-07-01", "2026-07-16", 100))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining(Common.API_STATEMENT_EXPORT);
+        assertThatThrownBy(
+                        () ->
+                                service.export(
+                                        merchant(Common.API_BALANCE_CHECK),
+                                        "M100",
+                                        "2026-07-01",
+                                        "2026-07-16",
+                                        100))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining(Common.API_STATEMENT_EXPORT);
         verifyNoInteractions(jdbcTemplate);
     }
 
     @Test
     void statementCsvEscapesCommaAndQuoteCharacters() {
-        MerchantStatementExportService service = new MerchantStatementExportService(
-            mock(NamedParameterJdbcTemplate.class),
-            mock(MerchantReadAuditService.class)
-        );
+        MerchantStatementExportService service =
+                new MerchantStatementExportService(
+                        mock(NamedParameterJdbcTemplate.class),
+                        mock(MerchantReadAuditService.class));
         StatementRow row = new StatementRow();
         row.setId(1L);
         row.setCreatedOn("2026-07-16 09:30:00");
@@ -64,16 +74,15 @@ class MerchantFeatureServiceTest {
         StatementExportResponse response = new StatementExportResponse();
         response.setRows(List.of(row));
 
-        assertThat(service.toCsv(response))
-            .contains("\"Comma, and \"\"quote\"\"\"");
+        assertThat(service.toCsv(response)).contains("\"Comma, and \"\"quote\"\"\"");
     }
 
     @Test
     void statementXlsxIsReadableAndMatchesTheSourceRows() throws IOException {
-        MerchantStatementExportService service = new MerchantStatementExportService(
-            mock(NamedParameterJdbcTemplate.class),
-            mock(MerchantReadAuditService.class)
-        );
+        MerchantStatementExportService service =
+                new MerchantStatementExportService(
+                        mock(NamedParameterJdbcTemplate.class),
+                        mock(MerchantReadAuditService.class));
         StatementRow row = new StatementRow();
         row.setId(42L);
         row.setCreatedOn("2026-07-16 09:30:00");

@@ -27,46 +27,52 @@ public class MerchantStatementExportService {
     private static final int MAX_LIMIT = 5000;
 
     /**
-     * Column layout shared by the CSV and XLSX export paths (audit M5) - declared once here so
-     * both formats stay in sync instead of each hand-rolling its own column list.
+     * Column layout shared by the CSV and XLSX export paths (audit M5) - declared once here so both
+     * formats stay in sync instead of each hand-rolling its own column list.
      */
-    private static final List<ExportColumn<StatementRow>> EXPORT_COLUMNS = List.of(
-        ExportColumn.of("id", StatementRow::getId),
-        ExportColumn.of("created_on", StatementRow::getCreatedOn),
-        ExportColumn.of("gateway_id", StatementRow::getGatewayId),
-        ExportColumn.of("transaction_type", StatementRow::getTransactionType),
-        ExportColumn.of("amount", StatementRow::getAmount),
-        ExportColumn.of("currency", StatementRow::getCurrency),
-        ExportColumn.of("merchant_reference", StatementRow::getMerchantReference),
-        ExportColumn.of("transaction_id", StatementRow::getTransactionId),
-        ExportColumn.of("status", StatementRow::getTransactionStatus),
-        ExportColumn.of("description", StatementRow::getDescription),
-        ExportColumn.of("narrative", StatementRow::getNarrative),
-        ExportColumn.of("mtn_balance", StatementRow::getMtnBalance),
-        ExportColumn.of("airtel_balance", StatementRow::getAirtelBalance),
-        ExportColumn.of("safaricom_balance", StatementRow::getSafaricomBalance),
-        ExportColumn.of("sms_balance", StatementRow::getSmsBalance)
-    );
+    private static final List<ExportColumn<StatementRow>> EXPORT_COLUMNS =
+            List.of(
+                    ExportColumn.of("id", StatementRow::getId),
+                    ExportColumn.of("created_on", StatementRow::getCreatedOn),
+                    ExportColumn.of("gateway_id", StatementRow::getGatewayId),
+                    ExportColumn.of("transaction_type", StatementRow::getTransactionType),
+                    ExportColumn.of("amount", StatementRow::getAmount),
+                    ExportColumn.of("currency", StatementRow::getCurrency),
+                    ExportColumn.of("merchant_reference", StatementRow::getMerchantReference),
+                    ExportColumn.of("transaction_id", StatementRow::getTransactionId),
+                    ExportColumn.of("status", StatementRow::getTransactionStatus),
+                    ExportColumn.of("description", StatementRow::getDescription),
+                    ExportColumn.of("narrative", StatementRow::getNarrative),
+                    ExportColumn.of("mtn_balance", StatementRow::getMtnBalance),
+                    ExportColumn.of("airtel_balance", StatementRow::getAirtelBalance),
+                    ExportColumn.of("safaricom_balance", StatementRow::getSafaricomBalance),
+                    ExportColumn.of("sms_balance", StatementRow::getSmsBalance));
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final MerchantReadAuditService auditService;
     private final TabularExportService tabularExportService;
 
-    public MerchantStatementExportService(NamedParameterJdbcTemplate jdbcTemplate,
-                                          MerchantReadAuditService auditService) {
+    public MerchantStatementExportService(
+            NamedParameterJdbcTemplate jdbcTemplate, MerchantReadAuditService auditService) {
         this(jdbcTemplate, auditService, new TabularExportService());
     }
 
     @Autowired
-    public MerchantStatementExportService(NamedParameterJdbcTemplate jdbcTemplate,
-                                          MerchantReadAuditService auditService,
-                                          TabularExportService tabularExportService) {
+    public MerchantStatementExportService(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            MerchantReadAuditService auditService,
+            TabularExportService tabularExportService) {
         this.jdbcTemplate = jdbcTemplate;
         this.auditService = auditService;
         this.tabularExportService = tabularExportService;
     }
 
-    public StatementExportResponse export(Merchant merchant, String merchantNumber, String startDate, String endDate, Integer limit) {
+    public StatementExportResponse export(
+            Merchant merchant,
+            String merchantNumber,
+            String startDate,
+            String endDate,
+            Integer limit) {
         return export(merchant, merchantNumber, startDate, endDate, limit, null);
     }
 
@@ -77,28 +83,39 @@ public class MerchantStatementExportService {
      * pages are stable even as new statement rows are inserted concurrently - unlike offset/page-
      * number pagination, which can skip or repeat rows under concurrent writes.
      */
-    public StatementExportResponse export(Merchant merchant, String merchantNumber, String startDate, String endDate,
-            Integer limit, String cursor) {
+    public StatementExportResponse export(
+            Merchant merchant,
+            String merchantNumber,
+            String startDate,
+            String endDate,
+            Integer limit,
+            String cursor) {
         validateMerchant(merchant, merchantNumber);
         return buildExport(merchant, merchantNumber, startDate, endDate, limit, cursor);
     }
 
     /**
      * Self-service statement export for a merchant portal user (audit N3), reached via a
-     * session-authenticated endpoint rather than a v2-signed API call. Skips the allowed_apis
-     * check that {@link #export} enforces: allowed_apis governs what an external integration key
-     * may call against the signed v2 API, not what a merchant's own logged-in staff can see of
-     * their own data in the portal - those are different trust boundaries. Still requires the
-     * merchant to be ACTIVE.
+     * session-authenticated endpoint rather than a v2-signed API call. Skips the allowed_apis check
+     * that {@link #export} enforces: allowed_apis governs what an external integration key may call
+     * against the signed v2 API, not what a merchant's own logged-in staff can see of their own
+     * data in the portal - those are different trust boundaries. Still requires the merchant to be
+     * ACTIVE.
      */
-    public StatementExportResponse exportForPortal(Merchant merchant, String startDate, String endDate,
-            Integer limit, String cursor) {
+    public StatementExportResponse exportForPortal(
+            Merchant merchant, String startDate, String endDate, Integer limit, String cursor) {
         validateActiveMerchant(merchant);
-        return buildExport(merchant, merchant.getAccount_number(), startDate, endDate, limit, cursor);
+        return buildExport(
+                merchant, merchant.getAccount_number(), startDate, endDate, limit, cursor);
     }
 
-    private StatementExportResponse buildExport(Merchant merchant, String merchantNumber, String startDate,
-            String endDate, Integer limit, String cursor) {
+    private StatementExportResponse buildExport(
+            Merchant merchant,
+            String merchantNumber,
+            String startDate,
+            String endDate,
+            Integer limit,
+            String cursor) {
         LocalDate start = parseDate(startDate, "startDate");
         LocalDate end = parseDate(endDate, "endDate");
         if (end.isBefore(start)) {
@@ -107,20 +124,25 @@ public class MerchantStatementExportService {
         int boundedLimit = boundLimit(limit);
         Cursor decodedCursor = decodeCursor(cursor);
 
-        String sql = "SELECT ms.id, ms.created_on, ms.gateway_id, ms.tx_type, ms.description, ms.narrative, "
-                + "ms.amount, ms.currency, ms.mtnmm_balance, ms.airtelmm_balance, ms.safaricom_balance, ms.sms_balance, "
-                + "tx.tx_merchant_ref, tx.tx_unique_id, tx.status "
-                + "FROM " + Common.DB_TABLE_MERCHANT_STATEMENT + " ms "
-                + "LEFT JOIN " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG + " tx ON tx.id = ms.transactions_log_id "
-                + "WHERE ms.merchant_id = :merchant_id "
-                + "AND ms.created_on >= :start_at "
-                + "AND ms.created_on < :end_at "
-                + (decodedCursor != null
-                    ? "AND (ms.created_on < :cursor_created_on "
-                        + "OR (ms.created_on = :cursor_created_on AND ms.id < :cursor_id)) "
-                    : "")
-                + "ORDER BY ms.created_on DESC, ms.id DESC "
-                + "LIMIT :limit";
+        String sql =
+                "SELECT ms.id, ms.created_on, ms.gateway_id, ms.tx_type, ms.description, ms.narrative, "
+                        + "ms.amount, ms.currency, ms.mtnmm_balance, ms.airtelmm_balance, ms.safaricom_balance, ms.sms_balance, "
+                        + "tx.tx_merchant_ref, tx.tx_unique_id, tx.status "
+                        + "FROM "
+                        + Common.DB_TABLE_MERCHANT_STATEMENT
+                        + " ms "
+                        + "LEFT JOIN "
+                        + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                        + " tx ON tx.id = ms.transactions_log_id "
+                        + "WHERE ms.merchant_id = :merchant_id "
+                        + "AND ms.created_on >= :start_at "
+                        + "AND ms.created_on < :end_at "
+                        + (decodedCursor != null
+                                ? "AND (ms.created_on < :cursor_created_on "
+                                        + "OR (ms.created_on = :cursor_created_on AND ms.id < :cursor_id)) "
+                                : "")
+                        + "ORDER BY ms.created_on DESC, ms.id DESC "
+                        + "LIMIT :limit";
 
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchant_id", merchant.getId());
@@ -141,7 +163,8 @@ public class MerchantStatementExportService {
         for (CursorRow row : page) {
             rows.add(row.row());
         }
-        auditService.record(merchant, "STATEMENT_EXPORT_READ", start + " to " + end + ", rows=" + rows.size());
+        auditService.record(
+                merchant, "STATEMENT_EXPORT_READ", start + " to " + end + ", rows=" + rows.size());
 
         StatementExportResponse response = new StatementExportResponse();
         response.setMerchantNumber(merchantNumber);
@@ -156,15 +179,15 @@ public class MerchantStatementExportService {
         return response;
     }
 
-    private record Cursor(Timestamp createdOn, long id) {
-    }
+    private record Cursor(Timestamp createdOn, long id) {}
 
-    private record CursorRow(StatementRow row, Timestamp createdOn) {
-    }
+    private record CursorRow(StatementRow row, Timestamp createdOn) {}
 
     private String encodeCursor(Timestamp createdOn, long id) {
         String raw = createdOn.getTime() + ":" + id;
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     }
 
     private Cursor decodeCursor(String cursor) {
@@ -183,10 +206,10 @@ public class MerchantStatementExportService {
     }
 
     /**
-     * CSV rendering of a statement export page (audit M5: routed through the shared
-     * {@link TabularExportService} instead of hand-building the CSV string here, so this stays in
-     * lockstep with the XLSX rendering below and with every other export surface that adopts the
-     * same helper).
+     * CSV rendering of a statement export page (audit M5: routed through the shared {@link
+     * TabularExportService} instead of hand-building the CSV string here, so this stays in lockstep
+     * with the XLSX rendering below and with every other export surface that adopts the same
+     * helper).
      */
     public String toCsv(StatementExportResponse response) {
         byte[] bytes = tabularExportService.toCsv(EXPORT_COLUMNS, response.getRows());
@@ -231,7 +254,8 @@ public class MerchantStatementExportService {
         }
         validateActiveMerchant(merchant);
         if (!hasApi(merchant, Common.API_STATEMENT_EXPORT)) {
-            throw new PaymentGatewayException("Merchant is not allowed to access " + Common.API_STATEMENT_EXPORT);
+            throw new PaymentGatewayException(
+                    "Merchant is not allowed to access " + Common.API_STATEMENT_EXPORT);
         }
     }
 
