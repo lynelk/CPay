@@ -1,16 +1,15 @@
 package net.citotech.cito.reconciliation;
 
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.util.List;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
-
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.util.List;
 
 @Repository
 public class ReconciliationRepository {
@@ -86,10 +85,10 @@ public class ReconciliationRepository {
     public int autoMatchByMerchantReference() {
         String sql =
                 "UPDATE reconciliation_records rr JOIN merchant_transactions_log tx ON"
-                    + " tx.tx_merchant_ref = rr.merchant_reference SET rr.transaction_id ="
-                    + " tx.tx_unique_id, rr.match_status='MATCHED',"
-                    + " rr.match_reason='merchant_reference' WHERE rr.match_status='UNMATCHED' AND"
-                    + " rr.merchant_reference IS NOT NULL";
+                        + " tx.tx_merchant_ref = rr.merchant_reference SET rr.transaction_id ="
+                        + " tx.tx_unique_id, rr.match_status='MATCHED',"
+                        + " rr.match_reason='merchant_reference' WHERE rr.match_status='UNMATCHED' AND"
+                        + " rr.merchant_reference IS NOT NULL";
         return jdbcTemplate.update(sql, new MapSqlParameterSource());
     }
 
