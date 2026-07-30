@@ -7,6 +7,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -141,7 +143,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             //Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
             
-            HttpRequestResponse rs = Common.doHttpRequest("GET", url_string, data, headers);
+            HttpRequestResponse rs = executeWithTokenRetry("GET", url_string, data, headers, token);
             if (rs == null) {
                 gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
@@ -256,9 +258,9 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             //Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
             
-            HttpRequestResponse rs = Common.doHttpRequest("POST", url_string, data, headers);
+            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
-                
+
                 gwResponse.setHttpStatus(null);
                 gwResponse.setMessage("");
                 gwResponse.setStatus("ERROR");
@@ -354,7 +356,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             //Now generate the response.
             GateWayResponse gwResponse = new GateWayResponse();
             
-            HttpRequestResponse rs = Common.doHttpRequest("GET", url_string, data, headers);
+            HttpRequestResponse rs = executeWithTokenRetry("GET", url_string, data, headers, token);
             if (rs == null) {
                 gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("Failed to obtain transaction status from the network.");
@@ -477,9 +479,9 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             GateWayResponse gwResponse = new GateWayResponse();
             
             
-            HttpRequestResponse rs = Common.doHttpRequest("POST", url_string, data, headers);
+            HttpRequestResponse rs = executeWithTokenRetry("POST", url_string, data, headers, token);
             if (rs == null) {
-                
+
                 gwResponse.setHttpStatus("0");
                 gwResponse.setMessage("HttpRequestResponse object is null.");
                 gwResponse.setStatus("ERROR");
@@ -553,7 +555,7 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
             headers.put("X-Target-Environment", this.env);
 
             String url = this.global_url + "/collection/v1_0/accountholder/msisdn/" + msisdn + "/basicuserinfo";
-            HttpRequestResponse rs = Common.doHttpRequest("GET", url, "", headers);
+            HttpRequestResponse rs = executeWithTokenRetry("GET", url, "", headers, token);
             if (rs == null || rs.getStatusCode() != 200) return info;
             JSONObject r = new JSONObject(rs.getResponse());
             if (!r.isNull("name")) info.setProvided_name(r.getString("name"));
@@ -612,6 +614,62 @@ public class MTNMoMoPaymentGateway extends PaymentGateway{
                     accessToken,
                     Instant.now().plus(55, ChronoUnit.MINUTES));
             return new Token(accessToken, d);
+        }
+    }
+
+    // Audit C2: single-flight token-refresh lock table. Instances of this gateway are constructed
+    // per merchant channel config rather than managed as Spring singletons (mirroring how
+    // ProviderTokenStoreRegistry itself is only ever reached through static methods, never an
+    // injected instance) - so concurrent 401s for the same gateway/segment/environment can easily
+    // land on separate instances, and a plain instance field would not coordinate them. The lock
+    // table is static and keyed by gateway id + segment + environment, a small, fixed set of
+    // combinations, so it cannot grow unbounded.
+    private static final ConcurrentHashMap<String, ReentrantLock> TOKEN_REFRESH_LOCKS = new ConcurrentHashMap<>();
+
+    private static ReentrantLock tokenRefreshLock(String gatewayId, String segment, String environment) {
+        return TOKEN_REFRESH_LOCKS.computeIfAbsent(gatewayId + "|" + segment + "|" + environment,
+                key -> new ReentrantLock());
+    }
+
+    /**
+     * Audit C2: executes the request and, if the provider responds with 401 even though our own
+     * TTL-based getToken() considered the token still valid (revoked early, clock skew, or a
+     * provider-side session invalidation), forces a fresh token via {@link #forceRefreshToken}
+     * and retries exactly once with the refreshed Authorization header - rather than failing a
+     * transaction we could still complete.
+     */
+    private HttpRequestResponse executeWithTokenRetry(String method, String url, String data,
+            Map<String, String> headers, Token token) throws JSONException {
+        HttpRequestResponse response = Common.doHttpRequest(method, url, data, headers);
+        if (response != null && response.getStatusCode() == 401 && token != null) {
+            Token refreshed = forceRefreshToken(token.getToken());
+            if (refreshed != null) {
+                headers.put("Authorization", "Bearer " + refreshed.getToken());
+                response = Common.doHttpRequest(method, url, data, headers);
+            }
+        }
+        return response;
+    }
+
+    /**
+     * Audit C2: forces a fresh token for this gateway/segment/environment, single-flighted so only
+     * one concurrent caller actually calls the provider's token endpoint. A caller that arrives
+     * while another thread's refresh is already in flight waits for the lock, then re-checks the
+     * DB-backed token store - since requestToken() always saves its result there - and reuses it if
+     * it differs from the token that just failed, instead of requesting a second fresh token itself.
+     */
+    private Token forceRefreshToken(String failedTokenValue) throws JSONException {
+        ReentrantLock lock = tokenRefreshLock(gateway_id, this.segment, tokenEnvironment());
+        lock.lock();
+        try {
+            Optional<ProviderToken> current =
+                    ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+            if (current.isPresent() && !current.get().getTokenValue().equals(failedTokenValue)) {
+                return new Token(current.get().getTokenValue(), LocalDateTime.now());
+            }
+            return requestToken();
+        } finally {
+            lock.unlock();
         }
     }
 
