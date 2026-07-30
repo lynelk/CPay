@@ -27,7 +27,8 @@ class ReadinessDashboardServiceTest {
         // every "no open X" style check is deliberately ACTION_REQUIRED and every "at least one X
         // happened" style check is READY - proving the checklist wiring, not just the counting.
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Integer.class)))
+        when(jdbcTemplate.queryForObject(
+                        anyString(), any(MapSqlParameterSource.class), eq(Integer.class)))
                 .thenReturn(2);
         ReadinessDashboardService service = new ReadinessDashboardService(jdbcTemplate);
 
@@ -62,9 +63,11 @@ class ReadinessDashboardServiceTest {
     @Test
     void merchantWithNoConfiguredChannelsAndNoComplianceRecordsDefaultsToActionRequired() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        when(jdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(String.class)))
+        when(jdbcTemplate.queryForList(
+                        anyString(), any(MapSqlParameterSource.class), eq(String.class)))
                 .thenReturn(List.of());
-        when(jdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Integer.class)))
+        when(jdbcTemplate.queryForObject(
+                        anyString(), any(MapSqlParameterSource.class), eq(Integer.class)))
                 .thenReturn(0);
 
         ReadinessDashboardService service = new ReadinessDashboardService(jdbcTemplate);
@@ -76,8 +79,10 @@ class ReadinessDashboardServiceTest {
         Map<String, Map<String, Object>> checklist = checklistById(result);
         assertThat(checklist.get("channels_configured").get("status")).isEqualTo("ACTION_REQUIRED");
         assertThat(checklist.get("provider_sandbox").get("status")).isEqualTo("ACTION_REQUIRED");
-        assertThat(checklist.get("statement_validation").get("status")).isEqualTo("ACTION_REQUIRED");
-        assertThat(checklist.get("provider_certification").get("status")).isEqualTo("ACTION_REQUIRED");
+        assertThat(checklist.get("statement_validation").get("status"))
+                .isEqualTo("ACTION_REQUIRED");
+        assertThat(checklist.get("provider_certification").get("status"))
+                .isEqualTo("ACTION_REQUIRED");
         assertThat(checklist.get("callback_secrets").get("status")).isEqualTo("ACTION_REQUIRED");
         // No compliance profile exists at all yet - that must NOT be reported as READY just because
         // the "pending" count happens to be zero.
@@ -90,10 +95,11 @@ class ReadinessDashboardServiceTest {
         // against the provider tables (which have no merchant reference at all).
         verify(jdbcTemplate, never())
                 .queryForObject(
-                        argThat(containsAny(
-                                "provider_sandbox_runs",
-                                "provider_statement_validation_runs",
-                                "provider_certification_evidence")),
+                        argThat(
+                                containsAny(
+                                        "provider_sandbox_runs",
+                                        "provider_statement_validation_runs",
+                                        "provider_certification_evidence")),
                         any(MapSqlParameterSource.class),
                         eq(Integer.class));
     }
@@ -101,7 +107,8 @@ class ReadinessDashboardServiceTest {
     @Test
     void merchantWithFullyCertifiedChannelAndCleanComplianceIsEntirelyReady() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        when(jdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(String.class)))
+        when(jdbcTemplate.queryForList(
+                        anyString(), any(MapSqlParameterSource.class), eq(String.class)))
                 .thenReturn(List.of("MTN_MOMO"));
         when(jdbcTemplate.queryForObject(
                         argThat(containsAll("provider_sandbox_runs")),
@@ -145,10 +152,13 @@ class ReadinessDashboardServiceTest {
         assertThat(result.get("configuredChannels")).isEqualTo(1);
         Map<String, Map<String, Object>> checklist = checklistById(result);
         assertThat(checklist).hasSize(7);
-        checklist.values()
-                .forEach(item -> assertThat(item.get("status"))
-                        .as(item.get("id") + " should be READY")
-                        .isEqualTo("READY"));
+        checklist
+                .values()
+                .forEach(
+                        item ->
+                                assertThat(item.get("status"))
+                                        .as(item.get("id") + " should be READY")
+                                        .isEqualTo("READY"));
     }
 
     @SuppressWarnings("unchecked")
@@ -162,7 +172,8 @@ class ReadinessDashboardServiceTest {
     }
 
     // Mockito invokes previously-registered ArgumentMatchers against a null placeholder while it is
-    // still recording a NEW stub's matcher for the same invocation shape - so every matcher here must
+    // still recording a NEW stub's matcher for the same invocation shape - so every matcher here
+    // must
     // tolerate a null "sql" argument rather than assuming it is only ever called with a real value.
 
     private static ArgumentMatcher<String> containsAll(String... needles) {

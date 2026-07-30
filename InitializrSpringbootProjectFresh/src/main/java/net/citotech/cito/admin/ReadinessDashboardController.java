@@ -29,4 +29,3 @@ public class ReadinessDashboardController {
         return service.merchantSummary(merchantId);
     }
 }
-
