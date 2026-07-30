@@ -8,15 +8,16 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 
 /**
- * Covers audit D3: legacy numeric error codes now carry stable machine-readable metadata
- * (category, retryable, docs URL) matching the shape documented in Docs/Error-catalog.md.
+ * Covers audit D3: legacy numeric error codes now carry stable machine-readable metadata (category,
+ * retryable, docs URL) matching the shape documented in Docs/Error-catalog.md.
  */
 class ErrorCatalogTest {
 
     @Test
     void knownCodesResolveToTheDocumentedCategoryAndRetryFlag() {
         assertThat(ErrorCatalog.lookup("111").stableCode()).isEqualTo("PAYMENT_INSUFFICIENT_FUNDS");
-        assertThat(ErrorCatalog.lookup("111").category()).isEqualTo(ErrorCatalog.Category.BUSINESS_RULE);
+        assertThat(ErrorCatalog.lookup("111").category())
+                .isEqualTo(ErrorCatalog.Category.BUSINESS_RULE);
         assertThat(ErrorCatalog.lookup("111").retryable()).isFalse();
 
         assertThat(ErrorCatalog.lookup("102").stableCode()).isEqualTo("SYSTEM_UNAVAILABLE");
@@ -36,7 +37,8 @@ class ErrorCatalogTest {
     @Test
     void docsUrlPointsAtTheCatalogAnchorForThatCode() {
         assertThat(ErrorCatalog.lookup("111").docsUrl())
-            .isEqualTo("https://github.com/lynelk/CPay/blob/main/Docs/Error-catalog.md#payment_insufficient_funds");
+                .isEqualTo(
+                        "https://github.com/lynelk/CPay/blob/main/Docs/Error-catalog.md#payment_insufficient_funds");
     }
 
     @Test
@@ -50,7 +52,8 @@ class ErrorCatalogTest {
         assertThat(json.getString("error_code")).isEqualTo("PAYMENT_INSUFFICIENT_FUNDS");
         assertThat(json.getString("category")).isEqualTo("business_rule");
         assertThat(json.getBoolean("retryable")).isFalse();
-        assertThat(json.getString("docs_url")).contains("Error-catalog.md#payment_insufficient_funds");
+        assertThat(json.getString("docs_url"))
+                .contains("Error-catalog.md#payment_insufficient_funds");
     }
 
     @Test
@@ -61,7 +64,8 @@ class ErrorCatalogTest {
         gatewayResponse.setNetworkId("network-1");
         gatewayResponse.setMessage("declined");
 
-        String response = GeneralException.getApiTxMessage("143", "Provider declined", gatewayResponse);
+        String response =
+                GeneralException.getApiTxMessage("143", "Provider declined", gatewayResponse);
         JSONObject json = new JSONObject(response);
 
         assertThat(json.getString("state")).isEqualTo("ERROR");

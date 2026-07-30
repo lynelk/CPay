@@ -8,10 +8,16 @@ class GatewayBalanceTypeTest {
 
     @Test
     void resolvesTheCorrectColumnAndLabelPerGateway() {
-        assertThat(GatewayBalanceType.fromGatewayId("MTNMoMoPaymentGateway").columnName()).isEqualTo("mtnmm_balance");
-        assertThat(GatewayBalanceType.fromGatewayId("SafariComPaymentGateway").columnName()).isEqualTo("safaricom_balance");
-        assertThat(GatewayBalanceType.fromGatewayId("AirtelMoneyPaymentGateway").columnName()).isEqualTo("airtelmm_balance");
-        assertThat(GatewayBalanceType.fromGatewayId("AirtelMoneyOpenApiPaymentGateway").columnName()).isEqualTo("airtelmm_balance");
+        assertThat(GatewayBalanceType.fromGatewayId("MTNMoMoPaymentGateway").columnName())
+                .isEqualTo("mtnmm_balance");
+        assertThat(GatewayBalanceType.fromGatewayId("SafariComPaymentGateway").columnName())
+                .isEqualTo("safaricom_balance");
+        assertThat(GatewayBalanceType.fromGatewayId("AirtelMoneyPaymentGateway").columnName())
+                .isEqualTo("airtelmm_balance");
+        assertThat(
+                        GatewayBalanceType.fromGatewayId("AirtelMoneyOpenApiPaymentGateway")
+                                .columnName())
+                .isEqualTo("airtelmm_balance");
     }
 
     @Test
@@ -52,10 +58,14 @@ class GatewayBalanceTypeTest {
 
     @Test
     void resolvesLegacyStatementColumnsForReadModelRefreshes() {
-        assertThat(GatewayBalanceType.fromColumnName("mtnmm_balance")).isEqualTo(GatewayBalanceType.MTN_MOMO);
-        assertThat(GatewayBalanceType.fromColumnName("airtelmm_balance")).isEqualTo(GatewayBalanceType.AIRTEL_MONEY);
-        assertThat(GatewayBalanceType.fromColumnName("safaricom_balance")).isEqualTo(GatewayBalanceType.SAFARICOM_MPESA);
-        assertThat(GatewayBalanceType.fromColumnName("sms_balance")).isEqualTo(GatewayBalanceType.SMS);
+        assertThat(GatewayBalanceType.fromColumnName("mtnmm_balance"))
+                .isEqualTo(GatewayBalanceType.MTN_MOMO);
+        assertThat(GatewayBalanceType.fromColumnName("airtelmm_balance"))
+                .isEqualTo(GatewayBalanceType.AIRTEL_MONEY);
+        assertThat(GatewayBalanceType.fromColumnName("safaricom_balance"))
+                .isEqualTo(GatewayBalanceType.SAFARICOM_MPESA);
+        assertThat(GatewayBalanceType.fromColumnName("sms_balance"))
+                .isEqualTo(GatewayBalanceType.SMS);
         assertThat(GatewayBalanceType.fromColumnName("unknown_balance")).isNull();
     }
 }

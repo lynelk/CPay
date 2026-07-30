@@ -100,7 +100,8 @@ public class ProviderEndpointExecutionService {
             HttpRequestResponse httpResponse =
                     Common.doHttpRequest("POST", endpointUrl, body, requestHeaders);
             int httpStatus = httpResponse.getStatusCode();
-            String responseBody = httpResponse.getResponse() == null ? "" : httpResponse.getResponse();
+            String responseBody =
+                    httpResponse.getResponse() == null ? "" : httpResponse.getResponse();
             String status = httpStatus >= 200 && httpStatus < 300 ? "SUBMITTED" : "FAILED";
             String runStatus = status;
             String recordMessage = responseBody;

@@ -23,40 +23,58 @@ class StartupApplicationListenerTest {
 
         assertThat(listener.updateDb()).isEqualTo("Disabled");
 
-        verify(jdbcTemplate, never()).queryForObject(any(String.class), any(MapSqlParameterSource.class), any(Class.class));
+        verify(jdbcTemplate, never())
+                .queryForObject(
+                        any(String.class), any(MapSqlParameterSource.class), any(Class.class));
     }
 
     @Test
     void updateDbSkipsWhenAnotherInstanceHoldsTheMigrationLock() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class)))
-            .thenReturn(0);
+        when(jdbcTemplate.queryForObject(
+                        contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class)))
+                .thenReturn(0);
         StartupApplicationListener listener = listener(jdbcTemplate, true, 30);
 
         assertThat(listener.updateDb()).isEqualTo("Locked");
 
-        verify(jdbcTemplate).queryForObject(contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class));
-        verify(jdbcTemplate, never()).queryForObject(contains("RELEASE_LOCK"), any(MapSqlParameterSource.class), any(Class.class));
+        verify(jdbcTemplate)
+                .queryForObject(
+                        contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class));
+        verify(jdbcTemplate, never())
+                .queryForObject(
+                        contains("RELEASE_LOCK"),
+                        any(MapSqlParameterSource.class),
+                        any(Class.class));
     }
 
     @Test
     void updateDbReleasesTheMigrationLockAfterAnEmptyRun() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class)))
-            .thenReturn(1);
-        when(jdbcTemplate.queryForObject(contains("RELEASE_LOCK"), any(MapSqlParameterSource.class), any(Class.class)))
-            .thenReturn(1);
+        when(jdbcTemplate.queryForObject(
+                        contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class)))
+                .thenReturn(1);
+        when(jdbcTemplate.queryForObject(
+                        contains("RELEASE_LOCK"),
+                        any(MapSqlParameterSource.class),
+                        any(Class.class)))
+                .thenReturn(1);
         StartupApplicationListener listener = listener(jdbcTemplate, true, 30);
 
         assertThat(listener.updateDb()).isEqualTo("Skipped");
 
-        verify(jdbcTemplate).queryForObject(contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class));
-        verify(jdbcTemplate).queryForObject(contains("RELEASE_LOCK"), any(MapSqlParameterSource.class), any(Class.class));
+        verify(jdbcTemplate)
+                .queryForObject(
+                        contains("GET_LOCK"), any(MapSqlParameterSource.class), any(Class.class));
+        verify(jdbcTemplate)
+                .queryForObject(
+                        contains("RELEASE_LOCK"),
+                        any(MapSqlParameterSource.class),
+                        any(Class.class));
     }
 
-    private StartupApplicationListener listener(NamedParameterJdbcTemplate jdbcTemplate,
-            boolean enabled,
-            int timeoutSeconds) {
+    private StartupApplicationListener listener(
+            NamedParameterJdbcTemplate jdbcTemplate, boolean enabled, int timeoutSeconds) {
         StartupApplicationListener listener = new StartupApplicationListener();
         ReflectionTestUtils.setField(listener, "jdbcTemplate", jdbcTemplate);
         ReflectionTestUtils.setField(listener, "legacyDbChangesEnabled", enabled);

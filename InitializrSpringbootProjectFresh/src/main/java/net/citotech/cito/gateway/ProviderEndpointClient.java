@@ -36,7 +36,8 @@ public final class ProviderEndpointClient {
             headers.put("X-CPay-Channel", channelCode);
             headers.put("X-CPay-Reference", request.getReference());
             addOptionalHeader(headers, request, "authHeaderName", "authHeaderValue");
-            HttpRequestResponse httpResponse = Common.doHttpRequest("POST", endpoint, payload, headers);
+            HttpRequestResponse httpResponse =
+                    Common.doHttpRequest("POST", endpoint, payload, headers);
             int code = httpResponse.getStatusCode();
             boolean ok = code >= 200 && code < 300;
             String body = httpResponse.getResponse() == null ? "" : httpResponse.getResponse();

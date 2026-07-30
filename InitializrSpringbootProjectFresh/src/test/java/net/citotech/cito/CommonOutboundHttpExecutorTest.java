@@ -14,17 +14,18 @@ class CommonOutboundHttpExecutorTest {
     @Test
     void delegatesHttpRequestsToTheSpringManagedExecutorAndPreservesCorrelationId() {
         AtomicReference<Map<String, String>> capturedHeaders = new AtomicReference<>();
-        Common.setOutboundHttpExecutor((method, url, data, headers) -> {
-            capturedHeaders.set(headers);
-            HttpRequestResponse response = new HttpRequestResponse();
-            response.setUrl(url);
-            response.setRequestData(data);
-            response.setRequestHeaders(headers);
-            response.setStatusCode(202);
-            response.setResponse("accepted");
-            response.setErrorMessage("");
-            return response;
-        });
+        Common.setOutboundHttpExecutor(
+                (method, url, data, headers) -> {
+                    capturedHeaders.set(headers);
+                    HttpRequestResponse response = new HttpRequestResponse();
+                    response.setUrl(url);
+                    response.setRequestData(data);
+                    response.setRequestHeaders(headers);
+                    response.setStatusCode(202);
+                    response.setResponse("accepted");
+                    response.setErrorMessage("");
+                    return response;
+                });
         MDC.put("request_id", "req-test-1");
 
         try {

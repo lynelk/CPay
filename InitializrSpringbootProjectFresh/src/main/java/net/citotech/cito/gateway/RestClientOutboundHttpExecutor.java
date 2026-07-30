@@ -50,7 +50,8 @@ public class RestClientOutboundHttpExecutor implements Common.OutboundHttpExecut
     }
 
     @Override
-    public HttpRequestResponse execute(String method, String url, String data, Map<String, String> headers) {
+    public HttpRequestResponse execute(
+            String method, String url, String data, Map<String, String> headers) {
         String normalizedMethod = method == null ? "GET" : method.trim().toUpperCase(Locale.ROOT);
         Map<String, String> requestHeaders = headers == null ? Map.of() : new HashMap<>(headers);
         long startedNanos = System.nanoTime();
@@ -63,10 +64,16 @@ public class RestClientOutboundHttpExecutor implements Common.OutboundHttpExecut
 
             RestClient.RequestHeadersSpec<?> request =
                     hasBody(httpMethod) ? spec.body(data == null ? "" : data) : spec;
-            ResponseEntity<String> entity = request.exchange((clientRequest, clientResponse) ->
-                    ResponseEntity.status(clientResponse.getStatusCode())
-                            .headers(clientResponse.getHeaders())
-                            .body(StreamUtils.copyToString(clientResponse.getBody(), java.nio.charset.StandardCharsets.UTF_8)));
+            ResponseEntity<String> entity =
+                    request.exchange(
+                            (clientRequest, clientResponse) ->
+                                    ResponseEntity.status(clientResponse.getStatusCode())
+                                            .headers(clientResponse.getHeaders())
+                                            .body(
+                                                    StreamUtils.copyToString(
+                                                            clientResponse.getBody(),
+                                                            java.nio.charset.StandardCharsets
+                                                                    .UTF_8)));
 
             status = entity.getStatusCode().value();
             trace.setStatusCode(status);
@@ -77,7 +84,8 @@ public class RestClientOutboundHttpExecutor implements Common.OutboundHttpExecut
         } catch (Exception ex) {
             trace.setStatusCode(status);
             trace.setResponse("");
-            trace.setErrorMessage(ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
+            trace.setErrorMessage(
+                    ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
             return trace;
         } finally {
             recordMetric(normalizedMethod, url, status, startedNanos);
@@ -93,7 +101,9 @@ public class RestClientOutboundHttpExecutor implements Common.OutboundHttpExecut
     }
 
     private boolean hasBody(HttpMethod method) {
-        return HttpMethod.POST.equals(method) || HttpMethod.PUT.equals(method) || HttpMethod.PATCH.equals(method);
+        return HttpMethod.POST.equals(method)
+                || HttpMethod.PUT.equals(method)
+                || HttpMethod.PATCH.equals(method);
     }
 
     private Map<String, String> flattenHeaders(ResponseEntity<String> entity) {

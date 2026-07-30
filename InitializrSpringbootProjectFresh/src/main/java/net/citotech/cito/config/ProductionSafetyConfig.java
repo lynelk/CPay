@@ -20,16 +20,21 @@ public class ProductionSafetyConfig {
                 return;
             }
             if (!"PRODUCTION".equalsIgnoreCase(gatewayState)) {
-                throw new IllegalStateException("Production profiles require custom.gatewaystate=PRODUCTION");
+                throw new IllegalStateException(
+                        "Production profiles require custom.gatewaystate=PRODUCTION");
             }
             if ("memory".equalsIgnoreCase(nonceStore)) {
-                throw new IllegalStateException("Production profiles require a durable cpay.security.nonce-store");
+                throw new IllegalStateException(
+                        "Production profiles require a durable cpay.security.nonce-store");
             }
         };
     }
 
     private boolean isProductionProfile(Environment environment) {
         return Arrays.stream(environment.getActiveProfiles())
-            .anyMatch(profile -> "prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile));
+                .anyMatch(
+                        profile ->
+                                "prod".equalsIgnoreCase(profile)
+                                        || "production".equalsIgnoreCase(profile));
     }
 }

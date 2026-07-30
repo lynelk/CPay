@@ -21,23 +21,24 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 /**
  * Covers audit G1/G6: TransactionsLogController.testCheckstatusCron()/paymentsPayCron() are
- * scheduler-only money jobs protected by ShedLock, not direct HTTP-triggered crons guarded only
- * by a local-filesystem lock. This proves the real distributed-lock
- * mechanics against a real (if in-memory, since no MySQL is available in this test environment)
- * SQL engine: the same lock name can't be held twice concurrently, and releases correctly.
+ * scheduler-only money jobs protected by ShedLock, not direct HTTP-triggered crons guarded only by
+ * a local-filesystem lock. This proves the real distributed-lock mechanics against a real (if
+ * in-memory, since no MySQL is available in this test environment) SQL engine: the same lock name
+ * can't be held twice concurrently, and releases correctly.
  */
 class SchedulerLockConfigTest {
 
     private DataSource freshDatabase() {
         JdbcDataSource dataSource = new JdbcDataSource();
         dataSource.setUrl("jdbc:h2:mem:" + java.util.UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
-        new JdbcTemplate(dataSource).execute(
-            "CREATE TABLE shedlock ("
-                + "name VARCHAR(64) NOT NULL, "
-                + "lock_until TIMESTAMP(3) NOT NULL, "
-                + "locked_at TIMESTAMP(3) NOT NULL, "
-                + "locked_by VARCHAR(255) NOT NULL, "
-                + "PRIMARY KEY (name))");
+        new JdbcTemplate(dataSource)
+                .execute(
+                        "CREATE TABLE shedlock ("
+                                + "name VARCHAR(64) NOT NULL, "
+                                + "lock_until TIMESTAMP(3) NOT NULL, "
+                                + "locked_at TIMESTAMP(3) NOT NULL, "
+                                + "locked_by VARCHAR(255) NOT NULL, "
+                                + "PRIMARY KEY (name))");
         return dataSource;
     }
 
@@ -51,8 +52,12 @@ class SchedulerLockConfigTest {
     @Test
     void theSameLockNameCannotBeHeldByTwoCallersAtOnce() {
         LockProvider lockProvider = new SchedulerLockConfig().lockProvider(freshDatabase());
-        LockConfiguration config = new LockConfiguration(
-            Instant.now(), "paymentsPayCron", Duration.ofMinutes(20), Duration.ofSeconds(30));
+        LockConfiguration config =
+                new LockConfiguration(
+                        Instant.now(),
+                        "paymentsPayCron",
+                        Duration.ofMinutes(20),
+                        Duration.ofSeconds(30));
 
         Optional<SimpleLock> firstHolder = lockProvider.lock(config);
         Optional<SimpleLock> secondHolder = lockProvider.lock(config);
@@ -66,15 +71,24 @@ class SchedulerLockConfigTest {
     @Test
     void releasingTheLockAllowsItToBeAcquiredAgain() {
         LockProvider lockProvider = new SchedulerLockConfig().lockProvider(freshDatabase());
-        LockConfiguration config = new LockConfiguration(
-            Instant.now(), "testCheckstatusCron", Duration.ofMinutes(15), Duration.ofSeconds(0));
+        LockConfiguration config =
+                new LockConfiguration(
+                        Instant.now(),
+                        "testCheckstatusCron",
+                        Duration.ofMinutes(15),
+                        Duration.ofSeconds(0));
 
         Optional<SimpleLock> firstHolder = lockProvider.lock(config);
         assertThat(firstHolder).isPresent();
         firstHolder.get().unlock();
 
-        Optional<SimpleLock> secondHolder = lockProvider.lock(
-            new LockConfiguration(Instant.now(), "testCheckstatusCron", Duration.ofMinutes(15), Duration.ofSeconds(0)));
+        Optional<SimpleLock> secondHolder =
+                lockProvider.lock(
+                        new LockConfiguration(
+                                Instant.now(),
+                                "testCheckstatusCron",
+                                Duration.ofMinutes(15),
+                                Duration.ofSeconds(0)));
 
         assertThat(secondHolder).isPresent();
         secondHolder.get().unlock();
@@ -84,10 +98,20 @@ class SchedulerLockConfigTest {
     void differentLockNamesDoNotContendWithEachOther() {
         LockProvider lockProvider = new SchedulerLockConfig().lockProvider(freshDatabase());
 
-        Optional<SimpleLock> payoutLock = lockProvider.lock(new LockConfiguration(
-            Instant.now(), "paymentsPayCron", Duration.ofMinutes(20), Duration.ofSeconds(30)));
-        Optional<SimpleLock> statusCheckLock = lockProvider.lock(new LockConfiguration(
-            Instant.now(), "testCheckstatusCron", Duration.ofMinutes(15), Duration.ofSeconds(0)));
+        Optional<SimpleLock> payoutLock =
+                lockProvider.lock(
+                        new LockConfiguration(
+                                Instant.now(),
+                                "paymentsPayCron",
+                                Duration.ofMinutes(20),
+                                Duration.ofSeconds(30)));
+        Optional<SimpleLock> statusCheckLock =
+                lockProvider.lock(
+                        new LockConfiguration(
+                                Instant.now(),
+                                "testCheckstatusCron",
+                                Duration.ofMinutes(15),
+                                Duration.ofSeconds(0)));
 
         assertThat(payoutLock).isPresent();
         assertThat(statusCheckLock).isPresent();
@@ -98,7 +122,8 @@ class SchedulerLockConfigTest {
 
     @Test
     void configEnablesSchedulerLockWithASensibleDefaultCeiling() {
-        EnableSchedulerLock annotation = SchedulerLockConfig.class.getAnnotation(EnableSchedulerLock.class);
+        EnableSchedulerLock annotation =
+                SchedulerLockConfig.class.getAnnotation(EnableSchedulerLock.class);
 
         assertThat(annotation).isNotNull();
         assertThat(annotation.defaultLockAtMostFor()).isEqualTo("PT10M");
@@ -106,7 +131,8 @@ class SchedulerLockConfigTest {
 
     @Test
     void bothMoneyMovementCronsAreScheduledLockedAndNotHttpMapped() throws NoSuchMethodException {
-        Method statusCheckCron = TransactionsLogController.class.getDeclaredMethod("testCheckstatusCron");
+        Method statusCheckCron =
+                TransactionsLogController.class.getDeclaredMethod("testCheckstatusCron");
         Method payoutCron = TransactionsLogController.class.getDeclaredMethod("paymentsPayCron");
 
         SchedulerLock statusCheckLock = statusCheckCron.getAnnotation(SchedulerLock.class);

@@ -20,14 +20,16 @@ class ChannelBalanceRepositoryTest {
     @Test
     void readsThePendingBalanceColumnDefinedByTheMigration() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        when(jdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        any(String.class), any(MapSqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.of());
         ChannelBalanceRepository repository = new ChannelBalanceRepository(jdbcTemplate);
 
         repository.findByMerchant(42L);
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate).query(sql.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));
+        verify(jdbcTemplate)
+                .query(sql.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));
         assertThat(sql.getValue()).contains("pending_balance");
         assertThat(sql.getValue()).doesNotContain("reserved_balance");
     }
@@ -37,14 +39,22 @@ class ChannelBalanceRepositoryTest {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         ChannelBalanceRepository repository = new ChannelBalanceRepository(jdbcTemplate);
 
-        repository.upsert(42L, "mtn_momo", "MTNMoMoPaymentGateway", "UGX",
-            new BigDecimal("100.00"), new BigDecimal("100.00"), new BigDecimal("5.00"));
+        repository.upsert(
+                42L,
+                "mtn_momo",
+                "MTNMoMoPaymentGateway",
+                "UGX",
+                new BigDecimal("100.00"),
+                new BigDecimal("100.00"),
+                new BigDecimal("5.00"));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<MapSqlParameterSource> parameters = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        ArgumentCaptor<MapSqlParameterSource> parameters =
+                ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(jdbcTemplate).update(sql.capture(), parameters.capture());
         assertThat(sql.getValue()).contains("pending_balance");
         assertThat(sql.getValue()).doesNotContain("reserved_balance");
-        assertThat(parameters.getValue().getValue("pending_balance")).isEqualTo(new BigDecimal("5.00"));
+        assertThat(parameters.getValue().getValue("pending_balance"))
+                .isEqualTo(new BigDecimal("5.00"));
     }
 }
