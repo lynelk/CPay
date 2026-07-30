@@ -5,6 +5,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import java.util.Optional;
@@ -15,16 +17,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 /**
- * Covers audit K2: WireMock-based provider API mocking. {@code AirtelMoneyOpenApiPaymentGateway401RefreshTest}
- * (audit C2) proved the 401-retry flow using a hand-rolled {@code com.sun.net.httpserver.HttpServer}.
- * This complements it by demonstrating the same class of test (a provider HTTP integration) built
- * on WireMock's stubbing DSL instead - covering the three response shapes a real integration must
- * survive: a clean success, a provider-declined failure, and a malformed/unparseable success body -
- * without needing to hand-write raw HTTP response bytes for each case.
+ * Covers audit K2: WireMock-based provider API mocking. {@code
+ * AirtelMoneyOpenApiPaymentGateway401RefreshTest} (audit C2) proved the 401-retry flow using a
+ * hand-rolled {@code com.sun.net.httpserver.HttpServer}. This complements it by demonstrating the
+ * same class of test (a provider HTTP integration) built on WireMock's stubbing DSL instead -
+ * covering the three response shapes a real integration must survive: a clean success, a
+ * provider-declined failure, and a malformed/unparseable success body - without needing to
+ * hand-write raw HTTP response bytes for each case.
  */
 class AirtelMoneyOpenApiPaymentGatewayWireMockTest {
 
@@ -39,10 +39,10 @@ class AirtelMoneyOpenApiPaymentGatewayWireMockTest {
         ProviderToken validToken = mock(ProviderToken.class);
         when(validToken.getTokenValue()).thenReturn("wiremock-valid-token");
         when(tokenStoreService.findValid(
-                org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString()))
-            .thenReturn(Optional.of(validToken));
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.of(validToken));
         new ProviderTokenStoreRegistry(tokenStoreService);
     }
 
@@ -54,69 +54,94 @@ class AirtelMoneyOpenApiPaymentGatewayWireMockTest {
 
     @Test
     void aSuccessfulDisbursementResponseIsMappedToSuccessful() throws Exception {
-        wireMockServer.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post(urlEqualTo("/standard/v2/disbursements/"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withHeader("Content-Type", "application/json")
-                .withBody("{\"data\":{\"transaction\":{\"status\":\"TS\",\"airtel_money_id\":\"AM-WM-1\"}},"
-                    + "\"status\":{\"result_code\":\"0\",\"message\":\"OK\"}}")));
+        wireMockServer.stubFor(
+                com.github.tomakehurst.wiremock.client.WireMock.post(
+                                urlEqualTo("/standard/v2/disbursements/"))
+                        .willReturn(
+                                aResponse()
+                                        .withStatus(200)
+                                        .withHeader("Content-Type", "application/json")
+                                        .withBody(
+                                                "{\"data\":{\"transaction\":{\"status\":\"TS\",\"airtel_money_id\":\"AM-WM-1\"}},"
+                                                        + "\"status\":{\"result_code\":\"0\",\"message\":\"OK\"}}")));
 
-        GateWayResponse response = gateway().doPayOut(1000.0, "256700000000", "wm-ref-1", "narrative");
+        GateWayResponse response =
+                gateway().doPayOut(1000.0, "256700000000", "wm-ref-1", "narrative");
 
         assertThat(response.getTransactionStatus()).isEqualTo("SUCCESSFUL");
         assertThat(response.getNetworkId()).isEqualTo("AM-WM-1");
-        wireMockServer.verify(postRequestedFor(urlEqualTo("/standard/v2/disbursements/"))
-            .withHeader("Authorization", equalTo("Bearer wiremock-valid-token")));
+        wireMockServer.verify(
+                postRequestedFor(urlEqualTo("/standard/v2/disbursements/"))
+                        .withHeader("Authorization", equalTo("Bearer wiremock-valid-token")));
     }
 
     @Test
     void aProviderDeclinedResponseIsMappedToFailed() throws Exception {
-        wireMockServer.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post(urlEqualTo("/standard/v2/disbursements/"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withHeader("Content-Type", "application/json")
-                .withBody("{\"data\":{\"transaction\":{\"status\":\"TF\",\"airtel_money_id\":\"AM-WM-2\"}},"
-                    + "\"status\":{\"result_code\":\"ESB000010\",\"message\":\"Insufficient float\"}}")));
+        wireMockServer.stubFor(
+                com.github.tomakehurst.wiremock.client.WireMock.post(
+                                urlEqualTo("/standard/v2/disbursements/"))
+                        .willReturn(
+                                aResponse()
+                                        .withStatus(200)
+                                        .withHeader("Content-Type", "application/json")
+                                        .withBody(
+                                                "{\"data\":{\"transaction\":{\"status\":\"TF\",\"airtel_money_id\":\"AM-WM-2\"}},"
+                                                        + "\"status\":{\"result_code\":\"ESB000010\",\"message\":\"Insufficient float\"}}")));
 
-        GateWayResponse response = gateway().doPayOut(1000.0, "256700000000", "wm-ref-2", "narrative");
+        GateWayResponse response =
+                gateway().doPayOut(1000.0, "256700000000", "wm-ref-2", "narrative");
 
         assertThat(response.getTransactionStatus()).isEqualTo("FAILED");
-        // Audit C6: Airtel's own decline wording ("Insufficient float") is raw provider text and must
-        // not reach the merchant directly - only the translated, merchant-safe message does. The raw
+        // Audit C6: Airtel's own decline wording ("Insufficient float") is raw provider text and
+        // must
+        // not reach the merchant directly - only the translated, merchant-safe message does. The
+        // raw
         // resultCode/message is still available internally via requestTrace for support diagnosis.
         assertThat(response.getMessage()).isEqualTo("The payment provider declined this request.");
         assertThat(response.getRequestTrace()).contains("Insufficient float").contains("ESB000010");
     }
 
     @Test
-    void aNonTwoHundredResponseIsMappedToFailedWithATranslatedMerchantSafeMessage() throws Exception {
-        wireMockServer.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post(urlEqualTo("/standard/v2/disbursements/"))
-            .willReturn(aResponse()
-                .withStatus(503)
-                .withHeader("Content-Type", "application/json")
-                .withBody("{\"error\":\"service_unavailable\"}")));
+    void aNonTwoHundredResponseIsMappedToFailedWithATranslatedMerchantSafeMessage()
+            throws Exception {
+        wireMockServer.stubFor(
+                com.github.tomakehurst.wiremock.client.WireMock.post(
+                                urlEqualTo("/standard/v2/disbursements/"))
+                        .willReturn(
+                                aResponse()
+                                        .withStatus(503)
+                                        .withHeader("Content-Type", "application/json")
+                                        .withBody("{\"error\":\"service_unavailable\"}")));
 
-        GateWayResponse response = gateway().doPayOut(1000.0, "256700000000", "wm-ref-3", "narrative");
+        GateWayResponse response =
+                gateway().doPayOut(1000.0, "256700000000", "wm-ref-3", "narrative");
 
         assertThat(response.getStatus()).isEqualTo("ERROR");
         assertThat(response.getTransactionStatus()).isEqualTo("FAILED");
         // Audit C6: previously the raw response body ("{\"error\":\"service_unavailable\"}") was
-        // handed straight to the merchant as the message. A 503 is classified as a retryable provider
-        // outage rather than a hard decline; the raw body is preserved in requestTrace, not message.
-        assertThat(response.getMessage()).isEqualTo("The payment provider is temporarily unavailable, retry is safe.");
+        // handed straight to the merchant as the message. A 503 is classified as a retryable
+        // provider
+        // outage rather than a hard decline; the raw body is preserved in requestTrace, not
+        // message.
+        assertThat(response.getMessage())
+                .isEqualTo("The payment provider is temporarily unavailable, retry is safe.");
         assertThat(response.getMessage()).doesNotContain("service_unavailable");
         assertThat(response.getRequestTrace()).contains("service_unavailable");
     }
 
     @Test
     void aMalformedJsonSuccessBodyFailsClosedRatherThanCrashingTheCaller() throws Exception {
-        wireMockServer.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post(urlEqualTo("/standard/v2/disbursements/"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withHeader("Content-Type", "application/json")
-                .withBody("{this is not valid json")));
+        wireMockServer.stubFor(
+                com.github.tomakehurst.wiremock.client.WireMock.post(
+                                urlEqualTo("/standard/v2/disbursements/"))
+                        .willReturn(
+                                aResponse()
+                                        .withStatus(200)
+                                        .withHeader("Content-Type", "application/json")
+                                        .withBody("{this is not valid json")));
 
-        GateWayResponse response = gateway().doPayOut(1000.0, "256700000000", "wm-ref-4", "narrative");
+        GateWayResponse response =
+                gateway().doPayOut(1000.0, "256700000000", "wm-ref-4", "narrative");
 
         // submit()'s catch-all Exception handler maps any parsing failure to UNDETERMINED rather
         // than letting a malformed provider response propagate as an uncaught exception.
@@ -125,14 +150,16 @@ class AirtelMoneyOpenApiPaymentGatewayWireMockTest {
 
     private AirtelMoneyOpenApiPaymentGateway gateway() throws Exception {
         AirtelMoneyOpenApiPaymentGateway gateway = new AirtelMoneyOpenApiPaymentGateway();
-        gateway.setApiDetails("http://localhost:" + wireMockServer.port(), "client-id", "client-secret", "1234");
+        gateway.setApiDetails(
+                "http://localhost:" + wireMockServer.port(), "client-id", "client-secret", "1234");
         gateway.setSegment("disbursement");
         gateway.setPublicKey(generateTestPublicKeyBase64());
         return gateway;
     }
 
     private static String generateTestPublicKeyBase64() throws Exception {
-        java.security.KeyPairGenerator generator = java.security.KeyPairGenerator.getInstance("RSA");
+        java.security.KeyPairGenerator generator =
+                java.security.KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
         java.security.KeyPair keyPair = generator.generateKeyPair();
         return java.util.Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());

@@ -5,8 +5,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,8 +26,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
-    // Audit H1: converted from java.util.logging to SLF4J (money-path class: Airtel OpenAPI gateway).
-    private static final Logger logger = LoggerFactory.getLogger(AirtelMoneyOpenApiPaymentGateway.class);
+    // Audit H1: converted from java.util.logging to SLF4J (money-path class: Airtel OpenAPI
+    // gateway).
+    private static final Logger logger =
+            LoggerFactory.getLogger(AirtelMoneyOpenApiPaymentGateway.class);
     private static final int TOKEN_TTL_MINUTES = 1;
 
     String xml_sent = "";
@@ -46,7 +48,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     String collectionStatusPath = "/standard/v2/payments/{reference}/";
     String disbursementStatusPath = "/standard/v2/disbursements/{reference}/";
 
-    static public String BALANCE_TYPE = "airtelmm_balance";
+    public static String BALANCE_TYPE = "airtelmm_balance";
     public static String[] prefix = {"25675", "25670", "25676"};
     public static String gateway_id = "AirtelMoneyOpenApiPaymentGateway";
     public static String gateway_currency_code = "AIRTELMM";
@@ -57,11 +59,13 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     String api_disbursements_user = "";
     String api_disbursements_key = "";
     String api_disbursements_subscription = "";
-    
+
     String publicKey = "";
 
     public static boolean isValidMisdn(String msisdn) {
-        Boolean fromRoutingTable = net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(gateway_id, msisdn);
+        Boolean fromRoutingTable =
+                net.citotech.cito.gateway.ChannelRoutingRegistry.matchesConfiguredPrefix(
+                        gateway_id, msisdn);
         if (fromRoutingTable != null) {
             return fromRoutingTable;
         }
@@ -74,15 +78,14 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         return false;
     }
 
-
-    public void setApiDetails(String global_url, String api_username, String api_password, String api_pin) {
+    public void setApiDetails(
+            String global_url, String api_username, String api_password, String api_pin) {
         if (global_url != null && !global_url.trim().isEmpty()) {
             this.global_url = global_url.trim();
         }
         this.api_username = api_username;
         this.api_password = api_password;
         this.api_pin = api_pin;
-
     }
 
     public void setEndpointDetails(
@@ -97,7 +100,8 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         this.disbursementsPath = valueOrCurrent(disbursementsPath, this.disbursementsPath);
         this.balancePath = valueOrCurrent(balancePath, this.balancePath);
         this.collectionStatusPath = valueOrCurrent(collectionStatusPath, this.collectionStatusPath);
-        this.disbursementStatusPath = valueOrCurrent(disbursementStatusPath, this.disbursementStatusPath);
+        this.disbursementStatusPath =
+                valueOrCurrent(disbursementStatusPath, this.disbursementStatusPath);
     }
 
     String tokenUrl() {
@@ -117,7 +121,10 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     }
 
     String statusUrl(String segment, String reference) {
-        String template = "collection".equalsIgnoreCase(segment) ? collectionStatusPath : disbursementStatusPath;
+        String template =
+                "collection".equalsIgnoreCase(segment)
+                        ? collectionStatusPath
+                        : disbursementStatusPath;
         String encodedRef = encodePathSegment(reference);
         if (template.contains("{reference}")) {
             return endpoint(template.replace("{reference}", encodedRef));
@@ -138,11 +145,11 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         return publicKey;
     }
 
-    static public String getGatewayCurrencyCode() {
+    public static String getGatewayCurrencyCode() {
         return gateway_currency_code;
     }
 
-    static public String getGatewayId() {
+    public static String getGatewayId() {
         return gateway_id;
     }
 
@@ -172,10 +179,14 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 // Audit C2: see the matching comment in submit() above.
                 Token refreshed = requestToken();
                 if (refreshed != null) {
-                    response = Common.doHttpRequest("GET", balanceUrl(), "", standardHeaders(refreshed));
+                    response =
+                            Common.doHttpRequest(
+                                    "GET", balanceUrl(), "", standardHeaders(refreshed));
                 }
             }
-            if (response == null || response.getStatusCode() != 200 || response.getResponse().isEmpty()) {
+            if (response == null
+                    || response.getStatusCode() != 200
+                    || response.getResponse().isEmpty()) {
                 return 0.0;
             }
             JSONObject json = new JSONObject(response.getResponse());
@@ -207,8 +218,12 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             body.put("payee", payeeObject);
             body.put("reference", narrative);
             return submit("POST", disbursementUrl(), body.toString(), ref);
-        } catch (BadPaddingException | IllegalBlockSizeException | InvalidKeyException |
-                 NoSuchPaddingException | NoSuchAlgorithmException | JSONException e) {
+        } catch (BadPaddingException
+                | IllegalBlockSizeException
+                | InvalidKeyException
+                | NoSuchPaddingException
+                | NoSuchAlgorithmException
+                | JSONException e) {
             return gatewayErrorFromException(e, "FAILED", "doPayOut");
         }
     }
@@ -262,7 +277,8 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 JSONObject data = r.getJSONObject("data");
                 if (!data.isNull("first_name")) info.setFirstName(data.getString("first_name"));
                 if (!data.isNull("last_name")) info.setLastName(data.getString("last_name"));
-                if (!data.isNull("is_barred")) info.setStatus(data.getBoolean("is_barred") ? "BARRED" : "ACTIVE");
+                if (!data.isNull("is_barred"))
+                    info.setStatus(data.getBoolean("is_barred") ? "BARRED" : "ACTIVE");
                 if (!data.isNull("msisdn")) info.setMsisdn(data.getString("msisdn"));
             }
         } catch (Exception ex) {
@@ -273,7 +289,8 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
 
     public Token getToken() throws IOException, JSONException {
         Token token = readToken();
-        if (token == null || LocalDateTime.now().isAfter(token.created_on.plusMinutes(TOKEN_TTL_MINUTES))) {
+        if (token == null
+                || LocalDateTime.now().isAfter(token.created_on.plusMinutes(TOKEN_TTL_MINUTES))) {
             return requestToken();
         }
         return token;
@@ -287,8 +304,11 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         body.put("client_secret", this.api_password);
         body.put("grant_type", "client_credentials");
 
-        HttpRequestResponse response = Common.doHttpRequest("POST", tokenUrl(), body.toString(), headers);
-        if (response == null || response.getStatusCode() != 200 || response.getResponse().isEmpty()) {
+        HttpRequestResponse response =
+                Common.doHttpRequest("POST", tokenUrl(), body.toString(), headers);
+        if (response == null
+                || response.getStatusCode() != 200
+                || response.getResponse().isEmpty()) {
             logger.error("Failed to get Airtel OpenAPI token");
             return null;
         }
@@ -305,7 +325,8 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             if (token == null) {
                 return gatewayError("Failed to obtain Airtel OpenAPI token", "UNDETERMINED", "");
             }
-            HttpRequestResponse response = Common.doHttpRequest(method, url, data, standardHeaders(token));
+            HttpRequestResponse response =
+                    Common.doHttpRequest(method, url, data, standardHeaders(token));
             if (response != null && response.getStatusCode() == 401) {
                 // Audit C2: the provider rejected this token even though our own TTL-based check
                 // (getToken()) considered it still valid - revoked early, clock skew, or a
@@ -328,34 +349,52 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             } else {
                 gatewayResponse.setStatus("ERROR");
                 gatewayResponse.setTransactionStatus("FAILED");
-                // Audit C6: response.getResponse() is the RAW, unfiltered Airtel OpenAPI response body -
+                // Audit C6: response.getResponse() is the RAW, unfiltered Airtel OpenAPI response
+                // body -
                 // it must never be handed to a merchant directly. Translate it into a merchant-safe
-                // message; the raw body is still available internally via requestTrace (set above from
+                // message; the raw body is still available internally via requestTrace (set above
+                // from
                 // response.toString(), which is never serialized into a merchant-facing response).
-                ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateProviderResponse(
-                        response.getStatusCode(), response.getResponse(), extractResultCode(response.getResponse()));
+                ProviderErrorTranslator.Translation translation =
+                        ProviderErrorTranslator.translateProviderResponse(
+                                response.getStatusCode(),
+                                response.getResponse(),
+                                extractResultCode(response.getResponse()));
                 gatewayResponse.setMessage(translation.merchantMessage());
             }
             return gatewayResponse;
         } catch (Exception e) {
-            // Audit J7: e.getMessage() previously went straight into the merchant-facing message field
-            // below, and this exception was never logged anywhere - the real cause was neither safely
-            // surfaced nor actually captured for internal diagnosis. Log it here, and hand the merchant
+            // Audit J7: e.getMessage() previously went straight into the merchant-facing message
+            // field
+            // below, and this exception was never logged anywhere - the real cause was neither
+            // safely
+            // surfaced nor actually captured for internal diagnosis. Log it here, and hand the
+            // merchant
             // only a stable reason code plus a generic, safe message.
             logger.error("Airtel OpenAPI request failed for " + url, e);
-            ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateInternalFailure(e);
+            ProviderErrorTranslator.Translation translation =
+                    ProviderErrorTranslator.translateInternalFailure(e);
             GateWayResponse errorResponse = new GateWayResponse();
             errorResponse.setHttpStatus("0");
             errorResponse.setStatus("ERROR");
             errorResponse.setTransactionStatus("UNDETERMINED");
             errorResponse.setMessage(translation.merchantMessage());
-            errorResponse.setRequestTrace(translation.stableCode() + ": " + e.getClass().getSimpleName()
-                    + (e.getMessage() == null ? "" : " - " + e.getMessage()) + " | " + url + data);
+            errorResponse.setRequestTrace(
+                    translation.stableCode()
+                            + ": "
+                            + e.getClass().getSimpleName()
+                            + (e.getMessage() == null ? "" : " - " + e.getMessage())
+                            + " | "
+                            + url
+                            + data);
             return errorResponse;
         }
     }
 
-    /** Best-effort extraction of Airtel OpenAPI's {@code status.result_code} for translation purposes only - never throws. */
+    /**
+     * Best-effort extraction of Airtel OpenAPI's {@code status.result_code} for translation
+     * purposes only - never throws.
+     */
     private String extractResultCode(String rawBody) {
         if (rawBody == null || rawBody.trim().isEmpty()) {
             return null;
@@ -369,12 +408,14 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 }
             }
         } catch (Exception ignored) {
-            // Not parseable as the expected shape - translator falls back to httpStatus-only classification.
+            // Not parseable as the expected shape - translator falls back to httpStatus-only
+            // classification.
         }
         return null;
     }
 
-    private void applySuccessResponse(GateWayResponse gatewayResponse, HttpRequestResponse response) throws JSONException {
+    private void applySuccessResponse(GateWayResponse gatewayResponse, HttpRequestResponse response)
+            throws JSONException {
         gatewayResponse.setStatus("OK");
         gatewayResponse.setTransactionStatus("PENDING");
         gatewayResponse.setMessage("Request submitted to the network successfully.");
@@ -385,7 +426,11 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         if (!json.isNull("data") && !json.getJSONObject("data").isNull("transaction")) {
             JSONObject transaction = json.getJSONObject("data").getJSONObject("transaction");
             String status = transaction.isNull("status") ? "" : transaction.getString("status");
-            String networkId = transaction.isNull("airtel_money_id") ? "" : transaction.optString("airtel_money_id", transaction.optString("reference_id", ""));
+            String networkId =
+                    transaction.isNull("airtel_money_id")
+                            ? ""
+                            : transaction.optString(
+                                    "airtel_money_id", transaction.optString("reference_id", ""));
             gatewayResponse.setNetworkId(networkId);
             if ("TS".equalsIgnoreCase(status)) {
                 gatewayResponse.setTransactionStatus("SUCCESSFUL");
@@ -400,7 +445,8 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         if (!json.isNull("status")) {
             JSONObject status = json.getJSONObject("status");
             resultCode = status.isNull("result_code") ? "" : status.getString("result_code");
-            providerMessage = status.isNull("message") ? providerMessage : status.getString("message");
+            providerMessage =
+                    status.isNull("message") ? providerMessage : status.getString("message");
             if (isFailedErrorList(resultCode)) {
                 gatewayResponse.setStatus("ERROR");
                 gatewayResponse.setTransactionStatus("FAILED");
@@ -408,15 +454,20 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         }
         // Audit C6: `providerMessage` here is Airtel's own wording (status.message / transaction
         // status). It is safe to surface verbatim when the transaction actually succeeded (a benign
-        // confirmation string), but once anything above has classified this as a failure - whether via
-        // the resultCode allow-list or the transaction.status "TF"/"TA" mapping earlier in this method -
+        // confirmation string), but once anything above has classified this as a failure - whether
+        // via
+        // the resultCode allow-list or the transaction.status "TF"/"TA" mapping earlier in this
+        // method -
         // translate it into a merchant-safe message instead of forwarding Airtel's decline wording
         // as-is. The raw resultCode/message are preserved in requestTrace (set in submit(), from
         // response.toString(), before this method runs).
         String transactionStatus = gatewayResponse.getTransactionStatus();
         if ("FAILED".equals(transactionStatus) || "UNDETERMINED".equals(transactionStatus)) {
-            ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateProviderResponse(
-                    response.getStatusCode(), response.getResponse(), resultCode.isEmpty() ? null : resultCode);
+            ProviderErrorTranslator.Translation translation =
+                    ProviderErrorTranslator.translateProviderResponse(
+                            response.getStatusCode(),
+                            response.getResponse(),
+                            resultCode.isEmpty() ? null : resultCode);
             gatewayResponse.setMessage(translation.merchantMessage());
         } else {
             gatewayResponse.setMessage(providerMessage);
@@ -424,9 +475,11 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     }
 
     private Token readToken() {
-        // Tokens live only in the encrypted provider_tokens DB store (see ProviderTokenStoreService) -
+        // Tokens live only in the encrypted provider_tokens DB store (see
+        // ProviderTokenStoreService) -
         // no plaintext on-disk cache.
-        Optional<ProviderToken> databaseToken = ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
+        Optional<ProviderToken> databaseToken =
+                ProviderTokenStoreRegistry.findValid(gateway_id, this.segment, tokenEnvironment());
         if (databaseToken.isPresent()) {
             return new Token(databaseToken.get().getTokenValue(), LocalDateTime.now());
         }
@@ -467,9 +520,10 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         if (configured.startsWith("http://") || configured.startsWith("https://")) {
             return configured;
         }
-        String base = this.global_url == null || this.global_url.trim().isEmpty()
-                ? "https://openapiuat.airtel.africa"
-                : this.global_url.trim();
+        String base =
+                this.global_url == null || this.global_url.trim().isEmpty()
+                        ? "https://openapiuat.airtel.africa"
+                        : this.global_url.trim();
         return appendPath(base, configured);
     }
 
@@ -509,26 +563,42 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
 
     /**
      * Audit J7: builds an error response from a caught internal exception (JSON building, crypto
-     * failure - not a provider HTTP error) without handing the raw exception message to the merchant,
-     * and without the exception silently disappearing (previously neither logged nor safely surfaced).
-     * The exception detail is logged and kept in requestTrace (internal-only) for support diagnosis.
+     * failure - not a provider HTTP error) without handing the raw exception message to the
+     * merchant, and without the exception silently disappearing (previously neither logged nor
+     * safely surfaced). The exception detail is logged and kept in requestTrace (internal-only) for
+     * support diagnosis.
      */
-    private GateWayResponse gatewayErrorFromException(Exception e, String transactionStatus, String operation) {
+    private GateWayResponse gatewayErrorFromException(
+            Exception e, String transactionStatus, String operation) {
         logger.error("Airtel OpenAPI " + operation + " failed before any provider call", e);
-        ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateInternalFailure(e);
+        ProviderErrorTranslator.Translation translation =
+                ProviderErrorTranslator.translateInternalFailure(e);
         GateWayResponse response = new GateWayResponse();
         response.setHttpStatus("0");
         response.setStatus("ERROR");
         response.setTransactionStatus(transactionStatus);
         response.setMessage(translation.merchantMessage());
-        response.setRequestTrace(translation.stableCode() + ": " + e.getClass().getSimpleName()
-                + (e.getMessage() == null ? "" : " - " + e.getMessage()));
+        response.setRequestTrace(
+                translation.stableCode()
+                        + ": "
+                        + e.getClass().getSimpleName()
+                        + (e.getMessage() == null ? "" : " - " + e.getMessage()));
         return response;
     }
 
     private Boolean isFailedErrorList(String error) {
-        String[] errors = {"ESB000004", "ESB000008", "ESB000011", "ESB000014", "ESB000033", "ESB000034",
-                "ESB000035", "ESB000036", "ESB000039", "ESB000045"};
+        String[] errors = {
+            "ESB000004",
+            "ESB000008",
+            "ESB000011",
+            "ESB000014",
+            "ESB000033",
+            "ESB000034",
+            "ESB000035",
+            "ESB000036",
+            "ESB000039",
+            "ESB000045"
+        };
         for (String code : errors) {
             if (code.equals(error)) {
                 return true;
@@ -551,8 +621,10 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         }
 
         public String toString() {
-            return "Token: " + this.token + "\nCreated On: " + this.created_on.format(Common.getDateTimeFormater());
+            return "Token: "
+                    + this.token
+                    + "\nCreated On: "
+                    + this.created_on.format(Common.getDateTimeFormater());
         }
     }
 }
-

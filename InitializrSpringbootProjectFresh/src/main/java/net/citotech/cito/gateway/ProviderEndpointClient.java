@@ -13,16 +13,28 @@ import net.citotech.cito.Model.GateWayResponse;
 public final class ProviderEndpointClient {
     private ProviderEndpointClient() {}
 
-    public static GateWayResponse execute(String channelCode, String displayName, String operation, PaymentGatewayRequest request) {
+    public static GateWayResponse execute(
+            String channelCode,
+            String displayName,
+            String operation,
+            PaymentGatewayRequest request) {
         String endpoint = request.getMetadata().get(operation.toLowerCase() + "Url");
         String mode = request.getMetadata().getOrDefault("gatewayState", "SANDBOX");
         if (isBlank(endpoint)) {
-            if ("PRODUCTION".equalsIgnoreCase(mode)) throw new PaymentGatewayException("Provider endpoint URL is required in production mode");
-            return accepted(channelCode, displayName, operation, request, "Sandbox endpoint URL not configured");
+            if ("PRODUCTION".equalsIgnoreCase(mode))
+                throw new PaymentGatewayException(
+                        "Provider endpoint URL is required in production mode");
+            return accepted(
+                    channelCode,
+                    displayName,
+                    operation,
+                    request,
+                    "Sandbox endpoint URL not configured");
         }
         try {
             String payload = jsonPayload(channelCode, operation, request);
-            HttpURLConnection connection = (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
+            HttpURLConnection connection =
+                    (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
             connection.setConnectTimeout(10000);
@@ -41,30 +53,52 @@ public final class ProviderEndpointClient {
             result.setStatus(ok ? "SUCCESS" : "FAILED");
             result.setTransactionStatus(ok ? "SUBMITTED" : "FAILED");
             result.setHttpStatus(String.valueOf(code));
-            // Audit C6: `body` is the RAW, unfiltered provider response - never hand it to a merchant
-            // directly on failure. Unlike ProviderEndpointExecutionService, this class has no separate
+            // Audit C6: `body` is the RAW, unfiltered provider response - never hand it to a
+            // merchant
+            // directly on failure. Unlike ProviderEndpointExecutionService, this class has no
+            // separate
             // DB-backed run log, so the raw body is kept in requestTrace (internal-only - never
-            // serialized into a merchant-facing response, see GateWayResponse/PaymentResult) instead of
+            // serialized into a merchant-facing response, see GateWayResponse/PaymentResult)
+            // instead of
             // being dropped entirely.
-            String merchantMessage = ok
-                    ? displayName + " " + operation + " endpoint response: " + truncate(body)
-                    : ProviderErrorTranslator.translateProviderResponse(code, body).merchantMessage();
+            String merchantMessage =
+                    ok
+                            ? displayName
+                                    + " "
+                                    + operation
+                                    + " endpoint response: "
+                                    + truncate(body)
+                            : ProviderErrorTranslator.translateProviderResponse(code, body)
+                                    .merchantMessage();
             result.setMessage(merchantMessage);
             result.setNetworkId(channelCode + "-" + request.getReference());
-            result.setRequestTrace("requestHash=" + sha256(payload) + (ok ? "" : " | rawResponse=" + truncate(body)));
+            result.setRequestTrace(
+                    "requestHash="
+                            + sha256(payload)
+                            + (ok ? "" : " | rawResponse=" + truncate(body)));
             return result;
         } catch (Exception e) {
-            throw new PaymentGatewayException("Provider endpoint execution failed: " + e.getMessage());
+            throw new PaymentGatewayException(
+                    "Provider endpoint execution failed: " + e.getMessage());
         }
     }
 
-    private static void addOptionalHeader(HttpURLConnection connection, PaymentGatewayRequest request, String nameKey, String valueKey) {
+    private static void addOptionalHeader(
+            HttpURLConnection connection,
+            PaymentGatewayRequest request,
+            String nameKey,
+            String valueKey) {
         String name = request.getMetadata().get(nameKey);
         String value = request.getMetadata().get(valueKey);
         if (!isBlank(name) && !isBlank(value)) connection.setRequestProperty(name, value);
     }
 
-    private static GateWayResponse accepted(String channelCode, String displayName, String operation, PaymentGatewayRequest request, String reason) {
+    private static GateWayResponse accepted(
+            String channelCode,
+            String displayName,
+            String operation,
+            PaymentGatewayRequest request,
+            String reason) {
         GateWayResponse result = new GateWayResponse();
         result.setStatus("SUCCESS");
         result.setTransactionStatus("SUBMITTED");
@@ -74,13 +108,40 @@ public final class ProviderEndpointClient {
         return result;
     }
 
-    private static String jsonPayload(String channelCode, String operation, PaymentGatewayRequest request) {
-        return "{" + "\"channelCode\":\"" + escape(channelCode) + "\"," + "\"operation\":\"" + escape(operation) + "\"," + "\"merchantNumber\":\"" + escape(request.getMerchantNumber()) + "\"," + "\"accountIdentifier\":\"" + escape(request.getAccountIdentifier()) + "\"," + "\"amount\":" + request.getAmount() + "," + "\"reference\":\"" + escape(request.getReference()) + "\"," + "\"description\":\"" + escape(request.getDescription()) + "\"," + "\"callbackUrl\":\"" + escape(request.getCallbackUrl()) + "\"" + "}";
+    private static String jsonPayload(
+            String channelCode, String operation, PaymentGatewayRequest request) {
+        return "{"
+                + "\"channelCode\":\""
+                + escape(channelCode)
+                + "\","
+                + "\"operation\":\""
+                + escape(operation)
+                + "\","
+                + "\"merchantNumber\":\""
+                + escape(request.getMerchantNumber())
+                + "\","
+                + "\"accountIdentifier\":\""
+                + escape(request.getAccountIdentifier())
+                + "\","
+                + "\"amount\":"
+                + request.getAmount()
+                + ","
+                + "\"reference\":\""
+                + escape(request.getReference())
+                + "\","
+                + "\"description\":\""
+                + escape(request.getDescription())
+                + "\","
+                + "\"callbackUrl\":\""
+                + escape(request.getCallbackUrl())
+                + "\""
+                + "}";
     }
 
     private static String read(InputStream inputStream) throws Exception {
         if (inputStream == null) return "";
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        try (BufferedReader reader =
+                new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             StringBuilder builder = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) builder.append(line);
@@ -96,8 +157,15 @@ public final class ProviderEndpointClient {
         return builder.toString();
     }
 
-    private static String truncate(String value) { return value == null ? "" : (value.length() <= 1000 ? value : value.substring(0, 1000)); }
-    private static boolean isBlank(String value) { return value == null || value.trim().isEmpty(); }
-    private static String escape(String value) { return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\""); }
-}
+    private static String truncate(String value) {
+        return value == null ? "" : (value.length() <= 1000 ? value : value.substring(0, 1000));
+    }
 
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private static String escape(String value) {
+        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+}
