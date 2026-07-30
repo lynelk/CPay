@@ -113,8 +113,20 @@ public class AdapterNativePaymentService {
         result.setChannel(adapter.channelCode());
         result.setEnvironment(environment);
         result.setCurrency(request.getCurrency());
+        // Audit C6: gatewayResponse.getMessage() is expected to already be merchant-safe by the time it
+        // reaches this funnel - every channel this service drives (MtnMomoAdapter, AirtelOpenApiAdapter,
+        // YoPaymentsAdapter via ProviderEndpointExecutionService; AirtelMoneyAdapter via
+        // ProviderEndpointClient) now translates raw provider text before returning its GateWayResponse.
+        // If a future/other adapter is added without doing that, it should follow the same pattern
+        // (see ProviderErrorTranslator) rather than this funnel silently re-guessing at a message it has
+        // no reliable raw signal for.
         result.setMessage(gatewayResponse == null ? "Submitted" : gatewayResponse.getMessage());
-        result.setProviderResponse(gatewayResponse == null ? "" : gatewayResponse.toString());
+        // Audit C6: this used to be gatewayResponse.toString(), which concatenates status/httpStatus/
+        // message/transactionStatus into one opaque, uncontrolled string handed to the merchant - a
+        // second, redundant exposure surface for whatever the message field carried (previously
+        // including raw provider text). Expose only the one additional, already-safe, already-structured
+        // fact (the provider HTTP status) that isn't captured by the other typed fields above.
+        result.setProviderResponse(gatewayResponse == null ? "" : "httpStatus=" + gatewayResponse.getHttpStatus());
         return result;
     }
 

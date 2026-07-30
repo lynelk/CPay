@@ -35,14 +35,23 @@ public final class ProviderEndpointClient {
                 os.write(payload.getBytes(StandardCharsets.UTF_8));
             }
             int code = connection.getResponseCode();
-            String body = read(code >= 200 && code < 300 ? connection.getInputStream() : connection.getErrorStream());
+            boolean ok = code >= 200 && code < 300;
+            String body = read(ok ? connection.getInputStream() : connection.getErrorStream());
             GateWayResponse result = new GateWayResponse();
-            result.setStatus(code >= 200 && code < 300 ? "SUCCESS" : "FAILED");
-            result.setTransactionStatus(code >= 200 && code < 300 ? "SUBMITTED" : "FAILED");
+            result.setStatus(ok ? "SUCCESS" : "FAILED");
+            result.setTransactionStatus(ok ? "SUBMITTED" : "FAILED");
             result.setHttpStatus(String.valueOf(code));
-            result.setMessage(displayName + " " + operation + " endpoint response: " + truncate(body));
+            // Audit C6: `body` is the RAW, unfiltered provider response - never hand it to a merchant
+            // directly on failure. Unlike ProviderEndpointExecutionService, this class has no separate
+            // DB-backed run log, so the raw body is kept in requestTrace (internal-only - never
+            // serialized into a merchant-facing response, see GateWayResponse/PaymentResult) instead of
+            // being dropped entirely.
+            String merchantMessage = ok
+                    ? displayName + " " + operation + " endpoint response: " + truncate(body)
+                    : ProviderErrorTranslator.translateProviderResponse(code, body).merchantMessage();
+            result.setMessage(merchantMessage);
             result.setNetworkId(channelCode + "-" + request.getReference());
-            result.setRequestTrace("requestHash=" + sha256(payload));
+            result.setRequestTrace("requestHash=" + sha256(payload) + (ok ? "" : " | rawResponse=" + truncate(body)));
             return result;
         } catch (Exception e) {
             throw new PaymentGatewayException("Provider endpoint execution failed: " + e.getMessage());

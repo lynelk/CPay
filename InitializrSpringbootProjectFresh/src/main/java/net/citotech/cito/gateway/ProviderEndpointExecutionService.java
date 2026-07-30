@@ -104,7 +104,22 @@ public class ProviderEndpointExecutionService {
                 circuitBreaker.recordFailure(channelCode);
             }
             record(channelCode, operation, request, endpointUrl, httpStatus, runStatus, recordMessage);
-            GateWayResponse result = response(channelCode, displayName, operation, request, httpStatus, status, trim(recordMessage));
+            // Audit C6: on failure, `recordMessage` is the RAW, unfiltered provider response body -
+            // never hand it to a merchant directly. The raw body is already preserved internally
+            // either way, in the provider_endpoint_runs.response_summary row written by record() just
+            // above. SIGNATURE_INVALID is checked first and separately: it is not a business decline
+            // (see ProviderErrorTranslator#SIGNATURE_VERIFICATION_FAILED's javadoc) and must not be
+            // run through the generic HTTP-status-based translation, which would otherwise conflate it
+            // with an ordinary provider decline and lose that distinction.
+            String merchantMessage;
+            if ("SIGNATURE_INVALID".equals(runStatus)) {
+                merchantMessage = ProviderErrorTranslator.SIGNATURE_VERIFICATION_FAILED.merchantMessage();
+            } else if ("FAILED".equals(status)) {
+                merchantMessage = ProviderErrorTranslator.translateProviderResponse(httpStatus, responseBody).merchantMessage();
+            } else {
+                merchantMessage = trim(recordMessage);
+            }
+            GateWayResponse result = response(channelCode, displayName, operation, request, httpStatus, status, merchantMessage);
             result.setRequestTrace("requestHash=" + hash(body));
             return result;
         } catch (Exception e) {

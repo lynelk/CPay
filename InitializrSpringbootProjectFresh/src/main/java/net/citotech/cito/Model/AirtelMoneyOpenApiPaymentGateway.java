@@ -17,6 +17,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.citotech.cito.Common;
+import net.citotech.cito.gateway.ProviderErrorTranslator;
 import net.citotech.cito.gateway.ProviderToken;
 import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
 import org.json.JSONException;
@@ -208,7 +209,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             return submit("POST", disbursementUrl(), body.toString(), ref);
         } catch (BadPaddingException | IllegalBlockSizeException | InvalidKeyException |
                  NoSuchPaddingException | NoSuchAlgorithmException | JSONException e) {
-            return gatewayError(e.getMessage(), "FAILED", "");
+            return gatewayErrorFromException(e, "FAILED", "doPayOut");
         }
     }
 
@@ -231,7 +232,7 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             body.put("reference", narrative);
             return submit("POST", collectionUrl(), body.toString(), ref);
         } catch (JSONException e) {
-            return gatewayError(e.getMessage(), "UNDETERMINED", "");
+            return gatewayErrorFromException(e, "UNDETERMINED", "doPayIn");
         }
     }
 
@@ -327,12 +328,50 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
             } else {
                 gatewayResponse.setStatus("ERROR");
                 gatewayResponse.setTransactionStatus("FAILED");
-                gatewayResponse.setMessage(response.getResponse());
+                // Audit C6: response.getResponse() is the RAW, unfiltered Airtel OpenAPI response body -
+                // it must never be handed to a merchant directly. Translate it into a merchant-safe
+                // message; the raw body is still available internally via requestTrace (set above from
+                // response.toString(), which is never serialized into a merchant-facing response).
+                ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateProviderResponse(
+                        response.getStatusCode(), response.getResponse(), extractResultCode(response.getResponse()));
+                gatewayResponse.setMessage(translation.merchantMessage());
             }
             return gatewayResponse;
         } catch (Exception e) {
-            return gatewayError(e.getMessage(), "UNDETERMINED", url + data);
+            // Audit J7: e.getMessage() previously went straight into the merchant-facing message field
+            // below, and this exception was never logged anywhere - the real cause was neither safely
+            // surfaced nor actually captured for internal diagnosis. Log it here, and hand the merchant
+            // only a stable reason code plus a generic, safe message.
+            logger.error("Airtel OpenAPI request failed for " + url, e);
+            ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateInternalFailure(e);
+            GateWayResponse errorResponse = new GateWayResponse();
+            errorResponse.setHttpStatus("0");
+            errorResponse.setStatus("ERROR");
+            errorResponse.setTransactionStatus("UNDETERMINED");
+            errorResponse.setMessage(translation.merchantMessage());
+            errorResponse.setRequestTrace(translation.stableCode() + ": " + e.getClass().getSimpleName()
+                    + (e.getMessage() == null ? "" : " - " + e.getMessage()) + " | " + url + data);
+            return errorResponse;
         }
+    }
+
+    /** Best-effort extraction of Airtel OpenAPI's {@code status.result_code} for translation purposes only - never throws. */
+    private String extractResultCode(String rawBody) {
+        if (rawBody == null || rawBody.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            JSONObject json = new JSONObject(rawBody);
+            if (!json.isNull("status")) {
+                JSONObject status = json.getJSONObject("status");
+                if (!status.isNull("result_code")) {
+                    return status.getString("result_code");
+                }
+            }
+        } catch (Exception ignored) {
+            // Not parseable as the expected shape - translator falls back to httpStatus-only classification.
+        }
+        return null;
     }
 
     private void applySuccessResponse(GateWayResponse gatewayResponse, HttpRequestResponse response) throws JSONException {
@@ -356,15 +395,31 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 gatewayResponse.setTransactionStatus("UNDETERMINED");
             }
         }
+        String resultCode = "";
+        String providerMessage = gatewayResponse.getMessage();
         if (!json.isNull("status")) {
             JSONObject status = json.getJSONObject("status");
-            String resultCode = status.isNull("result_code") ? "" : status.getString("result_code");
-            String message = status.isNull("message") ? gatewayResponse.getMessage() : status.getString("message");
-            gatewayResponse.setMessage(message);
+            resultCode = status.isNull("result_code") ? "" : status.getString("result_code");
+            providerMessage = status.isNull("message") ? providerMessage : status.getString("message");
             if (isFailedErrorList(resultCode)) {
                 gatewayResponse.setStatus("ERROR");
                 gatewayResponse.setTransactionStatus("FAILED");
             }
+        }
+        // Audit C6: `providerMessage` here is Airtel's own wording (status.message / transaction
+        // status). It is safe to surface verbatim when the transaction actually succeeded (a benign
+        // confirmation string), but once anything above has classified this as a failure - whether via
+        // the resultCode allow-list or the transaction.status "TF"/"TA" mapping earlier in this method -
+        // translate it into a merchant-safe message instead of forwarding Airtel's decline wording
+        // as-is. The raw resultCode/message are preserved in requestTrace (set in submit(), from
+        // response.toString(), before this method runs).
+        String transactionStatus = gatewayResponse.getTransactionStatus();
+        if ("FAILED".equals(transactionStatus) || "UNDETERMINED".equals(transactionStatus)) {
+            ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateProviderResponse(
+                    response.getStatusCode(), response.getResponse(), resultCode.isEmpty() ? null : resultCode);
+            gatewayResponse.setMessage(translation.merchantMessage());
+        } else {
+            gatewayResponse.setMessage(providerMessage);
         }
     }
 
@@ -449,6 +504,25 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
         response.setStatus("ERROR");
         response.setTransactionStatus(transactionStatus);
         response.setRequestTrace(trace == null ? "" : trace);
+        return response;
+    }
+
+    /**
+     * Audit J7: builds an error response from a caught internal exception (JSON building, crypto
+     * failure - not a provider HTTP error) without handing the raw exception message to the merchant,
+     * and without the exception silently disappearing (previously neither logged nor safely surfaced).
+     * The exception detail is logged and kept in requestTrace (internal-only) for support diagnosis.
+     */
+    private GateWayResponse gatewayErrorFromException(Exception e, String transactionStatus, String operation) {
+        logger.error("Airtel OpenAPI " + operation + " failed before any provider call", e);
+        ProviderErrorTranslator.Translation translation = ProviderErrorTranslator.translateInternalFailure(e);
+        GateWayResponse response = new GateWayResponse();
+        response.setHttpStatus("0");
+        response.setStatus("ERROR");
+        response.setTransactionStatus(transactionStatus);
+        response.setMessage(translation.merchantMessage());
+        response.setRequestTrace(translation.stableCode() + ": " + e.getClass().getSimpleName()
+                + (e.getMessage() == null ? "" : " - " + e.getMessage()));
         return response;
     }
 
