@@ -47,8 +47,8 @@ Install the following tools:
 ## 3. Repository structure
 
 ```text
-Initializrspringbootprojectfresh/   Backend service
-Clientside/                    Frontend portal
+InitializrSpringbootProjectFresh/   Backend service
+clientside/                         Frontend portal
 Integrations/Citoconnect/      JavaScript integration assets
 Docs/                          API, readiness, security, and operations documentation
 ```
@@ -68,13 +68,13 @@ The backend uses JDBC database configuration. The exact database user, password,
 For local development, you may need to import baseline SQL files under:
 
 ```text
-Clientside/db/
+clientside/db/
 ```
 
 Database changes are kept under Flyway migrations in:
 
 ```text
-Initializrspringbootprojectfresh/src/main/resources/db/migration
+InitializrSpringbootProjectFresh/src/main/resources/db/migration
 ```
 
 Recent production-control migrations include:
@@ -88,6 +88,26 @@ Recent production-control migrations include:
 - the ShedLock distributed-locking table
 
 For staging or production, always test migrations on a copy of the database before applying them to a live environment.
+
+### Docker Compose quick start
+
+The root `compose.yaml` starts a local MySQL database on `127.0.0.1:3307` and a backend container on
+`127.0.0.1:8081` using sandbox defaults:
+
+```bash
+docker compose up -d mysql
+docker compose up --build backend
+```
+
+Use this database from a host-run backend with:
+
+```bash
+DB_URL=jdbc:mysql://127.0.0.1:3307/cpayadmin
+DB_USERNAME=cpay
+DB_PASSWORD=cpay-local
+```
+
+The React/Vite frontend is still run from `clientside/` during local development.
 
 ## 5. Environment variables
 
@@ -105,7 +125,6 @@ Never commit `.env` files or real access values to the repository.
 | `MAIL_USERNAME` | SMTP username. |
 | `MAIL_PASSWORD` | SMTP password. |
 | `CUSTOM_GATEWAYSTATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
-| `CUSTOM_SSL_SKIP_VERIFY` | Explicit SSL verification bypass flag; keep `false` outside controlled local/sandbox testing. |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated trusted browser origins for the merchant and admin portals. |
 | `APP_BASE_URL` | Public application URL used in generated links. |
 | `HTTP_PORT` | Backend HTTP port. |
@@ -123,11 +142,10 @@ Never commit `.env` files or real access values to the repository.
 Example local-only values:
 
 ```bash
-DB_URL=jdbc:mysql://localhost:3306/cpayadmin
+DB_URL=jdbc:mysql://127.0.0.1:3307/cpayadmin
 DB_USERNAME=cpay_user
 DB_PASSWORD=change_me
 CUSTOM_GATEWAYSTATE=SANDBOX
-CUSTOM_SSL_SKIP_VERIFY=false
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 APP_BASE_URL=http://localhost:8081
 HTTP_PORT=8081
@@ -150,7 +168,7 @@ Use stronger values outside local development. `change_me` is not a strategy, it
 From the repository root:
 
 ```bash
-cd Initializrspringbootprojectfresh
+cd InitializrSpringbootProjectFresh
 mvn clean package
 java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 ```
@@ -158,7 +176,7 @@ java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 For development testing:
 
 ```bash
-cd Initializrspringbootprojectfresh
+cd InitializrSpringbootProjectFresh
 mvn test
 mvn verify
 ```
@@ -194,7 +212,7 @@ If the backend fails to start, check:
 From the repository root:
 
 ```bash
-cd Clientside
+cd clientside
 npm install
 npm run dev
 npm run build

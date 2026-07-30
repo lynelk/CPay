@@ -1,6 +1,7 @@
 services:
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: cpay-local
       MYSQL_DATABASE: cpayadmin
@@ -18,7 +19,8 @@ services:
 
   backend:
     build:
-      context: ./Initializrspringbootprojectfresh
+      context: ./InitializrSpringbootProjectFresh
+    restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
@@ -36,7 +38,10 @@ services:
       CPAY_SECURITY_NONCE_STORE: jdbc
       CPAY_LEGACY_DBCHANGES_ENABLED: "false"
       CUSTOM_GATEWAYSTATE: SANDBOX
-      CUSTOM_SSL_SKIP_VERIFY: "false"
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      APP_BASE_URL: http://localhost:8081
+      SPRINGDOC_API_DOCS_ENABLED: "false"
+      SPRINGDOC_SWAGGER_UI_ENABLED: "false"
     ports:
       - "8081:8081"
 

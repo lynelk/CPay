@@ -15,18 +15,18 @@ Two API generations are live simultaneously: legacy `/api/v1/doMobileMoney*` (mu
 ## Repository layout
 
 ```text
-Initializrspringbootprojectfresh/   Active Spring Boot 4.1 backend (Java 21) — build/run/test from here
-Clientside/                         React 18 + Vite 8 admin/merchant portal (TypeScript)
+InitializrSpringbootProjectFresh/   Active Spring Boot 4.1 backend (Java 21) — build/run/test from here
+clientside/                         React 18 + Vite 8 admin/merchant portal (TypeScript)
 Integrations/Citoconnect/           JS reference client / integration bundle
 Docs/                                Architecture, API contracts, ADRs, runbooks, readiness docs
-Sdk/, Deployment/, Setup/            SDK assets, deployment scripts, local setup helpers
+sdk/, deployment/, setup/            SDK assets, deployment scripts, local setup helpers
 ```
 
 `InitializrSpringbootProject/` (without "Fresh") is an empty legacy scaffold — not in use, ignore it.
 
 ## Commands
 
-### Backend (`Initializrspringbootprojectfresh/`)
+### Backend (`InitializrSpringbootProjectFresh/`)
 
 ```bash
 mvn clean package                 # build
@@ -53,7 +53,7 @@ it explicitly with `mvn gatling:test -Dgatling.simulationClass=net.citotech.cito
 against `origin/main` (`ratchetFrom`) so only files you've actually touched are enforced — existing
 legacy files are grandfathered in. Run `mvn spotless:apply` to auto-fix a flagged file.
 
-### Frontend (`Clientside/`)
+### Frontend (`clientside/`)
 
 ```bash
 npm install
@@ -73,7 +73,7 @@ Node.js >= 20.19.0 required.
 ### Local DB / full stack
 
 `compose.yaml` at repo root brings up MySQL + backend via Docker Compose for onboarding. Flyway
-migrations live under `Initializrspringbootprojectfresh/src/main/resources/db/migration`
+migrations live under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`
 (`V1__...` .. current head) and are the canonical migration path — the legacy XML DB-change runner is
 gated behind `CPAY_LEGACY_DBCHANGES_ENABLED` and should only be used to rebuild an old, unreconciled
 local database.
@@ -108,6 +108,8 @@ Base package: `net.citotech.cito`.
   considered valid but the provider rejected), with a static, per-`gatewayId+segment+environment`
   `ReentrantLock` table so concurrent 401s on the same provider/segment only trigger one real
   token-refresh call rather than each caller independently hammering the provider's token endpoint.
+  Legacy outbound HTTP now goes through `RestClientOutboundHttpExecutor`, so do not add new direct
+  `HttpURLConnection` provider calls.
   `ProviderErrorTranslator` maps a raw provider HTTP failure (or a caught internal exception) to a
   merchant-safe `(stableCode, category, retryable, message)` result reusing `ErrorCatalog`'s shape —
   never hand `gwResponse.setMessage(rawProviderResponseBody)` or a raw exception message straight to
@@ -138,7 +140,8 @@ Base package: `net.citotech.cito`.
   (`MerchantSelfServiceController`, `PaymentsV2Controller`) via a `?format=csv|xlsx` choice —
   prefer this over hand-building a CSV string or a client-side spreadsheet shim for any new export
   surface.
-- **`reconciliation/`** — statement matching, settlement scheduling, finance daily-close support.
+- **`reconciliation/`** — statement matching, settlement scheduling, finance daily-close support,
+  and provider-specific CSV/XLSX statement parsers built on the shared tabular parser.
 - **`ledger/`** — double-entry ledger service (`DoubleEntryLedgerServiceTest` covers invariants).
 - **`merchant/`** — merchant self-service signup, channel configuration.
 - **`balance/`**, **`compliance/`**, **`checkout/`** (payment links/hosted checkout), **`scheduler/`**
@@ -165,7 +168,7 @@ merchant channel encryption key, etc.).
   Consumed today by `ModuleDashboard.jsx` (a class-to-function conversion was required — hooks can't
   be used in class components) and `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`; most
   other modules still hand-roll `fetch`/`useState` and are good candidates for the same migration
-  (see `Clientside/Migration.md`'s follow-ups). `LegacyRequestError` (carrying the original `code`)
+  (see `clientside/Migration.md`'s follow-ups). `LegacyRequestError` (carrying the original `code`)
   is thrown by `postLegacyJson` for any non-`"000"` legacy response code other than `"107"`/`"110"`.
 - `src/shared/useAuth.ts` — centralized read of the logged-in admin/merchant principal out of
   `localStorage` (`useAuth('admin' | 'merchant')`), with a typed `hasPrivilege()` helper. Does not
@@ -175,7 +178,7 @@ merchant channel encryption key, etc.).
 - `src/shared/config.ts` — `API_BASE` / `apiUrl()`; set via `VITE_API_BASE` (defaults to same-origin, so
   the dev proxy handles it).
 - `src/ui/` — CPay iOS-style component primitives (design tokens in `src/index.css`); the ongoing
-  migration off `rc-easyui` onto these primitives is tracked in `Clientside/Migration.md`.
+  migration off `rc-easyui` onto these primitives is tracked in `clientside/Migration.md`.
 - `src/features/` — feature modules (in progress; see `Notes.md` there).
 - Auth/session model: cookie-based (`credentials: 'include'`) against the Spring Boot backend, not
   token-based.
@@ -187,7 +190,8 @@ key handling, admin authentication, provider channel setup values, database acce
 config, Spring Session JDBC config, actuator access, audit logs, operating-control records, finance
 approval/posting, and callback worker claiming. Do not bypass request signing, nonce checks,
 idempotency, CSRF protection, merchant validation, channel readiness checks, or operating-control
-records. Avoid floating-point arithmetic for money.
+records. Avoid floating-point arithmetic for money. Do not reintroduce a global TLS/SSL
+skip-verification path; use trusted local certificates or provider sandbox endpoints.
 
 Any DB change needs a new Flyway migration under `db/migration` with a unique version number — avoid
 destructive changes without a rollback/migration plan.

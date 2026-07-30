@@ -48,8 +48,8 @@ New providers should be added through the gateway adapter pattern described in `
 ## Main components
 
 ```text
-Initializrspringbootprojectfresh/   Spring Boot 4.1 backend and payment gateway services
-Clientside/                    React-based admin and merchant portal
+InitializrSpringbootProjectFresh/   Spring Boot 4.1 backend and payment gateway services
+clientside/                         React-based admin and merchant portal
 Integrations/Citoconnect/      JavaScript reference client and integration bundle
 Docs/                          API, architecture, readiness, and operations documentation
 ```
@@ -138,7 +138,7 @@ The codebase now includes software controls for:
 
 - merchant self-registration
 - merchant-managed channel setup
-- adapter-backed provider endpoint execution
+- adapter-backed provider endpoint execution using centralized `RestClient` transport
 - database-backed signup rate limiting
 - claim-based callback processing for multiple workers
 - restricted trusted origins for API access
@@ -151,6 +151,8 @@ The codebase now includes software controls for:
 - a provider-to-merchant-safe error taxonomy so raw provider text never reaches a merchant response
 - merchant self-service webhook secret rotation, delivery log, and failed-delivery replay
 - uniform server-side CSV/XLSX export
+- provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments
+- ledger-refreshed channel-balance read models for dashboard balance cards
 - automatic dependency-update pull requests (Dependabot) and a CI formatting check
 
 Readiness documentation is available in:
@@ -223,14 +225,23 @@ To run the project locally, you will need:
 
 1. Create a local database, for example `cpayadmin`.
 2. Copy `.env.example` to `.env` and provide local values.
-3. Use the Flyway migrations under `Initializrspringbootprojectfresh/src/main/resources/db/migration`; import legacy baseline SQL only when rebuilding an older local database that has not yet been reconciled.
-4. Start the backend from `Initializrspringbootprojectfresh`.
-5. Start or build the frontend from `Clientside`.
+3. Use the Flyway migrations under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`; import legacy baseline SQL only when rebuilding an older local database that has not yet been reconciled.
+4. Start the backend from `InitializrSpringbootProjectFresh`.
+5. Start or build the frontend from `clientside`.
+
+For a local Docker database and backend, run:
+
+```bash
+docker compose up -d mysql
+docker compose up --build backend
+```
+
+The database is exposed on `127.0.0.1:3307` as `cpayadmin` with the local user `cpay` / `cpay-local`.
 
 Backend:
 
 ```bash
-cd Initializrspringbootprojectfresh
+cd InitializrSpringbootProjectFresh
 mvn clean package
 java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 ```
@@ -238,7 +249,7 @@ java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 Frontend:
 
 ```bash
-cd Clientside
+cd clientside
 npm install
 npm run dev
 npm run build
@@ -256,7 +267,6 @@ npm run build
 | `MAIL_USERNAME` | SMTP username. |
 | `MAIL_PASSWORD` | SMTP password. |
 | `CUSTOM_GATEWAYSTATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
-| `CUSTOM_SSL_SKIP_VERIFY` | Explicitly controls non-production SSL verification bypasses. |
 | `CORS_ALLOWED_ORIGINS` | Trusted merchant and admin portal origins. |
 | `APP_BASE_URL` | Public application URL used in generated links. |
 | `HTTP_PORT` | Backend HTTP port. |
@@ -277,7 +287,7 @@ npm run build
 Typical local checks:
 
 ```bash
-cd Initializrspringbootprojectfresh
+cd InitializrSpringbootProjectFresh
 mvn test
 mvn verify
 ```
@@ -289,7 +299,7 @@ separate opt-in Gatling load-testing toolchain (`mvn gatling:test -Dgatling.simu
 is never part of the default build.
 
 ```bash
-cd Clientside
+cd clientside
 npm install
 npm run typecheck
 npm test

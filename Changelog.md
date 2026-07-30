@@ -8,6 +8,8 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Added
 
+- Added provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments statement imports with shared CSV/XLSX parsing support.
+- Added a ledger-refreshed channel-balance read model so dashboard balance views no longer need to recompute every card directly from statement rows.
 - Added request correlation IDs and structured JSON console logging for backend observability.
 - Added bounded operational cleanup for `api_rate_limits` and stale callback task claims.
 - Added documentation for backend architecture, schema snapshots, alert runbooks, ADRs, retention, and observability.
@@ -40,6 +42,8 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Changed
 
+- Routed legacy outbound provider HTTP calls through a Spring-managed `RestClient` executor with central timeout, error, and metrics handling.
+- Updated Docker Compose onboarding to use the canonical backend path and the current local sandbox defaults.
 - Made Flyway the documented canonical migration path and gated the legacy XML DB change runner behind `CPAY_LEGACY_DBCHANGES_ENABLED`.
 - Removed safe unused Java imports, locals, and an empty application shell class.
 - Made transaction timeout scans and timeout minutes configurable.
@@ -53,6 +57,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Fixed SHA-256 hex formatting to emit full 64-character hashes.
 - Fixed client IP extraction to avoid concatenating proxy headers and null values.
 - Added visible spreadsheet upload limits for size, type, and row count.
+- Removed the runtime TLS verification bypass path; local development should use trusted test certificates or provider sandboxes instead of a global trust-all switch.
 
 ### Operational
 
