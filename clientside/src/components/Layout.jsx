@@ -16,6 +16,7 @@ import ModuleSettings from './modules/ModuleSettings';
 import ModuleAuditTrail from './modules/ModuleAuditTrail';
 import ModuleMerchants from './modules/ModuleMerchants';
 import ModuleTransactions from './modules/ModuleTransactions';
+import ModuleReconciliation from './modules/ModuleReconciliation';
 
 import { apiFetch } from '../shared/api/httpClient';
 
@@ -23,6 +24,7 @@ const menuTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'Track balances, transactions, and operational health.' },
   merchants: { title: 'Merchants', subtitle: 'Manage merchant profiles, accounts, and access.' },
   transactions: { title: 'Transactions', subtitle: 'Review payments, callbacks, ledger movement, and exports.' },
+  reconciliation: { title: 'Reconciliation', subtitle: 'Match provider statement rows to CPay transactions.' },
   admins: { title: 'Administrators', subtitle: 'Manage portal users and permissions.' },
   audittrail: { title: 'Audit Trail', subtitle: 'Review administrator activity and system events.' },
   settings: { title: 'Settings', subtitle: 'Configure payment gateways, SMS, email, and application controls.' },
@@ -75,6 +77,7 @@ class LayoutWithOutRouter extends React.Component {
       case 'admins': return <ModuleAdmins {...moduleProps} />;
       case 'merchants': return <ModuleMerchants {...moduleProps} />;
       case 'transactions': return <ModuleTransactions {...moduleProps} />;
+      case 'reconciliation': return <ModuleReconciliation {...moduleProps} />;
       case 'audittrail': return <ModuleAuditTrail {...moduleProps} />;
       case 'settings': return <ModuleSettings {...moduleProps} />;
       case 'dashboard':
