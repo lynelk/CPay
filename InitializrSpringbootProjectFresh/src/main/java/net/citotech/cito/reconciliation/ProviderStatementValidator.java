@@ -17,9 +17,9 @@ public class ProviderStatementValidator {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public long validate(String providerCode, String fileName, String csvText) {
+    public long validate(String providerCode, String fileName, byte[] content) {
         ProviderStatementParser parser = parserRegistry.get(providerCode);
-        List<StatementRow> rows = parser.parse(csvText);
+        List<StatementRow> rows = parser.parse(content, fileName);
         int valid = 0;
         int invalid = 0;
         int duplicates = 0;

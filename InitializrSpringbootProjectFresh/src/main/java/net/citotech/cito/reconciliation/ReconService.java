@@ -13,9 +13,9 @@ public class ReconService {
         this.parserRegistry = parserRegistry;
     }
 
-    public long importStatement(String providerCode, String fileName, String importedBy, String csvText) {
+    public long importStatement(String providerCode, String fileName, String importedBy, byte[] content) {
         ProviderStatementParser parser = parserRegistry.get(providerCode);
-        List<StatementRow> rows = parser.parse(csvText);
+        List<StatementRow> rows = parser.parse(content, fileName);
         long importId = repository.createImport(parser.providerCode(), parser.channelCode(), fileName, importedBy, rows.size());
         for (StatementRow row : rows) {
             repository.insertStatementRow(importId, row);

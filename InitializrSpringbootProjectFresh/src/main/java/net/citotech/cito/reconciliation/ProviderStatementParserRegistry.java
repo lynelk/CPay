@@ -9,11 +9,11 @@ public class ProviderStatementParserRegistry {
     private final Map<String, ProviderStatementParser> parsers = new HashMap<>();
 
     public ProviderStatementParserRegistry() {
-        register(new CsvStatementParser("MTN", "mtn_momo"));
-        register(new CsvStatementParser("AIRTEL", "airtel_money"));
-        register(new CsvStatementParser("AIRTEL_OPENAPI", "airtel_money_openapi"));
-        register(new CsvStatementParser("SAFARICOM", "safaricom_mpesa"));
-        register(new CsvStatementParser("YO_PAYMENTS", "yo_payments"));
+        register(new MtnStatementParser());
+        register(new AirtelMoneyStatementParser());
+        register(new AirtelOpenApiStatementParser());
+        register(new SafaricomStatementParser());
+        register(new YoPaymentsStatementParser());
     }
 
     private void register(ProviderStatementParser parser) {
