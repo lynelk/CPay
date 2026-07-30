@@ -49,6 +49,9 @@ WireMock-based provider mocking tests need no Docker and run as part of the norm
 fully opt-in Gatling load-testing toolchain lives under `src/test/java/.../loadtest/` — it has no
 lifecycle binding, so it never runs as a side effect of `mvn test`/`mvn verify`/`mvn package`; invoke
 it explicitly with `mvn gatling:test -Dgatling.simulationClass=net.citotech.cito.loadtest.<Simulation>`.
+`mvn verify` also runs a Spotless (`google-java-format`, AOSP style) formatting check, ratcheted
+against `origin/main` (`ratchetFrom`) so only files you've actually touched are enforced — existing
+legacy files are grandfathered in. Run `mvn spotless:apply` to auto-fix a flagged file.
 
 ### Frontend (`Clientside/`)
 
@@ -100,6 +103,17 @@ Base package: `net.citotech.cito`.
   `ProviderConversationReferenceStoreService`/`Registry` map a provider's async callback
   correlation id (e.g. Safaricom's `ConversationID`) back to CPay's own transaction reference via
   the database — do not reintroduce a local-disk equivalent, it doesn't survive multiple instances.
+  `AirtelMoneyOpenApiPaymentGateway`, `MTNMoMoPaymentGateway`, and `SafariComPaymentGateway` each
+  force a fresh token and retry once on an unexpected 401 (a token our own TTL-based check still
+  considered valid but the provider rejected), with a static, per-`gatewayId+segment+environment`
+  `ReentrantLock` table so concurrent 401s on the same provider/segment only trigger one real
+  token-refresh call rather than each caller independently hammering the provider's token endpoint.
+  `ProviderErrorTranslator` maps a raw provider HTTP failure (or a caught internal exception) to a
+  merchant-safe `(stableCode, category, retryable, message)` result reusing `ErrorCatalog`'s shape —
+  never hand `gwResponse.setMessage(rawProviderResponseBody)` or a raw exception message straight to
+  a merchant-facing field; wired into `AirtelMoneyOpenApiPaymentGateway`/`ProviderEndpointExecutionService`
+  today, with the same raw-passthrough pattern still present in the other legacy provider classes as
+  a documented follow-up.
 - **`api/v2/`** — v2 controllers/services: `PaymentsV2Controller` (compat `/api/v2/payments/*`),
   `NativePaymentsV2Controller` (adapter-backed `/api/v2/native/payments/*`), `V2RequestSecurityService`
   (request signing/nonce/idempotency enforcement), `IdempotencyService`, `PaymentStatusService`,
@@ -111,11 +125,24 @@ Base package: `net.citotech.cito`.
   supplied — fails closed if the merchant has never enabled MFA at all.
 - **`callback/`** — provider and merchant callback processing; uses claim-based task assignment so
   multiple workers don't double-deliver.
+- **`webhook/`** — `MerchantWebhookService` backs both the admin-only `/api/v2/admin/webhooks/**`
+  routes and the merchant self-service equivalents under
+  `/api/v2/merchant-self-service/webhooks/**` (register, list, rotate secret, list deliveries,
+  replay a failed delivery) — the merchant-scoped `rotateSecret(merchantId, endpointId)`/
+  `replay(merchantId, deliveryId)` overloads scope their `UPDATE` to the caller's own `merchant_id`
+  so one merchant can never rotate or replay another's webhook; do not call the unscoped
+  single-arg overloads from a merchant-facing code path.
+- **`export/`** — `TabularExportService` is the one reusable place to render tabular data as CSV or
+  XLSX (streaming `SXSSFWorkbook`, disposed correctly); callers remain responsible for
+  bounding/paginating the underlying query. Wired into merchant statement export
+  (`MerchantSelfServiceController`, `PaymentsV2Controller`) via a `?format=csv|xlsx` choice —
+  prefer this over hand-building a CSV string or a client-side spreadsheet shim for any new export
+  surface.
 - **`reconciliation/`** — statement matching, settlement scheduling, finance daily-close support.
 - **`ledger/`** — double-entry ledger service (`DoubleEntryLedgerServiceTest` covers invariants).
 - **`merchant/`** — merchant self-service signup, channel configuration.
 - **`balance/`**, **`compliance/`**, **`checkout/`** (payment links/hosted checkout), **`scheduler/`**
-  (timeout scans, cleanup jobs), **`webhook/`**, **`metrics/`**, **`admin/`**, **`portal/`**,
+  (timeout scans, cleanup jobs), **`metrics/`**, **`admin/`**, **`portal/`**,
   **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and
   `SchedulerLockConfig` — the ShedLock `LockProvider` backing `@SchedulerLock` on
   `TransactionsLogController.testCheckstatusCron()`/`paymentsPayCron()`, both of which are
@@ -134,8 +161,12 @@ merchant channel encryption key, etc.).
   a `withRouter`/`useHistory` compat shim exists at `src/shared/router/compat.tsx` for legacy class
   components only — do not use it in new code).
 - `src/shared/api/httpClient.ts` — all new HTTP calls go through this; `src/shared/api/hooks.ts` for
-  TanStack Query-based server state (dashboard summaries, chart series, transaction lists/mutations —
-  not yet wired into every module; see `Clientside/Migration.md`'s follow-ups).
+  TanStack Query-based server state (dashboard summaries, chart series, transaction lists/mutations).
+  Consumed today by `ModuleDashboard.jsx` (a class-to-function conversion was required — hooks can't
+  be used in class components) and `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`; most
+  other modules still hand-roll `fetch`/`useState` and are good candidates for the same migration
+  (see `Clientside/Migration.md`'s follow-ups). `LegacyRequestError` (carrying the original `code`)
+  is thrown by `postLegacyJson` for any non-`"000"` legacy response code other than `"107"`/`"110"`.
 - `src/shared/useAuth.ts` — centralized read of the logged-in admin/merchant principal out of
   `localStorage` (`useAuth('admin' | 'merchant')`), with a typed `hasPrivilege()` helper. Does not
   perform authentication itself; mirrors whatever `Login.tsx`/`LoginMerchant.tsx` last wrote. Prefer

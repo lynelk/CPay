@@ -74,6 +74,8 @@ For backend changes:
 - keep payment and finance calculations precise
 - avoid floating-point arithmetic for money where possible
 - keep provider-specific logic inside adapters or dedicated provider services
+- never put a raw provider response body or a caught exception's message directly into a merchant-facing field; translate it through `net.citotech.cito.gateway.ProviderErrorTranslator` (or extend it) so merchants only ever see a stable, generic, non-sensitive message while the raw detail stays internal (logs, `provider_endpoint_runs`, etc.)
+- reuse `net.citotech.cito.export.TabularExportService` for any new CSV/XLSX export surface rather than hand-building a CSV string or a client-side spreadsheet shim
 - do not bypass request signing, nonce checks, idempotency, CSRF protection for browser routes, merchant validation, channel readiness checks, or operating-control records
 - keep `/api/v1` behavior stable unless a migration plan exists
 - keep `/api/v2/native/payments/*` adapter-backed behavior aligned with merchant channel credentials and the selected `CUSTOM_GATEWAYSTATE`

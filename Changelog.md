@@ -29,6 +29,14 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added Testcontainers-based database integration tests, WireMock-based provider API mocking tests, and a first end-to-end test suite (opt-in, Docker-gated — see `Contributing.md`).
 - Added a Gatling load-testing toolchain with baseline and signed-request simulations (opt-in, not part of the default build).
 - Added a shared `useAuth` hook and TanStack Query hooks (`src/shared/api/hooks.ts`) for admin/merchant portal server state.
+- Added merchant self-service endpoints for webhook secret rotation, failed-delivery replay, and a delivery log — previously only available to admins on the merchant's behalf.
+- Added a Provider→CPay→merchant-safe error taxonomy so raw provider response text can no longer reach a merchant-facing response; internal exceptions now get a stable, non-sensitive reason code instead of collapsing into a generic error with the cause only in logs.
+- Added a distinct, non-retryable translation for provider responses that fail CPay's own signature verification, so that case is no longer indistinguishable from an ordinary provider decline.
+- Added forced token refresh, retry, and single-flight locking on 401 for the MTN MoMo and Safaricom adapters, matching the Airtel OpenAPI adapter's existing behavior.
+- Added a uniform, reusable server-side CSV/XLSX export service, replacing a client-side-only, current-page-only CSV export on the merchant account screen.
+- Added a Spotless (`google-java-format`, AOSP style) formatting check to `mvn verify`/CI, ratcheted against `origin/main` so existing legacy files are not force-reformatted.
+- Added `.github/dependabot.yml` (Maven, npm, and GitHub Actions ecosystems) for automatic dependency-update pull requests.
+- Migrated the admin dashboard and admin/merchant transaction list modules onto the TanStack Query hooks added earlier — the first real consumers of that infrastructure.
 
 ### Changed
 
@@ -38,6 +46,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Enabled graceful shutdown defaults.
 - Tightened CORS headers and added standard security headers.
 - The pre-existing local scheduler file locks are now a secondary safeguard behind ShedLock's distributed lock, rather than the only protection against concurrent cron execution.
+- Bumped `org.json` (20240303 → 20260719), Apache POI (5.2.5 → 5.5.1), and Bucket4j (7.6.0 → 8.0.1, switched from the now-relocated `com.github.vladimir-bukhtoyarov` Maven coordinates to the current `com.bucket4j` ones) after a dependency-currency review.
 
 ### Fixed
 

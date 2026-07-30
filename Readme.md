@@ -107,6 +107,8 @@ Merchant Dashboard -> Payment Channels
 
 Channel setup includes endpoint URLs and channel-specific setup values. Stored values are encrypted server-side and shown back to the merchant only in masked form.
 
+Merchants can also manage their own webhook endpoints — register an endpoint, rotate its signing secret, view the delivery log, and replay a failed delivery — without needing an admin to do it on their behalf.
+
 See:
 
 ```text
@@ -146,6 +148,10 @@ The codebase now includes software controls for:
 - step-up MFA for high-value merchant payouts
 - distributed locking for multi-instance-safe money-movement crons
 - defense-in-depth method-level admin authorization alongside path-based access rules
+- a provider-to-merchant-safe error taxonomy so raw provider text never reaches a merchant response
+- merchant self-service webhook secret rotation, delivery log, and failed-delivery replay
+- uniform server-side CSV/XLSX export
+- automatic dependency-update pull requests (Dependabot) and a CI formatting check
 
 Readiness documentation is available in:
 
@@ -195,6 +201,7 @@ Manual signoff is still required for real provider sandbox certification, stagin
 | Trusted-origin API access | Limits browser access to configured origins. |
 | Signed callbacks | Allows merchants to verify that callback messages came from CPay. |
 | Provider response verification | Verifies signed provider responses (e.g. Yo! Payments) before trusting them. |
+| Merchant-safe error messages | Translates raw provider responses and internal exceptions into a stable, generic message before they reach a merchant — the raw detail stays internal. |
 | Callback task claims | Reduces duplicate callback delivery when multiple workers are running. |
 | Distributed cron locking | Prevents the status-check and payout crons from processing the same batch twice across multiple instances. |
 | Audit and readiness records | Supports operational tracking and post-incident review. |

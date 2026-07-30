@@ -30,6 +30,8 @@ CPay uses several controls to support safe operation:
 - restricted trusted origins for API access
 - signed callback messages
 - verified provider responses (e.g. Yo! Payments) before they are trusted
+- merchant-safe error messages: raw provider responses and internal exceptions are translated to a stable, generic message before reaching a merchant, never echoed back directly
+- merchant self-service webhook management (register, rotate secret, view delivery log, replay a failed delivery), scoped so one merchant can never act on another's webhook
 - claim-based callback processing for scaled workers
 - distributed locking (ShedLock) so the status-check and payout crons cannot process the same batch twice across multiple instances
 - encrypted merchant channel setup values
@@ -115,7 +117,7 @@ Before production launch, confirm that:
 - `SPRINGDOC_API_DOCS_ENABLED` and `SPRINGDOC_SWAGGER_UI_ENABLED` remain `false` unless a controlled environment explicitly enables them
 - clustered deployments use shared nonce storage such as `CPAY_SECURITY_NONCE_STORE=jdbc`
 - clustered deployments share one database so distributed cron locking (ShedLock) has something to coordinate through
-- dependency and code checks pass or have documented exceptions
+- dependency and code checks pass or have documented exceptions; Dependabot pull requests are reviewed and merged rather than left open indefinitely
 - operating-control review is available to administrators
 - security, finance, compliance, and business owners have approved launch readiness
 
