@@ -34,8 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminMerchantStatementController {
     private final MerchantStatementExportService statementExportService;
 
-    public AdminMerchantStatementController(
-            MerchantStatementExportService statementExportService) {
+    public AdminMerchantStatementController(MerchantStatementExportService statementExportService) {
         this.statementExportService = statementExportService;
     }
 
@@ -82,7 +81,14 @@ public class AdminMerchantStatementController {
 
     private String filename(
             String merchantNumber, String startDate, String endDate, String extension) {
-        return "cpay-statement-" + merchantNumber + "-" + startDate + "-to-" + endDate + "." + extension;
+        return "cpay-statement-"
+                + merchantNumber
+                + "-"
+                + startDate
+                + "-to-"
+                + endDate
+                + "."
+                + extension;
     }
 
     private Map<String, Object> error(String code, String message) {

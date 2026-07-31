@@ -110,14 +110,14 @@ public class MerchantStatementExportService {
     }
 
     /**
-     * Admin statement export (audit M5): backs the admin portal's "Account Statement" screen,
-     * which previously built an Excel file client-side from whatever rows already happened to be
-     * loaded in the table instead of asking the server for the full requested range. The caller is
-     * an already-authenticated admin/ops operator (cookie-session admin portal, gated by {@code
-     * @PreAuthorize("hasRole('ADMIN')")} on the controller plus the {@code /api/v2/admin/**} ->
-     * ADMIN filter-chain rule) rather than an external v2-signed API integration key or a merchant's
-     * own logged-in staff, so - unlike {@link #export} - there is no pre-verified {@link Merchant}
-     * to reuse; this resolves it server-side from {@code merchantNumber}. Like {@link
+     * Admin statement export (audit M5): backs the admin portal's "Account Statement" screen, which
+     * previously built an Excel file client-side from whatever rows already happened to be loaded
+     * in the table instead of asking the server for the full requested range. The caller is an
+     * already-authenticated admin/ops operator (cookie-session admin portal, gated by
+     * {@code @PreAuthorize("hasRole('ADMIN')")} on the controller plus the {@code /api/v2/admin/**}
+     * -> ADMIN filter-chain rule) rather than an external v2-signed API integration key or a
+     * merchant's own logged-in staff, so - unlike {@link #export} - there is no pre-verified {@link
+     * Merchant} to reuse; this resolves it server-side from {@code merchantNumber}. Like {@link
      * #exportForPortal}, it skips the {@code allowed_apis} check {@link #export} enforces: that
      * governs what an external integration key may call against the signed v2 API, not what an
      * authenticated admin operator may view of a merchant's own statement - different trust
