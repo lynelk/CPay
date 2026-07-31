@@ -122,7 +122,7 @@ function LoginMerchant(): React.ReactElement {
     event.preventDefault();
     setError('');
     if (!accountNumber || !username || !password) {
-      setError('Enter your merchant account, username, and password.');
+      setError(strings.merchant_login_required);
       return;
     }
     setLoading(true);
@@ -142,10 +142,10 @@ function LoginMerchant(): React.ReactElement {
         localStorage.setItem('merchantUser', JSON.stringify(res.user));
         navigate('/dashboardMerchant');
       } else {
-        setError(res.message || `Sign in failed (${res.code}).`);
+        setError(res.message || `${strings.sign_in_failed} (${res.code}).`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed.');
+      setError(err instanceof Error ? err.message : `${strings.sign_in_failed}.`);
     } finally {
       setLoading(false);
     }
@@ -220,7 +220,7 @@ function LoginMerchant(): React.ReactElement {
     <AuthLayout
       className="ios-auth-merchant"
       title={strings.merchant_title}
-      subtitle="Merchant access"
+      subtitle={strings.merchant_access_subtitle}
       asideTitle={setting(appearance, 'merchant_login_hero_title')}
       asideCopy={setting(appearance, 'merchant_login_hero_copy')}
       asideVariant="media"
@@ -234,7 +234,7 @@ function LoginMerchant(): React.ReactElement {
         {error ? <Alert variant="error">{error}</Alert> : null}
         <TextField
           id="merchant-account"
-          label="Merchant account"
+          label={strings.merchant_account_label}
           value={accountNumber}
           onValueChange={setAccountNumber}
           autoComplete="off"
@@ -242,7 +242,7 @@ function LoginMerchant(): React.ReactElement {
         />
         <TextField
           id="merchant-username"
-          label="Username"
+          label={strings.username_label}
           value={username}
           onValueChange={setUsername}
           autoComplete="username"
@@ -250,20 +250,20 @@ function LoginMerchant(): React.ReactElement {
         />
         <PasswordField
           id="merchant-password"
-          label="Password"
+          label={strings.password_label}
           value={password}
           onValueChange={setPassword}
           invalid={invalid}
         />
         <div className="ios-actions">
-          <Button type="submit" variant="primary" loading={loading} loadingLabel="Signing in…">
-            Sign in
+          <Button type="submit" variant="primary" loading={loading} loadingLabel={strings.signing_in}>
+            {strings.sign_in}
           </Button>
           <Button type="button" variant="link" onClick={() => navigate('/signup')}>
-            Create merchant account
+            {strings.create_merchant_account}
           </Button>
           <Button type="button" variant="link" onClick={() => setShowForgot(true)}>
-            Forgot my password?
+            {strings.forgot_password_link}
           </Button>
         </div>
       </form>

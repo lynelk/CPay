@@ -47,14 +47,19 @@ class LinearChart extends React.Component {
   }
 
   chartData(data) {
-    const color = this.props.color || '#1198C4';
+    // Resolve the brand accent (and the point-border halo) from the same
+    // --ios-* tokens the rest of the chart already reads via cssVar(), so the
+    // line stays correct if the accent or surface color is ever retuned for
+    // dark mode instead of silently drifting from a hardcoded hex.
+    const color = this.props.color || this.cssVar('--ios-accent', '#1198C4');
     const fillColor = this.colorToRgba(color, 0.14);
+    const pointBorderColor = this.cssVar('--ios-surface-solid', '#FFFFFF');
     const datasets = data && data.data && Array.isArray(data.data.datasets)
       ? data.data.datasets.map(dataset => ({
         borderColor: color,
         backgroundColor: fillColor,
         pointBackgroundColor: color,
-        pointBorderColor: '#FFFFFF',
+        pointBorderColor,
         tension: 0.35,
         ...dataset,
       }))

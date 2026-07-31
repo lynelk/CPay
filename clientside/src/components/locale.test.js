@@ -56,3 +56,49 @@ describe('locale strings (English)', () => {
     expect(strings[key].length).toBeGreaterThan(0);
   });
 });
+
+describe('locale strings (pre-login/auth screens)', () => {
+  test('sign_in is defined', () => {
+    expect(strings.sign_in).toBeTruthy();
+  });
+
+  test('forgot_password_link is defined', () => {
+    expect(strings.forgot_password_link).toBeTruthy();
+  });
+
+  test('admin_access_subtitle and merchant_access_subtitle are defined', () => {
+    expect(strings.admin_access_subtitle).toBeTruthy();
+    expect(strings.merchant_access_subtitle).toBeTruthy();
+  });
+
+  test('signup field labels are defined', () => {
+    expect(strings.business_name_label).toBeTruthy();
+    expect(strings.email_address_label).toBeTruthy();
+    expect(strings.phone_number_label).toBeTruthy();
+  });
+
+  test('forgot-password dialog strings are defined', () => {
+    expect(strings.reset_password_title).toBeTruthy();
+    expect(strings.reset_merchant_password_title).toBeTruthy();
+    expect(strings.verification_code_sent).toBeTruthy();
+  });
+});
+
+describe('locale strings (authenticated shell chrome)', () => {
+  test('shared top-bar labels are defined', () => {
+    expect(strings.settings).toBeTruthy();
+    expect(strings.refresh).toBeTruthy();
+  });
+
+  test('menu titles are defined for both portals', () => {
+    expect(strings.menu_dashboard).toBeTruthy();
+    expect(strings.menu_merchants).toBeTruthy();
+    expect(strings.menu_channels).toBeTruthy();
+    expect(strings.menu_sms).toBeTruthy();
+  });
+
+  test('menu subtitles are defined per portal', () => {
+    expect(strings.menu_dashboard_subtitle_admin).toBeTruthy();
+    expect(strings.menu_dashboard_subtitle_merchant).toBeTruthy();
+  });
+});

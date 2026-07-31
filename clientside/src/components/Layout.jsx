@@ -1,5 +1,6 @@
 import React from 'react';
 import Messager from './StableMessager';
+import strings from './locale';
 import { withRouter } from '../shared/router/compat';
 import MainMenu from "./MainMenu";
 import Progress from "./Progress";
@@ -22,13 +23,13 @@ import { apiUrl } from '../shared/config';
 import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
-  dashboard: { title: 'Dashboard', subtitle: 'Track balances, transactions, and operational health.' },
-  merchants: { title: 'Merchants', subtitle: 'Manage merchant profiles, accounts, and access.' },
-  transactions: { title: 'Transactions', subtitle: 'Review payments, callbacks, ledger movement, and exports.' },
-  reconciliation: { title: 'Reconciliation', subtitle: 'Match provider statement rows to CPay transactions.' },
-  admins: { title: 'Administrators', subtitle: 'Manage portal users and permissions.' },
-  audittrail: { title: 'Audit Trail', subtitle: 'Review administrator activity and system events.' },
-  settings: { title: 'Settings', subtitle: 'Configure payment gateways, SMS, email, and application controls.' },
+  dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_admin },
+  merchants: { title: strings.menu_merchants, subtitle: strings.menu_merchants_subtitle },
+  transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_admin },
+  reconciliation: { title: strings.menu_reconciliation, subtitle: strings.menu_reconciliation_subtitle },
+  admins: { title: strings.menu_admins, subtitle: strings.menu_admins_subtitle_admin },
+  audittrail: { title: strings.menu_audittrail, subtitle: strings.menu_audittrail_subtitle_admin },
+  settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_admin },
 };
 
 class LayoutWithOutRouter extends React.Component {
@@ -56,9 +57,9 @@ class LayoutWithOutRouter extends React.Component {
     if (!isLoggedIn) {
       this.setState({ isLogged: false });
       this.messager.alert({
-        title: "Session Expired!",
+        title: strings.session_expired_title,
         icon: "info",
-        msg: "Your session expired",
+        msg: strings.session_expired_message,
         result: () => history.push("/portal")
       });
     } else {
@@ -89,9 +90,9 @@ class LayoutWithOutRouter extends React.Component {
   sessionExpired() {
     const { history } = this.props;
     this.messager.alert({
-      title: "Session Expired!",
+      title: strings.session_expired_title,
       icon: "info",
-      msg: "Your session expired",
+      msg: strings.session_expired_message,
       result: () => history.push("/")
     });
   }
@@ -147,8 +148,8 @@ class LayoutWithOutRouter extends React.Component {
 
   logoutUser() {
     this.messager.confirm({
-      title: "Confirm Logout",
-      msg: "Are you sure you want to logout?",
+      title: strings.confirm_logout_title,
+      msg: strings.confirm_logout_message,
       result: r => {
         if (r) {
           this.logoutSendRequest();
@@ -238,8 +239,8 @@ class LayoutWithOutRouter extends React.Component {
             right={
               <>
                 <ThemeToggle />
-                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>Settings</Button>
-                <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>Refresh</Button>
+                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>{strings.settings}</Button>
+                <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button>
                 <UserChip name={user.name || 'User'} meta={user.email || 'Signed in'} />
               </>
             }

@@ -113,7 +113,7 @@ function Login(): React.ReactElement {
     event.preventDefault();
     setError('');
     if (!username || !password) {
-      setError('Enter your username and password.');
+      setError(strings.admin_login_required);
       return;
     }
     setLoading(true);
@@ -133,10 +133,10 @@ function Login(): React.ReactElement {
         localStorage.setItem('user', JSON.stringify(res.user));
         navigate('/dashboard');
       } else {
-        setError(res.message || `Sign in failed (${res.code}).`);
+        setError(res.message || `${strings.sign_in_failed} (${res.code}).`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed.');
+      setError(err instanceof Error ? err.message : `${strings.sign_in_failed}.`);
     } finally {
       setLoading(false);
     }
@@ -162,7 +162,7 @@ function Login(): React.ReactElement {
     <AuthLayout
       className="ios-auth-merchant ios-auth-admin"
       title={strings.portal_title}
-      subtitle="Administrator access"
+      subtitle={strings.admin_access_subtitle}
       asideTitle={setting(appearance, 'admin_login_hero_title')}
       asideCopy={setting(appearance, 'admin_login_hero_copy')}
       asideVariant="media"
@@ -176,7 +176,7 @@ function Login(): React.ReactElement {
         {error ? <Alert variant="error">{error}</Alert> : null}
         <TextField
           id="admin-username"
-          label="Username"
+          label={strings.username_label}
           value={username}
           onValueChange={setUsername}
           autoComplete="username"
@@ -184,17 +184,17 @@ function Login(): React.ReactElement {
         />
         <PasswordField
           id="admin-password"
-          label="Password"
+          label={strings.password_label}
           value={password}
           onValueChange={setPassword}
           invalid={invalid}
         />
         <div className="ios-actions">
-          <Button type="submit" variant="primary" loading={loading} loadingLabel="Signing in…">
-            Sign in
+          <Button type="submit" variant="primary" loading={loading} loadingLabel={strings.signing_in}>
+            {strings.sign_in}
           </Button>
           <Button type="button" variant="link" onClick={() => setShowForgot(true)}>
-            Forgot my password?
+            {strings.forgot_password_link}
           </Button>
         </div>
       </form>

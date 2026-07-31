@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import strings from './locale';
 import { AuthLayout, TextField, PasswordField, Button, Alert } from '../ui';
 import type { AuthAsideBenefit, AuthAsideCard } from '../ui/AuthLayout';
 
@@ -138,13 +139,13 @@ function MerchantSignup(): React.ReactElement {
       });
       const data = await readJsonResponse(response);
       if (!response.ok || data.code !== '000') {
-        setMessage(data.message || 'Signup could not be completed.');
+        setMessage(data.message || strings.signup_incomplete);
         return;
       }
       setResult(data);
       setMessage(data.message || '');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Signup could not be completed.');
+      setMessage(err instanceof Error ? err.message : strings.signup_incomplete);
     } finally {
       setLoading(false);
     }
@@ -218,8 +219,8 @@ function MerchantSignup(): React.ReactElement {
   return (
     <AuthLayout
       className="ios-auth-merchant ios-auth-signup"
-      title="Create merchant account"
-      subtitle="Self-service onboarding"
+      title={strings.create_merchant_account}
+      subtitle={strings.self_service_onboarding_subtitle}
       asideTitle={setting(appearance, 'merchant_login_hero_title')}
       asideCopy={setting(appearance, 'merchant_login_hero_copy')}
       asideVariant="media"
@@ -233,50 +234,50 @@ function MerchantSignup(): React.ReactElement {
 
       {result ? (
         <div className="ios-result">
-          <h2>Registration submitted</h2>
+          <h2>{strings.registration_submitted}</h2>
           <dl>
             <div>
-              <dt>Merchant account number</dt>
+              <dt>{strings.merchant_account_number_label}</dt>
               <dd>{result.accountNumber}</dd>
             </div>
             <div>
-              <dt>Status</dt>
+              <dt>{strings.status_label}</dt>
               <dd>{result.merchantStatus}</dd>
             </div>
           </dl>
-          <p>Use this account number with your email and password to log in.</p>
+          <p>{strings.signup_success_instructions}</p>
           <Button variant="primary" onClick={() => navigate('/')}>
-            Go to login
+            {strings.go_to_login}
           </Button>
         </div>
       ) : (
         <form className="ios-form ios-signup-form" onSubmit={handleSubmit} noValidate>
           <div className="ios-grid">
-            <TextField id="su-business" label="Business name" value={form.businessName} onValueChange={(v) => change('businessName', v)} required />
-            <TextField id="su-short" label="Short name" value={form.shortName} onValueChange={(v) => change('shortName', v)} required />
+            <TextField id="su-business" label={strings.business_name_label} value={form.businessName} onValueChange={(v) => change('businessName', v)} required />
+            <TextField id="su-short" label={strings.short_name_label} value={form.shortName} onValueChange={(v) => change('shortName', v)} required />
             <div className="ios-field">
-              <label className="ios-field__label" htmlFor="su-type">Account type</label>
+              <label className="ios-field__label" htmlFor="su-type">{strings.account_type_label}</label>
               <select
                 id="su-type"
                 className="ios-input ios-select"
                 value={form.accountType}
                 onChange={(e) => change('accountType', e.target.value)}
               >
-                <option value="BUSINESS">Business</option>
-                <option value="PERSONAL">Personal</option>
+                <option value="BUSINESS">{strings.account_type_business}</option>
+                <option value="PERSONAL">{strings.account_type_personal}</option>
               </select>
             </div>
-            <TextField id="su-contact" label="Primary contact" value={form.contactName} onValueChange={(v) => change('contactName', v)} required />
-            <TextField id="su-email" label="Email address" type="email" value={form.email} onValueChange={(v) => change('email', v)} autoComplete="email" required />
-            <TextField id="su-phone" label="Phone number" value={form.phone} onValueChange={(v) => change('phone', v)} autoComplete="tel" required />
-            <PasswordField id="su-password" label="Password" value={form.password} onValueChange={(v) => change('password', v)} autoComplete="new-password" />
+            <TextField id="su-contact" label={strings.primary_contact_label} value={form.contactName} onValueChange={(v) => change('contactName', v)} required />
+            <TextField id="su-email" label={strings.email_address_label} type="email" value={form.email} onValueChange={(v) => change('email', v)} autoComplete="email" required />
+            <TextField id="su-phone" label={strings.phone_number_label} value={form.phone} onValueChange={(v) => change('phone', v)} autoComplete="tel" required />
+            <PasswordField id="su-password" label={strings.password_label} value={form.password} onValueChange={(v) => change('password', v)} autoComplete="new-password" />
           </div>
           <div className="ios-actions">
-            <Button type="submit" variant="primary" loading={loading} loadingLabel="Submitting…">
-              Create merchant account
+            <Button type="submit" variant="primary" loading={loading} loadingLabel={strings.submitting}>
+              {strings.create_merchant_account}
             </Button>
             <Button type="button" variant="link" onClick={() => navigate('/')}>
-              Back to login
+              {strings.back_to_login}
             </Button>
           </div>
         </form>
