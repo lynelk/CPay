@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -133,6 +134,98 @@ class MerchantStatementExportServiceTest {
         assertThatThrownBy(() -> service.exportForPortal(merchant, "2026-01-01", "2026-01-31", 2, null))
             .isInstanceOf(PaymentGatewayException.class)
             .hasMessageContaining("not active");
+    }
+
+    @Test
+    void exportForAdminResolvesTheMerchantByAccountNumberAndWorksWithoutTheStatementExportApiPrivilege() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantReadAuditService auditService = mock(MerchantReadAuditService.class);
+        stubMerchantLookup(jdbcTemplate, "1000003", "ACTIVE", new String[0]);
+        stubStatementRows(jdbcTemplate, List.of(new FakeRow(10, new Timestamp(1_000_000L))));
+
+        MerchantStatementExportService service = new MerchantStatementExportService(jdbcTemplate, auditService);
+
+        StatementExportResponse response = service.exportForAdmin("1000003", "2026-01-01", "2026-01-31", 2, null);
+
+        assertThat(response.getRows()).hasSize(1);
+        assertThat(response.getMerchantNumber()).isEqualTo("1000003");
+    }
+
+    @Test
+    void exportForAdminWorksForANonActiveMerchantSoOpsCanInvestigateASuspendedAccount() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantReadAuditService auditService = mock(MerchantReadAuditService.class);
+        stubMerchantLookup(jdbcTemplate, "1000003", "SUSPENDED", new String[0]);
+        stubStatementRows(jdbcTemplate, List.of(new FakeRow(10, new Timestamp(1_000_000L))));
+
+        MerchantStatementExportService service = new MerchantStatementExportService(jdbcTemplate, auditService);
+
+        StatementExportResponse response = service.exportForAdmin("1000003", "2026-01-01", "2026-01-31", 2, null);
+
+        assertThat(response.getRows()).hasSize(1);
+    }
+
+    @Test
+    void exportForAdminRejectsAnUnknownMerchantNumber() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        MerchantReadAuditService auditService = mock(MerchantReadAuditService.class);
+        stubNoMerchantFound(jdbcTemplate);
+
+        MerchantStatementExportService service = new MerchantStatementExportService(jdbcTemplate, auditService);
+
+        assertThatThrownBy(() -> service.exportForAdmin("does-not-exist", "2026-01-01", "2026-01-31", 2, null))
+            .isInstanceOf(PaymentGatewayException.class)
+            .hasMessageContaining("not found");
+    }
+
+    /**
+     * Stubs {@code Common.getMerchantByAccountNumber}'s underlying query (a plain {@code SELECT *
+     * FROM merchants WHERE account_number=:account_number}, no merchant-user join query needed
+     * since the merchant has no users here) alongside the statement rows query on the same shared
+     * mock template - {@code exportForAdmin} issues both against the same {@link
+     * NamedParameterJdbcTemplate}, so this differentiates by matching on the SQL text.
+     */
+    private void stubMerchantLookup(
+            NamedParameterJdbcTemplate jdbcTemplate, String accountNumber, String status, String[] allowedApis) {
+        when(jdbcTemplate.query(contains("FROM merchants"), any(SqlParameterSource.class), any(RowMapper.class)))
+            .thenAnswer(invocation -> {
+                RowMapper rm = invocation.getArgument(2);
+                ResultSet rs = mock(ResultSet.class);
+                when(rs.getString("name")).thenReturn("Test Merchant");
+                when(rs.getString("account_number")).thenReturn(accountNumber);
+                when(rs.getString("status")).thenReturn(status);
+                when(rs.getLong("id")).thenReturn(7L);
+                when(rs.getString("created_on")).thenReturn("2026-01-01");
+                when(rs.getString("created_by")).thenReturn("system");
+                when(rs.getString("account_type")).thenReturn("MERCHANT");
+                when(rs.getString("public_key")).thenReturn(null);
+                when(rs.getString("private_key")).thenReturn(null);
+                when(rs.getString("hmac_secret")).thenReturn(null);
+                when(rs.getString("short_name")).thenReturn("Test");
+                when(rs.getString("allowed_apis"))
+                    .thenReturn(allowedApis.length == 0 ? "" : String.join(",", allowedApis));
+                return List.of(rm.mapRow(rs, 1));
+            });
+    }
+
+    private void stubNoMerchantFound(NamedParameterJdbcTemplate jdbcTemplate) {
+        when(jdbcTemplate.query(contains("FROM merchants"), any(SqlParameterSource.class), any(RowMapper.class)))
+            .thenReturn(List.of());
+    }
+
+    private void stubStatementRows(NamedParameterJdbcTemplate jdbcTemplate, List<FakeRow> data) {
+        when(jdbcTemplate.query(contains("merchant_statement"), any(SqlParameterSource.class), any(RowMapper.class)))
+            .thenAnswer(invocation -> {
+                RowMapper rm = invocation.getArgument(2);
+                List<Object> mapped = new ArrayList<>();
+                int rowNum = 1;
+                for (FakeRow fr : data) {
+                    ResultSet rs = mock(ResultSet.class);
+                    stubResultSetRow(rs, fr);
+                    mapped.add(rm.mapRow(rs, rowNum++));
+                }
+                return mapped;
+            });
     }
 
     private record FakeRow(long id, Timestamp createdOn) {

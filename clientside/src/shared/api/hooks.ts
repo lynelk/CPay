@@ -485,6 +485,146 @@ export function useManualMatchMutation() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Audit trail (admin + merchant)
+// ---------------------------------------------------------------------------
+
+export interface AuditTrailRow {
+  id?: number | string;
+  created_on?: string;
+  user_id?: string | number;
+  user_name?: string;
+  action?: string;
+  [key: string]: unknown;
+}
+
+function useAuditTrailQuery(key: string, endpoint: string, search: TransactionSearch, pageSize: number) {
+  return useQuery({
+    queryKey: ['audit-trail', key, search, pageSize],
+    queryFn: async (): Promise<AuditTrailRow[]> => {
+      const res = await postLegacyJson<AuditTrailRow[]>(endpoint, {
+        pageSize,
+        searchingValue: search,
+        sort: 'asc',
+      });
+      return res.data ?? [];
+    },
+    staleTime: 30_000,
+  });
+}
+
+/** Admin `/audittrail/getAudittrails` list backing `ModuleAuditTrail`. */
+export function useAdminAuditTrail(search: TransactionSearch, pageSize = 50) {
+  return useAuditTrailQuery('admin', '/audittrail/getAudittrails', search, pageSize);
+}
+
+/** Merchant `/audittrail/getMerchantAudittrails` list backing `MerchantModuleAuditTrail`. */
+export function useMerchantAuditTrail(search: TransactionSearch, pageSize = 50) {
+  return useAuditTrailQuery('merchant', '/audittrail/getMerchantAudittrails', search, pageSize);
+}
+
+// ---------------------------------------------------------------------------
+// Merchant account statement (admin dialog + merchant self-service view)
+// ---------------------------------------------------------------------------
+
+export interface MerchantStatementRow {
+  id?: number | string;
+  created_on?: string;
+  narrative?: string;
+  description?: string;
+  amount?: number | string;
+  tx_type?: string;
+  balances?: number | string;
+  [key: string]: unknown;
+}
+
+export interface MerchantStatementSearchRules {
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface MerchantStatementResult {
+  rows: MerchantStatementRow[];
+  total: number;
+  balances: string;
+}
+
+/**
+ * Admin view of a single merchant's account statement (`ModuleMerchantsAccount`, opened from the
+ * merchants list). Mirrors the original hand-rolled fetch's URL choice: a merchant with a resolved
+ * `id` uses `/transactions/getMerchantStatement` (server resolves the exact merchant); otherwise it
+ * falls back to `/transactions/getMerchantStatementByMerchant` the same way the legacy code did.
+ */
+export function useAdminMerchantStatement(
+  merchantId: number | string | undefined,
+  searchRules: MerchantStatementSearchRules,
+  pageSize: number,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['merchant-statement', 'admin', merchantId, searchRules, pageSize],
+    queryFn: async (): Promise<MerchantStatementResult> => {
+      const endpoint = merchantId
+        ? '/transactions/getMerchantStatement'
+        : '/transactions/getMerchantStatementByMerchant';
+      const res = await postLegacyJson<MerchantStatementRow[]>(endpoint, {
+        search_rules: {
+          start_date: searchRules.start_date || '',
+          end_date: searchRules.end_date || '',
+        },
+        merchant_id: merchantId ?? null,
+        pageSize,
+        searchingValue: { value: '', category: 'all' },
+        sort: 'asc',
+      });
+      const rows = res.data ?? [];
+      return { rows, total: rows.length, balances: String(res.balances ?? '') };
+    },
+    enabled,
+  });
+}
+
+/** A merchant portal user's own account statement (`MerchantModuleMerchantsAccount`). */
+export function useMerchantOwnStatement(searchRules: MerchantStatementSearchRules, pageSize: number) {
+  return useQuery({
+    queryKey: ['merchant-statement', 'own', searchRules, pageSize],
+    queryFn: async (): Promise<MerchantStatementResult> => {
+      const res = await postLegacyJson<MerchantStatementRow[]>('/transactions/getMerchantStatementByMerchant', {
+        search_rules: {
+          start_date: searchRules.start_date || '',
+          end_date: searchRules.end_date || '',
+        },
+        pageSize,
+        searchingValue: { value: '', category: 'all' },
+        sort: 'asc',
+      });
+      const rows = res.data ?? [];
+      return { rows, total: typeof res.total === 'number' ? res.total : rows.length, balances: String(res.balances ?? '') };
+    },
+  });
+}
+
+export interface RecordMerchantTransactionPayload {
+  merchant_id?: number | string;
+  tx_type: string;
+  amount: string | number;
+  description: string;
+  balance_type?: string;
+  [key: string]: unknown;
+}
+
+/** Admin "record a manual transaction" action on a merchant's account statement. */
+export function useRecordMerchantTransactionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: RecordMerchantTransactionPayload) =>
+      postLegacyJson('/transactions/recordTransaction', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchant-statement', 'admin'] });
+    },
+  });
+}
+
 export interface ImportStatementPayload {
   provider: string;
   importedBy?: string;
