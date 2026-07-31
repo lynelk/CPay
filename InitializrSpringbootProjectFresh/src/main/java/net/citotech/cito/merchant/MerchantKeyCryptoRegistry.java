@@ -4,13 +4,18 @@ import org.springframework.stereotype.Component;
 
 /**
  * Static bridge so legacy static-utility code ({@code Common}, not a Spring bean) can encrypt/
- * decrypt merchant RSA private keys at rest, using the same key material as
- * {@link MerchantChannelCryptoService} (audit E6). Follows the same static-registry pattern as
- * {@code ProviderTokenStoreRegistry}.
+ * decrypt merchant secrets at rest, using the same key material as {@link
+ * MerchantChannelCryptoService} (audit E6). Covers merchant RSA private keys and the legacy
+ * per-merchant {@code hmac_secret} (an alternative to RSA for signing outgoing legacy callbacks,
+ * read in {@code Common}'s merchant row-mappers and used in {@code Common#legacyCallbackSignature}
+ * - there is no current write path for it in application code, so any manual population should
+ * store the result of {@link #encryptForStorage(String)} rather than a raw value). Follows the same
+ * static-registry pattern as {@code ProviderTokenStoreRegistry}.
  *
- * <p>Storage is tolerant of legacy plaintext rows written before this was added: a value that
- * still looks like a raw PEM block (starts with {@code -----BEGIN}) is returned as-is on read
- * rather than failing to decrypt. New writes are always encrypted.
+ * <p>Storage is tolerant of legacy plaintext rows written before this was added: a value that still
+ * looks like a raw PEM block (starts with {@code -----BEGIN}) is returned as-is on read. Any other
+ * value that fails to decrypt (e.g. a legacy plaintext {@code hmac_secret}, which isn't PEM-shaped)
+ * falls back to the raw stored value rather than throwing. New writes are always encrypted.
  */
 @Component
 public class MerchantKeyCryptoRegistry {

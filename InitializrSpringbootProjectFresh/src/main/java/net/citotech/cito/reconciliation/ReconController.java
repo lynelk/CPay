@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.upload.SpreadsheetUploadValidator;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +38,11 @@ public class ReconController {
             @RequestParam("provider") String provider,
             @RequestParam(value = "importedBy", defaultValue = "system") String importedBy,
             @RequestPart("file") MultipartFile file) {
+        SpreadsheetUploadValidator.validate(file, SpreadsheetUploadValidator.STATEMENT_EXTENSIONS)
+                .ifPresent(
+                        reason -> {
+                            throw new PaymentGatewayException(reason);
+                        });
         try {
             return service.importStatement(
                     provider, file.getOriginalFilename(), importedBy, file.getBytes());

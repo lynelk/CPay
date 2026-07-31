@@ -2,6 +2,7 @@ package net.citotech.cito.reconciliation;
 
 import java.io.IOException;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.upload.SpreadsheetUploadValidator;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,6 +32,11 @@ public class StatementCheckController {
     @PostMapping(path = "/check")
     public long check(
             @RequestParam("provider") String provider, @RequestPart("file") MultipartFile file) {
+        SpreadsheetUploadValidator.validate(file, SpreadsheetUploadValidator.STATEMENT_EXTENSIONS)
+                .ifPresent(
+                        reason -> {
+                            throw new PaymentGatewayException(reason);
+                        });
         try {
             return validator.validate(provider, file.getOriginalFilename(), file.getBytes());
         } catch (IOException e) {

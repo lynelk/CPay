@@ -1,6 +1,7 @@
 package net.citotech.cito.callback;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,8 +22,9 @@ public class CallbackAdminController {
     }
 
     @PostMapping(path = "/rotate")
-    public String rotate(@RequestParam("merchantId") long merchantId,
-                         @RequestParam(value = "alias", defaultValue = "default") String alias) {
+    public String rotate(
+            @RequestParam("merchantId") long merchantId,
+            @RequestParam(value = "alias", defaultValue = "default") String alias) {
         return service.rotateSecret(merchantId, alias);
     }
 
@@ -35,5 +37,10 @@ public class CallbackAdminController {
     public String retryMerchant(@RequestParam("merchantId") long merchantId) {
         return "updated=" + service.requeueMerchant(merchantId);
     }
-}
 
+    /** Audit E12: how many merchants still rely on the shared fallback callback-signing secret. */
+    @GetMapping(path = "/secret-status")
+    public CallbackAdminService.SecretRotationStatus secretStatus() {
+        return service.secretRotationStatus();
+    }
+}

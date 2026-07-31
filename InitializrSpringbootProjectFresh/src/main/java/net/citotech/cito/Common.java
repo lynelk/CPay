@@ -640,7 +640,8 @@ public class Common {
                     m.setPublic_key(rs.getString("public_key"));
                     m.setPrivate_key(
                             MerchantKeyCryptoRegistry.decryptForUse(rs.getString("private_key")));
-                    m.setHmac_secret(rs.getString("hmac_secret"));
+                    m.setHmac_secret(
+                            MerchantKeyCryptoRegistry.decryptForUse(rs.getString("hmac_secret")));
                     String allowed_apis_string =
                             rs.getString("allowed_apis") != null
                                     ? rs.getString("allowed_apis")
@@ -831,7 +832,8 @@ public class Common {
                     m.setPublic_key(rs.getString("public_key"));
                     m.setPrivate_key(
                             MerchantKeyCryptoRegistry.decryptForUse(rs.getString("private_key")));
-                    m.setHmac_secret(rs.getString("hmac_secret"));
+                    m.setHmac_secret(
+                            MerchantKeyCryptoRegistry.decryptForUse(rs.getString("hmac_secret")));
                     m.setShort_name(rs.getString("short_name"));
                     // Get allowed APIs
                     String allowed_apis_string =

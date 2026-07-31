@@ -1,11 +1,13 @@
 package net.citotech.cito.reconciliation;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
+import net.citotech.cito.gateway.PaymentGatewayException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -52,6 +55,23 @@ class ReconControllerTest {
 
         verify(service)
                 .importStatement(eq("MTN"), eq("statement.csv"), eq("ops-user"), any(byte[].class));
+    }
+
+    /**
+     * Audit E11: previously this endpoint had no size/extension/content-type check at all - any
+     * file, of any size or type, reached {@link ReconService} directly.
+     */
+    @Test
+    void rejectsAnUnsupportedFileExtensionBeforeReachingTheService() {
+        ReconService service = mock(ReconService.class);
+        ReconController controller = new ReconController(service);
+        MockMultipartFile file =
+                new MockMultipartFile("file", "statement.pdf", "application/pdf", new byte[] {1});
+
+        assertThatThrownBy(() -> controller.importStatement("MTN", "ops-user", file))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("Unsupported file extension");
+        verifyNoInteractions(service);
     }
 
     @Test
