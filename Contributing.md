@@ -92,6 +92,8 @@ For frontend changes:
 - confirm that admin-only actions are clearly labelled
 - use confirmation prompts for high-risk actions such as callback requeue, channel approval, daily close, or manual finance posting
 - keep merchant channel setup clear enough for non-technical users
+- when modernizing a legacy class component, follow the established pattern (see `ModuleDashboard.jsx`, `ModuleTransactions.jsx`, `ModuleReconciliation.tsx`, `ModuleAuditTrail.tsx`, `ModuleMerchantsAccount.tsx`): typed `.tsx` function component, data fetching via a `src/shared/api/hooks.ts` query hook, mutation-driven cache invalidation instead of a manual reload, and inline field validation instead of only alert-dialog errors
+- route new user-facing strings through `src/components/locale.js` rather than hardcoding English
 
 ### Documentation
 

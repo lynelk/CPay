@@ -127,6 +127,7 @@ CPay includes internal administrative APIs for controlled operations. These are 
 | Statement validation | Validate provider statement files before import. |
 | Reconciliation finance | Review summaries and close reconciliation days. |
 | Reconciliation matching | Pair unmatched provider statement rows with a CPay transaction using an admin manual-match workbench, or trigger auto-match. |
+| Merchant statement export | Download a merchant's account statement (CSV/XLSX) for a date range, session-authenticated for admin use. |
 | Operations dashboard | Track alerts, parked callbacks, and reconciliation exceptions. |
 | Operating controls | Review open operating-control event counts. |
 | Readiness dashboard | View non-manual market-readiness evidence counters, platform-wide or scoped to a single merchant. |
@@ -154,7 +155,9 @@ The codebase now includes software controls for:
 - defense-in-depth method-level admin authorization alongside path-based access rules
 - a provider-to-merchant-safe error taxonomy so raw provider text never reaches a merchant response
 - merchant self-service webhook secret rotation, delivery log, and failed-delivery replay
-- uniform server-side CSV/XLSX export
+- uniform server-side CSV/XLSX export, now also covering the admin account-statement screen
+- typed, TanStack Query-backed admin/merchant portal modules (dashboard, transactions, reconciliation, audit trail, merchant account) with loading/error/empty states and inline form validation
+- a responsive card layout for table-based modules on small screens
 - provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments
 - a reconciliation manual-match workbench (admin UI) for pairing unmatched provider statement rows with CPay transactions, plus a candidate-transaction search endpoint
 - a per-merchant go-live readiness checklist alongside the existing platform-wide readiness dashboard

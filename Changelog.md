@@ -45,8 +45,15 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added Micrometer gauges for parked/pending callback tasks, failed/pending merchant webhook deliveries, and open operations alerts, with Prometheus alert rules for callback and webhook backlog visibility.
 - Added a capped legacy-ledger repair sweep that backfills missing normalized ledger postings for successful legacy pay-in/pay-out rows before daily trial balance work.
 - Added atomic FX quote claiming for cross-border transfer intents so an active quote cannot be replayed or bound twice by concurrent requests.
+- Migrated the audit trail and merchant-account statement modules (admin and merchant portal) onto typed TanStack Query hooks, following the dashboard/transactions/reconciliation precedent: loading/error/empty states, inline field validation, and mutation-driven cache invalidation instead of manual refetches.
+- Added a session-authenticated admin statement export (`GET /api/v2/admin/merchants/{merchantNumber}/statements`), so the admin account-statement screen downloads a real server-rendered CSV/XLSX for the full requested range instead of building an Excel file client-side from whatever rows were already on screen.
+- Extended `locale.js` string coverage across the login, signup, forgot-password, and authenticated-shell (top bar/menu) screens.
+- Added a responsive card-layout fallback to the shared `Table` component below small viewport widths, so every table-based module gets a usable mobile layout for free.
 
 ### Changed
+
+- Removed `common.base_url` (a dead, always-empty legacy config field) from every frontend call site in favor of `shared/config.ts`'s `apiUrl()`, and centralized the ad-hoc `localStorage` admin/merchant user read behind a shared `readStoredUser(portal)` helper for the class components that can't use the `useAuth()` hook directly.
+- Chart line/point colors now resolve through the same CSS-variable helper as the rest of the dashboard charts, instead of a hardcoded hex color and a bare white point-border that looked wrong in dark mode.
 
 - Routed legacy outbound provider HTTP calls through a Spring-managed `RestClient` executor with central timeout, error, and metrics handling.
 - Updated Docker Compose onboarding to use the canonical backend path and the current local sandbox defaults.

@@ -155,7 +155,12 @@ Base package: `net.citotech.cito`.
   checklist scoped to that merchant's configured channels (`merchant_channel_credentials`),
   callback secret, and `entity_type='MERCHANT'` compliance records — platform-wide-only checks
   (operations alerts, daily close, admin audit events) are intentionally excluded from the
-  per-merchant view since they carry no merchant reference at all.
+  per-merchant view since they carry no merchant reference at all. `AdminMerchantStatementController`
+  (`GET /api/v2/admin/merchants/{merchantNumber}/statements`) is the session-authenticated admin
+  counterpart to `MerchantStatementExportService#exportForPortal` (merchant self-service) and
+  `PaymentsV2Controller#statements` (v2-signed API) — it calls the new `#exportForAdmin` method,
+  which looks up the merchant server-side rather than resolving it from a caller's own session or
+  signed request.
 - **`balance/`**, **`compliance/`**, **`checkout/`** (payment links/hosted checkout), **`scheduler/`**
   (timeout scans, cleanup jobs), **`metrics/`**, **`portal/`**,
   **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and
@@ -193,22 +198,30 @@ documented `mysqldump --no-data` command.
   components only — do not use it in new code).
 - `src/shared/api/httpClient.ts` — all new HTTP calls go through this; `src/shared/api/hooks.ts` for
   TanStack Query-based server state (dashboard summaries, chart series, transaction lists/mutations,
-  and the reconciliation workbench's unmatched-records/candidate-transaction search/match mutations).
-  Consumed today by `ModuleDashboard.jsx` (a class-to-function conversion was required — hooks can't
-  be used in class components), `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`, and
-  `ModuleReconciliation.tsx`; most other modules still hand-roll `fetch`/`useState` and are good
-  candidates for the same migration (see `clientside/Migration.md`'s follow-ups).
+  the reconciliation workbench's unmatched-records/candidate-transaction search/match mutations, and
+  audit-trail/merchant-account-statement queries and mutations). Consumed today by `ModuleDashboard.jsx`
+  (a class-to-function conversion was required — hooks can't be used in class components),
+  `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`, `ModuleReconciliation.tsx`, and
+  `ModuleAuditTrail.tsx`/`MerchantModuleAuditTrail.tsx`/`ModuleMerchantsAccount.tsx`/
+  `MerchantModuleMerchantsAccount.tsx`; most other modules still hand-roll `fetch`/`useState` and are
+  good candidates for the same migration (see `clientside/Migration.md`'s follow-ups).
   `LegacyRequestError` (carrying the original `code`) is thrown by `postLegacyJson` for any
   non-`"000"` legacy response code other than `"107"`/`"110"`.
 - `src/shared/useAuth.ts` — centralized read of the logged-in admin/merchant principal out of
   `localStorage` (`useAuth('admin' | 'merchant')`), with a typed `hasPrivilege()` helper. Does not
-  perform authentication itself; mirrors whatever `Login.tsx`/`LoginMerchant.tsx` last wrote. Prefer
-  this over re-implementing the inline `localStorage.getItem('user'|'merchantUser')` read.
+  perform authentication itself; mirrors whatever `Login.tsx`/`LoginMerchant.tsx` last wrote. Also
+  exports a plain (non-hook) `readStoredUser(portal)` for the class components that can't call a hook
+  directly — prefer the full `useAuth()` hook in new/converted function components, and
+  `readStoredUser()` only to centralize the read in a class component you aren't otherwise converting.
 - `src/shared/csrfFetch.ts` — CSRF-aware fetch wrapper (backend CSRF token comes from `GET /auth/csrf`).
 - `src/shared/config.ts` — `API_BASE` / `apiUrl()`; set via `VITE_API_BASE` (defaults to same-origin, so
-  the dev proxy handles it).
-- `src/ui/` — CPay iOS-style component primitives (design tokens in `src/index.css`); the ongoing
-  migration off `rc-easyui` onto these primitives is tracked in `clientside/Migration.md`.
+  the dev proxy handles it). This is now the only base-URL helper — the legacy `Common.js` `base_url`
+  field (always `""`) was removed after every call site was migrated onto `apiUrl()`.
+- `src/ui/` — CPay iOS-style component primitives (design tokens in `src/index.css`); `rc-easyui` has
+  been fully removed from the runtime dependency set (remaining source mentions are historical
+  "replaces rc-easyui X" comments, not imports). `Table.tsx` renders a stacked key/value card per row
+  instead of the table below a ~640px viewport via a `matchMedia`-backed hook, so every table-based
+  module gets a mobile layout for free.
 - `src/features/` — feature modules (in progress; see `Notes.md` there).
 - Auth/session model: cookie-based (`credentials: 'include'`) against the Spring Boot backend, not
   token-based.
