@@ -9,6 +9,8 @@ import {
 } from '../../../ui';
 
 import { apiFetch } from '../../../shared/api/httpClient';
+import { apiUrl } from '../../../shared/config';
+import { readStoredUser } from '../../../shared/useAuth';
 
 const SEARCH_CATEGORIES = [
   { value: 'all', label: 'All Fields' },
@@ -56,7 +58,7 @@ class MerchantModulePaymentsC extends React.Component {
     }
 
     isUserAllowedAccess() {
-        const user = localStorage.getItem("merchantUser") != null ? JSON.parse(localStorage.getItem("merchantUser")) : {};
+        const user = readStoredUser('merchant');
         if (user.privileges) {
             for (let i = 0; i < user.privileges.length; i++) {
                 const p = user.privileges[i].privilege;
@@ -69,7 +71,7 @@ class MerchantModulePaymentsC extends React.Component {
     getData() {
         this.props.loader("START");
         const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
-        apiFetch(common.base_url + "/transactions/getMerchantPayments", {
+        apiFetch(apiUrl("/transactions/getMerchantPayments"), {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)
@@ -109,7 +111,7 @@ class MerchantModulePaymentsC extends React.Component {
             result: (r) => {
                 if (!r) return;
                 this.props.loader("START");
-                apiFetch(common.base_url + url, {
+                apiFetch(apiUrl(url), {
                     method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
                     body: JSON.stringify(row)
@@ -157,8 +159,8 @@ class MerchantModulePaymentsC extends React.Component {
 
     saveRow(data) {
         const url = this.state.formdMode === "edit"
-            ? common.base_url + "/transactions/editPayment"
-            : common.base_url + "/transactions/addPayment";
+            ? apiUrl("/transactions/editPayment")
+            : apiUrl("/transactions/addPayment");
         this.props.loader("START");
         apiFetch(url, {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
@@ -379,7 +381,7 @@ class PaymentFormDialog extends React.Component {
         const form = new FormData();
         for (let i = 0; i < files.length; i++) form.append('file', files[i]);
         this.props.loader("START");
-        apiFetch(common.base_url + "/transactions/uploadBeneficiariesFile", { method: 'POST', mode: 'cors', credentials: 'include', body: form })
+        apiFetch(apiUrl("/transactions/uploadBeneficiariesFile"), { method: 'POST', mode: 'cors', credentials: 'include', body: form })
             .then((r) => r.text()).then((t) => {
                 this.props.loader("STOP");
                 const messager = this.props.getMessager();

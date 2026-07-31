@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import common from './Common';
 import strings from './locale';
 import ForgotPasswordMerchant from './LoginForgotPasswordMerchant';
 import { AuthLayout, TextField, PasswordField, Button, Alert } from '../ui';
 import type { AuthAsideBenefit, AuthAsideCard } from '../ui/AuthLayout';
 
 import { apiFetch } from '../shared/api/httpClient';
+import { apiUrl } from '../shared/config';
 
 type MerchantLoginAppearance = Record<string, string>;
 
@@ -44,7 +44,7 @@ function setting(appearance: MerchantLoginAppearance, key: string): string {
 }
 
 async function getMerchantLoginAppearance(): Promise<MerchantLoginAppearance> {
-  const response = await apiFetch(common.base_url + '/settings/public-login-appearance', {
+  const response = await apiFetch(apiUrl('/settings/public-login-appearance'), {
     method: 'GET',
     mode: 'cors',
     cache: 'no-cache',
@@ -62,7 +62,7 @@ async function getMerchantLoginAppearance(): Promise<MerchantLoginAppearance> {
 
 async function isLoggedIn(): Promise<boolean> {
   try {
-    const response = await apiFetch(common.base_url + '/auth/isMerchantUserLoggedIn', {
+    const response = await apiFetch(apiUrl('/auth/isMerchantUserLoggedIn'), {
       method: 'POST',
       mode: 'cors',
       cache: 'no-cache',
@@ -127,7 +127,7 @@ function LoginMerchant(): React.ReactElement {
     }
     setLoading(true);
     try {
-      const response = await apiFetch(common.base_url + '/auth/authenticateMerchantUser', {
+      const response = await apiFetch(apiUrl('/auth/authenticateMerchantUser'), {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',

@@ -56,7 +56,13 @@ const STORAGE_KEYS: Record<Portal, string> = {
   merchant: 'merchantUser',
 };
 
-function readStoredUser(portal: Portal): AuthUser {
+/**
+ * Plain (non-hook) read of the stored principal, for the class components
+ * that can't call `useAuth()` (hooks require function components). Prefer
+ * `useAuth()` in new/converted function components; use this only to
+ * centralize the read in a class component you aren't otherwise converting.
+ */
+export function readStoredUser(portal: Portal): AuthUser {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS[portal]);
     return raw != null ? JSON.parse(raw) : {};

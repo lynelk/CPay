@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import common from './Common';
 import { AuthLayout, TextField, PasswordField, Button, Alert } from '../ui';
 import type { AuthAsideBenefit, AuthAsideCard } from '../ui/AuthLayout';
 
 import { apiFetch } from '../shared/api/httpClient';
+import { apiUrl } from '../shared/config';
 
 type MerchantSignupAppearance = Record<string, string>;
 
@@ -69,7 +69,7 @@ function setting(appearance: MerchantSignupAppearance, key: string): string {
 }
 
 async function getSignupAppearance(): Promise<MerchantSignupAppearance> {
-  const response = await apiFetch(common.base_url + '/settings/public-login-appearance', {
+  const response = await apiFetch(apiUrl('/settings/public-login-appearance'), {
     method: 'GET',
     mode: 'cors',
     cache: 'no-cache',
@@ -129,7 +129,7 @@ function MerchantSignup(): React.ReactElement {
     setMessage('');
     setResult(null);
     try {
-      const response = await apiFetch(common.base_url + '/api/v2/merchant-self-service/signup', {
+      const response = await apiFetch(apiUrl('/api/v2/merchant-self-service/signup'), {
         method: 'POST',
         mode: 'cors',
         credentials: 'include',

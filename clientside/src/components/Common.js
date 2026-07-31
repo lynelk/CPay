@@ -1,5 +1,4 @@
 const common = {
-    base_url: "",
     emailValidation: {
         "validator": (value) => {
             const emailExp = /^[\w.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]{2,4}$/;

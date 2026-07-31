@@ -9,6 +9,8 @@ import {
 } from '../../ui';
 
 import { apiFetch } from '../../shared/api/httpClient';
+import { apiUrl } from '../../shared/config';
+import { readStoredUser } from '../../shared/useAuth';
 
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: 'ACTIVE' },
@@ -69,7 +71,7 @@ class ModuleAdminsC extends React.Component {
     }
 
     isUserAllowedAccess() {
-        const user = localStorage.getItem("user") != null ? JSON.parse(localStorage.getItem("user")) : {};
+        const user = readStoredUser('admin');
         if (user.privileges) {
             for (let i = 0; i < user.privileges.length; i++) {
                 const p = user.privileges[i].privilege;
@@ -89,7 +91,7 @@ class ModuleAdminsC extends React.Component {
     getData() {
         this.props.loader("START");
         const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
-        apiFetch(common.base_url + "/admins/getAdmins", {
+        apiFetch(apiUrl("/admins/getAdmins"), {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)
@@ -134,7 +136,7 @@ class ModuleAdminsC extends React.Component {
             result: (r) => {
                 if (!r) return;
                 this.props.loader("START");
-                apiFetch(common.base_url + "/admins/deleteAdmin", {
+                apiFetch(apiUrl("/admins/deleteAdmin"), {
                     method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
                     body: JSON.stringify(row)
@@ -201,8 +203,8 @@ class ModuleAdminsC extends React.Component {
     saveRow() {
         if (!this.validate()) return;
         const url = this.state.formdMode === "edit"
-            ? common.base_url + "/admins/editAdmin"
-            : common.base_url + "/admins/addAdmin";
+            ? apiUrl("/admins/editAdmin")
+            : apiUrl("/admins/addAdmin");
         this.props.loader("START");
         apiFetch(url, {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',

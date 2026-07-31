@@ -12,6 +12,8 @@ import {
 } from '../../ui';
 
 import { apiFetch } from '../../shared/api/httpClient';
+import { apiUrl } from '../../shared/config';
+import { readStoredUser } from '../../shared/useAuth';
 
 const SEARCH_CATEGORIES = [
   { value: 'all', label: 'All Fields' },
@@ -139,7 +141,7 @@ class ModuleMerchantsC extends React.Component {
   }
 
   isUserAllowedAccess() {
-    const user = localStorage.getItem('user') != null ? JSON.parse(localStorage.getItem('user')) : {};
+    const user = readStoredUser('admin');
     const allowed = new Set([
       'CREATE_MERCHANT', 'UPDATE_MERCHANT', 'ACTIVATE_MERCHANT',
       'CREATE_ADMIN', 'UPDATE_ADMIN', 'DELETE_ADMIN', 'ACCESS_ADMIN',
@@ -150,7 +152,7 @@ class ModuleMerchantsC extends React.Component {
   getData() {
     this.props.loader('START');
     const searchData = { pageSize: this.state.pageSize, searchingValue: this.state.searchingValue, sort: 'asc' };
-    apiFetch(common.base_url + '/merchants/getMerchants', {
+    apiFetch(apiUrl('/merchants/getMerchants'), {
       method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
       headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
       body: JSON.stringify(searchData),
@@ -224,7 +226,7 @@ class ModuleMerchantsC extends React.Component {
       result: (ok) => {
         if (!ok) return;
         this.props.loader('START');
-        apiFetch(common.base_url + '/merchants/deleteMerchant', {
+        apiFetch(apiUrl('/merchants/deleteMerchant'), {
           method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
           headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
           body: JSON.stringify(row),
@@ -247,8 +249,8 @@ class ModuleMerchantsC extends React.Component {
 
   saveRow(data) {
     const url = this.state.formdMode === 'edit'
-      ? common.base_url + '/merchants/editMerchant'
-      : common.base_url + '/merchants/addMerchant';
+      ? apiUrl('/merchants/editMerchant')
+      : apiUrl('/merchants/addMerchant');
     this.props.loader('START');
     apiFetch(url, {
       method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',

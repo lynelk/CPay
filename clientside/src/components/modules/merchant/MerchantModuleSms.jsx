@@ -11,6 +11,8 @@ import {
 } from '../../../ui';
 
 import { apiFetch } from '../../../shared/api/httpClient';
+import { apiUrl } from '../../../shared/config';
+import { readStoredUser } from '../../../shared/useAuth';
 
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
@@ -116,7 +118,7 @@ class MerchantModuleSmsC extends React.Component {
   }
 
   isUserAllowedAccess() {
-    const user = localStorage.getItem('merchantUser') != null ? JSON.parse(localStorage.getItem('merchantUser')) : {};
+    const user = readStoredUser('merchant');
     const allowed = new Set(['CREATE_BATCH_TX', 'APPROVE_BATCH_TX', 'DOWNLOAD_REPORTS', 'ACCESS_SMS_LOG', 'SEND_SMS', 'BUY_SMS']);
     return Array.isArray(user.privileges) && user.privileges.some((item) => allowed.has(item.privilege));
   }
@@ -129,7 +131,7 @@ class MerchantModuleSmsC extends React.Component {
       searchingValue: this.state.searchingValue,
       sort: 'asc',
     };
-    apiFetch(common.base_url + '/transactions/getMerchantSms', {
+    apiFetch(apiUrl('/transactions/getMerchantSms'), {
       method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
       headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
       body: JSON.stringify(searchData),
@@ -209,7 +211,7 @@ class MerchantModuleSmsC extends React.Component {
       })),
     };
     this.props.loader('START');
-    apiFetch(common.base_url + '/transactions/saveSms', {
+    apiFetch(apiUrl('/transactions/saveSms'), {
       method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
       headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
       body: JSON.stringify(payload),
@@ -242,7 +244,7 @@ class MerchantModuleSmsC extends React.Component {
       result: (ok) => {
         if (!ok) return;
         this.props.loader('START');
-        apiFetch(common.base_url + '/transactions/cancelSms', {
+        apiFetch(apiUrl('/transactions/cancelSms'), {
           method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
           headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
           body: JSON.stringify(selected),
@@ -265,7 +267,7 @@ class MerchantModuleSmsC extends React.Component {
 
   recordTransactionRequest() {
     this.props.loader('START');
-    apiFetch(common.base_url + '/transactions/buySms', {
+    apiFetch(apiUrl('/transactions/buySms'), {
       method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
       headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
       body: JSON.stringify(this.state.record_tx_data),
@@ -540,7 +542,7 @@ class PaymentFormDialog extends React.Component {
     const form = new FormData();
     for (let i = 0; i < files.length; i += 1) form.append('file', files[i]);
     this.props.loader('START');
-    apiFetch(common.base_url + '/transactions/uploadSmsRecipientsFile', { method: 'POST', mode: 'cors', credentials: 'include', body: form })
+    apiFetch(apiUrl('/transactions/uploadSmsRecipientsFile'), { method: 'POST', mode: 'cors', credentials: 'include', body: form })
       .then((response) => response.text()).then((text) => {
         this.props.loader('STOP');
         const messager = this.props.getMessager();

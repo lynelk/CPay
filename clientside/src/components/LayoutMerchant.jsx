@@ -2,7 +2,6 @@ import React from 'react';
 import Messager from './StableMessager';
 import { withRouter } from '../shared/router/compat';
 import MainMenuMerchant from "./MainMenuMerchant";
-import common from "./Common";
 import Progress from "./Progress";
 import Logo from "../media/images/gwlogo.png";
 import {
@@ -21,6 +20,8 @@ import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
 import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
 
 import { apiFetch } from '../shared/api/httpClient';
+import { apiUrl } from '../shared/config';
+import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'Track balances, activity, and service status.' },
@@ -45,7 +46,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
       progressValue: 0,
       currentMenuKey: 'dashboard',
       refreshTick: 0,
-      user: localStorage.getItem("merchantUser") != null ? JSON.parse(localStorage.getItem("merchantUser")) : {},
+      user: readStoredUser('merchant'),
       currentMenuItem: this.renderModule('dashboard', 0),
     };
     this.menuChanged = this.menuChanged.bind(this);
@@ -104,7 +105,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
   async isLoggedIn() {
     try {
       await this.setState({ loader: true, progressValue: 0 });
-      const response = await apiFetch(common.base_url + "/auth/isMerchantUserLoggedIn", {
+      const response = await apiFetch(apiUrl("/auth/isMerchantUserLoggedIn"), {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
@@ -157,7 +158,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
   logoutUser() {
     const { history } = this.props;
     this.setState({ loader: true }, () => {
-      apiFetch(common.base_url + "/auth/logoutMerchantUser", {
+      apiFetch(apiUrl("/auth/logoutMerchantUser"), {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',

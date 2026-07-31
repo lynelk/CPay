@@ -1,10 +1,10 @@
 import React from 'react';
 import Messager from '../StableMessager';
 import { withRouter } from '../../shared/router/compat';
-import common from "../Common";
 import { Card, Toolbar, Table, Select, SearchField, Checkbox, Badge } from '../../ui';
 
 import { apiFetch } from '../../shared/api/httpClient';
+import { apiUrl } from '../../shared/config';
 
 const CATEGORIES = [
   { value: 'all', label: 'All Fields' },
@@ -37,7 +37,7 @@ class ModuleAuditTrailC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         };
-        apiFetch(common.base_url + "/audittrail/getAudittrails", {
+        apiFetch(apiUrl("/audittrail/getAudittrails"), {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',

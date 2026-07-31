@@ -1,12 +1,12 @@
 import React from 'react';
 import Messager from '../../StableMessager';
 import { withRouter } from '../../../shared/router/compat';
-import common from "../../Common";
 import { CardsIcon, CheckIcon, CloseIcon } from "../../ShellIcons";
 import LinearChart from './LinearChart';
 import { dashboardErrorDetails, formatAmount, formatCount, numericValues } from '../ModuleDashboard';
 
 import { apiFetch } from '../../../shared/api/httpClient';
+import { apiUrl } from '../../../shared/config';
 
 const merchantDefaultSnapshotCards = [];
 
@@ -69,7 +69,7 @@ class MerchantModuleDashboardC extends React.Component {
 
     async getPortalSummary() {
         try {
-            const response = await apiFetch(common.base_url + "/api/v2/portal/dashboard/summary", {
+            const response = await apiFetch(apiUrl("/api/v2/portal/dashboard/summary"), {
                 method: 'GET',
                 mode: 'cors',
                 credentials: 'include',
@@ -134,7 +134,7 @@ class MerchantModuleDashboardC extends React.Component {
 
     getData(chartType, api) {
         this.props.loader("START");
-        apiFetch(common.base_url + "/transactions/" + api, {
+        apiFetch(apiUrl("/transactions/" + api), {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',

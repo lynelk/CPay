@@ -7,6 +7,7 @@ import {
 } from '../../ui';
 
 import { apiFetch } from '../../shared/api/httpClient';
+import { apiUrl } from '../../shared/config';
 
 const ExcelFile = ReactExport.ExcelFile;
 const ExcelSheet = ReactExport.ExcelFile.ExcelSheet;
@@ -56,8 +57,8 @@ class ModuleMerchantAccouunt extends React.Component {
             sort: 'asc'
         };
         const url = this.props.openMerchantAccount.id
-            ? common.base_url + "/transactions/getMerchantStatement"
-            : common.base_url + "/transactions/getMerchantStatementByMerchant";
+            ? apiUrl("/transactions/getMerchantStatement")
+            : apiUrl("/transactions/getMerchantStatementByMerchant");
 
         apiFetch(url, {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
@@ -87,7 +88,7 @@ class ModuleMerchantAccouunt extends React.Component {
     recordTransactionRequest() {
         this.props.loader("START");
         const data = { ...this.state.record_tx_data, merchant_id: this.props.openMerchantAccount.id };
-        apiFetch(common.base_url + "/transactions/recordTransaction", {
+        apiFetch(apiUrl("/transactions/recordTransaction"), {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(data)

@@ -1,8 +1,8 @@
 import React from 'react';
-import common from './Common';
 import { Alert, Button, PasswordField, ProgressOverlay, Sheet, TextField } from '../ui';
 
 import { apiFetch } from '../shared/api/httpClient';
+import { apiUrl } from '../shared/config';
 
 function initialState() {
   return {
@@ -37,7 +37,7 @@ function ForgotPassword({ showForgotPassword, onCloseDialog }) {
     }
     patch({ loading: true, error: '', message: '' });
     try {
-      const response = await apiFetch(common.base_url + '/auth/requestResetPassword', {
+      const response = await apiFetch(apiUrl('/auth/requestResetPassword'), {
         method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
         headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrerPolicy: 'no-referrer',
         body: JSON.stringify({ email: state.email }),
@@ -65,7 +65,7 @@ function ForgotPassword({ showForgotPassword, onCloseDialog }) {
     }
     patch({ loading: true, error: '', message: '' });
     try {
-      const response = await apiFetch(common.base_url + '/auth/resetPassword', {
+      const response = await apiFetch(apiUrl('/auth/resetPassword'), {
         method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
         headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrerPolicy: 'no-referrer',
         body: JSON.stringify({ email: state.email, verification_code: state.verification_code, new_password: state.new_password }),

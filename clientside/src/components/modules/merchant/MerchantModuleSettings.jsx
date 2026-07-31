@@ -1,11 +1,11 @@
 import React from 'react';
 import Messager from '../../StableMessager';
 import { withRouter } from '../../../shared/router/compat';
-import common from '../../Common';
 import { isSensitiveSetting, maskedSettingValue } from '../settingsGridHelpers'; // Keep this import
 import { Badge, Button, Icons, PasswordField, SearchField, Select, TextArea, TextField } from '../../../ui';
 
 import { apiFetch } from '../../../shared/api/httpClient';
+import { apiUrl } from '../../../shared/config';
 
 // --- Helper functions copied/adapted from ModuleSettings.jsx ---
 function settingName(row) {
@@ -147,7 +147,7 @@ class MerchantModuleSettingsC extends React.Component {
     // Fetch settings for the specific merchant
     getData() {
         this.props.loader("START");
-        apiFetch(common.base_url + "/settings/getMerchantSettings", {
+        apiFetch(apiUrl("/settings/getMerchantSettings"), {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify({ settings: "all", merchant_id: this.props.merchant_id })
@@ -175,7 +175,7 @@ class MerchantModuleSettingsC extends React.Component {
     // Save settings for the specific merchant
     saveSettings() {
         this.props.loader("START");
-        apiFetch(common.base_url + "/settings/updateMerchantSettings", {
+        apiFetch(apiUrl("/settings/updateMerchantSettings"), {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(this.state.data)

@@ -2,7 +2,6 @@ import React from 'react';
 import Messager from './StableMessager';
 import { withRouter } from '../shared/router/compat';
 import MainMenu from "./MainMenu";
-import common from "./Common";
 import Progress from "./Progress";
 import Logo from "../media/images/gwlogo.png";
 import {
@@ -19,6 +18,8 @@ import ModuleTransactions from './modules/ModuleTransactions';
 import ModuleReconciliation from './modules/ModuleReconciliation';
 
 import { apiFetch } from '../shared/api/httpClient';
+import { apiUrl } from '../shared/config';
+import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'Track balances, transactions, and operational health.' },
@@ -41,7 +42,7 @@ class LayoutWithOutRouter extends React.Component {
       progressValue: 0,
       currentMenuKey: 'dashboard',
       refreshTick: 0,
-      user: localStorage.getItem("user") != null ? JSON.parse(localStorage.getItem("user")) : {},
+      user: readStoredUser('admin'),
       currentMenuItem: this.renderModule('dashboard', 0),
     };
     this.menuChanged = this.menuChanged.bind(this);
@@ -98,7 +99,7 @@ class LayoutWithOutRouter extends React.Component {
   async isLoggedIn() {
     try {
       await this.setState({ loader: true, progressValue: 0 });
-      const response = await apiFetch(common.base_url + "/auth/isLoggedIn", {
+      const response = await apiFetch(apiUrl("/auth/isLoggedIn"), {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
@@ -159,7 +160,7 @@ class LayoutWithOutRouter extends React.Component {
   logoutSendRequest() {
     const { history } = this.props;
     this.setState({ loader: true }, () => {
-      apiFetch(common.base_url + "/auth/logout", {
+      apiFetch(apiUrl("/auth/logout"), {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',

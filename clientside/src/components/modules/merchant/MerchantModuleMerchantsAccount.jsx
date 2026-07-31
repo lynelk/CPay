@@ -6,6 +6,7 @@ import strings from '../../locale';
 import { Card, Toolbar, Table, Sheet, Button, DateField, Icons } from '../../../ui';
 
 import { apiFetch } from '../../../shared/api/httpClient';
+import { apiUrl } from '../../../shared/config';
 import { downloadStatementExport } from '../../../shared/export/statementExport';
 
 class MerchantModuleMerchantAccouuntC extends React.Component {
@@ -42,7 +43,7 @@ class MerchantModuleMerchantAccouuntC extends React.Component {
             searchingValue: this.state.searchingValue,
             sort: 'asc'
         };
-        apiFetch(common.base_url + "/transactions/getMerchantStatementByMerchant", {
+        apiFetch(apiUrl("/transactions/getMerchantStatementByMerchant"), {
             method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer',
             body: JSON.stringify(searchData)

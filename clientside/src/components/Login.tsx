@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import common from './Common';
 import strings from './locale';
 import ForgotPassword from './LoginForgotPassword';
 import { AuthLayout, TextField, PasswordField, Button, Alert } from '../ui';
 import type { AuthAsideBenefit, AuthAsideCard } from '../ui/AuthLayout';
 
 import { apiFetch } from '../shared/api/httpClient';
+import { apiUrl } from '../shared/config';
 
 type AdminLoginAppearance = Record<string, string>;
 
@@ -41,7 +41,7 @@ function setting(appearance: AdminLoginAppearance, key: string): string {
 }
 
 async function getAdminLoginAppearance(): Promise<AdminLoginAppearance> {
-  const response = await apiFetch(common.base_url + '/settings/public-login-appearance', {
+  const response = await apiFetch(apiUrl('/settings/public-login-appearance'), {
     method: 'GET',
     mode: 'cors',
     cache: 'no-cache',
@@ -59,7 +59,7 @@ async function getAdminLoginAppearance(): Promise<AdminLoginAppearance> {
 
 async function isLoggedIn(): Promise<boolean> {
   try {
-    const response = await apiFetch(common.base_url + '/auth/isLoggedIn', {
+    const response = await apiFetch(apiUrl('/auth/isLoggedIn'), {
       method: 'POST',
       mode: 'cors',
       cache: 'no-cache',
@@ -118,7 +118,7 @@ function Login(): React.ReactElement {
     }
     setLoading(true);
     try {
-      const response = await apiFetch(common.base_url + '/auth/authenticate', {
+      const response = await apiFetch(apiUrl('/auth/authenticate'), {
         method: 'POST',
         mode: 'cors',
         cache: 'no-cache',
