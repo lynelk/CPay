@@ -298,6 +298,24 @@ select.ios-input { padding-right: 36px; }
 .ios-table__empty { padding: var(--ios-space-8); text-align: center; color: var(--ios-text-tertiary); font-size: var(--ios-fs-subhead); }
 .ios-table td .ios-input { height: 38px; } /* inline editors */
 .ios-cell-actions { display: inline-flex; gap: 6px; }
+
+/* Card fallback for Table.tsx on narrow viewports (see the `useCardLayout`
+ * media-query hook in ui/Table.tsx, which mounts this instead of
+ * `.ios-table-wrap` below the ~640px breakpoint — never both at once — so
+ * every Table consumer gets a stacked key/value layout instead of a
+ * horizontally-scrolling table on small screens without duplicating row
+ * content in the DOM). */
+.ios-table-cards { display: flex; flex-direction: column; gap: var(--ios-space-3); }
+.ios-table-cards__group { padding: var(--ios-space-2) var(--ios-space-1); font-weight: 700; font-size: var(--ios-fs-footnote); color: var(--ios-text-secondary); text-transform: uppercase; letter-spacing: 0.4px; }
+.ios-table-card { position: relative; border: 1px solid var(--ios-separator); border-radius: var(--ios-r-lg); background: var(--ios-card-bg); box-shadow: var(--ios-shadow-1); padding: var(--ios-space-4); }
+.ios-table-card--clickable { cursor: pointer; }
+.ios-table-card--selected { background: var(--ios-row-selected); border-color: var(--ios-accent); }
+.ios-table-card__expander { position: absolute; top: var(--ios-space-3); right: var(--ios-space-3); }
+.ios-table-card__body { display: flex; flex-direction: column; gap: var(--ios-space-2); padding-right: var(--ios-space-6); }
+.ios-table-card__row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--ios-space-3); font-size: var(--ios-fs-subhead); }
+.ios-table-card__label { color: var(--ios-text-secondary); font-weight: 600; flex-shrink: 0; }
+.ios-table-card__value { color: var(--ios-text); text-align: right; font-variant-numeric: tabular-nums; }
+.ios-table-card__detail { margin-top: var(--ios-space-3); padding-top: var(--ios-space-3); border-top: 1px solid var(--ios-separator); }
 .ios-expander { border: none; background: transparent; cursor: pointer; color: var(--ios-text-secondary); font-size: 14px; width: 22px; height: 22px; border-radius: 6px; }
 .ios-expander:hover { background: var(--ios-row-hover); }
 

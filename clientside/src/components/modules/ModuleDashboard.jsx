@@ -244,7 +244,7 @@ function ModuleDashboardC(props) {
     function renderChart(data, emptyText) {
         return (
             <div className="cpay-dashboard-chart-shell">
-                <LinearChart data={data} title={emptyText} color="#1198C4" />
+                <LinearChart data={data} title={emptyText} />
                 {!data ? <div className="cpay-dashboard-empty">{emptyText}</div> : null}
             </div>
         );

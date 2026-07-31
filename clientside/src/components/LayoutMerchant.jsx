@@ -1,5 +1,6 @@
 import React from 'react';
 import Messager from './StableMessager';
+import strings from './locale';
 import { withRouter } from '../shared/router/compat';
 import MainMenuMerchant from "./MainMenuMerchant";
 import Progress from "./Progress";
@@ -24,15 +25,15 @@ import { apiUrl } from '../shared/config';
 import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
-  dashboard: { title: 'Dashboard', subtitle: 'Track balances, activity, and service status.' },
-  channels: { title: 'Payment Channels', subtitle: 'Manage MTN, Airtel, and payment channel access.' },
-  statement: { title: 'Statement', subtitle: 'Review merchant account movement and balances.' },
-  payments: { title: 'Payments', subtitle: 'Create and monitor payment activity.' },
-  sms: { title: 'SMS', subtitle: 'Send SMS and review SMS balance activity.' },
-  transactions: { title: 'Transactions', subtitle: 'Review merchant payment and SMS transactions.' },
-  admins: { title: 'Administrators', subtitle: 'Manage merchant portal users.' },
-  audittrail: { title: 'Audit Trail', subtitle: 'Review merchant user activity.' },
-  settings: { title: 'Settings', subtitle: 'Configure merchant overrides, IP access, limits, and SMS charges.' },
+  dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_merchant },
+  channels: { title: strings.menu_channels, subtitle: strings.menu_channels_subtitle },
+  statement: { title: strings.menu_statement, subtitle: strings.menu_statement_subtitle },
+  payments: { title: strings.menu_payments, subtitle: strings.menu_payments_subtitle },
+  sms: { title: strings.menu_sms, subtitle: strings.menu_sms_subtitle },
+  transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_merchant },
+  admins: { title: strings.menu_admins, subtitle: strings.menu_admins_subtitle_merchant },
+  audittrail: { title: strings.menu_audittrail, subtitle: strings.menu_audittrail_subtitle_merchant },
+  settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_merchant },
 };
 
 class LayoutMerchantWithOutRouter extends React.Component {
@@ -60,9 +61,9 @@ class LayoutMerchantWithOutRouter extends React.Component {
     if (!isLoggedIn) {
       this.setState({ isLogged: false });
       this.messager.alert({
-        title: "Session Expired!",
+        title: strings.session_expired_title,
         icon: "info",
-        msg: "Your session expired",
+        msg: strings.session_expired_message,
         result: () => history.push("/")
       });
     } else {
@@ -95,9 +96,9 @@ class LayoutMerchantWithOutRouter extends React.Component {
   sessionExpired() {
     const { history } = this.props;
     this.messager.alert({
-      title: "Session Expired!",
+      title: strings.session_expired_title,
       icon: "info",
-      msg: "Your session expired",
+      msg: strings.session_expired_message,
       result: () => history.push("/")
     });
   }
@@ -219,8 +220,8 @@ class LayoutMerchantWithOutRouter extends React.Component {
             right={
               <>
                 <ThemeToggle />
-                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>Settings</Button>
-                <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>Refresh</Button>
+                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>{strings.settings}</Button>
+                <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button>
                 <UserChip
                   name={user.name || user.username || 'Merchant User'}
                   meta={user.email || user.account_number || 'Signed in'}

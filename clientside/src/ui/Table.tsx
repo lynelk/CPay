@@ -46,6 +46,42 @@ function toComparable(v: React.ReactNode): string | number {
   return String(v).toLowerCase();
 }
 
+/** Keep in sync with the breakpoint documented on `.ios-table-cards` in styles/ios-system.css. */
+const CARD_LAYOUT_QUERY = '(max-width: 640px)';
+
+/**
+ * Tracks a media query so `Table` can render either the scrolling table or
+ * the stacked-card fallback — never both. Rendering only one keeps row
+ * content (and its accessible name/text) from being duplicated in the DOM,
+ * which would otherwise break `getByText`-style queries and double up
+ * screen-reader/tab-order content. Falls back to `false` (table layout) in
+ * environments without `matchMedia` (e.g. the jsdom test environment), so
+ * existing table-based tests are unaffected unless they opt into the narrow
+ * query themselves.
+ */
+function useCardLayout(query: string): boolean {
+  const [matches, setMatches] = React.useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia(query).matches;
+  });
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const mql = window.matchMedia(query);
+    const handleChange = () => setMatches(mql.matches);
+    handleChange();
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', handleChange);
+      return () => mql.removeEventListener('change', handleChange);
+    }
+    // Safari < 14 fallback.
+    mql.addListener(handleChange);
+    return () => mql.removeListener(handleChange);
+  }, [query]);
+
+  return matches;
+}
+
 export function Table<Row>({
   columns,
   rows,
@@ -63,6 +99,7 @@ export function Table<Row>({
   const [sort, setSort] = React.useState<SortState | undefined>(initialSort);
   const [page, setPage] = React.useState(1);
   const [expanded, setExpanded] = React.useState<Set<React.Key>>(() => new Set());
+  const cardLayout = useCardLayout(CARD_LAYOUT_QUERY);
 
   const hasExpander = Boolean(renderDetail);
   const colCount = columns.length + (hasExpander ? 1 : 0);
@@ -130,35 +167,107 @@ export function Table<Row>({
     });
   }
 
+  function renderCardFields(row: Row, index: number) {
+    return columns.map((col) => {
+      const content = col.render ? col.render(row, index) : col.accessor ? col.accessor(row) : null;
+      return (
+        <div className="ios-table-card__row" key={col.key}>
+          <span className="ios-table-card__label">{col.header}</span>
+          <span className="ios-table-card__value">{content}</span>
+        </div>
+      );
+    });
+  }
+
   const bodyRows: React.ReactNode[] = [];
   let lastGroup: string | null = null;
-  paged.forEach((row, i) => {
-    if (groupBy) {
-      const g = groupBy(row);
-      if (g !== lastGroup) {
-        lastGroup = g;
-        const groupRows = paged.filter((r) => groupBy(r) === g);
+  if (!cardLayout) {
+    paged.forEach((row, i) => {
+      if (groupBy) {
+        const g = groupBy(row);
+        if (g !== lastGroup) {
+          lastGroup = g;
+          const groupRows = paged.filter((r) => groupBy(r) === g);
+          bodyRows.push(
+            <tr key={`group-${g}`} className="ios-table__group">
+              <td colSpan={colCount}>{renderGroupHeader ? renderGroupHeader(g, groupRows) : g}</td>
+            </tr>,
+          );
+        }
+      }
+      const key = rowKey(row, i);
+      const selected = isRowSelected?.(row);
+      const isOpen = expanded.has(key);
+      bodyRows.push(
+        <tr
+          key={key}
+          className={`${selected ? 'ios-tr--selected' : ''} ${onRowClick ? 'ios-tr--clickable' : ''}`.trim()}
+          onClick={onRowClick ? () => onRowClick(row) : undefined}
+        >
+          {hasExpander ? (
+            <td style={{ width: 36 }}>
+              <button
+                type="button"
+                className="ios-expander"
+                aria-expanded={isOpen}
+                aria-label={isOpen ? 'Collapse' : 'Expand'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpand(key);
+                }}
+              >
+                {isOpen ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
+              </button>
+            </td>
+          ) : null}
+          {renderCells(row, i)}
+        </tr>,
+      );
+      if (hasExpander && isOpen) {
         bodyRows.push(
-          <tr key={`group-${g}`} className="ios-table__group">
-            <td colSpan={colCount}>{renderGroupHeader ? renderGroupHeader(g, groupRows) : g}</td>
+          <tr key={`${key}-detail`} className="ios-table__detail">
+            <td colSpan={colCount}>
+              <div className="ios-table__detail-inner">{renderDetail!(row)}</div>
+            </td>
           </tr>,
         );
       }
-    }
-    const key = rowKey(row, i);
-    const selected = isRowSelected?.(row);
-    const isOpen = expanded.has(key);
-    bodyRows.push(
-      <tr
-        key={key}
-        className={`${selected ? 'ios-tr--selected' : ''} ${onRowClick ? 'ios-tr--clickable' : ''}`.trim()}
-        onClick={onRowClick ? () => onRowClick(row) : undefined}
-      >
-        {hasExpander ? (
-          <td style={{ width: 36 }}>
+    });
+  }
+
+  // Card fallback for narrow viewports (see `.ios-table-cards` in
+  // styles/ios-system.css) — built from the same paged/sorted rows as
+  // `bodyRows`, but only one of the two is ever rendered (see `cardLayout`
+  // above), so row content never appears twice in the DOM.
+  const cardItems: React.ReactNode[] = [];
+  let lastCardGroup: string | null = null;
+  if (cardLayout) {
+    paged.forEach((row, i) => {
+      if (groupBy) {
+        const g = groupBy(row);
+        if (g !== lastCardGroup) {
+          lastCardGroup = g;
+          const groupRows = paged.filter((r) => groupBy(r) === g);
+          cardItems.push(
+            <div key={`card-group-${g}`} className="ios-table-cards__group">
+              {renderGroupHeader ? renderGroupHeader(g, groupRows) : g}
+            </div>,
+          );
+        }
+      }
+      const key = rowKey(row, i);
+      const selected = isRowSelected?.(row);
+      const isOpen = expanded.has(key);
+      cardItems.push(
+        <div
+          key={`card-${key}`}
+          className={`ios-table-card ${selected ? 'ios-table-card--selected' : ''} ${onRowClick ? 'ios-table-card--clickable' : ''}`.trim()}
+          onClick={onRowClick ? () => onRowClick(row) : undefined}
+        >
+          {hasExpander ? (
             <button
               type="button"
-              className="ios-expander"
+              className="ios-expander ios-table-card__expander"
               aria-expanded={isOpen}
               aria-label={isOpen ? 'Collapse' : 'Expand'}
               onClick={(e) => {
@@ -168,62 +277,62 @@ export function Table<Row>({
             >
               {isOpen ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
             </button>
-          </td>
-        ) : null}
-        {renderCells(row, i)}
-      </tr>,
-    );
-    if (hasExpander && isOpen) {
-      bodyRows.push(
-        <tr key={`${key}-detail`} className="ios-table__detail">
-          <td colSpan={colCount}>
-            <div className="ios-table__detail-inner">{renderDetail!(row)}</div>
-          </td>
-        </tr>,
+          ) : null}
+          <div className="ios-table-card__body">{renderCardFields(row, i)}</div>
+          {hasExpander && isOpen ? (
+            <div className="ios-table-card__detail">{renderDetail!(row)}</div>
+          ) : null}
+        </div>,
       );
-    }
-  });
+    });
+  }
 
   return (
     <div>
-      <div className="ios-table-wrap">
-        <table className="ios-table">
-          <thead style={stickyHeader ? undefined : { position: 'static' }}>
-            <tr>
-              {hasExpander ? <th style={{ width: 36 }} aria-label="Expand" /> : null}
-              {columns.map((col) => {
-                const isSorted = sort?.key === col.key;
-                return (
-                  <th
-                    key={col.key}
-                    className={`${col.numeric ? 'ios-th--num' : ''} ${col.sortable ? 'ios-th--sortable' : ''}`.trim()}
-                    style={{
-                      width: col.width,
-                      textAlign: col.align && !col.numeric ? col.align : undefined,
-                    }}
-                    onClick={() => toggleSort(col)}
-                    aria-sort={isSorted ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : undefined}
-                  >
-                    {col.header}
-                    {isSorted ? <span aria-hidden> {sort!.dir === 'asc' ? '↑' : '↓'}</span> : null}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {total === 0 ? (
+      {cardLayout ? (
+        <div className="ios-table-cards">
+          {total === 0 ? <div className="ios-table__empty">{emptyText}</div> : cardItems}
+        </div>
+      ) : (
+        <div className="ios-table-wrap">
+          <table className="ios-table">
+            <thead style={stickyHeader ? undefined : { position: 'static' }}>
               <tr>
-                <td colSpan={colCount}>
-                  <div className="ios-table__empty">{emptyText}</div>
-                </td>
+                {hasExpander ? <th style={{ width: 36 }} aria-label="Expand" /> : null}
+                {columns.map((col) => {
+                  const isSorted = sort?.key === col.key;
+                  return (
+                    <th
+                      key={col.key}
+                      className={`${col.numeric ? 'ios-th--num' : ''} ${col.sortable ? 'ios-th--sortable' : ''}`.trim()}
+                      style={{
+                        width: col.width,
+                        textAlign: col.align && !col.numeric ? col.align : undefined,
+                      }}
+                      onClick={() => toggleSort(col)}
+                      aria-sort={isSorted ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+                    >
+                      {col.header}
+                      {isSorted ? <span aria-hidden> {sort!.dir === 'asc' ? '↑' : '↓'}</span> : null}
+                    </th>
+                  );
+                })}
               </tr>
-            ) : (
-              bodyRows
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {total === 0 ? (
+                <tr>
+                  <td colSpan={colCount}>
+                    <div className="ios-table__empty">{emptyText}</div>
+                  </td>
+                </tr>
+              ) : (
+                bodyRows
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
       {pageSize ? (
         <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
       ) : null}
