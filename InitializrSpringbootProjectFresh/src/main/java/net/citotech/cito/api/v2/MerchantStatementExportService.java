@@ -109,6 +109,33 @@ public class MerchantStatementExportService {
                 merchant, merchant.getAccount_number(), startDate, endDate, limit, cursor);
     }
 
+    /**
+     * Admin statement export (audit M5): backs the admin portal's "Account Statement" screen,
+     * which previously built an Excel file client-side from whatever rows already happened to be
+     * loaded in the table instead of asking the server for the full requested range. The caller is
+     * an already-authenticated admin/ops operator (cookie-session admin portal, gated by {@code
+     * @PreAuthorize("hasRole('ADMIN')")} on the controller plus the {@code /api/v2/admin/**} ->
+     * ADMIN filter-chain rule) rather than an external v2-signed API integration key or a merchant's
+     * own logged-in staff, so - unlike {@link #export} - there is no pre-verified {@link Merchant}
+     * to reuse; this resolves it server-side from {@code merchantNumber}. Like {@link
+     * #exportForPortal}, it skips the {@code allowed_apis} check {@link #export} enforces: that
+     * governs what an external integration key may call against the signed v2 API, not what an
+     * authenticated admin operator may view of a merchant's own statement - different trust
+     * boundary entirely. Unlike {@link #exportForPortal}, it does not require the merchant to be
+     * ACTIVE: ops staff legitimately need to pull a statement while investigating a suspended or
+     * closed merchant, not only a healthy one. Still read-only and still audited via the same
+     * {@code auditService.record(...)} call inside {@link #buildExport} that every other export
+     * path goes through.
+     */
+    public StatementExportResponse exportForAdmin(
+            String merchantNumber, String startDate, String endDate, Integer limit, String cursor) {
+        Merchant merchant = Common.getMerchantByAccountNumber(merchantNumber, jdbcTemplate);
+        if (merchant == null) {
+            throw new PaymentGatewayException("Merchant not found: " + merchantNumber);
+        }
+        return buildExport(merchant, merchantNumber, startDate, endDate, limit, cursor);
+    }
+
     private StatementExportResponse buildExport(
             Merchant merchant,
             String merchantNumber,
