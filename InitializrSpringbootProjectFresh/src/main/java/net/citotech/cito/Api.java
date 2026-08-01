@@ -48,6 +48,8 @@ public class Api {
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired RateLimiterService rateLimiterService;
     @Autowired net.citotech.cito.ledger.LegacyLedgerPostingService legacyLedgerPostingService;
+    @Autowired private net.citotech.cito.ledger.DoubleEntryLedgerService ledgerService;
+    @Autowired net.citotech.cito.api.v2.IdempotencyService idempotencyService;
 
     @Value("${custom.gatewaystate}")
     private String gatewaystate;
@@ -250,6 +252,21 @@ public class Api {
             newTx.setTx_update_trace("");
             newTx.setTx_gateway_ref("");
 
+            // Audit D1: optional idempotency-key support on the legacy v1 money endpoints. When
+            // the merchant supplies an Idempotency-Key/X-Idempotency-Key header, a replayed
+            // request with the identical body returns the previously recorded response instead of
+            // re-submitting to the provider. Without the header the legacy behavior is unchanged
+            // (fully backward compatible). The find/record wraps the whole validated submission
+            // so validation-error responses on the first attempt are simply re-derived, never a
+            // cached partial result, and a replay never re-runs Common.doPayIn.
+            String idempotencyKey = headerValue(request, "Idempotency-Key", "X-Idempotency-Key");
+            if (!isBlank(idempotencyKey)) {
+                Optional<String> replayed = idempotencyService.findExistingBody(merchant_number, idempotencyKey, requestBody);
+                if (replayed.isPresent()) {
+                    return replayed.get();
+                }
+            }
+
             String result = Common.doPayIn(newTx, merchant, jdbcTemplate, transactionManager);
 
             // Audit A1/B1: this legacy call site never wrote to the double-entry ledger at all
@@ -258,6 +275,10 @@ public class Api {
             // request never double-posts.
             legacyLedgerPostingService.postPaymentEntries(
                     Transaction.TX_TYPE_PAYIN, gateway_id, merchant, newTx, amount, charges);
+
+            if (!isBlank(idempotencyKey)) {
+                idempotencyService.recordBody(merchant_number, idempotencyKey, requestBody, result);
+            }
 
             return result;
         } catch (Exception ex) {
@@ -276,6 +297,23 @@ public class Api {
             }
         }
         return missing;
+    }
+
+    private String headerValue(HttpServletRequest request, String... names) {
+        if (request == null) {
+            return "";
+        }
+        for (String name : names) {
+            String value = request.getHeader(name);
+            if (!isBlank(value)) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     /*
@@ -491,11 +529,62 @@ public class Api {
             newTx.setTx_update_trace("");
             newTx.setTx_gateway_ref("");
 
-            String result = Common.doPayOut(newTx, merchant, jdbcTemplate, transactionManager);
+            // Audit D1: optional idempotency-key support on the legacy v1 money endpoints - see
+            // the matching comment in doMobileMoneyPayIn above. A replay returns the previously
+            // recorded response instead of re-running money movement (and never double-reserves).
+            String idempotencyKey = headerValue(request, "Idempotency-Key", "X-Idempotency-Key");
+            if (!isBlank(idempotencyKey)) {
+                Optional<String> replayed = idempotencyService.findExistingBody(merchant_number, idempotencyKey, requestBody);
+                if (replayed.isPresent()) {
+                    return replayed.get();
+                }
+            }
 
-            // Audit A1/B1: see the matching comment in doMobileMoneyPayIn above.
-            legacyLedgerPostingService.postPaymentEntries(
-                    Transaction.TX_TYPE_PAYOUT, gateway_id, merchant, newTx, amount, charges);
+            // Audit A8: reserve-then-capture on the v1 payout path, mirroring
+            // PaymentOrchestrationService.payout and the batch-payout cron. Hold the payout
+            // amount (+ charges) in the ledger before the provider call so concurrent payouts
+            // cannot overspend the same float; capture once the call resolves, release if it
+            // throws. Idempotent per attempt: the reservation reference includes the unique
+            // transaction id, so a retried merchant reference gets its own hold and the failed
+            // attempt's release never leaks onto a newer attempt.
+            java.math.BigDecimal reservedAmount =
+                    net.citotech.cito.money.MoneyAmount.of(String.valueOf(amount + charges))
+                            .asBigDecimal();
+            String reservationCurrency =
+                    newTx.getCurrency() == null || newTx.getCurrency().isEmpty()
+                            ? "UGX"
+                            : newTx.getCurrency().trim().toUpperCase();
+            String reservationReference =
+                    "v1-payout-reserve:"
+                            + merchant_number
+                            + ":"
+                            + reference
+                            + ":"
+                            + newTx.getTx_unique_id();
+            ledgerService.reserve(
+                    reservationReference,
+                    merchant.getId(),
+                    reference,
+                    reservedAmount,
+                    reservationCurrency);
+
+            String result;
+            try {
+                result = Common.doPayOut(newTx, merchant, jdbcTemplate, transactionManager);
+
+                // Audit A1/B1: see the matching comment in doMobileMoneyPayIn above.
+                legacyLedgerPostingService.postPaymentEntries(
+                        Transaction.TX_TYPE_PAYOUT, gateway_id, merchant, newTx, amount, charges);
+
+                ledgerService.captureReservation(reservationReference);
+            } catch (RuntimeException payoutEx) {
+                ledgerService.releaseReservation(reservationReference);
+                throw payoutEx;
+            }
+
+            if (!isBlank(idempotencyKey)) {
+                idempotencyService.recordBody(merchant_number, idempotencyKey, requestBody, result);
+            }
 
             return result;
 

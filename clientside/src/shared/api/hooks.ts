@@ -650,3 +650,153 @@ export function useImportStatementMutation() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Operations console (admin) — delivery ops, operating controls, readiness,
+// and the legacy run-due / auto-match actions.
+//
+// All of these live under `/api/v2/admin/**` and are behind the path-based
+// `hasRole('ADMIN')` rule in `SecurityConfig` (plus `@PreAuthorize`), so they
+// go through `request()` directly like the rest of the admin v2 surface.
+// ---------------------------------------------------------------------------
+
+export interface DeliveryOpsSummary {
+  legacyCallbacks?: {
+    countsByStatus?: Record<string, number>;
+    stuck?: Array<{
+      id: number;
+      merchantId: number;
+      merchantName?: string;
+      transactionId?: string;
+      referenceValue?: string;
+      taskStatus?: string;
+      attemptCount?: number;
+      attemptLimit?: number;
+      message?: string;
+      nextRunAt?: string | null;
+      lastRunAt?: string | null;
+    }>;
+  };
+  webhookDeliveries?: {
+    countsByStatus?: Record<string, number>;
+    stuck?: Array<{
+      id: number;
+      merchantId: number;
+      merchantName?: string;
+      endpointId: number;
+      eventType?: string;
+      eventReference?: string;
+      deliveryStatus?: string;
+      attemptCount?: number;
+      lastHttpStatus?: number | null;
+      lastResponseSummary?: string;
+      nextAttemptAt?: string | null;
+    }>;
+  };
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/delivery-ops/summary` — counts + stuck callback/webhook rows. */
+export function useDeliveryOpsSummary(limit = 50) {
+  return useQuery({
+    queryKey: ['ops', 'delivery', limit],
+    queryFn: () => request<DeliveryOpsSummary>(`/api/v2/admin/delivery-ops/summary?limit=${limit}`),
+    refetchInterval: 60_000,
+  });
+}
+
+export interface OperatingControlsSummary {
+  openHigh?: number;
+  openMedium?: number;
+  openLow?: number;
+  totalOpen?: number;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/operating-controls/summary` — open control-event counts by severity. */
+export function useOperatingControlsSummary() {
+  return useQuery({
+    queryKey: ['ops', 'operating-controls'],
+    queryFn: () => request<OperatingControlsSummary>('/api/v2/admin/operating-controls/summary'),
+    refetchInterval: 120_000,
+  });
+}
+
+export interface ReadinessCheck {
+  id?: string;
+  label?: string;
+  status?: 'READY' | 'ACTION_REQUIRED' | string;
+  value?: number;
+  action?: string;
+  [key: string]: unknown;
+}
+
+export interface ReadinessSummary {
+  providerSandboxRuns?: number;
+  statementValidationRuns?: number;
+  callbackSecrets?: number;
+  openAlerts?: number;
+  parkedCallbacks?: number;
+  dailyCloses?: number;
+  adminAuditEvents?: number;
+  openComplianceCases?: number;
+  approvedProviderEvidence?: number;
+  pendingComplianceProfiles?: number;
+  checklist?: ReadinessCheck[];
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/readiness/summary` — the platform-wide go-live readiness view. */
+export function useReadinessSummary() {
+  return useQuery({
+    queryKey: ['ops', 'readiness'],
+    queryFn: () => request<ReadinessSummary>('/api/v2/admin/readiness/summary'),
+    refetchInterval: 300_000,
+  });
+}
+
+export interface PaymentChannelResponse {
+  channelCode?: string;
+  displayName?: string;
+  countryCode?: string;
+  currencyCode?: string;
+  collections?: boolean;
+  payouts?: boolean;
+  balanceCheck?: boolean;
+  statusCheck?: boolean;
+  refunds?: boolean;
+  callbacks?: boolean;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/gateways/channels` — adapter-backed channel list. */
+export function useAdminChannels() {
+  return useQuery({
+    queryKey: ['ops', 'channels'],
+    queryFn: () => request<PaymentChannelResponse[]>('/api/v2/admin/gateways/channels'),
+  });
+}
+
+export interface RunCallbacksResult {
+  count?: number;
+  [key: string]: unknown;
+}
+
+/** `POST /api/v2/admin/callbacks/run-due` — claims and processes due callback tasks now. */
+export function useRunCallbacksMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<RunCallbacksResult, unknown, number | undefined>({
+    mutationFn: (limit) =>
+      request<RunCallbacksResult>(
+        `/api/v2/admin/callbacks/run-due?limit=${limit ?? 50}`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ops', 'delivery'] });
+      queryClient.invalidateQueries({ queryKey: ['ops', 'readiness'] });
+    },
+  });
+}
+
+// NOTE: POST /api/v2/admin/reconciliation/auto-match is covered by
+// `useAutoMatchMutation` above (the endpoint returns a plain number).

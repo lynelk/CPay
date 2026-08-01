@@ -1,5 +1,6 @@
 package net.citotech.cito.balance;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(path = "/api/v2/admin/balances")
+@PreAuthorize("hasRole('ADMIN')")
 public class BalanceAdminController {
     private final AuthoritativeBalanceService balanceService;
 
@@ -20,4 +22,3 @@ public class BalanceAdminController {
         return "balances_written=" + written;
     }
 }
-

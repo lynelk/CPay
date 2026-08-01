@@ -48,12 +48,28 @@ public class Merchant {
         this.public_key = public_key;
     }
 
+    /**
+     * Legacy compat accessor: returns the raw stored value exactly as it came out of the
+     * database row-mapper (already passed through {@code MerchantKeyCryptoRegistry.decryptForUse}
+     * so this is the decrypted PEM for consumers reading through {@code Common}'s mappers). Kept
+     * for backward compatibility - see {@link #getDecryptedKey()} / {@link #getKeyMaterial()}.
+     */
     public String getPrivate_key() {
         return private_key;
     }
 
     public void setPrivate_key(String private_key) {
         this.private_key = private_key;
+    }
+
+    /** Audit E6/A4: same value as {@link #getPrivate_key()} but named for the security boundary. */
+    public String getDecryptedKey() {
+        return private_key;
+    }
+
+    /** Audit E6/A4: same value as {@link #getPrivate_key()} but named for the security boundary. */
+    public String getKeyMaterial() {
+        return private_key;
     }
     
     
@@ -143,4 +159,3 @@ public class Merchant {
         return "Name: "+name+", Account Number: "+account_number+", account_type: "+account_type;
     }
 }
-

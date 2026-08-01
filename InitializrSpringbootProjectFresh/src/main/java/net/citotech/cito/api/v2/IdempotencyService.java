@@ -74,6 +74,70 @@ public class IdempotencyService {
         }
     }
 
+    /**
+     * Audit D1: generic body-based idempotency for the legacy v1 money endpoints
+     * ({@code Api.doMobileMoneyPayIn/doMobileMoneyPayOut}), which return JSON strings rather than
+     * a typed {@link PaymentResult}. Same {@code cpay_idempotency_keys} table, same request-hash
+     * reuse guard, but the stored response is the raw string. Returns the previously recorded
+     * response body when the same merchant reused the key with an identical request body, or empty
+     * when the key is new/blank/the table is unavailable (backward compatible).
+     */
+    public Optional<String> findExistingBody(String merchantNumber, String idempotencyKey, String body) {
+        if (isBlank(idempotencyKey)) {
+            return Optional.empty();
+        }
+        try {
+            String sql = "SELECT request_hash, response_body FROM cpay_idempotency_keys "
+                    + "WHERE merchant_number=:merchant_number AND idempotency_key=:idempotency_key "
+                    + "ORDER BY id DESC LIMIT 1";
+            MapSqlParameterSource parameters = new MapSqlParameterSource();
+            parameters.addValue("merchant_number", merchantNumber);
+            parameters.addValue("idempotency_key", idempotencyKey.trim());
+            List<StoredResponse> responses = jdbcTemplate.query(sql, parameters, (rs, rowNum) ->
+                    new StoredResponse(rs.getString("request_hash"), rs.getString("response_body")));
+            if (responses.isEmpty()) {
+                return Optional.empty();
+            }
+            String requestHash = CanonicalRequestSigner.sha256Hex(body == null ? "" : body);
+            StoredResponse response = responses.get(0);
+            if (requestHash.equals(response.requestHash) && response.responseBody != null) {
+                return Optional.of(response.responseBody);
+            }
+            if (!requestHash.equals(response.requestHash)) {
+                throw new PaymentGatewayException("Idempotency key was reused with a different request body");
+            }
+            return Optional.empty();
+        } catch (PaymentGatewayException e) {
+            throw e;
+        } catch (DataAccessException e) {
+            return Optional.empty();
+        } catch (Exception e) {
+            throw new PaymentGatewayException("Unable to read idempotency response");
+        }
+    }
+
+    public void recordBody(String merchantNumber, String idempotencyKey, String body, String responseBody) {
+        if (isBlank(idempotencyKey) || responseBody == null) {
+            return;
+        }
+        try {
+            String sql = "INSERT INTO cpay_idempotency_keys "
+                    + "(merchant_number, idempotency_key, request_hash, response_body, status, created_at) "
+                    + "VALUES (:merchant_number, :idempotency_key, :request_hash, :response_body, :status, CURRENT_TIMESTAMP)";
+            MapSqlParameterSource parameters = new MapSqlParameterSource();
+            parameters.addValue("merchant_number", merchantNumber);
+            parameters.addValue("idempotency_key", idempotencyKey.trim());
+            parameters.addValue("request_hash", CanonicalRequestSigner.sha256Hex(body == null ? "" : body));
+            parameters.addValue("response_body", responseBody);
+            parameters.addValue("status", "REPLAYED");
+            jdbcTemplate.update(sql, parameters);
+        } catch (DataAccessException e) {
+            // Idempotency remains backward compatible if the migration has not yet been enabled.
+        } catch (Exception e) {
+            throw new PaymentGatewayException("Unable to record idempotency response");
+        }
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
@@ -88,4 +152,3 @@ public class IdempotencyService {
         }
     }
 }
-

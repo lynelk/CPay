@@ -28,12 +28,28 @@ class AdminControllerPreAuthorizeCoverageTest {
         net.citotech.cito.admin.DeliveryOpsDashboardController.class,
         net.citotech.cito.admin.FeatureFlagController.class,
         net.citotech.cito.admin.SettingsRegistryController.class,
+        net.citotech.cito.admin.AdminMerchantStatementController.class,
         net.citotech.cito.portal.GatewayAdminController.class,
         net.citotech.cito.callback.CallbackAdminController.class,
         net.citotech.cito.callback.CallbackOpsController.class,
         net.citotech.cito.reconciliation.ReconFinanceController.class,
         net.citotech.cito.reconciliation.SettlementOpsController.class,
-        net.citotech.cito.reconciliation.ReconciliationReviewController.class
+        net.citotech.cito.reconciliation.ReconciliationReviewController.class,
+        net.citotech.cito.reconciliation.ReconController.class,
+        net.citotech.cito.reconciliation.StatementCheckController.class,
+        net.citotech.cito.audit.AuditChainVerificationController.class,
+        net.citotech.cito.balance.BalanceAdminController.class,
+        net.citotech.cito.compliance.ComplianceReportingController.class,
+        net.citotech.cito.compliance.KycController.class,
+        net.citotech.cito.fees.FeeScheduleAdminController.class,
+        net.citotech.cito.gateway.ProviderCertificationController.class,
+        net.citotech.cito.gateway.ProviderTokenController.class,
+        net.citotech.cito.gateway.SandboxRunController.class,
+        net.citotech.cito.ledger.LedgerAdminController.class,
+        net.citotech.cito.reporting.ReportingAdminController.class,
+        net.citotech.cito.scheduler.TransactionLogArchivalController.class,
+        net.citotech.cito.security.AdminMfaController.class,
+        net.citotech.cito.webhook.MerchantWebhookController.class
     );
 
     @Test

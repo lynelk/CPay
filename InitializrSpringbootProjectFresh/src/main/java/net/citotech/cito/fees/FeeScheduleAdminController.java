@@ -8,6 +8,7 @@ import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.money.MoneyAmount;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(path = "/api/v2/admin/fees")
+@PreAuthorize("hasRole('ADMIN')")
 public class FeeScheduleAdminController {
     private final FeeScheduleService feeScheduleService;
     private final NamedParameterJdbcTemplate jdbcTemplate;

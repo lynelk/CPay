@@ -5,6 +5,7 @@ import Login from './components/Login';
 
 // Heavy authenticated surfaces are code-split so the login entry stays light.
 const MerchantSignup = lazy(() => import('./components/MerchantSignup'));
+const VerifyEmail = lazy(() => import('./components/VerifyEmail'));
 const Layout = lazy(() => import('./components/Layout'));
 const LayoutMerchant = lazy(() => import('./components/LayoutMerchant'));
 const OperationsConsole = lazy(() => import('./features/OperationsConsole'));
@@ -20,6 +21,8 @@ function Routers(): React.ReactElement {
         <Routes>
           <Route path="/" element={<LoginMerchant />} />
           <Route path="/signup" element={<MerchantSignup />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+
           <Route path="/portal" element={<Login />} />
           <Route path="/dashboard/*" element={<Layout />} />
           <Route path="/dashboardMerchant/*" element={<LayoutMerchant />} />

@@ -87,6 +87,7 @@ function LoginMerchant(): React.ReactElement {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [showForgot, setShowForgot] = React.useState(false);
+  const [unverified, setUnverified] = React.useState(false);
   const [appearance, setAppearance] = React.useState<MerchantLoginAppearance>(defaultAppearance);
 
   React.useEffect(() => {
@@ -121,6 +122,7 @@ function LoginMerchant(): React.ReactElement {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError('');
+    setUnverified(false);
     if (!accountNumber || !username || !password) {
       setError(strings.merchant_login_required);
       return;
@@ -143,6 +145,7 @@ function LoginMerchant(): React.ReactElement {
         navigate('/dashboardMerchant');
       } else {
         setError(res.message || `${strings.sign_in_failed} (${res.code}).`);
+        setUnverified(res.code === '147');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : `${strings.sign_in_failed}.`);
@@ -255,6 +258,21 @@ function LoginMerchant(): React.ReactElement {
           onValueChange={setPassword}
           invalid={invalid}
         />
+        {unverified ? (
+          <div className="ios-verify-prompt">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() =>
+                navigate('/verify-email', {
+                  state: { accountNumber, email: username },
+                })
+              }
+            >
+              {strings.verify_email_link}
+            </Button>
+          </div>
+        ) : null}
         <div className="ios-actions">
           <Button type="submit" variant="primary" loading={loading} loadingLabel={strings.signing_in}>
             {strings.sign_in}

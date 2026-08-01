@@ -245,10 +245,22 @@ function MerchantSignup(): React.ReactElement {
               <dd>{result.merchantStatus}</dd>
             </div>
           </dl>
-          <p>{strings.signup_success_instructions}</p>
-          <Button variant="primary" onClick={() => navigate('/')}>
-            {strings.go_to_login}
-          </Button>
+          <p>{strings.signup_verify_instructions}</p>
+          <div className="ios-actions">
+            <Button
+              variant="primary"
+              onClick={() =>
+                navigate('/verify-email', {
+                  state: { accountNumber: result.accountNumber, email: form.email },
+                })
+              }
+            >
+              {strings.verify_email_link}
+            </Button>
+            <Button variant="link" onClick={() => navigate('/')}>
+              {strings.go_to_login}
+            </Button>
+          </div>
         </div>
       ) : (
         <form className="ios-form ios-signup-form" onSubmit={handleSubmit} noValidate>
