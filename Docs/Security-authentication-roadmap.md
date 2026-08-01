@@ -11,6 +11,7 @@ This document tracks high-impact controls that require coordinated backend, fron
 | CORS | API headers are explicit; wildcard headers are no longer used. |
 | Production guard | Production profiles reject sandbox mode and SSL verification bypass. |
 | Upload validation | Spreadsheet uploads enforce file type, MIME type, size, and row-count limits. |
+| Webhook self-service scoping | Merchant webhook register/rotate/replay/delivery-log routes are merchant-session-scoped and covered by the portal session-authorization filter (107 envelope when unauthenticated). |
 
 ## Next Controls
 

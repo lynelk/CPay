@@ -32,7 +32,7 @@ CPay uses several controls to support safe operation:
 - verified provider responses (e.g. Yo! Payments) before they are trusted
 - merchant-safe error messages: raw provider responses and internal exceptions are translated to a stable, generic message before reaching a merchant, never echoed back directly
 - centralized outbound provider transport with configured timeouts and no global TLS verification bypass
-- merchant self-service webhook management (register, rotate secret, view delivery log, replay a failed delivery), scoped so one merchant can never act on another's webhook
+- merchant self-service webhook management from the merchant portal (`Merchant Dashboard -> Webhooks`: register, rotate secret, view delivery log, replay a failed delivery), scoped so one merchant can never act on another's webhook, and gated by the portal session-authorization filter alongside the other merchant self-service routes
 - claim-based callback processing for scaled workers
 - distributed locking (ShedLock) so scheduled jobs cannot process the same work twice across multiple instances
 - provider callback terminal-state and provider-reference guards to reduce duplicate ledger/statement application on redelivery

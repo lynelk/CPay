@@ -20,6 +20,7 @@ These controls improve the software posture of CPay. They do not replace legal r
 | Browser request protection | Browser routes use CSRF tokens from `/auth/csrf`; legacy/API route groups are exempted specifically where integration compatibility requires it. |
 | Session resilience | Admin and merchant portal sessions are stored through Spring Session JDBC. |
 | Operating oversight | Admin users can review open operating-control counts through `/api/v2/admin/operating-controls/summary`. |
+| Webhook self-service | Merchants manage webhook endpoints, signing secrets, and delivery replay from `Merchant Dashboard -> Webhooks`, scoped to their own `merchant_id` and gated by the portal session-authorization filter. |
 
 ## Provider endpoint execution
 

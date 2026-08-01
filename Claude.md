@@ -198,13 +198,16 @@ documented `mysqldump --no-data` command.
   components only — do not use it in new code).
 - `src/shared/api/httpClient.ts` — all new HTTP calls go through this; `src/shared/api/hooks.ts` for
   TanStack Query-based server state (dashboard summaries, chart series, transaction lists/mutations,
-  the reconciliation workbench's unmatched-records/candidate-transaction search/match mutations, and
-  audit-trail/merchant-account-statement queries and mutations). Consumed today by `ModuleDashboard.jsx`
+  the reconciliation workbench's unmatched-records/candidate-transaction search/match mutations,
+  audit-trail/merchant-account-statement queries and mutations, and the merchant webhook manager's
+  endpoint/delivery queries and register/rotate/replay mutations). Consumed today by `ModuleDashboard.jsx`
   (a class-to-function conversion was required — hooks can't be used in class components),
-  `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`, `ModuleReconciliation.tsx`, and
+  `ModuleTransactions.jsx`/`MerchantModuleTransactions.jsx`, `ModuleReconciliation.tsx`,
   `ModuleAuditTrail.tsx`/`MerchantModuleAuditTrail.tsx`/`ModuleMerchantsAccount.tsx`/
-  `MerchantModuleMerchantsAccount.tsx`; most other modules still hand-roll `fetch`/`useState` and are
-  good candidates for the same migration (see `clientside/Migration.md`'s follow-ups).
+  `MerchantModuleMerchantsAccount.tsx`, and the merchant portal webhook manager
+  (`MerchantModuleWebhooks.tsx` with its Endpoints/Deliveries panels at
+  `clientside/src/components/modules/merchant/`); most other modules still hand-roll `fetch`/`useState`
+  and are good candidates for the same migration (see `clientside/Migration.md`'s follow-ups).
   `LegacyRequestError` (carrying the original `code`) is thrown by `postLegacyJson` for any
   non-`"000"` legacy response code other than `"107"`/`"110"`.
 - `src/shared/useAuth.ts` — centralized read of the logged-in admin/merchant principal out of
