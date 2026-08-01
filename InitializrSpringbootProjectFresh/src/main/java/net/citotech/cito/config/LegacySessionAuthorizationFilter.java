@@ -23,6 +23,7 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         "/settings",
         "/transactions",
         "/api/v2/merchant-self-service/channels",
+        "/api/v2/merchant-self-service/batches",
         "/api/v2/portal"
     );
     private static final List<String> PUBLIC_SETTINGS_PATHS = List.of(

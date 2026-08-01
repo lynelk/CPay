@@ -3,6 +3,7 @@ package net.citotech.cito.compliance;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
@@ -119,17 +120,53 @@ public class RiskDecisionService {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("rule_type", ruleType);
         p.addValue("merchant_scope", "merchant:" + merchant.getId());
+        p.addValue("tier_scope", "tier:" + kycTier(merchant));
         p.addValue("currency", currency);
         List<Rule> rules = jdbcTemplate.query(
             "SELECT decision, threshold_amount FROM risk_rules "
                 + "WHERE enabled='YES' AND rule_type=:rule_type "
                 + "AND (currency IS NULL OR currency=:currency) "
                 + "AND ((scope_type='MERCHANT' AND scope_reference=:merchant_scope) "
+                + "OR (scope_type='TIER' AND scope_reference=:tier_scope) "
                 + "OR (scope_type='GLOBAL' AND scope_reference='*')) "
-                + "ORDER BY CASE WHEN scope_type='MERCHANT' THEN 0 ELSE 1 END, id ASC LIMIT 1",
+                + "ORDER BY CASE scope_type WHEN 'MERCHANT' THEN 0 WHEN 'TIER' THEN 1 ELSE 2 END, id ASC LIMIT 1",
             p,
             (rs, rowNum) -> new Rule(rs.getString("decision"), rs.getBigDecimal("threshold_amount")));
         return rules.isEmpty() ? null : rules.get(0);
+    }
+
+    /**
+     * Audit I3: resolves the merchant's KYC tier from {@code compliance_profiles}
+     * ({@code profile_type='KYC'}), defaulting to {@code STANDARD} when no profile exists.
+     * Rules scoped {@code TIER}/{@code tier:<TIER>} then bound that merchant's transaction and
+     * daily caps, with precedence MERCHANT > TIER > GLOBAL so a merchant-specific override
+     * always beats its tier default.
+     */
+    private String kycTier(Merchant merchant) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("entity_type", "MERCHANT");
+        p.addValue("entity_id", merchant.getId());
+        p.addValue("profile_type", "KYC");
+        List<String> tiers = jdbcTemplate.query(
+            "SELECT COALESCE(tier, 'STANDARD') FROM compliance_profiles "
+                + "WHERE entity_type=:entity_type AND entity_id=:entity_id AND profile_type=:profile_type "
+                + "ORDER BY id DESC LIMIT 1",
+            p,
+            (rs, rowNum) -> rs.getString(1));
+        return normalizeTier(tiers.isEmpty() ? "STANDARD" : tiers.get(0));
+    }
+
+    private String normalizeTier(String tier) {
+        if (tier == null || tier.trim().isEmpty()) {
+            return "STANDARD";
+        }
+        String normalized = tier.trim().toUpperCase(Locale.ROOT);
+        if ("STARTER".equals(normalized)
+                || "BUSINESS".equals(normalized)
+                || "ENHANCED".equals(normalized)) {
+            return normalized;
+        }
+        return "STANDARD";
     }
 
     private void recordDecision(Merchant merchant, String reference, String direction, BigDecimal amount, String currency, RiskDecision decision) {
