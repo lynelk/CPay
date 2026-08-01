@@ -20,17 +20,18 @@ public class AuditChainVerificationController {
     @GetMapping(path = "/verify")
     public Map<String, Object> verify() {
         AuditChainVerificationService.Result adminTrail = verificationService.verifyAuditTrail();
-        AuditChainVerificationService.Result merchantTrail = verificationService.verifyMerchantAuditTrail();
+        AuditChainVerificationService.Result merchantTrail =
+                verificationService.verifyMerchantAuditTrail();
         return Map.of(
-            "intact", adminTrail.intact() && merchantTrail.intact(),
-            "auditTrail", resultAsMap(adminTrail),
-            "merchantAuditTrail", resultAsMap(merchantTrail));
+                "intact", adminTrail.intact() && merchantTrail.intact(),
+                "auditTrail", resultAsMap(adminTrail),
+                "merchantAuditTrail", resultAsMap(merchantTrail));
     }
 
     private Map<String, Object> resultAsMap(AuditChainVerificationService.Result result) {
         return Map.of(
-            "intact", result.intact(),
-            "hashedRows", result.hashedRows(),
-            "brokenAtIds", result.brokenAtIds());
+                "intact", result.intact(),
+                "hashedRows", result.hashedRows(),
+                "brokenAtIds", result.brokenAtIds());
     }
 }

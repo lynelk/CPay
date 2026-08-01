@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Read-only admin reporting endpoints backed by the nightly aggregates from audit F4 (transaction
- * stats), N10 (failure-reason analytics), and O3 (float dashboard). Secured the same as every
- * other {@code /api/v2/admin/**} route (see {@code SecurityConfig}: {@code hasRole("ADMIN")}).
+ * stats), N10 (failure-reason analytics), and O3 (float dashboard). Secured the same as every other
+ * {@code /api/v2/admin/**} route (see {@code SecurityConfig}: {@code hasRole("ADMIN")}).
  */
 @RestController
 @RequestMapping(path = "/api/v2/admin/reporting")
@@ -45,7 +45,9 @@ public class ReportingAdminController {
         return queryService.transactionStats(fromDate, toDate, merchantId, gatewayId);
     }
 
-    /** Audit N10: why transactions/payouts are failing, in aggregate, annotated via ErrorCatalog. */
+    /**
+     * Audit N10: why transactions/payouts are failing, in aggregate, annotated via ErrorCatalog.
+     */
     @GetMapping(path = "/failure-reasons")
     public List<Map<String, Object>> failureReasons(
             @RequestParam(value = "from", required = false) String from,
@@ -57,16 +59,18 @@ public class ReportingAdminController {
     }
 
     /**
-     * Audit O3: per float/stock gateway account, a balance history, the computed burn rate
-     * (average daily decrease over {@code windowDays}), a simple linear days-remaining forecast,
-     * and the top-up log.
+     * Audit O3: per float/stock gateway account, a balance history, the computed burn rate (average
+     * daily decrease over {@code windowDays}), a simple linear days-remaining forecast, and the
+     * top-up log.
      */
     @GetMapping(path = "/float-dashboard")
     public Map<String, Object> floatDashboard(
-            @RequestParam(value = "windowDays", defaultValue = "" + DEFAULT_BURN_RATE_WINDOW_DAYS) int windowDays) {
+            @RequestParam(value = "windowDays", defaultValue = "" + DEFAULT_BURN_RATE_WINDOW_DAYS)
+                    int windowDays) {
         List<Map<String, Object>> accounts = new ArrayList<>();
         for (String accountType : queryService.distinctFloatAccountTypes()) {
-            List<BalanceSnapshotPoint> snapshots = queryService.floatBalanceSnapshots(accountType, windowDays);
+            List<BalanceSnapshotPoint> snapshots =
+                    queryService.floatBalanceSnapshots(accountType, windowDays);
             BurnRateForecast forecast = FloatBurnRateCalculator.compute(snapshots, windowDays);
 
             Map<String, Object> account = new LinkedHashMap<>();

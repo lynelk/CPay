@@ -11,10 +11,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Audit E6: upgrades existing merchant RSA private-key rows to the dedicated
- * {@code cpay.key.encryption.key} envelope. AES-GCM cannot be applied in a Flyway migration, so
- * the {@code V31__merchant_key_encryption.sql} column tracks state and this service does the
- * actual re-encryption in code:
+ * Audit E6: upgrades existing merchant RSA private-key rows to the dedicated {@code
+ * cpay.key.encryption.key} envelope. AES-GCM cannot be applied in a Flyway migration, so the {@code
+ * V31__merchant_key_encryption.sql} column tracks state and this service does the actual
+ * re-encryption in code:
  *
  * <ul>
  *   <li>version 2 = already under the dedicated key - skipped.
@@ -24,9 +24,9 @@ import org.springframework.stereotype.Service;
  *   <li>version 1 = explicitly tracked channel-key blob - decrypted and re-encrypted.
  * </ul>
  *
- * <p>Runs a short-delay {@code @Scheduled} sweep (ShedLock-protected for multi-instance safety)
- * so existing rows are upgraded shortly after boot and any late/unusual rows get caught on
- * subsequent hourly passes. {@link #upgradeMerchant(long)} is the on-demand entry point.
+ * <p>Runs a short-delay {@code @Scheduled} sweep (ShedLock-protected for multi-instance safety) so
+ * existing rows are upgraded shortly after boot and any late/unusual rows get caught on subsequent
+ * hourly passes. {@link #upgradeMerchant(long)} is the on-demand entry point.
  */
 @Service
 public class MerchantKeyReencryptionService {
@@ -54,7 +54,10 @@ public class MerchantKeyReencryptionService {
     @Scheduled(
             initialDelayString = "${cpay.key-encryption.reencrypt.initial-delay-ms:15000}",
             fixedDelayString = "${cpay.key-encryption.reencrypt.fixed-delay-ms:3600000}")
-    @SchedulerLock(name = "merchantKeyReencryption", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
+    @SchedulerLock(
+            name = "merchantKeyReencryption",
+            lockAtMostFor = "PT30M",
+            lockAtLeastFor = "PT1M")
     public void scheduledUpgradeAll() {
         if (!reencryptEnabled) {
             return;
@@ -128,7 +131,10 @@ public class MerchantKeyReencryptionService {
             boolean isPlaintextPem = stored.startsWith(PEM_PREFIX);
             String plaintext = isPlaintextPem ? stored : decryptLegacy(stored);
             if (plaintext == null) {
-                logger.log(Level.WARNING, "Merchant {0}: could not decrypt private key under legacy key", row.id());
+                logger.log(
+                        Level.WARNING,
+                        "Merchant {0}: could not decrypt private key under legacy key",
+                        row.id());
                 return Outcome.FAILED;
             }
             String reencrypted = keyEncryptionService.encrypt(plaintext);
@@ -141,10 +147,16 @@ public class MerchantKeyReencryptionService {
                             "UPDATE merchants SET private_key=:private_key, key_encryption_version=:version WHERE id=:id",
                             params);
             if (updated == 0) {
-                logger.log(Level.WARNING, "Merchant {0}: re-encryption update affected no rows", row.id());
+                logger.log(
+                        Level.WARNING,
+                        "Merchant {0}: re-encryption update affected no rows",
+                        row.id());
                 return Outcome.FAILED;
             }
-            logger.log(Level.INFO, "Merchant {0}: private key re-encrypted under dedicated E6 key", row.id());
+            logger.log(
+                    Level.INFO,
+                    "Merchant {0}: private key re-encrypted under dedicated E6 key",
+                    row.id());
             return Outcome.UPGRADED;
         } catch (Exception ex) {
             logger.log(

@@ -17,10 +17,11 @@ public class SandboxRunController {
     }
 
     @PostMapping(path = "/run")
-    public long run(@RequestParam("channel") String channel,
-                    @RequestParam(value = "scenario", defaultValue = "collect") String scenario,
-                    @RequestParam(value = "account", defaultValue = "256770000000") String account,
-                    @RequestParam(value = "amount", defaultValue = "1000") String amount) {
+    public long run(
+            @RequestParam("channel") String channel,
+            @RequestParam(value = "scenario", defaultValue = "collect") String scenario,
+            @RequestParam(value = "account", defaultValue = "256770000000") String account,
+            @RequestParam(value = "amount", defaultValue = "1000") String amount) {
         return service.run(channel, scenario, account, amount);
     }
 }

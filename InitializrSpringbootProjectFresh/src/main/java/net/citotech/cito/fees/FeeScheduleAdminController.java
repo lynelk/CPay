@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Fee schedule creation (audit A5). Mutating fees is admin-only, so this lives under
- * {@code /api/v2/admin/**}, which {@code SecurityConfig} already role-guards with
- * {@code hasRole("ADMIN")} at the filter-chain level - unlike the rest of {@code /api/v2/**},
- * which is {@code permitAll()} at that layer and relies on each controller's own request signing.
+ * Fee schedule creation (audit A5). Mutating fees is admin-only, so this lives under {@code
+ * /api/v2/admin/**}, which {@code SecurityConfig} already role-guards with {@code hasRole("ADMIN")}
+ * at the filter-chain level - unlike the rest of {@code /api/v2/**}, which is {@code permitAll()}
+ * at that layer and relies on each controller's own request signing.
  */
 @RestController
 @RequestMapping(path = "/api/v2/admin/fees")
@@ -27,7 +27,8 @@ public class FeeScheduleAdminController {
     private final FeeScheduleService feeScheduleService;
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    public FeeScheduleAdminController(FeeScheduleService feeScheduleService, NamedParameterJdbcTemplate jdbcTemplate) {
+    public FeeScheduleAdminController(
+            FeeScheduleService feeScheduleService, NamedParameterJdbcTemplate jdbcTemplate) {
         this.feeScheduleService = feeScheduleService;
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -40,16 +41,33 @@ public class FeeScheduleAdminController {
         String chargingMethod = requiredString(body, "chargingMethod").toUpperCase();
         BigDecimal amount = MoneyAmount.of(requiredString(body, "amount")).asBigDecimal();
         Object merchantNumber = body.get("merchantNumber");
-        Long merchantId = resolveMerchantId(merchantNumber == null ? null : merchantNumber.toString());
+        Long merchantId =
+                resolveMerchantId(merchantNumber == null ? null : merchantNumber.toString());
         Object effectiveFromRaw = body.get("effectiveFrom");
-        Instant effectiveFrom = effectiveFromRaw == null || effectiveFromRaw.toString().isBlank()
-            ? null : Instant.parse(effectiveFromRaw.toString());
+        Instant effectiveFrom =
+                effectiveFromRaw == null || effectiveFromRaw.toString().isBlank()
+                        ? null
+                        : Instant.parse(effectiveFromRaw.toString());
         Object createdByRaw = body.get("createdBy");
         String createdBy = createdByRaw == null ? "admin" : createdByRaw.toString();
 
-        FeeSchedule created = feeScheduleService.create(
-            gatewayId, merchantId, service, chargeType, chargingMethod, amount, effectiveFrom, createdBy);
-        return Map.of("code", "000", "scheduleId", created.id(), "effectiveFrom", created.effectiveFrom().toString());
+        FeeSchedule created =
+                feeScheduleService.create(
+                        gatewayId,
+                        merchantId,
+                        service,
+                        chargeType,
+                        chargingMethod,
+                        amount,
+                        effectiveFrom,
+                        createdBy);
+        return Map.of(
+                "code",
+                "000",
+                "scheduleId",
+                created.id(),
+                "effectiveFrom",
+                created.effectiveFrom().toString());
     }
 
     private Long resolveMerchantId(String merchantNumber) {

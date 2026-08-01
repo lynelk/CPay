@@ -8,12 +8,13 @@ import org.junit.jupiter.api.Test;
 /**
  * Covers audit E6: the dedicated merchant RSA private-key envelope. A random 32-byte key supplied
  * base64-encoded is used as-is (no SHA-256 derivation), encryption always produces a fresh
- * randomized blob, decryption round-trips, and the envelope is base64(IV || ciphertext) so it
- * never contains PEM text.
+ * randomized blob, decryption round-trips, and the envelope is base64(IV || ciphertext) so it never
+ * contains PEM text.
  */
 class MerchantKeyEncryptionServiceTest {
 
-    private static final String SAMPLE_PEM = "-----BEGIN PRIVATE KEY-----\nMIIExamplePem==\n-----END PRIVATE KEY-----\n";
+    private static final String SAMPLE_PEM =
+            "-----BEGIN PRIVATE KEY-----\nMIIExamplePem==\n-----END PRIVATE KEY-----\n";
 
     private static MerchantKeyEncryptionService service(String dedicatedKey, String channelKey) {
         return new MerchantKeyEncryptionService(dedicatedKey, channelKey);
@@ -60,8 +61,7 @@ class MerchantKeyEncryptionServiceTest {
 
     @Test
     void throwsWhenNoKeyMaterialIsConfiguredAtAll() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                        () -> service("", ""))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service("", ""))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CPAY_KEY_ENCRYPTION_KEY");
     }

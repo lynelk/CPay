@@ -261,7 +261,9 @@ public class Api {
             // cached partial result, and a replay never re-runs Common.doPayIn.
             String idempotencyKey = headerValue(request, "Idempotency-Key", "X-Idempotency-Key");
             if (!isBlank(idempotencyKey)) {
-                Optional<String> replayed = idempotencyService.findExistingBody(merchant_number, idempotencyKey, requestBody);
+                Optional<String> replayed =
+                        idempotencyService.findExistingBody(
+                                merchant_number, idempotencyKey, requestBody);
                 if (replayed.isPresent()) {
                     return replayed.get();
                 }
@@ -534,7 +536,9 @@ public class Api {
             // recorded response instead of re-running money movement (and never double-reserves).
             String idempotencyKey = headerValue(request, "Idempotency-Key", "X-Idempotency-Key");
             if (!isBlank(idempotencyKey)) {
-                Optional<String> replayed = idempotencyService.findExistingBody(merchant_number, idempotencyKey, requestBody);
+                Optional<String> replayed =
+                        idempotencyService.findExistingBody(
+                                merchant_number, idempotencyKey, requestBody);
                 if (replayed.isPresent()) {
                     return replayed.get();
                 }

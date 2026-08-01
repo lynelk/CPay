@@ -17,7 +17,8 @@ public class BalanceAdminController {
     }
 
     @PostMapping(path = "/sync-legacy")
-    public String syncLegacy(@RequestParam(value = "startedBy", defaultValue = "system") String startedBy) {
+    public String syncLegacy(
+            @RequestParam(value = "startedBy", defaultValue = "system") String startedBy) {
         int written = balanceService.backfillFromLegacy(startedBy);
         return "balances_written=" + written;
     }

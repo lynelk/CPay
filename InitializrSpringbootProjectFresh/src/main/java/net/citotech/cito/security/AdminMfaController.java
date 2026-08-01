@@ -24,8 +24,9 @@ public class AdminMfaController {
     }
 
     @PostMapping(path = "/totp/confirm")
-    public ResponseEntity<?> confirm(@RequestParam("email") String email,
-                                     @RequestParam("code") String code) {
-        return ResponseEntity.ok(Map.of("verified", adminMfaService.confirmEnrollment(email, code)));
+    public ResponseEntity<?> confirm(
+            @RequestParam("email") String email, @RequestParam("code") String code) {
+        return ResponseEntity.ok(
+                Map.of("verified", adminMfaService.confirmEnrollment(email, code)));
     }
 }

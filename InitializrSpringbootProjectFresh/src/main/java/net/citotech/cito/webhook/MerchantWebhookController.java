@@ -25,14 +25,16 @@ public class MerchantWebhookController {
     }
 
     @PostMapping(path = "/merchants/{merchantId}")
-    public ResponseEntity<?> register(@PathVariable("merchantId") long merchantId,
-                                      @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> register(
+            @PathVariable("merchantId") long merchantId, @RequestBody Map<String, String> body) {
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(webhookService.registerEndpoint(
-                merchantId,
-                body.get("eventType"),
-                body.get("endpointUrl"),
-                body.get("actor")));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(
+                            webhookService.registerEndpoint(
+                                    merchantId,
+                                    body.get("eventType"),
+                                    body.get("endpointUrl"),
+                                    body.get("actor")));
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.BAD_REQUEST, "WEBHOOK_REJECTED", e.getMessage());
         }
@@ -58,6 +60,7 @@ public class MerchantWebhookController {
     }
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
-        return ResponseEntity.status(status).body(new ApiErrorResponse(code, message, UUID.randomUUID().toString()));
+        return ResponseEntity.status(status)
+                .body(new ApiErrorResponse(code, message, UUID.randomUUID().toString()));
     }
 }

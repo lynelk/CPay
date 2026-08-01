@@ -14,8 +14,8 @@ class RestExceptionHandlerTest {
     void unexpectedExceptionsReturnStandardJsonErrorBody() {
         RestExceptionHandler handler = new RestExceptionHandler();
 
-        ResponseEntity<String> response = handler.requestUnhandledException(
-            new NullPointerException("missing setting"));
+        ResponseEntity<String> response =
+                handler.requestUnhandledException(new NullPointerException("missing setting"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 
@@ -29,8 +29,8 @@ class RestExceptionHandlerTest {
     void methodSecurityDenialsReturnExplicitForbiddenNot500() {
         RestExceptionHandler handler = new RestExceptionHandler();
 
-        ResponseEntity<String> response = handler.requestAccessDenied(
-            new AccessDeniedException("Admin role is required"));
+        ResponseEntity<String> response =
+                handler.requestAccessDenied(new AccessDeniedException("Admin role is required"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 

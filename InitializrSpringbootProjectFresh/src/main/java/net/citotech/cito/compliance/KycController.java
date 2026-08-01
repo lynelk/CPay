@@ -26,15 +26,16 @@ public class KycController {
     }
 
     @PostMapping(path = "/merchants/{merchantId}/owners")
-    public ResponseEntity<?> addOwner(@PathVariable("merchantId") long merchantId,
-                                      @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> addOwner(
+            @PathVariable("merchantId") long merchantId, @RequestBody Map<String, String> body) {
         try {
-            long id = kycService.addBeneficialOwner(
-                merchantId,
-                body.get("fullName"),
-                body.get("idType"),
-                body.get("idValue"),
-                parseDecimal(body.get("ownershipPercent")));
+            long id =
+                    kycService.addBeneficialOwner(
+                            merchantId,
+                            body.get("fullName"),
+                            body.get("idType"),
+                            body.get("idValue"),
+                            parseDecimal(body.get("ownershipPercent")));
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id, "code", "000"));
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.BAD_REQUEST, "KYC_OWNER_REJECTED", e.getMessage());
@@ -42,14 +43,15 @@ public class KycController {
     }
 
     @PostMapping(path = "/merchants/{merchantId}/documents")
-    public ResponseEntity<?> addDocument(@PathVariable("merchantId") long merchantId,
-                                         @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> addDocument(
+            @PathVariable("merchantId") long merchantId, @RequestBody Map<String, String> body) {
         try {
-            long id = kycService.addDocument(
-                merchantId,
-                body.get("documentType"),
-                body.get("storageRef"),
-                body.get("documentHash"));
+            long id =
+                    kycService.addDocument(
+                            merchantId,
+                            body.get("documentType"),
+                            body.get("storageRef"),
+                            body.get("documentHash"));
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id, "code", "000"));
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.BAD_REQUEST, "KYC_DOCUMENT_REJECTED", e.getMessage());
@@ -69,6 +71,7 @@ public class KycController {
     }
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
-        return ResponseEntity.status(status).body(new ApiErrorResponse(code, message, UUID.randomUUID().toString()));
+        return ResponseEntity.status(status)
+                .body(new ApiErrorResponse(code, message, UUID.randomUUID().toString()));
     }
 }

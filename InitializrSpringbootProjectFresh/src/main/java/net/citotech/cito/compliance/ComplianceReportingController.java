@@ -21,8 +21,7 @@ public class ComplianceReportingController {
     private final ComplianceCaseService caseService;
 
     public ComplianceReportingController(
-            ComplianceReportingService service,
-            ComplianceCaseService caseService) {
+            ComplianceReportingService service, ComplianceCaseService caseService) {
         this.service = service;
         this.caseService = caseService;
     }
@@ -33,14 +32,16 @@ public class ComplianceReportingController {
     }
 
     @GetMapping(path = "/report")
-    public Map<String, Object> report(@RequestParam(name = "from", required = false) String from,
-                                      @RequestParam(name = "to", required = false) String to) {
+    public Map<String, Object> report(
+            @RequestParam(name = "from", required = false) String from,
+            @RequestParam(name = "to", required = false) String to) {
         return service.report(from, to);
     }
 
     @PostMapping(path = "/events/{id}/review")
-    public ResponseEntity<?> review(@PathVariable("id") long id,
-                                    @RequestParam(name = "reviewedBy", required = false) String reviewedBy) {
+    public ResponseEntity<?> review(
+            @PathVariable("id") long id,
+            @RequestParam(name = "reviewedBy", required = false) String reviewedBy) {
         int updated = service.markReviewed(id, reviewedBy);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("updated", updated);
@@ -66,7 +67,8 @@ public class ComplianceReportingController {
     }
 
     @GetMapping(path = "/profiles")
-    public List<Map<String, Object>> profiles(@RequestParam(name = "status", required = false) String status) {
+    public List<Map<String, Object>> profiles(
+            @RequestParam(name = "status", required = false) String status) {
         return caseService.listProfiles(status);
     }
 
@@ -80,16 +82,17 @@ public class ComplianceReportingController {
             error.put("error", ex.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
-        int updated = caseService.upsertProfile(
-            string(body, "entityType", "MERCHANT"),
-            entityId,
-            string(body, "profileType", "KYC"),
-            string(body, "tier", "STANDARD"),
-            string(body, "status", "PENDING"),
-            string(body, "riskRating", "UNKNOWN"),
-            string(body, "requiredDocumentsJson", null),
-            string(body, "decisionReason", null),
-            string(body, "verifiedBy", null));
+        int updated =
+                caseService.upsertProfile(
+                        string(body, "entityType", "MERCHANT"),
+                        entityId,
+                        string(body, "profileType", "KYC"),
+                        string(body, "tier", "STANDARD"),
+                        string(body, "status", "PENDING"),
+                        string(body, "riskRating", "UNKNOWN"),
+                        string(body, "requiredDocumentsJson", null),
+                        string(body, "decisionReason", null),
+                        string(body, "verifiedBy", null));
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("updated", updated);
         return ResponseEntity.ok(response);

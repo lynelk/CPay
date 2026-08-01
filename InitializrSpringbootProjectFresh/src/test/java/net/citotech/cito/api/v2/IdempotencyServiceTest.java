@@ -20,11 +20,11 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 /**
- * Covers audit D1's v1-body idempotency surface added to {@link IdempotencyService}:
- * {@code findExistingBody} replays the stored response for a reused key with an identical body,
- * rejects a reused key with a different body, and tolerates a missing/disabled table; {@code
- * recordBody} persists the raw response body under a canonical request hash. Mirrors the existing
- * Mockito-based test style used across this repo's unit tests (no Spring context).
+ * Covers audit D1's v1-body idempotency surface added to {@link IdempotencyService}: {@code
+ * findExistingBody} replays the stored response for a reused key with an identical body, rejects a
+ * reused key with a different body, and tolerates a missing/disabled table; {@code recordBody}
+ * persists the raw response body under a canonical request hash. Mirrors the existing Mockito-based
+ * test style used across this repo's unit tests (no Spring context).
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 class IdempotencyServiceTest {
@@ -113,8 +113,10 @@ class IdempotencyServiceTest {
                 .thenReturn(1);
         IdempotencyService service = new IdempotencyService(jdbcTemplate, objectMapper);
 
-        service.recordBody("1000001", "key-1", "{\"amount\":\"1000\"}", "{\"state\":\"OK\",\"code\":\"000\"}");
-        // No exception means the insert was accepted; the Mockito stub returning 1 confirms the update path ran.
+        service.recordBody(
+                "1000001", "key-1", "{\"amount\":\"1000\"}", "{\"state\":\"OK\",\"code\":\"000\"}");
+        // No exception means the insert was accepted; the Mockito stub returning 1 confirms the
+        // update path ran.
     }
 
     @Test

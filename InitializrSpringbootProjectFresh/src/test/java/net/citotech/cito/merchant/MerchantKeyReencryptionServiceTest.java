@@ -23,7 +23,8 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 @SuppressWarnings({"rawtypes", "unchecked"})
 class MerchantKeyReencryptionServiceTest {
 
-    private static final String SAMPLE_PEM = "-----BEGIN PRIVATE KEY-----\nMIIExamplePem==\n-----END PRIVATE KEY-----\n";
+    private static final String SAMPLE_PEM =
+            "-----BEGIN PRIVATE KEY-----\nMIIExamplePem==\n-----END PRIVATE KEY-----\n";
 
     @Test
     void upgradesALegacyPlaintextPemRowAndMarksItVersionTwo() throws Exception {
@@ -32,17 +33,18 @@ class MerchantKeyReencryptionServiceTest {
                         contains("key_encryption_version"),
                         any(MapSqlParameterSource.class),
                         any(RowMapper.class)))
-                .thenAnswer(invocation -> List.of(row(invocation.getArgument(2), 7L, SAMPLE_PEM, 0)));
+                .thenAnswer(
+                        invocation -> List.of(row(invocation.getArgument(2), 7L, SAMPLE_PEM, 0)));
         when(jdbcTemplate.update(
-                        contains("key_encryption_version"),
-                        any(MapSqlParameterSource.class)))
+                        contains("key_encryption_version"), any(MapSqlParameterSource.class)))
                 .thenReturn(1);
         MerchantKeyReencryptionService service = service(jdbcTemplate);
 
         boolean upgraded = service.upgradeMerchant(7L);
 
         assertThat(upgraded).isTrue();
-        verify(jdbcTemplate).update(contains("key_encryption_version"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .update(contains("key_encryption_version"), any(MapSqlParameterSource.class));
     }
 
     @Test
@@ -52,7 +54,14 @@ class MerchantKeyReencryptionServiceTest {
                         contains("key_encryption_version"),
                         any(MapSqlParameterSource.class),
                         any(RowMapper.class)))
-                .thenAnswer(invocation -> List.of(row(invocation.getArgument(2), 7L, "ciphertext-already-dedicated", 2)));
+                .thenAnswer(
+                        invocation ->
+                                List.of(
+                                        row(
+                                                invocation.getArgument(2),
+                                                7L,
+                                                "ciphertext-already-dedicated",
+                                                2)));
         MerchantKeyReencryptionService service = service(jdbcTemplate);
 
         boolean upgraded = service.upgradeMerchant(7L);
@@ -63,7 +72,8 @@ class MerchantKeyReencryptionServiceTest {
 
     @Test
     void migratesARowEncryptedUnderTheOldChannelKey() throws Exception {
-        MerchantChannelCryptoService channelService = new MerchantChannelCryptoService("channel-secret");
+        MerchantChannelCryptoService channelService =
+                new MerchantChannelCryptoService("channel-secret");
         String channelEncrypted = channelService.encrypt(SAMPLE_PEM);
 
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
@@ -71,17 +81,19 @@ class MerchantKeyReencryptionServiceTest {
                         contains("key_encryption_version"),
                         any(MapSqlParameterSource.class),
                         any(RowMapper.class)))
-                .thenAnswer(invocation -> List.of(row(invocation.getArgument(2), 9L, channelEncrypted, 1)));
+                .thenAnswer(
+                        invocation ->
+                                List.of(row(invocation.getArgument(2), 9L, channelEncrypted, 1)));
         when(jdbcTemplate.update(
-                        contains("key_encryption_version"),
-                        any(MapSqlParameterSource.class)))
+                        contains("key_encryption_version"), any(MapSqlParameterSource.class)))
                 .thenReturn(1);
         MerchantKeyReencryptionService service = service(jdbcTemplate);
 
         boolean upgraded = service.upgradeMerchant(9L);
 
         assertThat(upgraded).isTrue();
-        verify(jdbcTemplate).update(contains("key_encryption_version"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .update(contains("key_encryption_version"), any(MapSqlParameterSource.class));
     }
 
     private MerchantKeyReencryptionService service(NamedParameterJdbcTemplate jdbcTemplate) {

@@ -13,18 +13,18 @@ import org.springframework.stereotype.Service;
 
 /**
  * Audit E6: dedicated AES-GCM envelope for merchant RSA private keys at rest. The key material
- * comes from {@code cpay.key.encryption.key} (a random 256-bit secret), deliberately separate
- * from {@code merchant.channel.encryption.key} used by {@link MerchantChannelCryptoService} for
- * channel credentials - rotating/compromising a channel-credential key must never be able to touch
- * signing keys. When the dedicated variable is not configured (backward compatibility for existing
+ * comes from {@code cpay.key.encryption.key} (a random 256-bit secret), deliberately separate from
+ * {@code merchant.channel.encryption.key} used by {@link MerchantChannelCryptoService} for channel
+ * credentials - rotating/compromising a channel-credential key must never be able to touch signing
+ * keys. When the dedicated variable is not configured (backward compatibility for existing
  * single-key deployments), the channel key value is used so rows encrypted before this service
  * existed remain readable; operators are expected to set {@code cpay.key.encryption.key} and run
  * the on-demand re-encryption (V31 + code) to move onto the dedicated key.
  *
  * <p>Envelope format is {@code base64(IV || ciphertext)} with a random 12-byte IV per encryption
  * and a 128-bit GCM tag, so re-encrypting the same plaintext always produces a fresh blob. The
- * {@code cpay.key.encryption.hsm} flag is the documented seam an operator can implement against
- * the same {@code encrypt}/{@code decrypt} contract when they deploy an HSM-backed vault.
+ * {@code cpay.key.encryption.hsm} flag is the documented seam an operator can implement against the
+ * same {@code encrypt}/{@code decrypt} contract when they deploy an HSM-backed vault.
  */
 @Service
 public class MerchantKeyEncryptionService {
@@ -37,7 +37,8 @@ public class MerchantKeyEncryptionService {
     public MerchantKeyEncryptionService(
             @Value("${cpay.key.encryption.key:}") String keyValue,
             @Value("${merchant.channel.encryption.key:}") String channelKeyValue) {
-        this.keySpec = new SecretKeySpec(deriveKey(resolveKeyMaterial(keyValue, channelKeyValue)), "AES");
+        this.keySpec =
+                new SecretKeySpec(deriveKey(resolveKeyMaterial(keyValue, channelKeyValue)), "AES");
     }
 
     public String encrypt(String plainText) {

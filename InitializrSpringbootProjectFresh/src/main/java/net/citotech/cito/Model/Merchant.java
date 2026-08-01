@@ -3,7 +3,6 @@ package net.citotech.cito.Model;
 import java.util.List;
 
 /**
- *
  * @author josephtabajjwa
  */
 public class Merchant {
@@ -37,8 +36,6 @@ public class Merchant {
     public void setAllowed_apis(String[] allowed_apis) {
         this.allowed_apis = allowed_apis;
     }
-    
-    
 
     public String getPublic_key() {
         return public_key;
@@ -49,10 +46,10 @@ public class Merchant {
     }
 
     /**
-     * Legacy compat accessor: returns the raw stored value exactly as it came out of the
-     * database row-mapper (already passed through {@code MerchantKeyCryptoRegistry.decryptForUse}
-     * so this is the decrypted PEM for consumers reading through {@code Common}'s mappers). Kept
-     * for backward compatibility - see {@link #getDecryptedKey()} / {@link #getKeyMaterial()}.
+     * Legacy compat accessor: returns the raw stored value exactly as it came out of the database
+     * row-mapper (already passed through {@code MerchantKeyCryptoRegistry.decryptForUse} so this is
+     * the decrypted PEM for consumers reading through {@code Common}'s mappers). Kept for backward
+     * compatibility - see {@link #getDecryptedKey()} / {@link #getKeyMaterial()}.
      */
     public String getPrivate_key() {
         return private_key;
@@ -71,8 +68,7 @@ public class Merchant {
     public String getKeyMaterial() {
         return private_key;
     }
-    
-    
+
     public String getUpdated_on() {
         return updated_on;
     }
@@ -80,8 +76,6 @@ public class Merchant {
     public void setUpdated_on(String updated_on) {
         this.updated_on = updated_on;
     }
-    
-    
 
     public List<MerchantUser> getUsers() {
         return users;
@@ -146,7 +140,7 @@ public class Merchant {
     public void setCreated_by(String created_by) {
         this.created_by = created_by;
     }
-    
+
     public String getHmac_secret() {
         return hmac_secret;
     }
@@ -156,6 +150,11 @@ public class Merchant {
     }
 
     public String toString() {
-        return "Name: "+name+", Account Number: "+account_number+", account_type: "+account_type;
+        return "Name: "
+                + name
+                + ", Account Number: "
+                + account_number
+                + ", account_type: "
+                + account_type;
     }
 }

@@ -24,17 +24,28 @@ public class ProviderTokenController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public String save(@RequestBody ProviderTokenSaveRequest request) {
         String environment = blank(request.environment()) ? "PRODUCTION" : request.environment();
-        tokenStoreService.save(request.provider(), request.segment(), environment, request.token(), parse(request.expiresAt()));
+        tokenStoreService.save(
+                request.provider(),
+                request.segment(),
+                environment,
+                request.token(),
+                parse(request.expiresAt()));
         return "saved";
     }
 
     @PostMapping(path = "/lease")
-    public String lease(@RequestParam("provider") String provider,
-                        @RequestParam("segment") String segment,
-                        @RequestParam(value = "environment", defaultValue = "PRODUCTION") String environment,
-                        @RequestParam("owner") String owner) {
-        boolean leased = tokenStoreService.acquireRefreshLease(
-            provider, segment, environment, owner, Instant.now().plus(2, ChronoUnit.MINUTES));
+    public String lease(
+            @RequestParam("provider") String provider,
+            @RequestParam("segment") String segment,
+            @RequestParam(value = "environment", defaultValue = "PRODUCTION") String environment,
+            @RequestParam("owner") String owner) {
+        boolean leased =
+                tokenStoreService.acquireRefreshLease(
+                        provider,
+                        segment,
+                        environment,
+                        owner,
+                        Instant.now().plus(2, ChronoUnit.MINUTES));
         return "leased=" + leased;
     }
 
@@ -51,10 +62,6 @@ public class ProviderTokenController {
         return value == null || value.trim().isEmpty();
     }
 
-    public record ProviderTokenSaveRequest(String provider,
-                                           String segment,
-                                           String environment,
-                                           String token,
-                                           String expiresAt) {
-    }
+    public record ProviderTokenSaveRequest(
+            String provider, String segment, String environment, String token, String expiresAt) {}
 }

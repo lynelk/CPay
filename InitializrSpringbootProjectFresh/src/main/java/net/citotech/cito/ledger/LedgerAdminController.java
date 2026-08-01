@@ -19,8 +19,8 @@ public class LedgerAdminController {
     private final DoubleEntryLedgerService ledgerService;
     private final LedgerBalanceService ledgerBalanceService;
 
-    public LedgerAdminController(DoubleEntryLedgerService ledgerService,
-                                 LedgerBalanceService ledgerBalanceService) {
+    public LedgerAdminController(
+            DoubleEntryLedgerService ledgerService, LedgerBalanceService ledgerBalanceService) {
         this.ledgerService = ledgerService;
         this.ledgerBalanceService = ledgerBalanceService;
     }
@@ -29,7 +29,8 @@ public class LedgerAdminController {
     public ResponseEntity<TrialBalanceResult> runTrialBalance(
             @RequestParam("currency") String currency,
             @RequestParam(value = "runDate", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate runDate) {
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate runDate) {
         LocalDate date = runDate == null ? LocalDate.now() : runDate;
         return ResponseEntity.ok(ledgerService.runTrialBalance(date, currency));
     }
@@ -48,6 +49,7 @@ public class LedgerAdminController {
             @RequestParam(value = "ownerType", required = false) String ownerType,
             @RequestParam(value = "ownerId", required = false) Long ownerId,
             @RequestParam(value = "currency", required = false) String currency) {
-        return ResponseEntity.ok(ledgerBalanceService.balancesForOwner(ownerType, ownerId, currency));
+        return ResponseEntity.ok(
+                ledgerBalanceService.balancesForOwner(ownerType, ownerId, currency));
     }
 }
