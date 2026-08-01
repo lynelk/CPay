@@ -41,6 +41,20 @@ class LegacySessionAuthorizationFilterTest {
     }
 
     @Test
+    void merchantSelfServiceWebhooksRequirePortalSession() throws ServletException, IOException {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("GET", "/api/v2/merchant-self-service/webhooks");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("\"code\":\"107\"");
+        assertThat(chain.getRequest()).isNull();
+    }
+
+    @Test
     void publicAuthRouteBypassesSessionGate() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/authenticate");
         MockHttpServletResponse response = new MockHttpServletResponse();
