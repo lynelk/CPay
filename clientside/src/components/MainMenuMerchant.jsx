@@ -14,6 +14,7 @@ const navGroups = [
     title: 'Operations',
     items: [
       { value: 'payments', text: 'Payments', Icon: Icons.PaymentsIcon },
+      { value: 'webhooks', text: 'Webhooks', Icon: Icons.LightningIcon },
       { value: 'sms', text: 'SMS', Icon: Icons.SmsIcon },
       { value: 'transactions', text: 'Transactions', Icon: Icons.ReceiptIcon },
     ],

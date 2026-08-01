@@ -798,5 +798,117 @@ export function useRunCallbacksMutation() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Merchant webhook manager (audit N6) — endpoints, deliveries, replay/rotation
+//
+// All of these live under `/api/v2/merchant-self-service/webhooks` and are
+// backed by `MerchantSelfServiceController` (session-scoped to the logged-in
+// merchant's own rows), so they go through `request()` directly like the
+// rest of the merchant self-service v2 surface.
+// ---------------------------------------------------------------------------
+
+export interface MerchantWebhookEndpoint {
+  id?: number;
+  event_type?: string;
+  endpoint_url?: string;
+  endpoint_status?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface MerchantWebhookDelivery {
+  id?: number;
+  endpoint_id?: number;
+  event_type?: string;
+  event_reference?: string;
+  delivery_status?: string;
+  attempt_count?: number;
+  last_http_status?: number | null;
+  last_response_summary?: string;
+  next_attempt_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+/** Merchant's registered webhook endpoints (`GET /webhooks`). */
+export function useMerchantWebhookEndpoints() {
+  return useQuery({
+    queryKey: ['merchant-webhooks', 'endpoints'],
+    queryFn: () => request<MerchantWebhookEndpoint[]>('/api/v2/merchant-self-service/webhooks'),
+    staleTime: 30_000,
+  });
+}
+
+/** Merchant's webhook delivery log, most recent first (`GET /webhooks/deliveries`). */
+export function useMerchantWebhookDeliveries(limit = 50) {
+  return useQuery({
+    queryKey: ['merchant-webhooks', 'deliveries', limit],
+    queryFn: () =>
+      request<MerchantWebhookDelivery[]>(
+        `/api/v2/merchant-self-service/webhooks/deliveries?limit=${limit}`,
+      ),
+    refetchInterval: 60_000,
+  });
+}
+
+export interface RegisterWebhookPayload {
+  eventType: string;
+  endpointUrl: string;
+}
+
+export interface WebhookSecretResult {
+  code?: string;
+  eventType?: string;
+  secret?: string;
+  [key: string]: unknown;
+}
+
+/** Registers (or updates) an endpoint for one event type (`POST /webhooks`). */
+export function useRegisterWebhookMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: RegisterWebhookPayload) =>
+      request<WebhookSecretResult>('/api/v2/merchant-self-service/webhooks', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchant-webhooks', 'endpoints'] });
+    },
+  });
+}
+
+/** Rotates a webhook secret; the returned secret is shown exactly once (`POST /webhooks/{id}/rotate-secret`). */
+export function useRotateWebhookSecretMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (endpointId: number) =>
+      request<WebhookSecretResult>(
+        `/api/v2/merchant-self-service/webhooks/${endpointId}/rotate-secret`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchant-webhooks', 'endpoints'] });
+    },
+  });
+}
+
+/** Requeues a failed/delivered webhook delivery (`POST /webhooks/deliveries/{id}/replay`). */
+export function useReplayWebhookDeliveryMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deliveryId: number) =>
+      request<{ updated?: number }>(
+        `/api/v2/merchant-self-service/webhooks/deliveries/${deliveryId}/replay`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchant-webhooks', 'deliveries'] });
+    },
+  });
+}
+
 // NOTE: POST /api/v2/admin/reconciliation/auto-match is covered by
 // `useAutoMatchMutation` above (the endpoint returns a plain number).

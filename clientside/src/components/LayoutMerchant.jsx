@@ -19,6 +19,7 @@ import MerchantModuleTransactions from './modules/merchant/MerchantModuleTransac
 import MerchantModuleMerchantAccount from './modules/merchant/MerchantModuleMerchantsAccount';
 import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
 import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
+import MerchantModuleWebhooks from './modules/merchant/MerchantModuleWebhooks';
 
 import { apiFetch } from '../shared/api/httpClient';
 import { apiUrl } from '../shared/config';
@@ -28,6 +29,7 @@ const menuTitles = {
   dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_merchant },
   channels: { title: strings.menu_channels, subtitle: strings.menu_channels_subtitle },
   statement: { title: strings.menu_statement, subtitle: strings.menu_statement_subtitle },
+  webhooks: { title: strings.menu_webhooks, subtitle: strings.menu_webhooks_subtitle },
   payments: { title: strings.menu_payments, subtitle: strings.menu_payments_subtitle },
   sms: { title: strings.menu_sms, subtitle: strings.menu_sms_subtitle },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_merchant },
@@ -84,6 +86,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
       case 'statement': return <MerchantModuleMerchantAccount {...moduleProps} />;
       case 'admins': return <MerchantModuleAdmins {...moduleProps} />;
       case 'payments': return <MerchantModulePayments {...moduleProps} />;
+      case 'webhooks': return <MerchantModuleWebhooks {...moduleProps} />;
       case 'sms': return <MerchantModuleSms {...moduleProps} />;
       case 'transactions': return <MerchantModuleTransactions {...moduleProps} />;
       case 'audittrail': return <MerchantModuleAuditTrail {...moduleProps} />;

@@ -124,6 +124,8 @@ const strings = new LocalizedStrings({
         menu_audittrail: "Audit Trail",
         menu_channels: "Payment Channels",
         menu_statement: "Statement",
+        menu_webhooks: "Webhooks",
+        menu_webhooks_subtitle: "Manage webhook endpoints, signing secrets, and delivery attempts.",
         menu_payments: "Payments",
         menu_sms: "SMS",
         menu_dashboard_subtitle_admin: "Track balances, transactions, and operational health.",
