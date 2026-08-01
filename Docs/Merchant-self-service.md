@@ -65,6 +65,21 @@ Optional request header fields are also available where a sandbox endpoint requi
 - `authHeaderName`
 - `authHeaderValue`
 
+## Merchant webhook manager
+
+Logged-in merchants can open:
+
+```text
+Merchant Dashboard -> Webhooks
+```
+
+The page has two panels:
+
+1. **Endpoints** — list registered webhook endpoints, register or update an endpoint for a catalog event type (`payment.pending`, `payment.completed`, `payout.failed`, etc.), and rotate an endpoint's signing secret. Secrets are shown exactly once with a "copy it now" notice after registration or rotation.
+2. **Deliveries** — see recent delivery attempts (status, attempt count, last HTTP status), expand a delivery for per-attempt detail (reference, response summary, next attempt), and replay a failed or delivered delivery.
+
+All routes are merchant-session-scoped, so one merchant can never read, rotate, or replay another merchant's webhook data. The same routes are also covered by the portal session-authorization filter, which returns the standard 107 envelope when no portal session is present.
+
 ## Backend endpoints
 
 ```text
@@ -73,6 +88,12 @@ GET  /api/v2/merchant-self-service/channels
 POST /api/v2/merchant-self-service/channels/save
 POST /api/v2/merchant-self-service/channels/test
 POST /api/v2/merchant-self-service/channels/submit
+
+GET  /api/v2/merchant-self-service/webhooks
+POST /api/v2/merchant-self-service/webhooks
+POST /api/v2/merchant-self-service/webhooks/{endpointId}/rotate-secret
+GET  /api/v2/merchant-self-service/webhooks/deliveries
+POST /api/v2/merchant-self-service/webhooks/deliveries/{deliveryId}/replay
 ```
 
 ## Gateway integration

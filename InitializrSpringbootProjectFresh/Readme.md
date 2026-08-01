@@ -32,6 +32,7 @@ Important package boundaries:
 | `api/v2` | Versioned merchant payment API and request security |
 | `gateway` | Provider/channel adapter boundary |
 | `callback` | Merchant callback task queue, claims, signing, and delivery |
+| `webhook` | Versioned catalog, webhook endpoint/delivery management, and admin + merchant self-service webhook APIs |
 | `reconciliation` | Provider statement parsing, matching, reviews, and finance close |
 | `balance` | Normalized channel balances and ledger events |
 | `admin` | Operating controls, readiness, permissions, and feature flags |

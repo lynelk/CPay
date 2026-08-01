@@ -46,3 +46,10 @@ Accessed via `src/shared/config.ts` (`API_BASE`, `apiUrl()`).
 - New routing code uses native React Router v7 hooks. Legacy class components use
   the `withRouter`/`useHistory` compatibility shim in `src/shared/router/compat.tsx`
   — do not import from it in new code.
+- Merchant portal modules: the merchant webhook manager
+  (`src/components/modules/merchant/MerchantModuleWebhooks.tsx` and its panel
+  components) is the reference for a merchant-portal feature — session-scoped
+  HTTP via `hooks.ts` (`useMerchantWebhookEndpoints`, `useMerchantWebhookDeliveries`,
+  and the register/rotate/replay mutations), loading/error/empty states, and
+  confirmation prompts for high-risk actions such as rotating secrets or replaying
+  deliveries.

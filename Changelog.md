@@ -49,6 +49,8 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added a session-authenticated admin statement export (`GET /api/v2/admin/merchants/{merchantNumber}/statements`), so the admin account-statement screen downloads a real server-rendered CSV/XLSX for the full requested range instead of building an Excel file client-side from whatever rows were already on screen.
 - Extended `locale.js` string coverage across the login, signup, forgot-password, and authenticated-shell (top bar/menu) screens.
 - Added a responsive card-layout fallback to the shared `Table` component below small viewport widths, so every table-based module gets a usable mobile layout for free.
+- Added a merchant portal webhook manager UI (`Merchant Dashboard -> Webhooks`, Operations → Webhooks in the navigation): register/update endpoints per catalog event type with https validation, rotate signing secrets (each shown exactly once), inspect the delivery log with per-attempt detail, and replay failed or delivered deliveries — built on the TanStack Query hooks pattern with loading/error/empty states.
+- Added `/api/v2/merchant-self-service/webhooks` to the portal session-authorization filter path gates, so the webhook self-service routes are covered by the same defense-in-depth 107-session envelope as channels and batches.
 
 ### Changed
 

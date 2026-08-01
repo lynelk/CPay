@@ -107,7 +107,7 @@ Merchant Dashboard -> Payment Channels
 
 Channel setup includes endpoint URLs and channel-specific setup values. Stored values are encrypted server-side and shown back to the merchant only in masked form.
 
-Merchants can also manage their own webhook endpoints — register an endpoint, rotate its signing secret, view the delivery log, and replay a failed delivery — without needing an admin to do it on their behalf.
+Merchants can also manage their own webhook endpoints from `Merchant Dashboard -> Webhooks` — register an endpoint per event type, rotate its signing secret (shown exactly once), view the delivery log with per-attempt detail, and replay a failed delivery — without needing an admin to do it on their behalf.
 
 See:
 
@@ -154,9 +154,10 @@ The codebase now includes software controls for:
 - distributed locking for multi-instance-safe money-movement crons
 - defense-in-depth method-level admin authorization alongside path-based access rules
 - a provider-to-merchant-safe error taxonomy so raw provider text never reaches a merchant response
-- merchant self-service webhook secret rotation, delivery log, and failed-delivery replay
+- a merchant portal webhook manager for registering endpoints, rotating signing secrets, viewing the delivery log, and replaying failed deliveries
+- merchant self-service webhook endpoints (secret rotation, delivery log, failed-delivery replay) protected by the portal session-authorization filter
 - uniform server-side CSV/XLSX export, now also covering the admin account-statement screen
-- typed, TanStack Query-backed admin/merchant portal modules (dashboard, transactions, reconciliation, audit trail, merchant account) with loading/error/empty states and inline form validation
+- typed, TanStack Query-backed admin/merchant portal modules (dashboard, transactions, reconciliation, audit trail, merchant account, webhooks) with loading/error/empty states and inline form validation
 - a responsive card layout for table-based modules on small screens
 - provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments
 - a reconciliation manual-match workbench (admin UI) for pairing unmatched provider statement rows with CPay transactions, plus a candidate-transaction search endpoint
