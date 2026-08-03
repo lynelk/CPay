@@ -21,6 +21,7 @@ import net.citotech.cito.api.v2.dto.AccountValidationRequest;
 import net.citotech.cito.api.v2.dto.AccountValidationResponse;
 import net.citotech.cito.api.v2.dto.StatementExportResponse;
 import net.citotech.cito.api.v2.dto.StatementExportResponse.StatementRow;
+import net.citotech.cito.payout.PayoutControlService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,6 +38,7 @@ class PaymentsV2ControllerMerchantFeaturesTest {
             mock(AccountValidationService.class);
     private final MerchantStatementExportService statementExportService =
             mock(MerchantStatementExportService.class);
+    private final PayoutControlService payoutControlService = mock(PayoutControlService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -168,6 +170,7 @@ class PaymentsV2ControllerMerchantFeaturesTest {
                         idempotencyService,
                         accountValidationService,
                         statementExportService,
+                        payoutControlService,
                         objectMapper);
         return MockMvcBuilders.standaloneSetup(controller).build();
     }

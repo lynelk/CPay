@@ -143,6 +143,56 @@ public class MerchantWebhookService {
     }
 
     /**
+     * Merchant callback verification (audit item): queues a synthetic event for the merchant's
+     * active endpoint(s) so a callback URL can be verified before production activation. Returns
+     * the number of deliveries queued (0 = no active endpoint for this event type). The payload is
+     * a clearly-marked TEST event so a merchant receiver never mistakes it for real money.
+     */
+    @Transactional
+    public int testCallback(long merchantId, String eventType) {
+        if (merchantId <= 0 || blank(eventType)) {
+            throw new PaymentGatewayException("merchantId and eventType are required");
+        }
+        if (!WebhookEventCatalog.isKnown(eventType)) {
+            throw new PaymentGatewayException(
+                    "Unknown webhook event type: "
+                            + eventType
+                            + ". See GET /api/v2/webhooks/events for the catalog.");
+        }
+        String reference = "test-callback-" + Common.generateUuid();
+        String payload =
+                "{"
+                        + "\"eventType\":\""
+                        + normalizeEvent(eventType)
+                        + "\","
+                        + "\"merchantNumber\":\""
+                        + merchantNumber(merchantId)
+                        + "\","
+                        + "\"reference\":\""
+                        + reference
+                        + "\","
+                        + "\"transactionId\":\"test-callback\","
+                        + "\"status\":\"TEST\","
+                        + "\"amount\":\"0\","
+                        + "\"currency\":\"UGX\""
+                        + "}";
+        return enqueue(merchantId, eventType, reference, payload);
+    }
+
+    private String merchantNumber(long merchantId) {
+        try {
+            List<String> rows =
+                    jdbcTemplate.query(
+                            "SELECT account_number FROM merchants WHERE id=:id LIMIT 1",
+                            new MapSqlParameterSource("id", merchantId),
+                            (rs, rowNum) -> rs.getString("account_number"));
+            return rows.isEmpty() ? "" : rows.get(0);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /**
      * Adds the versioned envelope fields (eventId/eventVersion/createdAt) from the catalog on top
      * of the caller's payload, additively - existing fields the caller already set (eventType,
      * merchantNumber, etc.) are left untouched so a merchant reading only those is unaffected.

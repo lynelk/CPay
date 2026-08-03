@@ -9,6 +9,10 @@ const navGroups = [
       { value: 'merchants', text: 'Merchants', Icon: Icons.StoreIcon },
       { value: 'transactions', text: 'Transactions', Icon: Icons.ReceiptIcon },
       { value: 'reconciliation', text: 'Reconciliation', Icon: Icons.ReconcileIcon },
+      { value: 'financeclose', text: 'Finance Close', Icon: Icons.CalendarIcon },
+      { value: 'payoutapprovals', text: 'Payout Approvals', Icon: Icons.PaymentsIcon },
+      { value: 'settlementclose', text: 'Settlement Close', Icon: Icons.ReconcileIcon },
+      { value: 'webhookops', text: 'Webhook Ops', Icon: Icons.SmsIcon },
     ],
   },
   {

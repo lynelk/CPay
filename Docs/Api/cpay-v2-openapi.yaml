@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CPay Gateway API
-  version: 1.5.0
+  version: 1.6.0
   description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay.
 security:
   - CPayV2Signature: []
@@ -266,7 +266,7 @@ paths:
           description: Finance summary
   /api/v2/admin/recon-finance/close:
     post:
-      summary: Close reconciliation for a date and currency
+      summary: Submit a reconciliation daily close for maker-checker approval (maker step)
       operationId: reconciliationDailyClose
       security:
         - AdminBasicAuth: []
@@ -277,9 +277,253 @@ paths:
           schema:
             type: string
             format: date
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+            default: UGX
+        - name: submittedBy
+          in: query
+          required: false
+          schema:
+            type: string
+            default: system
       responses:
         '200':
-          description: Daily close id
+          description: Daily close row id in PENDING_APPROVAL
+  /api/v2/admin/recon-finance/close/approve:
+    post:
+      summary: Checker approval for a submitted daily close
+      operationId: approveReconciliationDailyClose
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+            default: UGX
+        - name: approvedBy
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Daily close approved and closed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/recon-finance/close/reject:
+    post:
+      summary: Checker rejection for a submitted daily close
+      operationId: rejectReconciliationDailyClose
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+            default: UGX
+        - name: rejectedBy
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: reason
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Daily close marked rejected and left pending for re-submit
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/reconciliation/settlements/close/approve:
+    post:
+      summary: Checker approval for a submitted settlement batch close
+      operationId: approveSettlementBatchClose
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reference
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: approvedBy
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Settlement batch closed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/reconciliation/settlements/close/reject:
+    post:
+      summary: Checker rejection for a submitted settlement batch close
+      operationId: rejectSettlementBatchClose
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reference
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: rejectedBy
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: reason
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Settlement batch marked rejected and left pending
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/payout-approvals:
+    get:
+      summary: List payouts awaiting maker-checker approval
+      operationId: listPendingPayoutApprovals
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Pending payout approvals
+  /api/v2/admin/payout-approvals/{queueId}/approve:
+    post:
+      summary: Checker approval for a queued payout; re-executes the payout through the normal path
+      operationId: approveQueuedPayout
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: approvedBy
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Payout approved and submitted through the existing payment executor
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/payout-approvals/{queueId}/reject:
+    post:
+      summary: Checker rejection for a queued payout
+      operationId: rejectQueuedPayout
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: rejectedBy
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: reason
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payout rejected
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/payout-approvals/{queueId}/cancel:
+    post:
+      summary: Cancel a queued payout before decision
+      operationId: cancelQueuedPayout
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: cancelledBy
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payout cancelled
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/webhooks/merchants/{merchantId}/test-callback:
+    post:
+      summary: Queue a synthetic webhook event so a merchant callback URL can be verified
+      operationId: testMerchantWebhookCallback
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: eventType
+          in: query
+          required: false
+          schema:
+            type: string
+            default: payment.completed
+        - name: actor
+          in: query
+          required: false
+          schema:
+            type: string
+            default: system
+      responses:
+        '200':
+          description: Test event queued for the merchant's active endpoint(s)
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v2/admin/reconciliation/settlements/schedule:
     post:
       summary: Configure settlement sweep schedule
@@ -511,6 +755,35 @@ paths:
       responses:
         '200':
           description: Readiness evidence counters
+  /api/v2/admin/treasury/positions:
+    get:
+      summary: List active treasury positions with net-available balances
+      operationId: listTreasuryPositions
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Active treasury positions (available, reserved, net-available)
+  /api/v2/admin/treasury/positions/{currency}:
+    get:
+      summary: Get one treasury position by ISO currency code
+      operationId: getTreasuryPosition
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: currency
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Z]{3}$'
+      responses:
+        '200':
+          description: Treasury position for the currency
+        '404':
+          description: No active position for the currency
+        '400':
+          $ref: '#/components/responses/BadRequest'
 components:
   securitySchemes:
     CPayV2Signature:

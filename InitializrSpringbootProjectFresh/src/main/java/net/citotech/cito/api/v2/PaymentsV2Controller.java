@@ -17,6 +17,8 @@ import net.citotech.cito.api.v2.dto.PaymentStatusResponse;
 import net.citotech.cito.api.v2.dto.StatementExportResponse;
 import net.citotech.cito.export.TabularExportService;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.payout.PayoutControlService;
+import net.citotech.cito.payout.PayoutControlService.PayoutEvaluation;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -38,6 +40,7 @@ public class PaymentsV2Controller {
     private final IdempotencyService idempotencyService;
     private final AccountValidationService accountValidationService;
     private final MerchantStatementExportService statementExportService;
+    private final PayoutControlService payoutControlService;
     private final ObjectMapper objectMapper;
 
     public PaymentsV2Controller(
@@ -47,6 +50,7 @@ public class PaymentsV2Controller {
             IdempotencyService idempotencyService,
             AccountValidationService accountValidationService,
             MerchantStatementExportService statementExportService,
+            PayoutControlService payoutControlService,
             ObjectMapper objectMapper) {
         this.paymentOrchestrationService = paymentOrchestrationService;
         this.paymentStatusService = paymentStatusService;
@@ -54,6 +58,7 @@ public class PaymentsV2Controller {
         this.idempotencyService = idempotencyService;
         this.accountValidationService = accountValidationService;
         this.statementExportService = statementExportService;
+        this.payoutControlService = payoutControlService;
         this.objectMapper = objectMapper;
     }
 
@@ -96,6 +101,22 @@ public class PaymentsV2Controller {
                             request.getMerchantNumber(), idempotencyKey, body);
             if (existing.isPresent()) {
                 return ResponseEntity.ok(existing.get());
+            }
+            // Payout risk controls: a configured limit breach or a review-required trigger parks
+            // the payout in the maker-checker approval queue instead of executing it. With no
+            // control row (or a disabled one) this returns EXECUTE and behavior is unchanged.
+            PayoutEvaluation control = payoutControlService.evaluate(request, merchant, "system");
+            if (control.isApprovalRequired()) {
+                PaymentResult pending = new PaymentResult();
+                pending.setReference(request.getReference());
+                pending.setStatus("APPROVAL_PENDING");
+                pending.setChannel(request.getChannel());
+                pending.setCurrency(request.getCurrency());
+                pending.setMessage(
+                        "Payout requires maker-checker approval: " + control.reasonCode());
+                idempotencyService.record(
+                        request.getMerchantNumber(), idempotencyKey, body, pending);
+                return ResponseEntity.status(HttpStatus.ACCEPTED).body(pending);
             }
             PaymentResult result =
                     paymentOrchestrationService.payout(

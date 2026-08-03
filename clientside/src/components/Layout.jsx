@@ -17,6 +17,10 @@ import ModuleAuditTrail from './modules/ModuleAuditTrail';
 import ModuleMerchants from './modules/ModuleMerchants';
 import ModuleTransactions from './modules/ModuleTransactions';
 import ModuleReconciliation from './modules/ModuleReconciliation';
+import ModuleFinanceClose from './modules/ModuleFinanceClose';
+import ModulePayoutApprovals from './modules/ModulePayoutApprovals';
+import ModuleSettlementClose from './modules/ModuleSettlementClose';
+import ModuleWebhookOps from './modules/ModuleWebhookOps';
 
 import { apiFetch } from '../shared/api/httpClient';
 import { apiUrl } from '../shared/config';
@@ -27,6 +31,10 @@ const menuTitles = {
   merchants: { title: strings.menu_merchants, subtitle: strings.menu_merchants_subtitle },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_admin },
   reconciliation: { title: strings.menu_reconciliation, subtitle: strings.menu_reconciliation_subtitle },
+  financeclose: { title: 'Finance Close', subtitle: 'Maker-checker daily close for reconciliation' },
+  payoutapprovals: { title: 'Payout Approvals', subtitle: 'Maker-checker approval queue for limit-parked payouts' },
+  settlementclose: { title: 'Settlement Close', subtitle: 'Maker-checker settlement batch close' },
+  webhookops: { title: 'Webhook Ops', subtitle: 'Merchant callback verification and test events' },
   admins: { title: strings.menu_admins, subtitle: strings.menu_admins_subtitle_admin },
   audittrail: { title: strings.menu_audittrail, subtitle: strings.menu_audittrail_subtitle_admin },
   settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_admin },
@@ -80,6 +88,10 @@ class LayoutWithOutRouter extends React.Component {
       case 'merchants': return <ModuleMerchants {...moduleProps} />;
       case 'transactions': return <ModuleTransactions {...moduleProps} />;
       case 'reconciliation': return <ModuleReconciliation {...moduleProps} />;
+      case 'financeclose': return <ModuleFinanceClose {...moduleProps} />;
+      case 'payoutapprovals': return <ModulePayoutApprovals {...moduleProps} />;
+      case 'settlementclose': return <ModuleSettlementClose {...moduleProps} />;
+      case 'webhookops': return <ModuleWebhookOps {...moduleProps} />;
       case 'audittrail': return <ModuleAuditTrail {...moduleProps} />;
       case 'settings': return <ModuleSettings {...moduleProps} />;
       case 'dashboard':

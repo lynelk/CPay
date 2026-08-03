@@ -912,3 +912,336 @@ export function useReplayWebhookDeliveryMutation() {
 
 // NOTE: POST /api/v2/admin/reconciliation/auto-match is covered by
 // `useAutoMatchMutation` above (the endpoint returns a plain number).
+
+// ---------------------------------------------------------------------------
+// Maker-checker ops surfaces (audit E6) — finance daily-close, settlement
+// batch close, payout approval queue, and admin webhook verification.
+//
+// Backed by ReconFinanceController (/api/v2/admin/recon-finance/**),
+// SettlementOpsController (/api/v2/admin/reconciliation/settlements/**),
+// PayoutApprovalController (/api/v2/admin/payout-approvals/**), and
+// MerchantWebhookController (/api/v2/admin/webhooks/**). All v2 admin JSON.
+// ---------------------------------------------------------------------------
+
+export interface FinanceCloseSummary {
+  currency?: string;
+  statementsReceived?: number;
+  unmatchedRecords?: number;
+  parkedCallbacks?: number;
+  openControls?: number;
+  closeStatus?: string;
+  pendingSubmissions?: Array<{
+    closeDate?: string;
+    currency?: string;
+    submittedBy?: string;
+    submittedAt?: string;
+    status?: string;
+  }>;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/recon-finance/summary` — the finance daily-close picture for a currency. */
+export function useFinanceCloseSummary(currency = 'UGX') {
+  return useQuery({
+    queryKey: ['finance-close', 'summary', currency],
+    queryFn: () =>
+      request<FinanceCloseSummary>(
+        `/api/v2/admin/recon-finance/summary?currency=${encodeURIComponent(currency)}`,
+      ),
+    refetchInterval: 120_000,
+  });
+}
+
+export interface FinanceCloseSubmitPayload {
+  date: string;
+  currency: string;
+  submittedBy: string;
+}
+
+/** Maker submit — `POST /api/v2/admin/recon-finance/close` (row -> PENDING_APPROVAL). */
+export function useFinanceCloseSubmitMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ date, currency, submittedBy }: FinanceCloseSubmitPayload) => {
+      const params = new URLSearchParams({ date });
+      params.set('currency', currency || 'UGX');
+      if (submittedBy?.trim()) params.set('submittedBy', submittedBy.trim());
+      return request<number>(`/api/v2/admin/recon-finance/close?${params.toString()}`, {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-close'] });
+    },
+  });
+}
+
+/** Checker approval — `POST /api/v2/admin/recon-finance/close/approve`. */
+export function useFinanceCloseApproveMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ date, currency, approvedBy }: { date: string; currency: string; approvedBy: string }) => {
+      const params = new URLSearchParams({ date, approvedBy });
+      params.set('currency', currency || 'UGX');
+      return request<{ code?: string; closeDate?: string; currency?: string; status?: string }>(
+        `/api/v2/admin/recon-finance/close/approve?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-close'] });
+    },
+  });
+}
+
+/** Checker rejection — `POST /api/v2/admin/recon-finance/close/reject`. */
+export function useFinanceCloseRejectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      date,
+      currency,
+      rejectedBy,
+      reason,
+    }: {
+      date: string;
+      currency: string;
+      rejectedBy: string;
+      reason?: string;
+    }) => {
+      const params = new URLSearchParams({ date, rejectedBy });
+      params.set('currency', currency || 'UGX');
+      if (reason?.trim()) params.set('reason', reason.trim());
+      return request<{ code?: string; closeDate?: string; currency?: string; status?: string }>(
+        `/api/v2/admin/recon-finance/close/reject?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-close'] });
+    },
+  });
+}
+
+export interface SettlementCloseResult {
+  code?: string;
+  reference?: string;
+  status?: string;
+}
+
+/** Maker submit for a settlement batch close — returns the close row id as plain text ("closed=N"). */
+export function useSettlementCloseSubmitMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reference, closedBy }: { reference: string; closedBy: string }) => {
+      const params = new URLSearchParams({ reference });
+      if (closedBy?.trim()) params.set('closedBy', closedBy.trim());
+      return postForPlainText(
+        `/api/v2/admin/reconciliation/settlements/close?${params.toString()}`,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settlement-close'] });
+    },
+  });
+}
+
+/** Checker approval for a submitted settlement batch close. */
+export function useSettlementCloseApproveMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reference, approvedBy }: { reference: string; approvedBy: string }) => {
+      const params = new URLSearchParams({ reference, approvedBy });
+      return request<SettlementCloseResult>(
+        `/api/v2/admin/reconciliation/settlements/close/approve?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settlement-close'] });
+    },
+  });
+}
+
+/** Checker rejection for a submitted settlement batch close. */
+export function useSettlementCloseRejectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      reference,
+      rejectedBy,
+      reason,
+    }: {
+      reference: string;
+      rejectedBy: string;
+      reason?: string;
+    }) => {
+      const params = new URLSearchParams({ reference, rejectedBy });
+      if (reason?.trim()) params.set('reason', reason.trim());
+      return request<SettlementCloseResult>(
+        `/api/v2/admin/reconciliation/settlements/close/reject?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settlement-close'] });
+    },
+  });
+}
+
+export interface PayoutApprovalRow {
+  id?: number;
+  payout_reference?: string;
+  merchant_id?: number;
+  merchant_number?: string;
+  amount?: number | string;
+  currency?: string;
+  channel_code?: string;
+  country?: string;
+  beneficiary_reference?: string;
+  trigger_reason?: string;
+  queue_status?: string;
+  requested_by?: string;
+  requested_at?: string;
+  [key: string]: unknown;
+}
+
+export interface ApprovedPayoutResult {
+  reference?: string;
+  transactionId?: string;
+  status?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/payout-approvals` — payouts parked by a limit/velocity control awaiting maker-checker. */
+export function usePendingPayoutApprovals(limit = 100) {
+  return useQuery({
+    queryKey: ['payout-approvals', 'pending', limit],
+    queryFn: () => request<PayoutApprovalRow[]>(`/api/v2/admin/payout-approvals?limit=${limit}`),
+    refetchInterval: 60_000,
+  });
+}
+
+/** Checker approval — re-executes the stored payout through the normal orchestrator path. */
+export function usePayoutApproveMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ queueId, approvedBy }: { queueId: number; approvedBy: string }) => {
+      const params = new URLSearchParams({ approvedBy });
+      return request<ApprovedPayoutResult>(
+        `/api/v2/admin/payout-approvals/${queueId}/approve?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payout-approvals'] });
+    },
+  });
+}
+
+/** Checker rejection for a queued payout. */
+export function usePayoutRejectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      queueId,
+      rejectedBy,
+      reason,
+    }: {
+      queueId: number;
+      rejectedBy: string;
+      reason?: string;
+    }) => {
+      const params = new URLSearchParams({ rejectedBy });
+      if (reason?.trim()) params.set('reason', reason.trim());
+      return request<{ code?: string; queueId?: number; status?: string }>(
+        `/api/v2/admin/payout-approvals/${queueId}/reject?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payout-approvals'] });
+    },
+  });
+}
+
+/** Cancellation for a queued payout before a decision. */
+export function usePayoutCancelMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ queueId, cancelledBy }: { queueId: number; cancelledBy: string }) => {
+      const params = new URLSearchParams({ cancelledBy });
+      return request<{ code?: string; queueId?: number; status?: string }>(
+        `/api/v2/admin/payout-approvals/${queueId}/cancel?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payout-approvals'] });
+    },
+  });
+}
+
+export interface AdminWebhookEndpoint {
+  id?: number;
+  merchant_id?: number;
+  event_type?: string;
+  endpoint_url?: string;
+  endpoint_status?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+/** Admin view of a merchant's registered webhook endpoints — `/api/v2/admin/webhooks/merchants/{id}`. */
+export function useAdminWebhookEndpoints(merchantId: number | undefined) {
+  return useQuery({
+    queryKey: ['admin-webhooks', 'endpoints', merchantId ?? 'none'],
+    queryFn: () =>
+      request<AdminWebhookEndpoint[]>(
+        `/api/v2/admin/webhooks/merchants/${merchantId}`,
+      ),
+    enabled: Boolean(merchantId && merchantId > 0),
+    staleTime: 30_000,
+  });
+}
+
+export interface TestCallbackPayload {
+  merchantId: number;
+  eventType: string;
+  actor?: string;
+}
+
+/** Queues a synthetic webhook event so a merchant callback URL can be verified before go-live. */
+export function useAdminTestCallbackMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ merchantId, eventType, actor }: TestCallbackPayload) => {
+      const params = new URLSearchParams({ eventType });
+      if (actor?.trim()) params.set('actor', actor.trim());
+      return request<{ code?: string; merchantId?: number; eventType?: string; queued?: number; message?: string }>(
+        `/api/v2/admin/webhooks/merchants/${merchantId}/test-callback?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] });
+    },
+  });
+}
+
+/** Admin secret rotation for a merchant webhook endpoint. */
+export function useAdminRotateWebhookSecretMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (endpointId: number) =>
+      request<{ code?: string; secret?: string }>(
+        `/api/v2/admin/webhooks/${endpointId}/rotate-secret`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] });
+    },
+  });
+}
