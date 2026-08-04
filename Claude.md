@@ -146,9 +146,44 @@ Base package: `net.citotech.cito`.
   other reconciliation controllers; `GET /api/v2/admin/reconciliation/candidate-transactions` backs
   the admin manual-match workbench's transaction search
   (`clientside/src/components/modules/ModuleReconciliation.tsx`), which pairs unmatched provider
-  statement rows (`GET /unmatched`) with a CPay transaction via `POST /manual-match`.
+  statement rows (`GET /unmatched`) with a CPay transaction via `POST /manual-match`. Both
+  `ReconController`/`StatementCheckController` file uploads go through
+  `net.citotech.cito.upload.SpreadsheetUploadValidator` (shared size/extension/content-type
+  checks) before the file reaches the parser. `FinanceWorkflowService`/`SettlementOpsService` now
+  require maker-checker approval before a reconciliation daily close or settlement batch close
+  takes effect — `POST .../close` opens the close request, `POST .../close/approve` or
+  `.../close/reject` (a different admin than the opener) finalizes it, on `ReconFinanceController`
+  (`/api/v2/admin/recon-finance`) and `SettlementOpsController`
+  (`/api/v2/admin/reconciliation/settlements`).
 - **`ledger/`** — double-entry ledger service (`DoubleEntryLedgerServiceTest` covers invariants).
 - **`merchant/`** — merchant self-service signup, channel configuration.
+  `MerchantChannelCryptoService` (AES-256-GCM) encrypts channel credentials and, via the
+  `MerchantKeyCryptoRegistry` static bridge, the legacy `hmac_secret` field for static-utility
+  `Common` code; `MerchantKeyEncryptionService` is a separate, dedicated encryption path
+  specifically for merchant RSA private keys, keyed by `CPAY_KEY_ENCRYPTION_KEY` (falling back to
+  `MERCHANT_CHANNEL_ENCRYPTION_KEY` for existing installs so a fresh key isn't required
+  immediately), with `MerchantKeyReencryptionService` running as a background sweep that migrates
+  legacy plaintext/shared-key rows onto the dedicated key over time.
+- **`batch/`** — `BatchPayoutController` (`/api/v2/merchant-self-service/batches/{batchId}`,
+  `.../retry-failed`) gives a merchant self-service visibility and retry over their own batch
+  payout status, session-gated like the other merchant self-service routes.
+- **`payout/`** — `PayoutControlService`/`PayoutApprovalController`
+  (`/api/v2/admin/payout-approvals`) hold a payout above a configurable threshold in a maker-checker
+  queue instead of executing it immediately: `GET` lists pending entries, `POST .../approve`,
+  `.../reject`, and `.../cancel` resolve one, each by an admin other than whoever's action queued it.
+- **`efris/`** — `EfrisReceiptService`/`EfrisReceiptScheduler` queue an e-receipt record after a
+  successful Ugandan pay-in and sweep it on `CPAY_EFRIS_DELIVER_FIXED_DELAY_MS` (on/off and the
+  actual endpoint URL are runtime settings, `cpay.efris.enabled`/`cpay.efris.endpoint`, so
+  operators can configure EFRIS without a redeploy). This is an honest extension point, not a
+  certified integration — it logs "would issue e-receipt for tx X" until real EFRIS/URA business
+  registration and API credentials exist; do not treat pay-ins as EFRIS-compliant based on this
+  code alone.
+- **`reporting/`** — `RegulatorReportingService`/`RegulatorReportingController`
+  (`/api/v2/admin/regulator/daily-cash-flow[/csv]`, `/reports`, `/pii-inventory`) generate a
+  transaction/FX summary off the ledger for BoU-style periodic reporting. The exact regulator
+  schema/frequency is not settled anywhere in this repo — this is a generator compliance can adapt,
+  not a certified regulatory submission; confirm the real format before ever submitting a report
+  produced by this code to a regulator.
 - **`admin/`** — `ReadinessDashboardService.summary()` is the platform-wide go-live readiness view
   (provider sandbox/statement-validation/certification, callback secrets, operations alerts,
   compliance cases, etc.); `merchantSummary(merchantId)` is a separate, genuinely per-merchant
@@ -161,8 +196,11 @@ Base package: `net.citotech.cito`.
   `PaymentsV2Controller#statements` (v2-signed API) — it calls the new `#exportForAdmin` method,
   which looks up the merchant server-side rather than resolving it from a caller's own session or
   signed request.
-- **`balance/`**, **`compliance/`**, **`checkout/`** (payment links/hosted checkout), **`scheduler/`**
-  (timeout scans, cleanup jobs), **`metrics/`**, **`portal/`**,
+- **`balance/`**, **`compliance/`** (`RiskDecisionService` now also enforces a KYC-tier-aware cap —
+  `compliance_profiles.tier` for `entity_type='MERCHANT'` — and a payer-velocity rule capping how
+  often the same payer identifier can transact in a rolling window, alongside the existing blocklist
+  and flat single-transaction/daily-merchant caps), **`checkout/`** (payment links/hosted checkout),
+  **`scheduler/`** (timeout scans, cleanup jobs), **`metrics/`**, **`portal/`**,
   **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and
   `SchedulerLockConfig` — the ShedLock `LockProvider` backing every active `@Scheduled` job. Keep
   any new scheduled job annotated with `@SchedulerLock`; the older local file locks are only

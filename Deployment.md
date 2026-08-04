@@ -93,6 +93,7 @@ ADMIN_API_PASSWORD=replace_with_secret
 
 CALLBACK_SIGNING_SECRET=replace_with_long_random_secret
 MERCHANT_CHANNEL_ENCRYPTION_KEY=replace_with_long_random_secret
+CPAY_KEY_ENCRYPTION_KEY=replace_with_dedicated_base64_32_byte_key
 
 SPRINGDOC_API_DOCS_ENABLED=false
 SPRINGDOC_SWAGGER_UI_ENABLED=false
@@ -207,4 +208,7 @@ Before enabling live traffic, confirm:
 - `CORS_ALLOWED_ORIGINS` contains only approved HTTPS origins.
 - Admin and actuator credentials are separate, strong, and stored outside source control.
 - Provider production endpoint URLs and credentials are configured for the correct merchant/channel environment.
+- `CPAY_KEY_ENCRYPTION_KEY` is set to a dedicated random value rather than left to fall back onto `MERCHANT_CHANNEL_ENCRYPTION_KEY`.
+- Maker-checker payout and finance-close approval thresholds/roles have been reviewed with finance and operations.
+- EFRIS e-receipt delivery (`CPAY_EFRIS_DELIVER_ENABLED`) and any regulator-reporting output are not treated as certified/compliant until confirmed with real EFRIS/URA and BoU requirements — see `Claude.md`'s `efris/`/`reporting/` notes.
 - Finance, provider, security, monitoring, and compliance signoffs are recorded.

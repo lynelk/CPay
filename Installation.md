@@ -86,6 +86,13 @@ Recent production-control migrations include:
 - merchant channel setup records
 - provider conversation-reference lookups (e.g. Safaricom payout-callback correlation)
 - the ShedLock distributed-locking table
+- dedicated merchant RSA-key encryption tracking (`V31`)
+- KYC tier transaction/daily limit records (`V32`)
+- maker-checker finance-close approval records (`V33`)
+- payout limits and approval-queue records (`V34`)
+- EFRIS e-receipt outbox, regulator reporting, and PII-inventory support records (`V35`)
+
+Flyway is currently at `V35`.
 
 For staging or production, always test migrations on a copy of the database before applying them to a live environment.
 
@@ -149,6 +156,12 @@ Never commit `.env` files or real access values to the repository.
 | `ADMIN_API_PASSWORD` | Password for admin API access. |
 | `CALLBACK_SIGNING_SECRET` | Fallback value for signing merchant callbacks where merchant-specific values are not configured. |
 | `MERCHANT_CHANNEL_ENCRYPTION_KEY` | Encryption key used for merchant channel credentials at rest. |
+| `CPAY_KEY_ENCRYPTION_KEY` | Dedicated 256-bit key (base64, 32 random bytes) for merchant RSA private keys at rest. Falls back to `MERCHANT_CHANNEL_ENCRYPTION_KEY` when unset, for backward compatibility with existing single-key installs. |
+| `CPAY_KEY_ENCRYPTION_HSM` | Reserved for a future HSM-backed key path. Defaults to `false`. |
+| `CPAY_KEY_REENCRYPTION_ENABLED` | Enables the background sweep that migrates legacy plaintext/shared-key merchant RSA keys onto `CPAY_KEY_ENCRYPTION_KEY`. Defaults to `true`. |
+| `CPAY_KEY_REENCRYPTION_INITIAL_DELAY_MS` / `CPAY_KEY_REENCRYPTION_FIXED_DELAY_MS` | Startup delay and interval for the re-encryption sweep. Default `15000` / `3600000`. |
+| `CPAY_EFRIS_DELIVER_ENABLED` | Enables the EFRIS e-receipt outbox sweep (a logging stub pending real EFRIS credentials — see `Claude.md`). Defaults to `true`. |
+| `CPAY_EFRIS_DELIVER_FIXED_DELAY_MS` | Interval for the EFRIS outbox sweep. Defaults to `60000`. |
 
 Example local-only values:
 
@@ -291,6 +304,22 @@ The readiness dashboard is available both platform-wide and per merchant:
 The reconciliation manual-match workbench (pairing unmatched provider statement rows with a CPay
 transaction, or triggering auto-match) is available in the admin portal, backed by
 `/api/v2/admin/reconciliation/**`.
+
+Finance close approval, payout approvals, treasury positions, and regulator reporting are available
+in the admin portal, backed by:
+
+```text
+/api/v2/admin/recon-finance/close/approve|reject
+/api/v2/admin/reconciliation/settlements/close/approve|reject
+/api/v2/admin/payout-approvals
+/api/v2/admin/treasury/positions[/{currency}]
+/api/v2/admin/regulator/daily-cash-flow[/csv], /reports, /pii-inventory
+/api/v2/admin/callback-admin/secret-status
+```
+
+Reconciliation daily close and settlement batch close now require a second admin (maker-checker) to
+approve before the close takes effect. Payouts above a configurable threshold are held for a second
+admin to approve, reject, or cancel instead of executing immediately.
 
 ## 10. Provider and merchant channel setup
 

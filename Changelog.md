@@ -51,6 +51,25 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added a responsive card-layout fallback to the shared `Table` component below small viewport widths, so every table-based module gets a usable mobile layout for free.
 - Added a merchant portal webhook manager UI (`Merchant Dashboard -> Webhooks`, Operations → Webhooks in the navigation): register/update endpoints per catalog event type with https validation, rotate signing secrets (each shown exactly once), inspect the delivery log with per-attempt detail, and replay failed or delivered deliveries — built on the TanStack Query hooks pattern with loading/error/empty states.
 - Added `/api/v2/merchant-self-service/webhooks` to the portal session-authorization filter path gates, so the webhook self-service routes are covered by the same defense-in-depth 107-session envelope as channels and batches.
+- Encrypted the legacy per-merchant `hmac_secret` field at rest (previously read in plaintext) and `merchant_callback_secrets.secret_value` (previously stored in plaintext, unlike the equivalent webhook secret), both with a decrypt-with-legacy-fallback so existing rows keep working until next rotation.
+- Added a shared `SpreadsheetUploadValidator` (size/extension/content-type checks) to the reconciliation statement-import and statement-check admin endpoints, which previously accepted a multipart upload with no validation at all.
+- Added `GET /api/v2/admin/callback-admin/secret-status`, reporting how many merchants still rely on the shared fallback callback-signing secret and how many active secrets remain legacy plaintext.
+- Tightened the CSP: dropped `script-src 'unsafe-inline'` (the built SPA loads its bundle via an external `<script type="module">`, no inline script); made the dev-only `connect-src` localhost carve-out an externalized property, blank in production.
+- Added v1 (`/api/do*`) request idempotency, matching the v2 path's existing `IdempotencyService` coverage.
+- Added a required email-verification gate before first merchant login (`VerifyEmail.tsx`, backend verification endpoint), closing a signup path that previously let an unverified email reach the portal.
+- Extended method-level authorization (`@PreAuthorize("hasRole('ADMIN')")`) across the remaining admin controllers that only had path-based protection.
+- Added a dedicated merchant RSA-key encryption key (`CPAY_KEY_ENCRYPTION_KEY`, falling back to `MERCHANT_CHANNEL_ENCRYPTION_KEY` for existing installs) and a background re-encryption sweep (`MerchantKeyReencryptionService`) that migrates legacy plaintext/shared-key merchant keys onto it.
+- Added merchant self-service batch-payout status and retry-failed endpoints (`GET/POST /api/v2/merchant-self-service/batches/{batchId}[/retry-failed]`).
+- Wired KYC tier (`compliance_profiles.tier`) into `RiskDecisionService`'s cap evaluation, so a merchant's effective transaction/daily limits depend on their KYC tier rather than only the flat global caps.
+- Added maker-checker approval on reconciliation daily close and settlement batch close (`FinanceWorkflowService`/`SettlementOpsService`, `POST .../close/approve` and `.../close/reject` on `ReconFinanceController`/`SettlementOpsController`) — a close now requires a second admin to approve before it takes effect.
+- Added a payout limits and approval queue (`PayoutControlService`, `GET/POST /api/v2/admin/payout-approvals/**`): payouts over a configurable threshold are held for a second admin to approve, reject, or cancel instead of executing immediately.
+- Added an admin webhook test-callback endpoint (`POST /api/v2/admin/webhooks/merchants/{merchantId}/test-callback`) and audited admin delivery replay, so an admin can verify a merchant's webhook endpoint without waiting for a real event.
+- Added a treasury position read API (`GET /api/v2/admin/treasury/positions[/{currency}]`) summarizing current channel/currency balances for cross-border/FX oversight.
+- Added new admin frontend modules for the above: `ModuleFinanceClose`, `ModuleSettlementClose`, `ModulePayoutApprovals`, `ModuleWebhookOps`.
+- Added an EFRIS e-receipt outbox/scheduler (`net.citotech.cito.efris`) that queues a receipt record after a successful Ugandan pay-in — an honest extension point (logs "would issue e-receipt," configurable on/off via runtime settings) pending real EFRIS/URA business registration and API credentials, not a certified integration.
+- Added BoU-style regulator reporting (`net.citotech.cito.reporting.RegulatorReportingService`, `GET /api/v2/admin/regulator/daily-cash-flow[/csv]`, `/reports`, `/pii-inventory`) generating a transaction/FX summary off the ledger — the exact regulator-required schema/frequency still needs compliance/BoU confirmation before any report is actually submitted.
+- Added a reusable PII-masking utility (`net.citotech.cito.security.PiiMasking`) and wired it into the highest-traffic payer-number logging call sites.
+- Added a payer-velocity risk rule to `RiskDecisionService`, capping how often the same payer identifier can transact in a rolling window.
 
 ### Changed
 
@@ -81,3 +100,4 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 - Confirmed the schema documentation currently tracks Flyway through V30 and points operators to regenerate a real `mysqldump` snapshot from a migrated database before release tagging.
 - Added Flyway migrations `V29__provider_conversation_references.sql` and `V30__shedlock.sql`.
+- Added Flyway migrations `V31__merchant_key_encryption.sql`, `V32__kyc_tier_limits.sql`, `V33__maker_checker_finance_close.sql`, `V34__payout_controls.sql`, and `V35__efris_regulator_pii.sql`. Flyway is now at `V35`; the schema snapshot under `Docs/Schema/snapshots/` still reflects `V30` and needs regenerating from a freshly migrated database before the next release tag.

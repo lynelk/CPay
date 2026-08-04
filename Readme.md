@@ -109,6 +109,8 @@ Channel setup includes endpoint URLs and channel-specific setup values. Stored v
 
 Merchants can also manage their own webhook endpoints from `Merchant Dashboard -> Webhooks` — register an endpoint per event type, rotate its signing secret (shown exactly once), view the delivery log with per-attempt detail, and replay a failed delivery — without needing an admin to do it on their behalf.
 
+Merchants can review the status of their own batch payouts and retry the failed rows in a batch (`GET/POST /api/v2/merchant-self-service/batches/{batchId}[/retry-failed]`) without needing an admin to intervene. New merchant signups require verifying the registration email before first login.
+
 See:
 
 ```text
@@ -128,6 +130,12 @@ CPay includes internal administrative APIs for controlled operations. These are 
 | Reconciliation finance | Review summaries and close reconciliation days. |
 | Reconciliation matching | Pair unmatched provider statement rows with a CPay transaction using an admin manual-match workbench, or trigger auto-match. |
 | Merchant statement export | Download a merchant's account statement (CSV/XLSX) for a date range, session-authenticated for admin use. |
+| Finance close approval | Reconciliation daily close and settlement batch close require a second admin's approval (maker-checker) before taking effect. |
+| Payout approvals | Payouts above a configurable threshold are held in a queue for a second admin to approve, reject, or cancel instead of executing immediately. |
+| Treasury positions | Review current channel/currency balance positions for cross-border/FX oversight. |
+| Regulator reporting | Generate a BoU-style daily cash-flow/transaction summary off the ledger, plus a PII inventory view. |
+| Webhook operations | Send a test callback to a merchant's registered webhook endpoint, or replay a delivery on their behalf, with an audit record. |
+| Callback secret status | See how many merchants still rely on the shared fallback callback-signing secret instead of their own rotated one. |
 | Operations dashboard | Track alerts, parked callbacks, and reconciliation exceptions. |
 | Operating controls | Review open operating-control event counts. |
 | Readiness dashboard | View non-manual market-readiness evidence counters, platform-wide or scoped to a single merchant. |
@@ -165,6 +173,18 @@ The codebase now includes software controls for:
 - ledger-refreshed channel-balance read models for dashboard balance cards
 - automatic dependency-update pull requests (Dependabot) and a CI formatting check
 - Prometheus backlog gauges and alerts for parked callback tasks and failed merchant webhook deliveries
+- v1 request idempotency, matching the v2 path's existing coverage
+- required email verification before a merchant's first login
+- method-level authorization extended across the remaining admin controllers
+- a dedicated merchant RSA-key encryption key with a background re-encryption sweep, separate from channel-credential encryption
+- encrypted callback-signing secrets and the legacy per-merchant `hmac_secret` field at rest, with legacy-plaintext-tolerant decryption
+- uniform upload validation on every multipart admin upload endpoint, and a tightened CSP
+- merchant self-service batch-payout status and retry-failed endpoints
+- KYC tier caps wired into risk decisioning, and a payer-velocity risk rule
+- maker-checker approval for reconciliation daily close, settlement batch close, and payouts above a configurable threshold
+- a treasury position read API and admin webhook test-callback/replay tooling
+- an EFRIS e-receipt extension point and BoU-style regulator reporting generator (both honestly scoped as pending real regulator credentials/schema confirmation, not certified integrations)
+- a PII-masking utility applied to high-traffic payer-number logging
 
 Readiness documentation is available in:
 
@@ -218,6 +238,10 @@ Manual signoff is still required for real provider sandbox certification, stagin
 | Merchant-safe error messages | Translates raw provider responses and internal exceptions into a stable, generic message before they reach a merchant — the raw detail stays internal. |
 | Callback task claims | Reduces duplicate callback delivery when multiple workers are running. |
 | Distributed cron locking | Prevents scheduled jobs from processing the same work twice across multiple instances. |
+| Maker-checker approvals | Requires a second admin to approve reconciliation daily close, settlement batch close, and above-threshold payouts before they take effect. |
+| KYC-tier and payer-velocity risk caps | Scales a merchant's transaction/daily limits to their KYC tier and caps how often the same payer identifier can transact in a rolling window. |
+| Dedicated merchant key encryption | Encrypts merchant RSA private keys on a key separate from channel-credential encryption, with a background sweep migrating legacy rows onto it. |
+| PII masking | Masks payer identifiers in high-traffic log lines. |
 | Operational cleanup | Keeps short-lived API, reset-token, callback, webhook, provider-run, and session rows bounded. |
 | Callback redelivery guard | Prevents repeated terminal provider callbacks with the same provider reference from re-applying statement or ledger effects. |
 | Ledger repair sweep | Backfills missing normalized ledger postings for successful legacy payment rows using an idempotent ledger reference. |

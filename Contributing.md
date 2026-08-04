@@ -81,6 +81,7 @@ For backend changes:
 - keep `/api/v2/native/payments/*` adapter-backed behavior aligned with merchant channel credentials and the selected `CUSTOM_GATEWAYSTATE`
 - use claim-based processing for callback workers where concurrency matters
 - add tests for service logic, request signing, parsing, callbacks, reconciliation, provider endpoint handling, or money calculations where relevant
+- for a regulator or provider integration you cannot fully certify (no live credentials, no confirmed schema), build an honest extension point that clearly logs/documents what it would do rather than an integration that looks complete but isn't — see `net.citotech.cito.efris` and `RegulatorReportingService`
 
 ### Frontend
 
@@ -177,8 +178,11 @@ Treat the following as sensitive:
 - actuator access
 - audit logs
 - operating-control records
-- finance approval or posting controls
+- finance approval or posting controls, including maker-checker close/payout approval
 - callback worker claiming
+- merchant key/secret encryption (channel credentials, RSA keys, callback/webhook secrets)
+- KYC tier assignment and tier-based transaction limits
+- PII masking and any data-subject deletion/anonymization workflow
 
 Sensitive changes should include a clear explanation of the risk, the control being added or changed, and how the change was tested.
 
@@ -222,7 +226,8 @@ Avoid merging changes casually if they affect:
 - merchant channel setup
 - reconciliation matching
 - finance posting
-- daily close
+- daily close and maker-checker approval/rejection
+- payout approval, rejection, or cancellation
 - admin authentication or permissions
 
 These areas should be reviewed carefully because mistakes can create financial, operational, or compliance issues.
