@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CPay Gateway API
-  version: 1.6.0
+  version: 1.7.0
   description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay.
 security:
   - CPayV2Signature: []
@@ -59,6 +59,61 @@ paths:
       responses:
         '200':
           description: Supported channels
+  /api/v2/fx/quotes:
+    post:
+      summary: Request a foreign-exchange quote for a cross-border transfer
+      operationId: createFxQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FxQuoteRequest'
+      responses:
+        '201':
+          description: FX quote created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FxQuoteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/cross-border/transfers:
+    post:
+      summary: Create a cross-border transfer intent from an accepted FX quote
+      operationId: createCrossBorderTransfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferIntentRequest'
+      responses:
+        '201':
+          description: Transfer intent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferIntentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/webhooks/events:
+    get:
+      summary: List the versioned webhook event catalog with payload schemas
+      operationId: listWebhookEvents
+      responses:
+        '200':
+          description: Webhook event catalog entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WebhookEventCatalogEntry'
   /api/v2/payments/{reference}:
     get:
       summary: Check transaction status
@@ -255,6 +310,343 @@ paths:
       responses:
         '200':
           description: Statement validation run id
+  /api/v2/admin/reconciliation/reviews/request:
+    post:
+      summary: Request a reconciliation review (maker step)
+      operationId: requestReconciliationReview
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: recordId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: transactionId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: amount
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: currency
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: reason
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: requestedBy
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review requested
+  /api/v2/admin/reconciliation/reviews/pending:
+    get:
+      summary: List pending reconciliation reviews
+      operationId: pendingReconciliationReviews
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Pending reconciliation reviews
+  /api/v2/admin/reconciliation/reviews/approve:
+    post:
+      summary: Approve a reconciliation review (checker step)
+      operationId: approveReconciliationReview
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: reviewedBy
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: note
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review approved
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/reconciliation/reviews/reject:
+    post:
+      summary: Reject a reconciliation review (checker step)
+      operationId: rejectReconciliationReview
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: reviewedBy
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: note
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review rejected
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/reconciliation/import:
+    post:
+      summary: Import a provider statement file (CSV or XLSX)
+      operationId: importProviderStatement
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: importedBy
+          in: query
+          required: false
+          schema:
+            type: string
+            default: system
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Import run id
+  /api/v2/admin/reconciliation/auto-match:
+    post:
+      summary: Run automatic reconciliation matching
+      operationId: autoMatchReconciliation
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Number of records matched
+  /api/v2/admin/reconciliation/unmatched:
+    get:
+      summary: List unmatched reconciliation records
+      operationId: unmatchedReconciliationRecords
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Unmatched reconciliation records
+  /api/v2/admin/reconciliation/manual-match:
+    post:
+      summary: Manually match a reconciliation record to a transaction
+      operationId: manualMatchReconciliation
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: recordId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: transactionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: reason
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Match recorded
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/reconciliation/candidate-transactions:
+    get:
+      summary: Search candidate CPay transactions for the manual-match workbench
+      operationId: candidateTransactions
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reference
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: amount
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 25
+      responses:
+        '200':
+          description: Candidate transactions
+  /api/v2/admin/recon-finance/post:
+    post:
+      summary: Post approved reconciliation reviews into the ledger
+      operationId: postApprovedReconciliationReviews
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reviewId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: postedBy
+          in: query
+          required: false
+          schema:
+            type: string
+            default: system
+      responses:
+        '200':
+          description: Posting result
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/reconciliation/settlements/open:
+    post:
+      summary: Open a settlement batch
+      operationId: openSettlementBatch
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reference
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: channel
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: currency
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: expectedAmount
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: openedBy
+          in: query
+          required: false
+          schema:
+            type: string
+            default: system
+      responses:
+        '200':
+          description: Batch opened
+  /api/v2/admin/reconciliation/settlements/flag-record:
+    post:
+      summary: Flag a settlement record for follow-up
+      operationId: flagSettlementRecord
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: recordId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: category
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: batchReference
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flag update result
   /api/v2/admin/recon-finance/summary:
     get:
       summary: Get reconciliation finance summary
@@ -404,6 +796,270 @@ paths:
           description: Settlement batch marked rejected and left pending
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/webhooks/merchants/{merchantId}:
+    post:
+      summary: Register a merchant webhook endpoint
+      operationId: registerMerchantWebhook
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventType, endpointUrl]
+              properties:
+                eventType:
+                  type: string
+                endpointUrl:
+                  type: string
+                actor:
+                  type: string
+      responses:
+        '201':
+          description: Webhook endpoint registered
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      summary: List a merchant's webhook endpoints
+      operationId: listMerchantWebhooks
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Registered webhook endpoints
+  /api/v2/admin/webhooks/{endpointId}/rotate-secret:
+    post:
+      summary: Rotate a merchant webhook signing secret
+      operationId: rotateWebhookSecret
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: New signing secret
+        '404':
+          description: Webhook endpoint not found
+  /api/v2/admin/webhooks/deliveries/{deliveryId}/replay:
+    post:
+      summary: Replay a webhook delivery
+      operationId: replayWebhookDelivery
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: actor
+          in: query
+          required: false
+          schema:
+            type: string
+            default: system
+      responses:
+        '200':
+          description: Replay updated count
+  /api/v2/admin/regulator/daily-cash-flow:
+    get:
+      summary: Generate or fetch the Bank of Uganda daily cash-flow report
+      operationId: regulatorDailyCashFlow
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reportDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Daily cash-flow report
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/regulator/daily-cash-flow/csv:
+    get:
+      summary: Download the daily cash-flow report as CSV
+      operationId: regulatorDailyCashFlowCsv
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reportDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: CSV download
+          content:
+            text/csv:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/regulator/reports:
+    get:
+      summary: List stored regulator reports
+      operationId: listRegulatorReports
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: reportType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Stored regulator reports
+  /api/v2/admin/regulator/pii-inventory:
+    get:
+      summary: List the PII data classes CPay holds (metadata only, never personal data)
+      operationId: regulatorPiiInventory
+      security:
+        - AdminBasicAuth: []
+      responses:
+        '200':
+          description: PII data-class inventory
+  /api/v2/admin/reporting/transaction-stats:
+    get:
+      summary: Pre-aggregated per-day transaction counts and amounts
+      operationId: reportingTransactionStats
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: gatewayId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction stats rows
+  /api/v2/admin/reporting/failure-reasons:
+    get:
+      summary: Aggregate failure reasons annotated via the error catalog
+      operationId: reportingFailureReasons
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: gatewayId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Failure-reason aggregates
+  /api/v2/admin/reporting/float-dashboard:
+    get:
+      summary: Per float/stock account balance history, burn rate, and top-up log
+      operationId: floatDashboard
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: windowDays
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 7
+      responses:
+        '200':
+          description: Float dashboard
+  /api/v2/admin/reporting/float-dashboard/topups:
+    post:
+      summary: Record a float/stock top-up event
+      operationId: recordFloatTopup
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: account
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: amount
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: recordedBy
+          in: query
+          required: false
+          schema:
+            type: string
+            default: admin
+        - name: note
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Top-up recorded
   /api/v2/admin/payout-approvals:
     get:
       summary: List payouts awaiting maker-checker approval
@@ -849,6 +1505,82 @@ components:
           type: string
         providerResponse:
           type: string
+    FxQuoteRequest:
+      type: object
+      required: [merchantNumber, sourceCurrency, targetCurrency, sourceAmount]
+      properties:
+        merchantNumber:
+          type: string
+        sourceCurrency:
+          type: string
+        targetCurrency:
+          type: string
+        sourceAmount:
+          type: string
+    FxQuoteResponse:
+      type: object
+      properties:
+        quoteReference:
+          type: string
+        sourceCurrency:
+          type: string
+        targetCurrency:
+          type: string
+        sourceAmount:
+          type: string
+        targetAmount:
+          type: string
+        rate:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    TransferIntentRequest:
+      type: object
+      required: [quoteReference, sourceCountry, targetCountry, sourceCurrency, targetCurrency, sourceAmount, beneficiaryAccount, beneficiaryName]
+      properties:
+        merchantNumber:
+          type: string
+        quoteReference:
+          type: string
+        sourceCountry:
+          type: string
+        targetCountry:
+          type: string
+        sourceCurrency:
+          type: string
+        targetCurrency:
+          type: string
+        sourceAmount:
+          type: string
+        beneficiaryAccount:
+          type: string
+        beneficiaryName:
+          type: string
+        description:
+          type: string
+    TransferIntentResponse:
+      type: object
+      properties:
+        transferReference:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+    WebhookEventCatalogEntry:
+      type: object
+      properties:
+        eventType:
+          type: string
+        version:
+          type: integer
+        qualifiedType:
+          type: string
+        description:
+          type: string
+        schema:
+          type: object
     AccountValidationRequest:
       type: object
       required: [merchantNumber, msisdn]

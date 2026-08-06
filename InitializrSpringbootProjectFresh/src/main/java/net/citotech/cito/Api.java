@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import net.citotech.cito.Model.*;
 import net.citotech.cito.gateway.ProviderConversationReferenceStoreRegistry;
 import net.citotech.cito.security.CallbackUrlValidator;
+import net.citotech.cito.security.PiiMasking;
 import net.citotech.cito.security.SignatureVerificationService;
 import net.citotech.cito.service.RateLimiterService;
 import org.json.JSONArray;
@@ -50,6 +51,7 @@ public class Api {
     @Autowired net.citotech.cito.ledger.LegacyLedgerPostingService legacyLedgerPostingService;
     @Autowired private net.citotech.cito.ledger.DoubleEntryLedgerService ledgerService;
     @Autowired net.citotech.cito.api.v2.IdempotencyService idempotencyService;
+    @Autowired private net.citotech.cito.payout.PayoutControlService payoutControlService;
 
     @Value("${custom.gatewaystate}")
     private String gatewaystate;
@@ -544,6 +546,34 @@ public class Api {
                 }
             }
 
+            // Payout risk-control parity (V34): the raw v1 payout path previously bypassed
+            // PayoutControlService entirely, so a configured daily/monthly/per-transaction or
+            // beneficiary-velocity limit (or a first-beneficiary review trigger) could be evaded
+            // by calling /api/v1 instead of /api/v2. Evaluate the same controls here, BEFORE
+            // reserve/execute; when approval is required the payout is parked in
+            // payout_approval_queue and a 000 envelope is returned so v1 clients treat it as
+            // accepted, mirroring v2's APPROVAL_PENDING. With no control row (or a disabled one)
+            // this returns EXECUTE and the pre-existing behavior is unchanged.
+            net.citotech.cito.payout.PayoutControlService.PayoutEvaluation payoutControl =
+                    evaluateV1PayoutControl(
+                            merchant,
+                            merchant_number,
+                            amount_string,
+                            payee_number,
+                            gateway_id,
+                            reference,
+                            description,
+                            callback_url);
+            if (payoutControl != null && payoutControl.isApprovalRequired()) {
+                String approvalMessage =
+                        "Payout requires maker-checker approval: " + payoutControl.reasonCode();
+                if (!isBlank(idempotencyKey)) {
+                    idempotencyService.recordBody(
+                            merchant_number, idempotencyKey, requestBody, approvalMessage);
+                }
+                return GeneralSuccessResponse.getMessage("000", approvalMessage);
+            }
+
             // Audit A8: reserve-then-capture on the v1 payout path, mirroring
             // PaymentOrchestrationService.payout and the batch-payout cron. Hold the payout
             // amount (+ charges) in the ledger before the provider call so concurrent payouts
@@ -551,9 +581,16 @@ public class Api {
             // throws. Idempotent per attempt: the reservation reference includes the unique
             // transaction id, so a retried merchant reference gets its own hold and the failed
             // attempt's release never leaks onto a newer attempt.
+            // BigDecimal throughout (money-path hardening): the previous expression performed
+            // `amount + charges` in double precision before converting to MoneyAmount, which is a
+            // rounding hazard for money that then feeds ledgerService.reserve. Both operands are
+            // now converted via MoneyAmount before addition.
             java.math.BigDecimal reservedAmount =
-                    net.citotech.cito.money.MoneyAmount.of(String.valueOf(amount + charges))
-                            .asBigDecimal();
+                    net.citotech.cito.money.MoneyAmount.of(amount_string)
+                            .asBigDecimal()
+                            .add(
+                                    net.citotech.cito.money.MoneyAmount.of(String.valueOf(charges))
+                                            .asBigDecimal());
             String reservationCurrency =
                     newTx.getCurrency() == null || newTx.getCurrency().isEmpty()
                             ? "UGX"
@@ -738,8 +775,11 @@ public class Api {
             HttpServletRequest request,
             HttpServletResponse response) {
         // Set the response header
+        // PII masking (compliance I4): provider callback payloads can echo payer/payee MSISDNs;
+        // only the masked form reaches the logs. The raw body is still used for parsing/updates.
+        String maskedBody = maskMsisdnsInPayload(requestBody);
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM API CALLBACK: " + requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM API CALLBACK: " + maskedBody, maskedBody);
         try {
             // Ensure that we have valid JSON data.
             JSONObject sObject;
@@ -806,8 +846,8 @@ public class Api {
                                                                 "SAFARICOM API CALLBACK FAILED - Transaction "
                                                                         + networkRef
                                                                         + " not found: "
-                                                                        + requestBody,
-                                                                requestBody);
+                                                                        + maskedBody,
+                                                                maskedBody);
                                                 return GeneralException.getError(
                                                         "109",
                                                         String.format(
@@ -826,8 +866,8 @@ public class Api {
                                                             "SAFARICOM API CALLBACK - ResultCode="
                                                                     + resultCodeFinal
                                                                     + ", marking FAILED: "
-                                                                    + requestBody,
-                                                            requestBody);
+                                                                    + maskedBody,
+                                                            maskedBody);
                                             String results =
                                                     Common.updateTx(
                                                             tx, jdbcTemplate, transactionManager);
@@ -889,8 +929,8 @@ public class Api {
                                                             "SAFARICOM API CALLBACK - Transaction "
                                                                     + networkRef
                                                                     + " Doesnt exists: "
-                                                                    + requestBody,
-                                                            requestBody);
+                                                                    + maskedBody,
+                                                            maskedBody);
                                             return GeneralException.getError(
                                                     "109",
                                                     String.format(
@@ -907,8 +947,8 @@ public class Api {
                                                         "SAFARICOM API CALLBACK - Transaction "
                                                                 + networkRef
                                                                 + " exists: "
-                                                                + requestBody,
-                                                        requestBody);
+                                                                + maskedBody,
+                                                        maskedBody);
 
                                         // tx.setTx_gateway_ref(networkRef);
                                         String results =
@@ -971,11 +1011,13 @@ public class Api {
             HttpServletRequest request,
             HttpServletResponse response) {
         // Set the response header
+        // PII masking (compliance I4): only the masked form of the provider callback reaches logs.
+        String maskedBody = maskMsisdnsInPayload(requestBody);
         Logger.getLogger(AuthenticationController.class.getName())
                 .log(
                         Level.INFO,
-                        "SAFARICOM PAYIN API CALLBACK - PAYOUT: " + requestBody,
-                        requestBody);
+                        "SAFARICOM PAYIN API CALLBACK - PAYOUT: " + maskedBody,
+                        maskedBody);
 
         try {
             // Ensure that we have valid JSON data.
@@ -1083,8 +1125,8 @@ public class Api {
                                                             "SAFARICOM API CALLBACK COLLECTIONS- Transaction "
                                                                     + CheckoutRequestIDFinal
                                                                     + " Doesnt exists: "
-                                                                    + requestBody,
-                                                            requestBody);
+                                                                    + maskedBody,
+                                                            maskedBody);
                                             return GeneralException.getError(
                                                     "109",
                                                     String.format(
@@ -1102,8 +1144,8 @@ public class Api {
                                                             "SAFARICOM API CALLBACK COLLECTIONS- Transaction "
                                                                     + CheckoutRequestIDFinal
                                                                     + " already in terminal state, ignoring duplicate callback: "
-                                                                    + requestBody,
-                                                            requestBody);
+                                                                    + maskedBody,
+                                                            maskedBody);
                                             return GeneralSuccessResponse.getMessage(
                                                     "000", "Request already processed");
                                         }
@@ -1121,8 +1163,8 @@ public class Api {
                                                         "SAFARICOM API CALLBACK COLLECTIONS - Transaction "
                                                                 + CheckoutRequestIDFinal
                                                                 + " exists: "
-                                                                + requestBody,
-                                                        requestBody);
+                                                                + maskedBody,
+                                                        maskedBody);
 
                                         tx.setTx_gateway_ref(networkRefFinal);
                                         String results =
@@ -1196,8 +1238,10 @@ public class Api {
             HttpServletRequest request,
             HttpServletResponse response) {
         // Set the response header
+        // PII masking (compliance I4): only the masked form of the provider callback reaches logs.
+        String maskedBody = maskMsisdnsInPayload(requestBody);
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: " + requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: " + maskedBody, maskedBody);
 
         try {
             // Ensure that we have valid JSON data.
@@ -1285,8 +1329,8 @@ public class Api {
                                                             "SAFARICOM API CALLBACK DISBURSEMENT- Transaction "
                                                                     + Conversation_ID
                                                                     + " Doesnt exists: "
-                                                                    + requestBody,
-                                                            requestBody);
+                                                                    + maskedBody,
+                                                            maskedBody);
                                             return GeneralException.getError(
                                                     "109",
                                                     String.format(
@@ -1308,8 +1352,8 @@ public class Api {
                                                         "SAFARICOM API CALLBACK DISBURSEMENT - Transaction "
                                                                 + Conversation_ID
                                                                 + " exists: "
-                                                                + requestBody,
-                                                        requestBody);
+                                                                + maskedBody,
+                                                        maskedBody);
 
                                         // tx.setTx_gateway_ref(networkRef);
                                         String results =
@@ -1384,8 +1428,10 @@ public class Api {
             HttpServletRequest request,
             HttpServletResponse response) {
         // Set the response header
+        // PII masking (compliance I4): only the masked form of the provider callback reaches logs.
+        String maskedBody = maskMsisdnsInPayload(requestBody);
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: " + requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM API CALLBACK - PAYOUT: " + maskedBody, maskedBody);
         try {
             // Ensure that we have valid JSON data.
             JSONObject sObject;
@@ -1474,8 +1520,8 @@ public class Api {
                                                             "SAFARICOM API CALLBACK DISBURSEMENT- Transaction "
                                                                     + reference
                                                                     + " Doesnt exists: "
-                                                                    + requestBody,
-                                                            requestBody);
+                                                                    + maskedBody,
+                                                            maskedBody);
                                             return GeneralException.getError(
                                                     "109",
                                                     String.format(
@@ -1497,8 +1543,8 @@ public class Api {
                                                         "SAFARICOM API CALLBACK DISBURSEMENT - Transaction "
                                                                 + reference
                                                                 + " exists: "
-                                                                + requestBody,
-                                                        requestBody);
+                                                                + maskedBody,
+                                                        maskedBody);
 
                                         // tx.setTx_gateway_ref(networkRef);
                                         String results =
@@ -1585,8 +1631,10 @@ public class Api {
             @RequestBody String requestBody,
             HttpServletRequest request,
             HttpServletResponse response) {
+        // PII masking (compliance I4): only the masked form of the provider callback reaches logs.
+        String maskedBody = maskMsisdnsInPayload(requestBody);
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "AIRTEL MONEY CALLBACK: " + requestBody, requestBody);
+                .log(Level.INFO, "AIRTEL MONEY CALLBACK: " + maskedBody, maskedBody);
         try {
             JSONObject sObject;
             try {
@@ -1693,8 +1741,10 @@ public class Api {
             @RequestBody String requestBody,
             HttpServletRequest request,
             HttpServletResponse response) {
+        // PII masking (compliance I4): only the masked form of the provider callback reaches logs.
+        String maskedBody = maskMsisdnsInPayload(requestBody);
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM BALANCE CALLBACK: " + requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM BALANCE CALLBACK: " + maskedBody, maskedBody);
         try {
             JSONObject sObject;
             try {
@@ -1789,8 +1839,10 @@ public class Api {
             @RequestBody String requestBody,
             HttpServletRequest request,
             HttpServletResponse response) {
+        // PII masking (compliance I4): only the masked form of the provider callback reaches logs.
+        String maskedBody = maskMsisdnsInPayload(requestBody);
         Logger.getLogger(AuthenticationController.class.getName())
-                .log(Level.INFO, "SAFARICOM REVERSAL CALLBACK: " + requestBody, requestBody);
+                .log(Level.INFO, "SAFARICOM REVERSAL CALLBACK: " + maskedBody, maskedBody);
         try {
             JSONObject sObject;
             try {
@@ -2317,6 +2369,73 @@ public class Api {
             default:
                 return null;
         }
+    }
+
+    /**
+     * Builds a v2 {@link net.citotech.cito.api.v2.dto.PaymentRequest} from the raw v1 payout
+     * payload and runs it through {@link net.citotech.cito.payout.PayoutControlService#evaluate}.
+     * Returns {@code null} when no control row exists, controls are disabled, or the control layer
+     * errors (fail-open preserves the historical v1 behavior - v1 never had this gate, so an
+     * evaluation failure must not start blocking money movement). Returns an {@code
+     * APPROVAL_REQUIRED} evaluation when a limit/velocity/first-beneficiary trigger parked the
+     * payout so the caller can return without executing.
+     */
+    private net.citotech.cito.payout.PayoutControlService.PayoutEvaluation evaluateV1PayoutControl(
+            Merchant merchant,
+            String merchantNumber,
+            String amount,
+            String payeeNumber,
+            String gatewayId,
+            String reference,
+            String description,
+            String callbackUrl) {
+        try {
+            if (merchant == null || payoutControlService == null) {
+                return null;
+            }
+            net.citotech.cito.api.v2.dto.PaymentRequest request =
+                    new net.citotech.cito.api.v2.dto.PaymentRequest();
+            request.setMerchantNumber(merchantNumber);
+            request.setAmount(amount);
+            request.setCurrency("UGX");
+            request.setChannel(gatewayId);
+            request.setReference(reference);
+            request.setDescription(description);
+            request.setCallbackUrl(callbackUrl);
+            net.citotech.cito.api.v2.dto.PaymentPartyRequest payee =
+                    new net.citotech.cito.api.v2.dto.PaymentPartyRequest();
+            payee.setType("MSISDN");
+            payee.setValue(payeeNumber);
+            request.setPayee(payee);
+            return payoutControlService.evaluate(request, merchant, "v1-api:" + merchantNumber);
+        } catch (Exception ex) {
+            Logger.getLogger(Api.class.getName())
+                    .log(
+                            Level.WARNING,
+                            "V1 payout control evaluation failed: " + ex.getMessage(),
+                            ex);
+            return null;
+        }
+    }
+
+    /**
+     * Masks mobile-money numbers in a raw provider callback payload before it reaches the logs
+     * (compliance I4). Keeps the structural debugging context while hiding payer/payee MSISDNs.
+     * Idempotent: an already-masked value contains no matching digit run.
+     */
+    private static String maskMsisdnsInPayload(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return payload;
+        }
+        java.util.regex.Matcher matcher =
+                java.util.regex.Pattern.compile("\\b(?:\\+?256|254|255|250)\\d{9}\\b")
+                        .matcher(payload);
+        StringBuffer masked = new StringBuffer();
+        while (matcher.find()) {
+            matcher.appendReplacement(masked, PiiMasking.maskMsdn(matcher.group()));
+        }
+        matcher.appendTail(masked);
+        return masked.toString();
     }
 
     /**

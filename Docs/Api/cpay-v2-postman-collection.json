@@ -6,7 +6,9 @@
   "variable": [
     { "key": "baseUrl", "value": "https://cpaytest.coresynergi.es:8443" },
     { "key": "merchantNumber", "value": "1000000" },
-    { "key": "checkoutToken", "value": "replace-with-created-payment-link-token" }
+    { "key": "checkoutToken", "value": "replace-with-created-payment-link-token" },
+    { "key": "adminUser", "value": "replace-with-admin-email" },
+    { "key": "adminPassword", "value": "replace-with-admin-password" }
   ],
   "item": [
     {
@@ -109,6 +111,257 @@
           "mode": "raw",
           "raw": "{\n  \"payerAccount\": \"256770000000\",\n  \"channel\": \"mtn_momo\"\n}"
         }
+      }
+    },
+    {
+      "name": "FX Quote",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-CPay-Signature-Version", "value": "v2" },
+          { "key": "X-CPay-Timestamp", "value": "{{timestamp}}" },
+          { "key": "X-CPay-Nonce", "value": "{{nonce}}" },
+          { "key": "X-CPay-Signature", "value": "{{signature}}" }
+        ],
+        "url": "{{baseUrl}}/api/v2/fx/quotes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"merchantNumber\": \"{{merchantNumber}}\",\n  \"sourceCurrency\": \"UGX\",\n  \"targetCurrency\": \"KES\",\n  \"sourceAmount\": \"100000.00\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Cross-Border Transfer",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-CPay-Signature-Version", "value": "v2" },
+          { "key": "X-CPay-Timestamp", "value": "{{timestamp}}" },
+          { "key": "X-CPay-Nonce", "value": "{{nonce}}" },
+          { "key": "X-CPay-Signature", "value": "{{signature}}" }
+        ],
+        "url": "{{baseUrl}}/api/v2/cross-border/transfers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"merchantNumber\": \"{{merchantNumber}}\",\n  \"quoteReference\": \"FXQ-10001\",\n  \"sourceCountry\": \"UG\",\n  \"targetCountry\": \"KE\",\n  \"sourceCurrency\": \"UGX\",\n  \"targetCurrency\": \"KES\",\n  \"sourceAmount\": \"100000.00\",\n  \"beneficiaryAccount\": \"254700000000\",\n  \"beneficiaryName\": \"Jane Doe\",\n  \"description\": \"Cross-border transfer\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Webhook Event Catalog",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/webhooks/events"
+      }
+    },
+    {
+      "name": "Reconciliation Import",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/reconciliation/import?provider=MTN&importedBy=ops",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "file", "type": "file", "src": "/path/to/provider-statement.csv" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Reconciliation Auto-Match",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/reconciliation/auto-match"
+      }
+    },
+    {
+      "name": "Reconciliation Review Request",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/reconciliation/reviews/request?recordId=42&type=ADJUSTMENT&amount=2500.00&currency=UGX&reason=Provider+statement+mismatch&requestedBy=ops"
+      }
+    },
+    {
+      "name": "Recon Finance Close",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/recon-finance/close?date=2026-08-05&currency=UGX&submittedBy=ops"
+      }
+    },
+    {
+      "name": "Recon Finance Close Approve",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/recon-finance/close/approve?date=2026-08-05&currency=UGX&approvedBy=finance"
+      }
+    },
+    {
+      "name": "Settlement Open",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/reconciliation/settlements/open?reference=STL-20260805-001&provider=MTN&channel=mtn_momo&currency=UGX&expectedAmount=1250000.00&openedBy=ops"
+      }
+    },
+    {
+      "name": "Payout Approvals List",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/payout-approvals?limit=100"
+      }
+    },
+    {
+      "name": "Payout Approval Approve",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/payout-approvals/1/approve?approvedBy=finance"
+      }
+    },
+    {
+      "name": "Webhook Register Endpoint",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/v2/admin/webhooks/merchants/1",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventType\": \"payment.completed\",\n  \"endpointUrl\": \"https://merchant.example/cpay/callback\",\n  \"actor\": \"ops\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Webhook Test Callback",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/webhooks/merchants/1/test-callback?eventType=payment.completed&actor=ops"
+      }
+    },
+    {
+      "name": "Regulator Daily Cash Flow",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/regulator/daily-cash-flow?reportDate=2026-08-05"
+      }
+    },
+    {
+      "name": "Reporting Transaction Stats",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/reporting/transaction-stats?from=2026-07-06&to=2026-08-05"
+      }
+    },
+    {
+      "name": "Treasury Positions",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{adminUser}}", "type": "string" },
+            { "key": "password", "value": "{{adminPassword}}", "type": "string" }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v2/admin/treasury/positions"
       }
     }
   ]
