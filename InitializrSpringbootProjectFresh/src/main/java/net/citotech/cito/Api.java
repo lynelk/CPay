@@ -585,12 +585,18 @@ public class Api {
             // `amount + charges` in double precision before converting to MoneyAmount, which is a
             // rounding hazard for money that then feeds ledgerService.reserve. Both operands are
             // now converted via MoneyAmount before addition.
+            // Charges can legally be zero (flat-fee gateways, promotions), but MoneyAmount.of
+            // rejects non-positive values; convert-only when present and positive.
             java.math.BigDecimal reservedAmount =
                     net.citotech.cito.money.MoneyAmount.of(amount_string)
                             .asBigDecimal()
                             .add(
-                                    net.citotech.cito.money.MoneyAmount.of(String.valueOf(charges))
-                                            .asBigDecimal());
+                                    (charges == null || charges <= 0)
+                                            ? net.citotech.cito.money.MoneyAmount.zero()
+                                                    .asBigDecimal()
+                                            : net.citotech.cito.money.MoneyAmount.of(
+                                                            String.valueOf(charges))
+                                                    .asBigDecimal());
             String reservationCurrency =
                     newTx.getCurrency() == null || newTx.getCurrency().isEmpty()
                             ? "UGX"
