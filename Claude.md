@@ -133,7 +133,12 @@ Base package: `net.citotech.cito`.
   replay a failed delivery) — the merchant-scoped `rotateSecret(merchantId, endpointId)`/
   `replay(merchantId, deliveryId)` overloads scope their `UPDATE` to the caller's own `merchant_id`
   so one merchant can never rotate or replay another's webhook; do not call the unscoped
-  single-arg overloads from a merchant-facing code path.
+  single-arg overloads from a merchant-facing code path. `WebhookEventCatalog.register(type,
+  version, description, jsonSchema)` takes an explicit schema per event type (ADR 0006) — the 8
+  transactional types (`payment.*`/`payout.*`/`refund.*`) share one `TRANSACTIONAL_ENVELOPE_SCHEMA`
+  constant requiring `transactionId`/`amount`/`currency`; a non-transactional type (e.g. billing's
+  `invoice.issued`) registers its own schema instead. `MerchantWebhookService.enqueue(...)` never
+  assumes a payload has those fields — only `WebhookEventCatalog.lookup(eventType)` must succeed.
 - **`export/`** — `TabularExportService` is the one reusable place to render tabular data as CSV or
   XLSX (streaming `SXSSFWorkbook`, disposed correctly); callers remain responsible for
   bounding/paginating the underlying query. Wired into merchant statement export
@@ -167,7 +172,10 @@ Base package: `net.citotech.cito`.
 - **`batch/`** — `BatchPayoutController` (`/api/v2/merchant-self-service/batches/{batchId}`,
   `.../retry-failed`) gives a merchant self-service visibility and retry over their own batch
   payout status, session-gated like the other merchant self-service routes.
-- **`payout/`** — `PayoutControlService`/`PayoutApprovalController`
+- **`payout/`** — `PayoutConfigService`/`PayoutConfigController` (`/api/v2/admin/payout-controls/**`,
+  gated by `payout-controls-config`) give operators self-service configuration of the
+  `payout_controls` rows `PayoutControlService.evaluate` reads, so a saved limit is enforceable
+  immediately on the v2 payout path. `PayoutControlService`/`PayoutApprovalController`
   (`/api/v2/admin/payout-approvals`) hold a payout above a configurable threshold in a maker-checker
   queue instead of executing it immediately: `GET` lists pending entries, `POST .../approve`,
   `.../reject`, and `.../cancel` resolve one, each by an admin other than whoever's action queued it.
@@ -190,17 +198,58 @@ Base package: `net.citotech.cito`.
   checklist scoped to that merchant's configured channels (`merchant_channel_credentials`),
   callback secret, and `entity_type='MERCHANT'` compliance records — platform-wide-only checks
   (operations alerts, daily close, admin audit events) are intentionally excluded from the
-  per-merchant view since they carry no merchant reference at all. `AdminMerchantStatementController`
+  per-merchant view since they carry no merchant reference at all. `FeatureRegistryService`
+  (backed by the `merchant_feature_flags` table, V36) resolves a feature for a merchant as the
+  global `feature_flags` default overridden by a per-merchant row, always through
+  `TenantScopeGuard`; the `/api/v2/admin/feature-registry/**` surface lets operators roll a
+  feature out or back per merchant without a deploy. `AdminMerchantStatementController`
   (`GET /api/v2/admin/merchants/{merchantNumber}/statements`) is the session-authenticated admin
   counterpart to `MerchantStatementExportService#exportForPortal` (merchant self-service) and
   `PaymentsV2Controller#statements` (v2-signed API) — it calls the new `#exportForAdmin` method,
   which looks up the merchant server-side rather than resolving it from a caller's own session or
   signed request.
-- **`balance/`**, **`compliance/`** (`RiskDecisionService` now also enforces a KYC-tier-aware cap —
-  `compliance_profiles.tier` for `entity_type='MERCHANT'` — and a payer-velocity rule capping how
+- **`identity/`** — GnuGrid NIN identity-verification pilot (S5, V37), gated by the
+  `identity-gnugrid` feature flag: consent-mandated requests, PII-safe storage (NIN/full-name/
+  MSISDN stored only as SHA-256 hashes plus masks), `IdentityVerificationService`/`Controller`
+  under `/api/v2/admin/identity/**`, and a provider callback endpoint.
+- **`balance/`** — `FloatBalanceReader` + `BalanceMonitoringService`/`Controller` expose the S5
+  balance-monitoring view (`/api/v2/admin/balance-monitoring/overview`, gated by the
+  `balance-monitoring` flag) combining current gateway float balances, treasury positions, and the
+  latest nightly float snapshots.
+- **`billing/`** — the billing engine (Phase 0/1 complete, `Docs/Adr/0003`-`0006`; merchant-scoped
+  1:1 for now, schema-ready for a future multi-tenant BaaS model). `tenancy/` — `BillingTenantResolver`
+  resolves `merchantId → billing_tenant_id` (throws if unmapped; every merchant is backfilled a
+  tenant by `V38`). `usage/` — `UsageGatewayService.recordUsage(...)` writes an idempotent
+  `billing_usage_events` row (dedup by `idempotency_key`, safe under concurrent retries). `outbox/` —
+  a classic transactional outbox (ADR 0005): `OutboxWriter.write(...)` inserts a `billing_outbox`
+  row from inside the caller's own code path (no `@Transactional` of its own — joins whatever
+  transaction is active, or auto-commits if none); `OutboxRelay` is a ShedLock-guarded `@Scheduled`
+  poller (matching `scheduler/LedgerOperationsScheduler`'s pattern) that dispatches each row to the
+  first registered `OutboxEventHandler` whose `supports(eventType)` matches, with exponential
+  backoff and a poison-message-to-`FAILED` path — **no `OutboxEventHandler` is registered yet**, so
+  `billing_outbox` rows are written but nothing consumes them into `billing_usage_events` until a
+  handler lands. `integration/cpay/` — `PaymentUsageOutboxHook.recordPaymentCollected(...)` is the
+  one hook point in `PaymentOrchestrationService.collect()` (after `Common.doPayIn` succeeds, right
+  before `queueWebhook`'s return), gated by the `billing-usage-outbox` feature flag (global default
+  off, per-merchant override via `merchant_feature_flags`) and never throws — mirrors
+  `queueWebhook`'s own "payment submission remains authoritative" convention in the same class.
+  `LegacyFeeSchedulePriceAdapter` is a read-only projection of `fees/FeeScheduleService` into the
+  `billing_price_book_versions`/`billing_price_components` (`V43`) shape for future shadow-price
+  comparison — flags a `TIER` schedule as not-yet-computable rather than reusing
+  `FeeSchedule.apply()`'s flat-fallback (a known gap, not a real tier calculation); nothing consumes
+  this projection yet either. `metering/` — `MeterAggregationService` does MVP `COUNT`/`SUM`
+  aggregation over `billing_usage_events` with an optional JSON dimension filter, driven by the
+  meter's own `billing_meters.aggregation_type` (`V39`) rather than a caller-supplied flag.
+  `reconciliation/` — `UsagePaymentReconciliationService` compares `merchant_transactions_log`
+  against `billing_usage_events` for a trailing window (the Phase 1 exit-criterion artifact); until
+  the outbox-handler gap above is closed, running it against live data shows full divergence by
+  design, not a bug.
+- **`compliance/`** — `RiskDecisionService` now also enforces a KYC-tier-aware cap
+  (`compliance_profiles.tier` for `entity_type='MERCHANT'`) and a payer-velocity rule capping how
   often the same payer identifier can transact in a rolling window, alongside the existing blocklist
-  and flat single-transaction/daily-merchant caps), **`checkout/`** (payment links/hosted checkout),
-  **`scheduler/`** (timeout scans, cleanup jobs), **`metrics/`**, **`portal/`**,
+  and flat single-transaction/daily-merchant caps. The remaining operational packages are
+  **`checkout/`** (payment links/hosted checkout), **`scheduler/`** (timeout scans, cleanup jobs),
+  **`metrics/`**, **`portal/`**,
   **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and
   `SchedulerLockConfig` — the ShedLock `LockProvider` backing every active `@Scheduled` job. Keep
   any new scheduled job annotated with `@SchedulerLock`; the older local file locks are only
@@ -225,9 +274,10 @@ backfilling successful legacy pay-in/pay-out rows that are missing their idempot
 `CPAY_LEDGER_REPAIR_LIMIT` and do not broaden it to failed or non-terminal rows without an explicit
 accounting decision.
 
-Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V30`; do not mark a
-snapshot as a real release snapshot unless it was generated from a freshly migrated database with the
-documented `mysqldump --no-data` command.
+Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V43` (through
+`V43__billing_price_books.sql`); do not mark a snapshot as a real release snapshot unless it was
+generated from a freshly migrated database with the documented `mysqldump --no-data` command. The
+committed snapshots still reflect `V30` and must be regenerated before the next release tag.
 
 ## Frontend architecture
 

@@ -70,12 +70,13 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Added BoU-style regulator reporting (`net.citotech.cito.reporting.RegulatorReportingService`, `GET /api/v2/admin/regulator/daily-cash-flow[/csv]`, `/reports`, `/pii-inventory`) generating a transaction/FX summary off the ledger — the exact regulator-required schema/frequency still needs compliance/BoU confirmation before any report is actually submitted.
 - Added a reusable PII-masking utility (`net.citotech.cito.security.PiiMasking`) and wired it into the highest-traffic payer-number logging call sites.
 - Added a payer-velocity risk rule to `RiskDecisionService`, capping how often the same payer identifier can transact in a rolling window.
+- Added the billing engine's Phase 0/1 foundation (`net.citotech.cito.billing`, ADRs 0003-0006, merchant-scoped 1:1 for now): a `billing_tenant_id` resolver, an idempotent usage-event ingestion service (`UsageGatewayService`), a transactional outbox (`OutboxWriter`/`OutboxRelay`, ShedLock-guarded poller with retry/backoff and poison-message handling — no consuming handler registered yet, a known and documented gap), a read-only legacy fee-schedule price projection that explicitly flags `TIER` schedules as not-yet-computable instead of silently reusing the legacy flat-fallback, MVP `COUNT`/`SUM` meter aggregation, and a payment/usage reconciliation report. Wired one producer hook into `PaymentOrchestrationService.collect()`, gated by the `billing-usage-outbox` feature flag (global default off).
+- Added a schema-per-type mechanism to `WebhookEventCatalog.register(...)` (ADR 0006) so a future non-transactional billing event type can register its own envelope shape instead of the shared transactional one — zero behavior change to the 8 existing event types.
 
 ### Changed
 
 - Removed `common.base_url` (a dead, always-empty legacy config field) from every frontend call site in favor of `shared/config.ts`'s `apiUrl()`, and centralized the ad-hoc `localStorage` admin/merchant user read behind a shared `readStoredUser(portal)` helper for the class components that can't use the `useAuth()` hook directly.
 - Chart line/point colors now resolve through the same CSS-variable helper as the rest of the dashboard charts, instead of a hardcoded hex color and a bare white point-border that looked wrong in dark mode.
-
 - Routed legacy outbound provider HTTP calls through a Spring-managed `RestClient` executor with central timeout, error, and metrics handling.
 - Updated Docker Compose onboarding to use the canonical backend path and the current local sandbox defaults.
 - Made Flyway the documented canonical migration path and gated the legacy XML DB change runner behind `CPAY_LEGACY_DBCHANGES_ENABLED`.
@@ -98,9 +99,10 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Operational
 
-- Confirmed the schema documentation currently tracks Flyway through V30 and points operators to regenerate a real `mysqldump` snapshot from a migrated database before release tagging.
+- Confirmed the schema documentation currently tracks Flyway through V43 and points operators to regenerate a real `mysqldump` snapshot from a migrated database before release tagging.
 - Added Flyway migrations `V29__provider_conversation_references.sql` and `V30__shedlock.sql`.
-- Added Flyway migrations `V31__merchant_key_encryption.sql`, `V32__kyc_tier_limits.sql`, `V33__maker_checker_finance_close.sql`, `V34__payout_controls.sql`, `V35__efris_regulator_pii.sql`, `V36__feature_registry.sql`, `V37__identity_verification.sql`, and `V38__billing_tenancy_core.sql`. Flyway is now at `V38`; the schema snapshot under `Docs/Schema/snapshots/` still reflects `V30` and needs regenerating from a freshly migrated database before the next release tag.
+- Added Flyway migrations `V31__merchant_key_encryption.sql`, `V32__kyc_tier_limits.sql`, `V33__maker_checker_finance_close.sql`, `V34__payout_controls.sql`, `V35__efris_regulator_pii.sql`, `V36__feature_registry.sql`, `V37__identity_verification.sql`, and `V38__billing_tenancy_core.sql`.
+- Added Flyway migrations `V39__billing_service_catalog.sql` (service/meter catalog, seeded with the payment/SMS/webhook/invoice services), `V40__billing_usage_events.sql` (immutable, unique `idempotency_key`), `V41__billing_outbox.sql`, `V42__billing_usage_outbox_feature_flag.sql`, and `V43__billing_price_books.sql` (price-book-version/price-component schema, calculation logic not yet wired). Flyway is now at `V43`; the schema snapshot under `Docs/Schema/snapshots/` still reflects `V30` and needs regenerating from a freshly migrated database before the next release tag.
 - Added a per-merchant feature registry (`merchant_feature_flags`, V36) with a server-side resolution service (`FeatureRegistryService`), tenant-scoped via `TenantScopeGuard`, and an admin surface under `/api/v2/admin/feature-registry/**` for reversible per-merchant feature rollout.
 - Added a GnuGrid NIN identity-verification pilot (`identity/`, V37) gated by the `identity-gnugrid` feature flag: consent-mandated requests, PII-safe storage (NIN/full-name/MSISDN stored only as hashes + masks), provider callback endpoint, and an admin surface under `/api/v2/admin/identity/**`.
 - Added billing tenancy core (V38, ADR 0003): `billing_tenants`/`billing_customers`/`billing_accounts` with a 1:1 backfill for existing merchants, laying the scoping root for the future billing engine.

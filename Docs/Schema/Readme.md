@@ -14,12 +14,13 @@ The legacy XML runner is gated by `CPAY_LEGACY_DBCHANGES_ENABLED=false` by defau
 
 ## Current snapshot
 
-Flyway is currently at `V30`. `Docs/Schema/snapshots/2026-07-28-cpayadmin.sql` is the latest committed
-snapshot, but it predates later migrations (`V19` through `V30`). Unlike the July 16 snapshot below,
-no live migrated database was available when it was written, so it was hand-reconstructed by reading
-the migration DDL rather than produced with `mysqldump`. Treat it as a review aid, not the release
-baseline. Regenerate a real no-data snapshot against a freshly migrated database before tagging a
-release so the snapshot catches drift between authored migrations and applied schema.
+Flyway is currently at `V43` (through `V43__billing_price_books.sql`).
+`Docs/Schema/snapshots/2026-07-28-cpayadmin.sql` is the latest committed snapshot, but it predates
+later migrations (`V19` through `V43`). Unlike the July 16 snapshot below, no live migrated
+database was available when it was written, so it was hand-reconstructed by reading the migration
+DDL rather than produced with `mysqldump`. Treat it as a review aid, not the release baseline.
+Regenerate a real no-data snapshot against a freshly migrated database before tagging a release so
+the snapshot catches drift between authored migrations and applied schema.
 
 `Docs/Schema/snapshots/2026-07-16-cpayadmin.sql` is the previous real `mysqldump` snapshot, generated from the local migrated `cpayadmin` database on July 16, 2026. It reflects schema state through V1, V2, and V5 only (the 19 baseline tables, plus the 24 tables added by V2, plus `feature_flags` from V5) — it predates V3's `merchant_transactions_log.currency` widening and everything from V7 onward, so it is missing 40 tables (ledger, risk, compliance, FX/treasury, payment links/checkout, webhooks, sandbox/environment controls, channel routing, fee schedules, and the payout compensation saga). Kept for history; prefer the 2026-07-28 snapshot.
 
@@ -87,6 +88,17 @@ payment_links
 fee_schedules
 channel_routing_prefixes
 password_reset_tokens
+
+billing_tenants
+  -> billing_customers
+  -> billing_accounts
+billing_service_catalog
+  -> billing_meters
+       -> billing_meter_versions
+billing_usage_events
+billing_outbox
+billing_price_book_versions
+  -> billing_price_components
 
 operating_control_events
 operations_alerts
