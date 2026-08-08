@@ -24,16 +24,18 @@ public class DoubleEntryLedgerService {
     }
 
     @Transactional
-    public long post(String transactionReference,
-                     String sourceType,
-                     String sourceReference,
-                     String description,
-                     List<LedgerEntryCommand> entries) {
+    public long post(
+            String transactionReference,
+            String sourceType,
+            String sourceReference,
+            String description,
+            List<LedgerEntryCommand> entries) {
         validateEntries(entries);
         Map<String, Totals> totals = totalsByCurrency(entries);
         for (Map.Entry<String, Totals> total : totals.entrySet()) {
             if (total.getValue().debits.compareTo(total.getValue().credits) != 0) {
-                throw new PaymentGatewayException("Ledger transaction is not balanced for " + total.getKey());
+                throw new PaymentGatewayException(
+                        "Ledger transaction is not balanced for " + total.getKey());
             }
         }
 
@@ -42,7 +44,8 @@ public class DoubleEntryLedgerService {
             return existing;
         }
 
-        long txId = insertTransaction(transactionReference, sourceType, sourceReference, description);
+        long txId =
+                insertTransaction(transactionReference, sourceType, sourceReference, description);
         for (LedgerEntryCommand entry : entries) {
             long accountId = ensureAccount(entry);
             insertEntry(txId, accountId, entry);
@@ -50,19 +53,61 @@ public class DoubleEntryLedgerService {
         return txId;
     }
 
+    /**
+     * Posts a mirror-image balanced group of entries under {@code newTransactionReference},
+     * flipping each of {@code originalTransactionReference}'s entries' direction (DR&lt;-&gt;CR)
+     * while keeping the same account/amount/currency - the only way this ledger corrects a posting
+     * (see {@code Docs/Money-ledger-and-orchestration-roadmap.md}'s "propose matched corrections
+     * rather than mutating ledger entries directly" rule and ADR 0004). Idempotent like {@link
+     * #post}: replaying the same {@code newTransactionReference} returns the existing reversal
+     * transaction id rather than posting a second time.
+     */
+    @Transactional
+    public long reverse(
+            String originalTransactionReference, String newTransactionReference, String reason) {
+        if (blank(originalTransactionReference) || blank(newTransactionReference)) {
+            throw new PaymentGatewayException(
+                    "Ledger reversal requires an original and a new transaction reference");
+        }
+        Long existingReversal = findTransaction(newTransactionReference);
+        if (existingReversal != null) {
+            return existingReversal;
+        }
+        Long originalTxId = findTransaction(originalTransactionReference);
+        if (originalTxId == null) {
+            throw new PaymentGatewayException(
+                    "Original ledger transaction not found: " + originalTransactionReference);
+        }
+
+        String description = blank(reason) ? "Reversal of " + originalTransactionReference : reason;
+        List<LedgerEntryCommand> mirrored = mirrorEntries(originalTxId, description);
+        if (mirrored.isEmpty()) {
+            throw new PaymentGatewayException(
+                    "Original ledger transaction has no entries: " + originalTransactionReference);
+        }
+
+        return post(
+                newTransactionReference,
+                "REVERSAL",
+                originalTransactionReference,
+                description,
+                mirrored);
+    }
+
     @Transactional
     public TrialBalanceResult runTrialBalance(LocalDate runDate, String currency) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("run_date", runDate);
         p.addValue("currency", currency);
-        Map<String, Object> row = jdbcTemplate.queryForMap(
-            "SELECT "
-                + "COALESCE(SUM(CASE WHEN le.entry_direction='DR' THEN le.amount ELSE 0 END), 0) AS debits, "
-                + "COALESCE(SUM(CASE WHEN le.entry_direction='CR' THEN le.amount ELSE 0 END), 0) AS credits "
-                + "FROM ledger_entries le "
-                + "JOIN ledger_transactions lt ON lt.id = le.ledger_transaction_id "
-                + "WHERE DATE(lt.created_at) <= :run_date AND le.currency=:currency",
-            p);
+        Map<String, Object> row =
+                jdbcTemplate.queryForMap(
+                        "SELECT "
+                                + "COALESCE(SUM(CASE WHEN le.entry_direction='DR' THEN le.amount ELSE 0 END), 0) AS debits, "
+                                + "COALESCE(SUM(CASE WHEN le.entry_direction='CR' THEN le.amount ELSE 0 END), 0) AS credits "
+                                + "FROM ledger_entries le "
+                                + "JOIN ledger_transactions lt ON lt.id = le.ledger_transaction_id "
+                                + "WHERE DATE(lt.created_at) <= :run_date AND le.currency=:currency",
+                        p);
         BigDecimal debits = decimal(row.get("debits"));
         BigDecimal credits = decimal(row.get("credits"));
         TrialBalanceResult result = new TrialBalanceResult(runDate, currency, debits, credits);
@@ -75,33 +120,39 @@ public class DoubleEntryLedgerService {
         write.addValue("balanced", result.isBalanced() ? "YES" : "NO");
         write.addValue("message", result.isBalanced() ? "balanced" : "debits and credits differ");
         jdbcTemplate.update(
-            "INSERT INTO ledger_trial_balance_runs "
-                + "(run_date, currency, total_debits, total_credits, balanced_flag, message) "
-                + "VALUES (:run_date, :currency, :debits, :credits, :balanced, :message) "
-                + "ON DUPLICATE KEY UPDATE total_debits=:debits, total_credits=:credits, "
-                + "balanced_flag=:balanced, message=:message, created_at=CURRENT_TIMESTAMP",
-            write);
+                "INSERT INTO ledger_trial_balance_runs "
+                        + "(run_date, currency, total_debits, total_credits, balanced_flag, message) "
+                        + "VALUES (:run_date, :currency, :debits, :credits, :balanced, :message) "
+                        + "ON DUPLICATE KEY UPDATE total_debits=:debits, total_credits=:credits, "
+                        + "balanced_flag=:balanced, message=:message, created_at=CURRENT_TIMESTAMP",
+                write);
         return result;
     }
 
     public List<String> activeCurrencies() {
         return jdbcTemplate.query(
-            "SELECT DISTINCT currency FROM ledger_entries ORDER BY currency",
-            new MapSqlParameterSource(),
-            (rs, rowNum) -> rs.getString("currency"));
+                "SELECT DISTINCT currency FROM ledger_entries ORDER BY currency",
+                new MapSqlParameterSource(),
+                (rs, rowNum) -> rs.getString("currency"));
     }
 
     @Transactional
-    public void reserve(String reservationReference,
-                        long merchantId,
-                        String sourceReference,
-                        BigDecimal amount,
-                        String currency) {
-        if (blank(reservationReference) || merchantId <= 0 || blank(sourceReference) || blank(currency)) {
-            throw new PaymentGatewayException("Ledger reservation requires reference, merchant, source, and currency");
+    public void reserve(
+            String reservationReference,
+            long merchantId,
+            String sourceReference,
+            BigDecimal amount,
+            String currency) {
+        if (blank(reservationReference)
+                || merchantId <= 0
+                || blank(sourceReference)
+                || blank(currency)) {
+            throw new PaymentGatewayException(
+                    "Ledger reservation requires reference, merchant, source, and currency");
         }
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new PaymentGatewayException("Ledger reservation amount must be greater than zero");
+            throw new PaymentGatewayException(
+                    "Ledger reservation amount must be greater than zero");
         }
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("reservation_reference", reservationReference);
@@ -110,11 +161,11 @@ public class DoubleEntryLedgerService {
         p.addValue("amount", amount.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
         p.addValue("currency", currency.trim().toUpperCase());
         jdbcTemplate.update(
-            "INSERT INTO ledger_reservations "
-                + "(reservation_reference, merchant_id, source_reference, amount, currency, reservation_status) "
-                + "VALUES (:reservation_reference, :merchant_id, :source_reference, :amount, :currency, 'RESERVED') "
-                + "ON DUPLICATE KEY UPDATE source_reference=:source_reference",
-            p);
+                "INSERT INTO ledger_reservations "
+                        + "(reservation_reference, merchant_id, source_reference, amount, currency, reservation_status) "
+                        + "VALUES (:reservation_reference, :merchant_id, :source_reference, :amount, :currency, 'RESERVED') "
+                        + "ON DUPLICATE KEY UPDATE source_reference=:source_reference",
+                p);
     }
 
     @Transactional
@@ -135,9 +186,9 @@ public class DoubleEntryLedgerService {
         p.addValue("reservation_reference", reservationReference);
         p.addValue("status", status);
         return jdbcTemplate.update(
-            "UPDATE ledger_reservations SET reservation_status=:status "
-                + "WHERE reservation_reference=:reservation_reference AND reservation_status='RESERVED'",
-            p);
+                "UPDATE ledger_reservations SET reservation_status=:status "
+                        + "WHERE reservation_reference=:reservation_reference AND reservation_status='RESERVED'",
+                p);
     }
 
     private void validateEntries(List<LedgerEntryCommand> entries) {
@@ -146,9 +197,11 @@ public class DoubleEntryLedgerService {
         }
         for (LedgerEntryCommand entry : entries) {
             if (blank(entry.accountCode()) || blank(entry.direction()) || blank(entry.currency())) {
-                throw new PaymentGatewayException("Ledger entry account, direction, and currency are required");
+                throw new PaymentGatewayException(
+                        "Ledger entry account, direction, and currency are required");
             }
-            if (!"DR".equalsIgnoreCase(entry.direction()) && !"CR".equalsIgnoreCase(entry.direction())) {
+            if (!"DR".equalsIgnoreCase(entry.direction())
+                    && !"CR".equalsIgnoreCase(entry.direction())) {
                 throw new PaymentGatewayException("Ledger entry direction must be DR or CR");
             }
             if (entry.amount() == null || entry.amount().compareTo(BigDecimal.ZERO) <= 0) {
@@ -172,15 +225,46 @@ public class DoubleEntryLedgerService {
         return totals;
     }
 
+    private List<LedgerEntryCommand> mirrorEntries(long originalTxId, String memo) {
+        MapSqlParameterSource p = new MapSqlParameterSource("ledger_transaction_id", originalTxId);
+        return jdbcTemplate.query(
+                "SELECT la.account_code, la.account_name, la.account_type, la.owner_type, la.owner_id, "
+                        + "le.entry_direction, le.amount, le.currency "
+                        + "FROM ledger_entries le "
+                        + "JOIN ledger_accounts la ON la.id = le.account_id "
+                        + "WHERE le.ledger_transaction_id = :ledger_transaction_id",
+                p,
+                (rs, rowNum) -> {
+                    String flipped =
+                            "DR".equalsIgnoreCase(rs.getString("entry_direction")) ? "CR" : "DR";
+                    Object ownerIdObj = rs.getObject("owner_id");
+                    return new LedgerEntryCommand(
+                            rs.getString("account_code"),
+                            rs.getString("account_name"),
+                            rs.getString("account_type"),
+                            rs.getString("owner_type"),
+                            ownerIdObj == null ? null : rs.getLong("owner_id"),
+                            flipped,
+                            rs.getBigDecimal("amount"),
+                            rs.getString("currency"),
+                            memo);
+                });
+    }
+
     private Long findTransaction(String transactionReference) {
-        List<Long> ids = jdbcTemplate.query(
-            "SELECT id FROM ledger_transactions WHERE transaction_reference=:reference",
-            new MapSqlParameterSource("reference", transactionReference),
-            (rs, rowNum) -> rs.getLong("id"));
+        List<Long> ids =
+                jdbcTemplate.query(
+                        "SELECT id FROM ledger_transactions WHERE transaction_reference=:reference",
+                        new MapSqlParameterSource("reference", transactionReference),
+                        (rs, rowNum) -> rs.getLong("id"));
         return ids.isEmpty() ? null : ids.get(0);
     }
 
-    private long insertTransaction(String transactionReference, String sourceType, String sourceReference, String description) {
+    private long insertTransaction(
+            String transactionReference,
+            String sourceType,
+            String sourceReference,
+            String description) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("reference", transactionReference);
         p.addValue("source_type", sourceType);
@@ -188,10 +272,10 @@ public class DoubleEntryLedgerService {
         p.addValue("description", description);
         try {
             jdbcTemplate.update(
-                "INSERT INTO ledger_transactions "
-                    + "(transaction_reference, source_type, source_reference, description) "
-                    + "VALUES (:reference, :source_type, :source_reference, :description)",
-                p);
+                    "INSERT INTO ledger_transactions "
+                            + "(transaction_reference, source_type, source_reference, description) "
+                            + "VALUES (:reference, :source_type, :source_reference, :description)",
+                    p);
         } catch (DuplicateKeyException ignored) {
             Long existing = findTransaction(transactionReference);
             if (existing != null) {
@@ -199,28 +283,33 @@ public class DoubleEntryLedgerService {
             }
             throw ignored;
         }
-        Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
+        Long id =
+                jdbcTemplate.queryForObject(
+                        "SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
         return id == null ? 0L : id;
     }
 
     private long ensureAccount(LedgerEntryCommand entry) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("account_code", entry.accountCode());
-        p.addValue("account_name", blank(entry.accountName()) ? entry.accountCode() : entry.accountName());
+        p.addValue(
+                "account_name",
+                blank(entry.accountName()) ? entry.accountCode() : entry.accountName());
         p.addValue("account_type", blank(entry.accountType()) ? "CONTROL" : entry.accountType());
         p.addValue("owner_type", blank(entry.ownerType()) ? "SYSTEM" : entry.ownerType());
         p.addValue("owner_id", entry.ownerId());
         p.addValue("currency", entry.currency().trim().toUpperCase());
         jdbcTemplate.update(
-            "INSERT INTO ledger_accounts "
-                + "(account_code, account_name, account_type, owner_type, owner_id, currency) "
-                + "VALUES (:account_code, :account_name, :account_type, :owner_type, :owner_id, :currency) "
-                + "ON DUPLICATE KEY UPDATE account_name=:account_name, account_status='ACTIVE'",
-            p);
-        Long id = jdbcTemplate.queryForObject(
-            "SELECT id FROM ledger_accounts WHERE account_code=:account_code",
-            new MapSqlParameterSource("account_code", entry.accountCode()),
-            Long.class);
+                "INSERT INTO ledger_accounts "
+                        + "(account_code, account_name, account_type, owner_type, owner_id, currency) "
+                        + "VALUES (:account_code, :account_name, :account_type, :owner_type, :owner_id, :currency) "
+                        + "ON DUPLICATE KEY UPDATE account_name=:account_name, account_status='ACTIVE'",
+                p);
+        Long id =
+                jdbcTemplate.queryForObject(
+                        "SELECT id FROM ledger_accounts WHERE account_code=:account_code",
+                        new MapSqlParameterSource("account_code", entry.accountCode()),
+                        Long.class);
         return id == null ? 0L : id;
     }
 
@@ -233,10 +322,10 @@ public class DoubleEntryLedgerService {
         p.addValue("currency", entry.currency().trim().toUpperCase());
         p.addValue("memo", entry.memo());
         jdbcTemplate.update(
-            "INSERT INTO ledger_entries "
-                + "(ledger_transaction_id, account_id, entry_direction, amount, currency, entry_memo) "
-                + "VALUES (:ledger_transaction_id, :account_id, :direction, :amount, :currency, :memo)",
-            p);
+                "INSERT INTO ledger_entries "
+                        + "(ledger_transaction_id, account_id, entry_direction, amount, currency, entry_memo) "
+                        + "VALUES (:ledger_transaction_id, :account_id, :direction, :amount, :currency, :memo)",
+                p);
     }
 
     private BigDecimal decimal(Object value) {
