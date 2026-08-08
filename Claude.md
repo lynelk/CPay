@@ -136,9 +136,11 @@ Base package: `net.citotech.cito`.
   single-arg overloads from a merchant-facing code path. `WebhookEventCatalog.register(type,
   version, description, jsonSchema)` takes an explicit schema per event type (ADR 0006) — the 8
   transactional types (`payment.*`/`payout.*`/`refund.*`) share one `TRANSACTIONAL_ENVELOPE_SCHEMA`
-  constant requiring `transactionId`/`amount`/`currency`; a non-transactional type (e.g. billing's
-  `invoice.issued`) registers its own schema instead. `MerchantWebhookService.enqueue(...)` never
-  assumes a payload has those fields — only `WebhookEventCatalog.lookup(eventType)` must succeed.
+  constant requiring `transactionId`/`amount`/`currency`; `invoice.issued` (billing's first
+  non-transactional type, wired into `InvoiceService.send()`) registers its own
+  `INVOICE_ENVELOPE_SCHEMA` instead, requiring `invoiceId` in place of `transactionId`.
+  `MerchantWebhookService.enqueue(...)` never assumes a payload has the transactional fields —
+  only `WebhookEventCatalog.lookup(eventType)` must succeed.
 - **`export/`** — `TabularExportService` is the one reusable place to render tabular data as CSV or
   XLSX (streaming `SXSSFWorkbook`, disposed correctly); callers remain responsible for
   bounding/paginating the underlying query. Wired into merchant statement export
@@ -216,34 +218,56 @@ Base package: `net.citotech.cito`.
   balance-monitoring view (`/api/v2/admin/balance-monitoring/overview`, gated by the
   `balance-monitoring` flag) combining current gateway float balances, treasury positions, and the
   latest nightly float snapshots.
-- **`billing/`** — the billing engine (Phase 0/1 complete, `Docs/Adr/0003`-`0006`; merchant-scoped
+- **`billing/`** — the billing engine (Phase 0/1/2 complete, `Docs/Adr/0003`-`0006`; merchant-scoped
   1:1 for now, schema-ready for a future multi-tenant BaaS model). `tenancy/` — `BillingTenantResolver`
   resolves `merchantId → billing_tenant_id` (throws if unmapped; every merchant is backfilled a
   tenant by `V38`). `usage/` — `UsageGatewayService.recordUsage(...)` writes an idempotent
-  `billing_usage_events` row (dedup by `idempotency_key`, safe under concurrent retries). `outbox/` —
+  `billing_usage_events` row (dedup by `idempotency_key`, safe under concurrent retries);
+  `UsageEventOutboxHandler` is the first real outbox consumer, turning a
+  `PAYMENT_COLLECTION_SUBMITTED`/`PAYMENT_PAYOUT_SUBMITTED` outbox entry into one. `outbox/` —
   a classic transactional outbox (ADR 0005): `OutboxWriter.write(...)` inserts a `billing_outbox`
   row from inside the caller's own code path (no `@Transactional` of its own — joins whatever
   transaction is active, or auto-commits if none); `OutboxRelay` is a ShedLock-guarded `@Scheduled`
-  poller (matching `scheduler/LedgerOperationsScheduler`'s pattern) that dispatches each row to the
-  first registered `OutboxEventHandler` whose `supports(eventType)` matches, with exponential
-  backoff and a poison-message-to-`FAILED` path — **no `OutboxEventHandler` is registered yet**, so
-  `billing_outbox` rows are written but nothing consumes them into `billing_usage_events` until a
-  handler lands. `integration/cpay/` — `PaymentUsageOutboxHook.recordPaymentCollected(...)` is the
-  one hook point in `PaymentOrchestrationService.collect()` (after `Common.doPayIn` succeeds, right
-  before `queueWebhook`'s return), gated by the `billing-usage-outbox` feature flag (global default
-  off, per-merchant override via `merchant_feature_flags`) and never throws — mirrors
-  `queueWebhook`'s own "payment submission remains authoritative" convention in the same class.
-  `LegacyFeeSchedulePriceAdapter` is a read-only projection of `fees/FeeScheduleService` into the
-  `billing_price_book_versions`/`billing_price_components` (`V43`) shape for future shadow-price
-  comparison — flags a `TIER` schedule as not-yet-computable rather than reusing
-  `FeeSchedule.apply()`'s flat-fallback (a known gap, not a real tier calculation); nothing consumes
-  this projection yet either. `metering/` — `MeterAggregationService` does MVP `COUNT`/`SUM`
-  aggregation over `billing_usage_events` with an optional JSON dimension filter, driven by the
-  meter's own `billing_meters.aggregation_type` (`V39`) rather than a caller-supplied flag.
-  `reconciliation/` — `UsagePaymentReconciliationService` compares `merchant_transactions_log`
-  against `billing_usage_events` for a trailing window (the Phase 1 exit-criterion artifact); until
-  the outbox-handler gap above is closed, running it against live data shows full divergence by
-  design, not a bug.
+  poller (matching `scheduler/LedgerOperationsScheduler`'s pattern) that dispatches each row to
+  **every** registered `OutboxEventHandler` whose `supports(eventType)` matches — not just the
+  first, since independent side effects (usage recording, charge rating, cost rating) all need to
+  run off the same entry — with exponential backoff and a poison-message-to-`FAILED` path; three
+  handlers are wired today: `usage/UsageEventOutboxHandler`, `pricing/RatedChargeOutboxHandler`,
+  `cost/ProviderCostOutboxHandler`. `integration/cpay/` — `PaymentUsageOutboxHook` is the one hook
+  point in **both** `PaymentOrchestrationService.collect()` (after `Common.doPayIn` succeeds) and
+  `.payout()` (after the ledger reservation is captured), gated by the `billing-usage-outbox`
+  feature flag (global default off, per-merchant override via `merchant_feature_flags`) and never
+  throws — mirrors `queueWebhook`'s own "payment submission remains authoritative" convention in
+  the same class. `LegacyFeeSchedulePriceAdapter` is a read-only projection of
+  `fees/FeeScheduleService` into the `billing_price_book_versions`/`billing_price_components`
+  (`V43`) shape for future shadow-price comparison — flags a `TIER` schedule as not-yet-computable
+  rather than reusing `FeeSchedule.apply()`'s flat-fallback (a known gap, not a real tier
+  calculation); nothing consumes this specific projection yet. `pricing/` — a real rating engine:
+  `TierCalculator` does genuine graduated/marginal tier math (each band's rate applies only to its
+  own slice of the base amount, unlike legacy `FeeSchedule.apply()`, which never implemented
+  `TIER`); `RatingEngine` folds a resolved price book's `FLAT`/`PERCENTAGE`/`TIER`/`MINIMUM`/
+  `MAXIMUM` components (`billing_price_components`, `V43`) into one rated charge, `HALF_UP` scale
+  2; `PriceResolver` mirrors `FeeScheduleService`'s tenant-override-then-global lookup;
+  `PriceBookAuthoringService`/`PriceBookAdminController`
+  (`/api/v2/admin/billing/price-books`, `hasRole('ADMIN')`) let operators publish a new price-book
+  version without SQL, closing the previous version's `effective_to` rather than deleting it;
+  `RatedChargeOutboxHandler` computes and persists a `billing_rated_charges` (`V44`) row async via
+  the outbox — a no-op, not a failure, when no price book is configured yet for that
+  tenant/service/meter; `ChargeShadowComparisonService` compares `RatingEngine`'s rated amount
+  against the legacy `DoPayGateway` charge already on `merchant_transactions_log.charges` for
+  observability only — making `RatingEngine` authoritative instead of the legacy computation is a
+  deliberately separate, not-yet-scheduled slice (dual-charging risk). `cost/` —
+  `ProviderCostOutboxHandler` computes what CPay pays the provider by reusing the **same**
+  `RatingEngine`/`RatedChargeRepository` against `charge_type='PROVIDER_COST'` instead of a
+  parallel schema — cost and price are independently effective-dated for free since they're just
+  different rows in the same price-book tables. `metering/` — `MeterAggregationService` does MVP
+  `COUNT`/`SUM` aggregation over `billing_usage_events` with an optional JSON dimension filter,
+  driven by the meter's own `billing_meters.aggregation_type` (`V39`) rather than a
+  caller-supplied flag. `reconciliation/` — `UsagePaymentReconciliationService` compares
+  `merchant_transactions_log` against `billing_usage_events` for a trailing window (the Phase 1
+  exit-criterion artifact); with the outbox handlers now wired, a merchant with the
+  `billing-usage-outbox` flag on reconciles cleanly once the relay runs — proved end to end by
+  `PaymentPipelineReconciliationTestcontainersTest`.
 - **`compliance/`** — `RiskDecisionService` now also enforces a KYC-tier-aware cap
   (`compliance_profiles.tier` for `entity_type='MERCHANT'`) and a payer-velocity rule capping how
   often the same payer identifier can transact in a rolling window, alongside the existing blocklist
@@ -274,8 +298,8 @@ backfilling successful legacy pay-in/pay-out rows that are missing their idempot
 `CPAY_LEDGER_REPAIR_LIMIT` and do not broaden it to failed or non-terminal rows without an explicit
 accounting decision.
 
-Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V43` (through
-`V43__billing_price_books.sql`); do not mark a snapshot as a real release snapshot unless it was
+Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V44` (through
+`V44__billing_rated_charges.sql`); do not mark a snapshot as a real release snapshot unless it was
 generated from a freshly migrated database with the documented `mysqldump --no-data` command. The
 committed snapshots still reflect `V30` and must be regenerated before the next release tag.
 

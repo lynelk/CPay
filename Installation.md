@@ -94,9 +94,9 @@ Recent production-control migrations include:
 - per-merchant feature-registry override rows (`V36`)
 - GnuGrid identity-verification records (`V37`)
 - billing tenancy core tables (`V38`)
-- billing service/meter catalog (`V39`), immutable usage-event stream (`V40`), transactional outbox (`V41`), a feature-flag seed row (`V42`), and price-book schema (`V43`)
+- billing service/meter catalog (`V39`), immutable usage-event stream (`V40`), transactional outbox (`V41`), a feature-flag seed row (`V42`), price-book schema (`V43`), and rated-charge/cost records (`V44`)
 
-Flyway is currently at `V43`.
+Flyway is currently at `V44`.
 
 For staging or production, always test migrations on a copy of the database before applying them to a live environment.
 
