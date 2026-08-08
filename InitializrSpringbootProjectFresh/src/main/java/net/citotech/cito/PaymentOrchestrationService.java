@@ -148,6 +148,7 @@ public class PaymentOrchestrationService {
             gatewayMetrics.incrementTransactionCompleted(
                     gatewayId, Transaction.TX_TYPE_PAYOUT, tx.getStatus());
             queueWebhook(merchant, "payout.pending", request, result);
+            paymentUsageOutboxHook.recordPaymentPayoutSubmitted(merchant, request, tx);
             return result;
         } catch (RuntimeException ex) {
             ledgerService.releaseReservation(reservationReference);

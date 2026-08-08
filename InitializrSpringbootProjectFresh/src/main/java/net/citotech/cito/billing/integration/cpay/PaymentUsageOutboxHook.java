@@ -16,10 +16,11 @@ import org.springframework.stereotype.Service;
  * The single hook point where CPay's payment path records a {@code billing_outbox} entry (ADR
  * 0005), gated by the {@code billing-usage-outbox} feature flag (global default off, V42; a
  * per-merchant {@code merchant_feature_flags} override can opt a merchant in early via {@link
- * FeatureRegistryService}). Called from {@code PaymentOrchestrationService.collect()} only, after
- * {@code Common.doPayIn} has already durably recorded the payment - like {@code queueWebhook} in
- * that same class, this method never throws: the payment submission is authoritative and must never
- * be rolled back or fail because of this shadow write.
+ * FeatureRegistryService}). Called from {@code PaymentOrchestrationService.collect()} (after {@code
+ * Common.doPayIn} succeeds) and {@code payout()} (after the ledger reservation is captured and
+ * before it can be released) - like {@code queueWebhook} in that same class, neither call ever
+ * throws: the payment/payout result is authoritative and must never be rolled back or fail because
+ * of this shadow write.
  */
 @Service
 public class PaymentUsageOutboxHook {
@@ -40,6 +41,16 @@ public class PaymentUsageOutboxHook {
     }
 
     public void recordPaymentCollected(Merchant merchant, PaymentRequest request, Transaction tx) {
+        recordSubmitted(merchant, request, tx, "PAYMENT_COLLECTION_SUBMITTED");
+    }
+
+    public void recordPaymentPayoutSubmitted(
+            Merchant merchant, PaymentRequest request, Transaction tx) {
+        recordSubmitted(merchant, request, tx, "PAYMENT_PAYOUT_SUBMITTED");
+    }
+
+    private void recordSubmitted(
+            Merchant merchant, PaymentRequest request, Transaction tx, String eventType) {
         if (!featureRegistry.isEnabled(FLAG_KEY, merchant.getId())) {
             return;
         }
@@ -51,8 +62,7 @@ public class PaymentUsageOutboxHook {
             payload.put("transactionReference", tx.getTx_unique_id());
             payload.put("amount", request.getAmount());
             payload.put("currency", request.getCurrency());
-            outboxWriter.write(
-                    "PAYMENT", tx.getTx_unique_id(), "PAYMENT_COLLECTION_SUBMITTED", payload);
+            outboxWriter.write("PAYMENT", tx.getTx_unique_id(), eventType, payload);
         } catch (Exception ex) {
             logger.log(
                     Level.WARNING,

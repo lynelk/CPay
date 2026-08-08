@@ -97,6 +97,76 @@ class PaymentUsageOutboxHookTest {
                 .recordPaymentCollected(merchant(42L), request(), transaction());
     }
 
+    @Test
+    void recordPaymentPayoutSubmittedIsANoOpWhenTheFlagIsOff() {
+        FeatureRegistryService featureRegistry = mock(FeatureRegistryService.class);
+        BillingTenantResolver tenantResolver = mock(BillingTenantResolver.class);
+        OutboxWriter outboxWriter = mock(OutboxWriter.class);
+        when(featureRegistry.isEnabled(eq("billing-usage-outbox"), eq(42L))).thenReturn(false);
+
+        new PaymentUsageOutboxHook(featureRegistry, tenantResolver, outboxWriter)
+                .recordPaymentPayoutSubmitted(merchant(42L), request(), transaction());
+
+        verify(outboxWriter, never()).write(anyString(), anyString(), anyString(), anyMap());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void recordPaymentPayoutSubmittedWritesAnOutboxEntryWhenTheFlagIsOn() {
+        FeatureRegistryService featureRegistry = mock(FeatureRegistryService.class);
+        BillingTenantResolver tenantResolver = mock(BillingTenantResolver.class);
+        OutboxWriter outboxWriter = mock(OutboxWriter.class);
+        when(featureRegistry.isEnabled(eq("billing-usage-outbox"), eq(42L))).thenReturn(true);
+        when(tenantResolver.resolveTenantId(42L)).thenReturn(7L);
+
+        new PaymentUsageOutboxHook(featureRegistry, tenantResolver, outboxWriter)
+                .recordPaymentPayoutSubmitted(merchant(42L), request(), transaction());
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(outboxWriter)
+                .write(
+                        eq("PAYMENT"),
+                        eq("TX-1"),
+                        eq("PAYMENT_PAYOUT_SUBMITTED"),
+                        payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue())
+                .containsEntry("billingTenantId", 7L)
+                .containsEntry("merchantId", 42L)
+                .containsEntry("transactionReference", "TX-1")
+                .containsEntry("amount", "1000")
+                .containsEntry("currency", "UGX");
+    }
+
+    @Test
+    void recordPaymentPayoutSubmittedSwallowsAnUnmappedBillingTenant() {
+        FeatureRegistryService featureRegistry = mock(FeatureRegistryService.class);
+        BillingTenantResolver tenantResolver = mock(BillingTenantResolver.class);
+        OutboxWriter outboxWriter = mock(OutboxWriter.class);
+        when(featureRegistry.isEnabled(eq("billing-usage-outbox"), eq(42L))).thenReturn(true);
+        when(tenantResolver.resolveTenantId(42L))
+                .thenThrow(
+                        new PaymentGatewayException("No billing tenant is mapped for merchant 42"));
+
+        new PaymentUsageOutboxHook(featureRegistry, tenantResolver, outboxWriter)
+                .recordPaymentPayoutSubmitted(merchant(42L), request(), transaction());
+
+        verify(outboxWriter, never()).write(anyString(), anyString(), anyString(), anyMap());
+    }
+
+    @Test
+    void recordPaymentPayoutSubmittedSwallowsAnOutboxWriteFailure() {
+        FeatureRegistryService featureRegistry = mock(FeatureRegistryService.class);
+        BillingTenantResolver tenantResolver = mock(BillingTenantResolver.class);
+        OutboxWriter outboxWriter = mock(OutboxWriter.class);
+        when(featureRegistry.isEnabled(eq("billing-usage-outbox"), eq(42L))).thenReturn(true);
+        when(tenantResolver.resolveTenantId(42L)).thenReturn(7L);
+        when(outboxWriter.write(anyString(), anyString(), anyString(), anyMap()))
+                .thenThrow(new RuntimeException("db down"));
+
+        new PaymentUsageOutboxHook(featureRegistry, tenantResolver, outboxWriter)
+                .recordPaymentPayoutSubmitted(merchant(42L), request(), transaction());
+    }
+
     private Merchant merchant(long id) {
         Merchant merchant = new Merchant();
         merchant.setId(id);

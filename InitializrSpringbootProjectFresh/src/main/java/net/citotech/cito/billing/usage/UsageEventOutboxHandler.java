@@ -8,14 +8,16 @@ import org.springframework.stereotype.Component;
 
 /**
  * The first real consumer of {@code billing_outbox} entries - the gap Phase 1 deliberately left
- * open. Turns a {@code PAYMENT_COLLECTION_SUBMITTED} entry into a {@code billing_usage_events} row
- * via {@link UsageGatewayService}, which is what makes {@code MeterAggregationService} and {@code
- * UsagePaymentReconciliationService} produce real numbers for the first time. {@code
- * PAYMENT_PAYOUT_SUBMITTED} support lands alongside the payout outbox hook itself (Slice 18).
+ * open. Turns a {@code PAYMENT_COLLECTION_SUBMITTED}/{@code PAYMENT_PAYOUT_SUBMITTED} entry into a
+ * {@code billing_usage_events} row via {@link UsageGatewayService}, which is what makes {@code
+ * MeterAggregationService} and {@code UsagePaymentReconciliationService} produce real numbers for
+ * the first time. Both event types map to the same {@code PAYMENT}/{@code payment_event_count}
+ * service/meter (V39 seeded one COUNT meter covering both directions).
  */
 @Component
 public class UsageEventOutboxHandler implements OutboxEventHandler {
     private static final String PAYMENT_COLLECTION_SUBMITTED = "PAYMENT_COLLECTION_SUBMITTED";
+    private static final String PAYMENT_PAYOUT_SUBMITTED = "PAYMENT_PAYOUT_SUBMITTED";
 
     private final UsageGatewayService usageGatewayService;
 
@@ -25,7 +27,8 @@ public class UsageEventOutboxHandler implements OutboxEventHandler {
 
     @Override
     public boolean supports(String eventType) {
-        return PAYMENT_COLLECTION_SUBMITTED.equals(eventType);
+        return PAYMENT_COLLECTION_SUBMITTED.equals(eventType)
+                || PAYMENT_PAYOUT_SUBMITTED.equals(eventType);
     }
 
     @Override

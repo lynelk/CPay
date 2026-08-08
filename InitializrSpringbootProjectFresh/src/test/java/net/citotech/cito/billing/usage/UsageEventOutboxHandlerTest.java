@@ -21,12 +21,12 @@ import org.junit.jupiter.api.Test;
 class UsageEventOutboxHandlerTest {
 
     @Test
-    void supportsOnlyMatchesPaymentCollectionSubmitted() {
+    void supportsMatchesBothPaymentDirectionsOnly() {
         UsageEventOutboxHandler handler =
                 new UsageEventOutboxHandler(mock(UsageGatewayService.class));
 
         assertThat(handler.supports("PAYMENT_COLLECTION_SUBMITTED")).isTrue();
-        assertThat(handler.supports("PAYMENT_PAYOUT_SUBMITTED")).isFalse();
+        assertThat(handler.supports("PAYMENT_PAYOUT_SUBMITTED")).isTrue();
         assertThat(handler.supports("SOME_OTHER_EVENT")).isFalse();
     }
 
@@ -96,5 +96,41 @@ class UsageEventOutboxHandlerTest {
         verify(usageGatewayService)
                 .recordUsage(
                         eq(99L), any(), any(), any(), any(), any(), anyMap(), eq("TX-2"), any());
+    }
+
+    @Test
+    void handleRecordsAUsageEventForAPayoutSubmission() {
+        UsageGatewayService usageGatewayService = mock(UsageGatewayService.class);
+        Instant createdAt = Instant.now();
+        BillingOutboxEntry entry =
+                new BillingOutboxEntry(
+                        3L,
+                        "PAYMENT",
+                        "TX-3",
+                        "PAYMENT_PAYOUT_SUBMITTED",
+                        Map.of(
+                                "merchantId", 55L,
+                                "transactionReference", "TX-3",
+                                "currency", "UGX"),
+                        OutboxEntryStatus.PROCESSING,
+                        0,
+                        createdAt,
+                        null,
+                        createdAt,
+                        createdAt);
+
+        new UsageEventOutboxHandler(usageGatewayService).handle(entry);
+
+        verify(usageGatewayService)
+                .recordUsage(
+                        eq(55L),
+                        eq("PAYMENT"),
+                        eq("payment_event_count"),
+                        any(),
+                        any(),
+                        any(),
+                        anyMap(),
+                        eq("TX-3"),
+                        eq("PAYMENT_PAYOUT_SUBMITTED:TX-3"));
     }
 }
