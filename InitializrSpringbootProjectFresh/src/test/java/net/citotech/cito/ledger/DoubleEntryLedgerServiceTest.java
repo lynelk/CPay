@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -83,6 +85,116 @@ class DoubleEntryLedgerServiceTest {
 
         assertThat(transactionId).isEqualTo(55L);
         verify(jdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void postThrowsWhenTheCurrencyIsLockedForTheCurrentPeriod() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_transactions"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_period_locks"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of("finance-ops"));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        assertThatThrownBy(
+                        () ->
+                                service.post(
+                                        "TX-LOCKED",
+                                        "PAYMENT",
+                                        "PAY-LOCKED",
+                                        "should be blocked",
+                                        List.of(
+                                                entry("merchant:cash", "DR", "1000"),
+                                                entry("provider:float", "CR", "1000"))))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("UGX")
+                .hasMessageContaining("locked")
+                .hasMessageContaining("finance-ops");
+
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO ledger_transactions"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void postSucceedsWhenNoPeriodLockIsConfiguredForTheCurrency() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_transactions"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_period_locks"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForObject(
+                        eq("SELECT LAST_INSERT_ID()"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
+                .thenReturn(99L);
+        when(jdbcTemplate.queryForObject(
+                        contains("FROM ledger_accounts"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
+                .thenReturn(501L);
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        long txId =
+                service.post(
+                        "TX-UNLOCKED",
+                        "PAYMENT",
+                        "PAY-UNLOCKED",
+                        "fail-open default",
+                        List.of(
+                                entry("merchant:cash", "DR", "1000"),
+                                entry("provider:float", "CR", "1000")));
+
+        assertThat(txId).isEqualTo(99L);
+        verify(jdbcTemplate)
+                .query(
+                        contains("FROM ledger_period_locks"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void postSkipsThePeriodLockCheckForAnIdempotentReplay() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_transactions"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of(55L));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        long txId =
+                service.post(
+                        "TX-EXISTS-2",
+                        "PAYMENT",
+                        "PAY-EXISTS-2",
+                        "idempotent replay",
+                        List.of(
+                                entry("merchant:cash", "DR", "1000"),
+                                entry("provider:float", "CR", "1000")));
+
+        assertThat(txId).isEqualTo(55L);
+        verify(jdbcTemplate, never())
+                .query(
+                        contains("FROM ledger_period_locks"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class));
     }
 
     @Test

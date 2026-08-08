@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -43,6 +44,7 @@ public class DoubleEntryLedgerService {
         if (existing != null) {
             return existing;
         }
+        checkPeriodsNotLocked(totals.keySet());
 
         long txId =
                 insertTransaction(transactionReference, sourceType, sourceReference, description);
@@ -223,6 +225,36 @@ public class DoubleEntryLedgerService {
             }
         }
         return totals;
+    }
+
+    /**
+     * Rejects a posting whose currency has an active {@code ledger_period_locks} row covering today
+     * (ADR 0004) - {@code post()}/{@code reverse()} always post as of "now", so a lock only ever
+     * blocks *today's* postings, never arbitrary historical periods. Fail-open by construction: an
+     * empty (or fully released/expired) lock table means this query returns no rows for every
+     * currency and the method returns normally, which is the default and expected state - {@code
+     * post()} has 9 real production dependents and an accidental lock must never silently halt
+     * payment processing platform-wide.
+     */
+    private void checkPeriodsNotLocked(Set<String> currencies) {
+        for (String currency : currencies) {
+            List<String> lockedBy =
+                    jdbcTemplate.query(
+                            "SELECT locked_by FROM ledger_period_locks "
+                                    + "WHERE currency = :currency AND released_at IS NULL "
+                                    + "AND period_start <= CURRENT_DATE AND period_end >= CURRENT_DATE "
+                                    + "LIMIT 1",
+                            new MapSqlParameterSource("currency", currency),
+                            (rs, rowNum) -> rs.getString("locked_by"));
+            if (!lockedBy.isEmpty()) {
+                throw new PaymentGatewayException(
+                        "Ledger postings for "
+                                + currency
+                                + " are locked for the current period (locked by "
+                                + lockedBy.get(0)
+                                + ")");
+            }
+        }
     }
 
     private List<LedgerEntryCommand> mirrorEntries(long originalTxId, String memo) {

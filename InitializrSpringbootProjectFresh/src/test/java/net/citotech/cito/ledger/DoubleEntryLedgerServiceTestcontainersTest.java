@@ -1,6 +1,7 @@
 package net.citotech.cito.ledger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -8,6 +9,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
+import net.citotech.cito.gateway.PaymentGatewayException;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -188,6 +190,61 @@ class DoubleEntryLedgerServiceTestcontainersTest {
                                         + reversalTxId,
                                 Integer.class);
         assertThat(reversalEntryCount).isEqualTo(2);
+    }
+
+    @Test
+    void postThrowsWhenARealLockRowCoversTodayForTheCurrency() {
+        NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+        jdbcTemplate
+                .getJdbcTemplate()
+                .update(
+                        "INSERT INTO ledger_period_locks (currency, period_start, period_end, locked_by, reason) "
+                                + "VALUES ('KES', CURRENT_DATE, CURRENT_DATE, 'finance-ops', 'testcontainers lock test')");
+
+        assertThatThrownBy(
+                        () ->
+                                service.post(
+                                        "TX-K1-LOCKED",
+                                        "PAYMENT",
+                                        "PAY-K1-LOCKED",
+                                        "should be rejected",
+                                        List.of(
+                                                entry(
+                                                        "merchant:1004:KES:collections_payable",
+                                                        "CR",
+                                                        "500"),
+                                                entry("provider:mtn_momo:KES:float", "DR", "500"))))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("KES")
+                .hasMessageContaining("locked");
+
+        Integer transactionCount =
+                jdbcTemplate
+                        .getJdbcTemplate()
+                        .queryForObject(
+                                "SELECT COUNT(*) FROM ledger_transactions WHERE transaction_reference = 'TX-K1-LOCKED'",
+                                Integer.class);
+        assertThat(transactionCount).isZero();
+    }
+
+    @Test
+    void postStillSucceedsForAnUnrelatedCurrencyWhileAnotherCurrencyIsLocked() {
+        NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+        // Reuses the KES lock inserted by the test above (same class-level dataSource); UGX has
+        // no lock row at all, proving the fail-open default holds per-currency, not globally.
+        long txId =
+                service.post(
+                        "TX-K1-UNLOCKED-CURRENCY",
+                        "PAYMENT",
+                        "PAY-K1-UNLOCKED-CURRENCY",
+                        "different currency, should succeed",
+                        List.of(
+                                entry("merchant:1005:UGX:collections_payable", "CR", "750"),
+                                entry("provider:mtn_momo:UGX:float", "DR", "750")));
+
+        assertThat(txId).isPositive();
     }
 
     private LedgerEntryCommand entry(String account, String direction, String amount) {
