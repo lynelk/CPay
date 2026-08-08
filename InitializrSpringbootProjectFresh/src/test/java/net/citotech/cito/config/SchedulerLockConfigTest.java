@@ -130,6 +130,28 @@ class SchedulerLockConfigTest {
     }
 
     @Test
+    void smsPendSendBatchIsShedLockedDespiteBeingHttpTriggeredOnly() throws NoSuchMethodException {
+        // Audit G1-bis: testSendPendingSmsCron bills merchants (DR) and sends SMS with only a
+        // single-host file lock before this. Its @Scheduled is intentionally commented out (it
+        // runs on operator/script invocation), so unlike the pure-scheduler crons it legitimately
+        // stays @PostMapping - but it must still carry ShedLock so two replicas can't process the
+        // same PENDING batch concurrently.
+        Method smsCron = TransactionsLogController.class.getDeclaredMethod("testSendPendingSmsCron");
+
+        SchedulerLock smsLock = smsCron.getAnnotation(SchedulerLock.class);
+        assertThat(smsLock).isNotNull();
+        assertThat(smsLock.name()).isEqualTo("testSendPendingSmsCron");
+        // lockAtMostFor exceeds a plausible batch run + operator retry window; lockAtLeastFor
+        // mirrors the payout cron's 30s floor so a fast/failed run still leaves the lock held long
+        // enough to avoid an immediate duplicate operator retry.
+        assertThat(smsLock.lockAtMostFor()).isEqualTo("PT15M");
+        assertThat(smsLock.lockAtLeastFor()).isEqualTo("PT30S");
+        // Deliberately no active @Scheduled - operator-triggered only.
+        assertThat(smsCron.getAnnotation(Scheduled.class)).isNull();
+        assertThat(smsCron.getAnnotation(PostMapping.class)).isNotNull();
+    }
+
+    @Test
     void bothMoneyMovementCronsAreScheduledLockedAndNotHttpMapped() throws NoSuchMethodException {
         Method statusCheckCron =
                 TransactionsLogController.class.getDeclaredMethod("testCheckstatusCron");

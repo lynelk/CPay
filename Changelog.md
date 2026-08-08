@@ -88,6 +88,8 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Tightened CORS headers and added standard security headers.
 - The pre-existing local scheduler file locks are now a secondary safeguard behind ShedLock's distributed lock, rather than the only protection against concurrent cron execution.
 - Bumped `org.json` (20240303 → 20260719), Apache POI (5.2.5 → 5.5.1), and Bucket4j (7.6.0 → 8.0.1, switched from the now-relocated `com.github.vladimir-bukhtoyarov` Maven coordinates to the current `com.bucket4j` ones) after a dependency-currency review.
+- Continued dependency currency (Track A): Bucket4j-core 8.0.1 → 8.10.1 and springdoc-openapi-starter-webmvc-ui 3.0.3 → 3.1.0 (backend, both verified via the full 668-test suite and the Spotless verify gate); frontend safe-group patch/minor bumps (react-router-dom 7.18.2, Vite 8.2.1, @vitejs/plugin-react 6.0.5, Tailwind 4.3.3, @tanstack/react-query 5.101.4, typescript-eslint 8.66.0, ESLint 9.39.5 and others) with `npm audit fix` clearing the two transient dev vulnerabilities (brace-expansion, fast-uri) and the esbuild install script approved; infra/SDK bumps — MySQL image pinned 8.4 → **8.4.10** (June 2026 critical patch) in `compose.yaml`, Maven Docker build-stage image 3.9.9 → **3.9.16** (runtime keeps the floating `eclipse-temurin:21-jre` tag so JDK security patches are picked up on rebuild), and the Python SDK's `cryptography` floor raised 42.0.0 → **47.0.0** (Node/PHP SDKs are dependency-manifest-free pure-stdlib and needed no change). React 19 remains a deliberately separate later PR; wiremock-standalone stays 3.x pending a stable 4.x.
+- Removed an unused `Section` import from `ModulePayoutApprovals.tsx` flagged by the ESLint upgrade, leaving `npm run lint` clean (0 errors, 0 warnings).
 
 ### Fixed
 
@@ -97,6 +99,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 - Removed the runtime TLS verification bypass path; local development should use trusted test certificates or provider sandboxes instead of a global trust-all switch.
 - Added a legacy callback terminal-state/provider-reference guard to avoid re-applying the ledger/statement path when a provider redelivers the same terminal callback.
 - Fixed SMS provider rejection handling so non-2xx provider responses are marked `REJECTED` and refunded instead of being recorded as sent.
+- Fixed the SMS pending-send batch (`POST /transactions/testSendPendingSmsCron`) being protected only by a single-host filesystem lock in HA deployments: it now carries `@SchedulerLock(name = "testSendPendingSmsCron", PT15M/PT30S)` so two replicas can no longer process the same PENDING batch concurrently (billing merchants twice / double-sending SMS). Regression coverage added in `SchedulerLockConfigTest`.
 
 ### Operational
 

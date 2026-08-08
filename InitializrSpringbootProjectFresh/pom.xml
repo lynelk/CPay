@@ -72,11 +72,6 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.0.3</version>
-        </dependency>
         <!-- Audit J8: dependency currency check. org.json was over two years behind (20240303 ->
              20260719); org.json's frequent dated releases are almost entirely small parser/edge-case
              fixes with no API surface changes, so this is a safe, low-risk bump. -->
@@ -109,12 +104,12 @@
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
-            <version>8.0.1</version>
+            <version>8.10.1</version>
         </dependency>
         <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>9.0</version>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.1.0</version>
         </dependency>
         <!-- Audit H1: routes any remaining java.util.logging output (our own not-yet-converted
              classes, and third-party libraries) through the same SLF4J/Logback pipeline as the

@@ -6296,6 +6296,13 @@ public class TransactionsLogController {
     }
 
     @PostMapping(path = "/testSendPendingSmsCron")
+    // Audit G1-bis: this SMS pend-send batch bills the merchant (DR), sends the SMS, and reverses
+    // (CR) on failure. Before this it was guarded only by a single-host file lock
+    // (Common.CLASS_PATH_SEND_SMS_SERVICE_TX_LOCK), so two replicas could run the same PENDING
+    // batch concurrently and double-bill/double-send. ShedLock now guards the whole method
+    // cross-instance, exactly like testCheckstatusCron/paymentsPayCron. The @Scheduled below
+    // stays commented out - this runs on operator/script invocation only.
+    @SchedulerLock(name = "testSendPendingSmsCron", lockAtMostFor = "PT15M", lockAtLeastFor = "PT30S")
 
     // @Scheduled(fixedDelay = 3000, initialDelay = 1000)
     public String testSendPendingSmsCron(/*@RequestBody String requestBody,
