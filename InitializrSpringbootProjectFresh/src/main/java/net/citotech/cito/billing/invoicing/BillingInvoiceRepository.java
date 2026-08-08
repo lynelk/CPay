@@ -90,6 +90,32 @@ public class BillingInvoiceRepository {
                                 rs.getBigDecimal("rated_amount")));
     }
 
+    /**
+     * Same filter as {@link #findUnstagedCustomerCharges}, as a count only - used by {@code
+     * BillingCompletenessGateService}, which only needs to know how many charges are still
+     * unstaged, not their details. The WHERE clause is intentionally duplicated rather than shared
+     * with {@link #findUnstagedCustomerCharges} to keep each query self-contained and simple.
+     */
+    public int countUnstagedCustomerCharges(
+            long billingTenantId, String currency, LocalDate periodStart, LocalDate periodEnd) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("billing_tenant_id", billingTenantId);
+        p.addValue("currency", currency);
+        p.addValue("period_start", periodStart);
+        p.addValue("period_end", periodEnd);
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM billing_rated_charges "
+                                + "WHERE billing_tenant_id = :billing_tenant_id AND currency = :currency "
+                                + "AND charge_type = 'CUSTOMER_CHARGE' "
+                                + "AND DATE(computed_at) BETWEEN :period_start AND :period_end "
+                                + "AND id NOT IN (SELECT billing_rated_charge_id FROM billing_invoice_lines "
+                                + "WHERE billing_rated_charge_id IS NOT NULL)",
+                        p,
+                        Integer.class);
+        return count == null ? 0 : count;
+    }
+
     public void insertLine(
             long billingInvoiceId,
             Long billingRatedChargeId,
