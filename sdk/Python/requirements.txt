@@ -1,1 +1,4 @@
-cryptography>=42.0.0
+# Floor raised from 42.0.0 (Jan 2024) to the 2026 patched line: the SDK's RSA-PKCS1v15-SHA256
+# signing only needs the stable hazmat API, so merchants get advisory fixes without bundling
+# the newest release. Current stable as of Aug 2026 is 49.0.0.
+cryptography>=47.0.0
