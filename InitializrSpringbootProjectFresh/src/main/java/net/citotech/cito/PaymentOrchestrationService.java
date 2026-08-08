@@ -11,6 +11,7 @@ import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.api.v2.dto.PaymentChannelResponse;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
+import net.citotech.cito.billing.integration.cpay.PaymentUsageOutboxHook;
 import net.citotech.cito.compliance.RiskDecisionService;
 import net.citotech.cito.gateway.GatewayCapabilities;
 import net.citotech.cito.gateway.LegacyGatewayAdapter;
@@ -35,14 +36,17 @@ public class PaymentOrchestrationService {
     private final DoubleEntryLedgerService ledgerService;
     private final MerchantWebhookService webhookService;
     private final GatewayMetrics gatewayMetrics;
+    private final PaymentUsageOutboxHook paymentUsageOutboxHook;
 
-    public PaymentOrchestrationService(NamedParameterJdbcTemplate jdbcTemplate,
-                                       PlatformTransactionManager transactionManager,
-                                       PaymentChannelRegistry paymentChannelRegistry,
-                                       RiskDecisionService riskDecisionService,
-                                       DoubleEntryLedgerService ledgerService,
-                                       MerchantWebhookService webhookService,
-                                       GatewayMetrics gatewayMetrics) {
+    public PaymentOrchestrationService(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            PaymentChannelRegistry paymentChannelRegistry,
+            RiskDecisionService riskDecisionService,
+            DoubleEntryLedgerService ledgerService,
+            MerchantWebhookService webhookService,
+            GatewayMetrics gatewayMetrics,
+            PaymentUsageOutboxHook paymentUsageOutboxHook) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
         this.paymentChannelRegistry = paymentChannelRegistry;
@@ -50,11 +54,17 @@ public class PaymentOrchestrationService {
         this.ledgerService = ledgerService;
         this.webhookService = webhookService;
         this.gatewayMetrics = gatewayMetrics;
+        this.paymentUsageOutboxHook = paymentUsageOutboxHook;
     }
 
-    public PaymentResult collect(PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
+    public PaymentResult collect(
+            PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
         validatePaymentRequest(request, true);
-        Merchant merchant = validateMerchant(request.getMerchantNumber(), verifiedMerchant, Common.API_MOBILE_MONEY_PAYIN);
+        Merchant merchant =
+                validateMerchant(
+                        request.getMerchantNumber(),
+                        verifiedMerchant,
+                        Common.API_MOBILE_MONEY_PAYIN);
         riskDecisionService.authorizePayment(merchant, request, "COLLECT");
         String accountIdentifier = request.getPayer().getValue();
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
@@ -85,14 +95,21 @@ public class PaymentOrchestrationService {
         }
         postLedgerEntries("COLLECT", request, merchant, gatewayId, tx, amount, tx.getCharges());
         PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
-        gatewayMetrics.incrementTransactionCompleted(gatewayId, Transaction.TX_TYPE_PAYIN, tx.getStatus());
+        gatewayMetrics.incrementTransactionCompleted(
+                gatewayId, Transaction.TX_TYPE_PAYIN, tx.getStatus());
         queueWebhook(merchant, "payment.pending", request, result);
+        paymentUsageOutboxHook.recordPaymentCollected(merchant, request, tx);
         return result;
     }
 
-    public PaymentResult payout(PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
+    public PaymentResult payout(
+            PaymentRequest request, Merchant verifiedMerchant, String originateIp) {
         validatePaymentRequest(request, false);
-        Merchant merchant = validateMerchant(request.getMerchantNumber(), verifiedMerchant, Common.API_MOBILE_MONEY_PAYOUT);
+        Merchant merchant =
+                validateMerchant(
+                        request.getMerchantNumber(),
+                        verifiedMerchant,
+                        Common.API_MOBILE_MONEY_PAYOUT);
         riskDecisionService.authorizePayment(merchant, request, "PAYOUT");
         String accountIdentifier = request.getPayee().getValue();
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
@@ -113,20 +130,23 @@ public class PaymentOrchestrationService {
         tx.setTx_cost(DoPayGateway.getCostOfOutboundCharges(amount, chargeDetails));
 
         BigDecimal reservedAmount = MoneyAmount.of(String.valueOf(amount + charges)).asBigDecimal();
-        String reservationReference = "payout-reserve:" + merchant.getAccount_number() + ":" + request.getReference();
+        String reservationReference =
+                "payout-reserve:" + merchant.getAccount_number() + ":" + request.getReference();
         ledgerService.reserve(
-            reservationReference,
-            merchant.getId(),
-            request.getReference(),
-            reservedAmount,
-            request.getCurrency());
+                reservationReference,
+                merchant.getId(),
+                request.getReference(),
+                reservedAmount,
+                request.getCurrency());
         try {
             // skipRiskCheck=true: see the matching comment in collect() above.
-            String legacyResult = Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager, true);
+            String legacyResult =
+                    Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager, true);
             postLedgerEntries("PAYOUT", request, merchant, gatewayId, tx, amount, charges);
             ledgerService.captureReservation(reservationReference);
             PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
-            gatewayMetrics.incrementTransactionCompleted(gatewayId, Transaction.TX_TYPE_PAYOUT, tx.getStatus());
+            gatewayMetrics.incrementTransactionCompleted(
+                    gatewayId, Transaction.TX_TYPE_PAYOUT, tx.getStatus());
             queueWebhook(merchant, "payout.pending", request, result);
             return result;
         } catch (RuntimeException ex) {
@@ -157,11 +177,17 @@ public class PaymentOrchestrationService {
     }
 
     public List<Balance> balances(String merchantNumber, Merchant verifiedMerchant) {
-        Merchant merchant = validateMerchant(merchantNumber, verifiedMerchant, Common.API_BALANCE_CHECK);
+        Merchant merchant =
+                validateMerchant(merchantNumber, verifiedMerchant, Common.API_BALANCE_CHECK);
         return Common.getMerchantBalances(String.valueOf(merchant.getId()), jdbcTemplate);
     }
 
-    private Transaction baseTransaction(PaymentRequest request, Merchant merchant, String gatewayId, String originateIp, Double amount) {
+    private Transaction baseTransaction(
+            PaymentRequest request,
+            Merchant merchant,
+            String gatewayId,
+            String originateIp,
+            Double amount) {
         Transaction tx = new Transaction();
         tx.setGateway_id(gatewayId);
         tx.setOriginal_amount(amount);
@@ -179,7 +205,11 @@ public class PaymentOrchestrationService {
         return tx;
     }
 
-    private PaymentResult resultFromLegacy(PaymentRequest request, Transaction tx, PaymentChannelAdapter adapter, String legacyResult) {
+    private PaymentResult resultFromLegacy(
+            PaymentRequest request,
+            Transaction tx,
+            PaymentChannelAdapter adapter,
+            String legacyResult) {
         PaymentResult result = new PaymentResult();
         result.setReference(request.getReference());
         result.setTransactionId(tx.getTx_unique_id());
@@ -191,73 +221,171 @@ public class PaymentOrchestrationService {
         return result;
     }
 
-    private void queueWebhook(Merchant merchant, String eventType, PaymentRequest request, PaymentResult result) {
+    private void queueWebhook(
+            Merchant merchant, String eventType, PaymentRequest request, PaymentResult result) {
         try {
-            String payload = "{"
-                + "\"eventType\":\"" + json(eventType) + "\","
-                + "\"merchantNumber\":\"" + json(merchant.getAccount_number()) + "\","
-                + "\"reference\":\"" + json(request.getReference()) + "\","
-                + "\"transactionId\":\"" + json(result.getTransactionId()) + "\","
-                + "\"status\":\"" + json(result.getStatus()) + "\","
-                + "\"amount\":\"" + json(request.getAmount()) + "\","
-                + "\"currency\":\"" + json(request.getCurrency()) + "\""
-                + "}";
+            String payload =
+                    "{"
+                            + "\"eventType\":\""
+                            + json(eventType)
+                            + "\","
+                            + "\"merchantNumber\":\""
+                            + json(merchant.getAccount_number())
+                            + "\","
+                            + "\"reference\":\""
+                            + json(request.getReference())
+                            + "\","
+                            + "\"transactionId\":\""
+                            + json(result.getTransactionId())
+                            + "\","
+                            + "\"status\":\""
+                            + json(result.getStatus())
+                            + "\","
+                            + "\"amount\":\""
+                            + json(request.getAmount())
+                            + "\","
+                            + "\"currency\":\""
+                            + json(request.getCurrency())
+                            + "\""
+                            + "}";
             webhookService.enqueue(merchant.getId(), eventType, result.getTransactionId(), payload);
         } catch (Exception ignored) {
             // Payment submission remains authoritative; webhook delivery is retried separately.
         }
     }
 
-    private void postLedgerEntries(String direction,
-                                   PaymentRequest request,
-                                   Merchant merchant,
-                                   String gatewayId,
-                                   Transaction tx,
-                                   Double amount,
-                                   Double charges) {
+    private void postLedgerEntries(
+            String direction,
+            PaymentRequest request,
+            Merchant merchant,
+            String gatewayId,
+            Transaction tx,
+            Double amount,
+            Double charges) {
         BigDecimal txAmount = MoneyAmount.of(String.valueOf(amount)).asBigDecimal();
-        BigDecimal feeAmount = charges == null || charges <= 0 ? BigDecimal.ZERO : MoneyAmount.of(String.valueOf(charges)).asBigDecimal();
+        BigDecimal feeAmount =
+                charges == null || charges <= 0
+                        ? BigDecimal.ZERO
+                        : MoneyAmount.of(String.valueOf(charges)).asBigDecimal();
         String currency = request.getCurrency().trim().toUpperCase();
         String providerAccount = "provider:" + gatewayId + ":" + currency + ":float";
-        String merchantAccount = "merchant:" + merchant.getId() + ":" + currency + ":" + ("PAYOUT".equals(direction) ? "payouts_payable" : "collections_payable");
+        String merchantAccount =
+                "merchant:"
+                        + merchant.getId()
+                        + ":"
+                        + currency
+                        + ":"
+                        + ("PAYOUT".equals(direction) ? "payouts_payable" : "collections_payable");
         String feeExpenseAccount = "merchant:" + merchant.getId() + ":" + currency + ":fees";
         String feeRevenueAccount = "cpay:" + currency + ":fee_revenue";
 
         List<LedgerEntryCommand> entries = new ArrayList<>();
         if ("PAYOUT".equals(direction)) {
-            entries.add(ledgerEntry(merchantAccount, "Merchant payout payable", "MERCHANT_LIABILITY", "MERCHANT", merchant.getId(), "DR", txAmount, currency, tx.getTx_merchant_ref()));
-            entries.add(ledgerEntry(providerAccount, "Provider float", "PROVIDER_FLOAT", "PROVIDER", null, "CR", txAmount, currency, tx.getTx_merchant_ref()));
+            entries.add(
+                    ledgerEntry(
+                            merchantAccount,
+                            "Merchant payout payable",
+                            "MERCHANT_LIABILITY",
+                            "MERCHANT",
+                            merchant.getId(),
+                            "DR",
+                            txAmount,
+                            currency,
+                            tx.getTx_merchant_ref()));
+            entries.add(
+                    ledgerEntry(
+                            providerAccount,
+                            "Provider float",
+                            "PROVIDER_FLOAT",
+                            "PROVIDER",
+                            null,
+                            "CR",
+                            txAmount,
+                            currency,
+                            tx.getTx_merchant_ref()));
             if (feeAmount.compareTo(BigDecimal.ZERO) > 0) {
-                entries.add(ledgerEntry(feeExpenseAccount, "Merchant transaction fees", "MERCHANT_EXPENSE", "MERCHANT", merchant.getId(), "DR", feeAmount, currency, tx.getTx_merchant_ref()));
-                entries.add(ledgerEntry(feeRevenueAccount, "CPay fee revenue", "REVENUE", "SYSTEM", null, "CR", feeAmount, currency, tx.getTx_merchant_ref()));
+                entries.add(
+                        ledgerEntry(
+                                feeExpenseAccount,
+                                "Merchant transaction fees",
+                                "MERCHANT_EXPENSE",
+                                "MERCHANT",
+                                merchant.getId(),
+                                "DR",
+                                feeAmount,
+                                currency,
+                                tx.getTx_merchant_ref()));
+                entries.add(
+                        ledgerEntry(
+                                feeRevenueAccount,
+                                "CPay fee revenue",
+                                "REVENUE",
+                                "SYSTEM",
+                                null,
+                                "CR",
+                                feeAmount,
+                                currency,
+                                tx.getTx_merchant_ref()));
             }
         } else {
-            entries.add(ledgerEntry(providerAccount, "Provider float", "PROVIDER_FLOAT", "PROVIDER", null, "DR", txAmount, currency, tx.getTx_merchant_ref()));
-            entries.add(ledgerEntry(merchantAccount, "Merchant collection payable", "MERCHANT_LIABILITY", "MERCHANT", merchant.getId(), "CR", txAmount, currency, tx.getTx_merchant_ref()));
+            entries.add(
+                    ledgerEntry(
+                            providerAccount,
+                            "Provider float",
+                            "PROVIDER_FLOAT",
+                            "PROVIDER",
+                            null,
+                            "DR",
+                            txAmount,
+                            currency,
+                            tx.getTx_merchant_ref()));
+            entries.add(
+                    ledgerEntry(
+                            merchantAccount,
+                            "Merchant collection payable",
+                            "MERCHANT_LIABILITY",
+                            "MERCHANT",
+                            merchant.getId(),
+                            "CR",
+                            txAmount,
+                            currency,
+                            tx.getTx_merchant_ref()));
         }
 
         ledgerService.post(
-            "payment:" + tx.getTx_unique_id(),
-            "PAYMENT",
-            tx.getTx_unique_id(),
-            direction + " " + request.getReference(),
-            entries);
+                "payment:" + tx.getTx_unique_id(),
+                "PAYMENT",
+                tx.getTx_unique_id(),
+                direction + " " + request.getReference(),
+                entries);
     }
 
-    private LedgerEntryCommand ledgerEntry(String accountCode,
-                                           String accountName,
-                                           String accountType,
-                                           String ownerType,
-                                           Long ownerId,
-                                           String direction,
-                                           BigDecimal amount,
-                                           String currency,
-                                           String memo) {
-        return new LedgerEntryCommand(accountCode, accountName, accountType, ownerType, ownerId, direction, amount, currency, memo);
+    private LedgerEntryCommand ledgerEntry(
+            String accountCode,
+            String accountName,
+            String accountType,
+            String ownerType,
+            Long ownerId,
+            String direction,
+            BigDecimal amount,
+            String currency,
+            String memo) {
+        return new LedgerEntryCommand(
+                accountCode,
+                accountName,
+                accountType,
+                ownerType,
+                ownerId,
+                direction,
+                amount,
+                currency,
+                memo);
     }
 
-    private Merchant validateMerchant(String merchantNumber, Merchant verifiedMerchant, String requiredApi) {
-        if (verifiedMerchant == null || !verifiedMerchant.getAccount_number().equals(merchantNumber)) {
+    private Merchant validateMerchant(
+            String merchantNumber, Merchant verifiedMerchant, String requiredApi) {
+        if (verifiedMerchant == null
+                || !verifiedMerchant.getAccount_number().equals(merchantNumber)) {
             throw new PaymentGatewayException("Verified merchant does not match request merchant");
         }
         if (!"ACTIVE".equalsIgnoreCase(verifiedMerchant.getStatus())) {
@@ -292,15 +420,19 @@ public class PaymentOrchestrationService {
     }
 
     private GatewayChargeDetails getChargeDetails(String gatewayId, Merchant merchant) {
-        GatewayChargeDetails chargeDetails = DoPayGateway.getGatewayChargeDetailsById(jdbcTemplate, gatewayId, merchant.getId());
+        GatewayChargeDetails chargeDetails =
+                DoPayGateway.getGatewayChargeDetailsById(jdbcTemplate, gatewayId, merchant.getId());
         if (chargeDetails == null) {
-            throw new PaymentGatewayException("Gateway charge details are not configured for " + gatewayId);
+            throw new PaymentGatewayException(
+                    "Gateway charge details are not configured for " + gatewayId);
         }
         return chargeDetails;
     }
 
-    private void ensureMerchantHasAvailableBalance(Merchant merchant, String gatewayId, Double requiredAmount) {
-        List<Balance> balances = Common.getMerchantBalances(String.valueOf(merchant.getId()), jdbcTemplate);
+    private void ensureMerchantHasAvailableBalance(
+            Merchant merchant, String gatewayId, Double requiredAmount) {
+        List<Balance> balances =
+                Common.getMerchantBalances(String.valueOf(merchant.getId()), jdbcTemplate);
         for (Balance balance : balances) {
             if (gatewayId.equals(balance.getGateway_id()) && requiredAmount > balance.getAmount()) {
                 throw new PaymentGatewayException("Insufficient balance for gateway " + gatewayId);
@@ -308,20 +440,38 @@ public class PaymentOrchestrationService {
         }
     }
 
-    private PaymentChannelAdapter resolveAdapter(PaymentRequest request, String accountIdentifier, String gatewayId) {
+    private PaymentChannelAdapter resolveAdapter(
+            PaymentRequest request, String accountIdentifier, String gatewayId) {
         if (request.getChannel() != null && !request.getChannel().trim().isEmpty()) {
-            return paymentChannelRegistry.findByChannelCode(request.getChannel())
-                    .orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + request.getChannel()));
+            return paymentChannelRegistry
+                    .findByChannelCode(request.getChannel())
+                    .orElseThrow(
+                            () ->
+                                    new PaymentGatewayException(
+                                            "Unsupported channel: " + request.getChannel()));
         }
-        return paymentChannelRegistry.findByLegacyGatewayId(gatewayId)
-                .orElseGet(() -> paymentChannelRegistry.findByAccountIdentifier(accountIdentifier)
-                        .orElseThrow(() -> new PaymentGatewayException("Unable to resolve channel for account")));
+        return paymentChannelRegistry
+                .findByLegacyGatewayId(gatewayId)
+                .orElseGet(
+                        () ->
+                                paymentChannelRegistry
+                                        .findByAccountIdentifier(accountIdentifier)
+                                        .orElseThrow(
+                                                () ->
+                                                        new PaymentGatewayException(
+                                                                "Unable to resolve channel for account")));
     }
 
     private String resolveLegacyGatewayId(PaymentRequest request, String accountIdentifier) {
         if (request.getChannel() != null && !request.getChannel().trim().isEmpty()) {
-            PaymentChannelAdapter adapter = paymentChannelRegistry.findByChannelCode(request.getChannel())
-                    .orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + request.getChannel()));
+            PaymentChannelAdapter adapter =
+                    paymentChannelRegistry
+                            .findByChannelCode(request.getChannel())
+                            .orElseThrow(
+                                    () ->
+                                            new PaymentGatewayException(
+                                                    "Unsupported channel: "
+                                                            + request.getChannel()));
             if (adapter instanceof LegacyGatewayAdapter) {
                 return ((LegacyGatewayAdapter) adapter).legacyGatewayId();
             }
@@ -374,4 +524,3 @@ public class PaymentOrchestrationService {
         return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
-
