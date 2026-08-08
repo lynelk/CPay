@@ -33,6 +33,15 @@ public final class WebhookEventCatalog {
      */
     private static final String TRANSACTIONAL_ENVELOPE_SCHEMA = transactionalEnvelopeSchema();
 
+    /**
+     * The first non-transactional envelope (ADR 0006, billing Slice 24): a billing invoice is not a
+     * single provider transaction, so it has no {@code transactionId} and carries {@code invoiceId}
+     * instead of {@code reference}. {@code amount}/{@code currency} stay present since an invoice
+     * genuinely has both, but neither is required - a draft/proforma invoice event may not have a
+     * final amount yet.
+     */
+    private static final String INVOICE_ENVELOPE_SCHEMA = invoiceEnvelopeSchema();
+
     static {
         register(
                 "payment.pending",
@@ -74,6 +83,11 @@ public final class WebhookEventCatalog {
                 1,
                 "A refund was confirmed failed by the provider.",
                 TRANSACTIONAL_ENVELOPE_SCHEMA);
+        register(
+                "invoice.issued",
+                1,
+                "A billing invoice was issued to the merchant.",
+                INVOICE_ENVELOPE_SCHEMA);
     }
 
     private WebhookEventCatalog() {}
@@ -114,6 +128,26 @@ public final class WebhookEventCatalog {
                 + "\"status\":{\"type\":\"string\"},"
                 + "\"amount\":{\"type\":\"string\"},"
                 + "\"currency\":{\"type\":\"string\"}"
+                + "}"
+                + "}";
+    }
+
+    private static String invoiceEnvelopeSchema() {
+        return "{"
+                + "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\","
+                + "\"type\":\"object\","
+                + "\"required\":[\"eventId\",\"eventType\",\"eventVersion\",\"createdAt\",\"merchantNumber\",\"invoiceId\",\"status\"],"
+                + "\"properties\":{"
+                + "\"eventId\":{\"type\":\"string\",\"description\":\"Unique id of this event, stable across delivery retries.\"},"
+                + "\"eventType\":{\"type\":\"string\",\"description\":\"One of the types listed in the webhook event catalog.\"},"
+                + "\"eventVersion\":{\"type\":\"integer\",\"description\":\"Envelope schema version for eventType.\"},"
+                + "\"createdAt\":{\"type\":\"string\",\"format\":\"date-time\"},"
+                + "\"merchantNumber\":{\"type\":\"string\"},"
+                + "\"invoiceId\":{\"type\":\"string\",\"description\":\"CPay-assigned billing invoice id.\"},"
+                + "\"status\":{\"type\":\"string\"},"
+                + "\"amount\":{\"type\":\"string\"},"
+                + "\"currency\":{\"type\":\"string\"},"
+                + "\"dueAt\":{\"type\":\"string\",\"format\":\"date-time\"}"
                 + "}"
                 + "}";
     }

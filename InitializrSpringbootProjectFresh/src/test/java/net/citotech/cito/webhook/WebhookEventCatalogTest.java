@@ -2,6 +2,7 @@ package net.citotech.cito.webhook;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import net.citotech.cito.webhook.WebhookEventCatalog.EventDefinition;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
@@ -32,11 +33,34 @@ class WebhookEventCatalogTest {
         for (EventDefinition definition : WebhookEventCatalog.all()) {
             assertThat(definition.type()).isNotBlank();
             assertThat(definition.version()).isGreaterThanOrEqualTo(1);
-            assertThat(definition.qualifiedType()).isEqualTo(definition.type() + ".v" + definition.version());
+            assertThat(definition.qualifiedType())
+                    .isEqualTo(definition.type() + ".v" + definition.version());
             JSONObject schema = new JSONObject(definition.jsonSchema());
             assertThat(schema.getString("type")).isEqualTo("object");
             assertThat(schema.getJSONArray("required").length()).isGreaterThan(0);
         }
         assertThat(WebhookEventCatalog.all()).isNotEmpty();
+    }
+
+    @Test
+    void invoiceIssuedIsRegisteredWithItsOwnNonTransactionalSchema() {
+        EventDefinition definition = WebhookEventCatalog.lookup("invoice.issued").orElseThrow();
+
+        JSONObject schema = new JSONObject(definition.jsonSchema());
+        List<Object> required = schema.getJSONArray("required").toList();
+        assertThat(required).contains("invoiceId").doesNotContain("transactionId");
+        assertThat(schema.getJSONObject("properties").has("invoiceId")).isTrue();
+    }
+
+    @Test
+    void theEightTransactionalEventTypesStillShareTheOneTransactionalSchema() {
+        String paymentSchema =
+                WebhookEventCatalog.lookup("payment.pending").orElseThrow().jsonSchema();
+        String payoutSchema =
+                WebhookEventCatalog.lookup("payout.completed").orElseThrow().jsonSchema();
+        String refundSchema =
+                WebhookEventCatalog.lookup("refund.failed").orElseThrow().jsonSchema();
+
+        assertThat(paymentSchema).isEqualTo(payoutSchema).isEqualTo(refundSchema);
     }
 }
