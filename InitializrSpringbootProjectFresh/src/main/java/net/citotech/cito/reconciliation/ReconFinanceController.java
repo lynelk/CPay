@@ -1,5 +1,6 @@
 package net.citotech.cito.reconciliation;
 
+import java.util.List;
 import java.util.Map;
 import net.citotech.cito.admin.AdminAuditService;
 import net.citotech.cito.gateway.PaymentGatewayException;
@@ -100,6 +101,17 @@ public class ReconFinanceController {
     @GetMapping(path = "/summary")
     public Map<String, Object> summary(
             @RequestParam(value = "currency", defaultValue = "UGX") String currency) {
-        return service.report(currency);
+        return service.dashboard(currency);
+    }
+
+    /**
+     * Daily-close history with maker/checker/rejection fields, most recent first (audit item: no
+     * historical view existed - the summary endpoint never returned closed days).
+     */
+    @GetMapping(path = "/history")
+    public List<Map<String, Object>> history(
+            @RequestParam(value = "currency", defaultValue = "UGX") String currency,
+            @RequestParam(value = "limit", defaultValue = "100") int limit) {
+        return service.history(currency, limit);
     }
 }

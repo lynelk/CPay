@@ -14,3 +14,4 @@ EXPOSE 8081
 COPY --from=build /workspace/target/*.jar /app/cpay-backend.jar
 
 ENTRYPOINT ["java", "-jar", "/app/cpay-backend.jar"]
+#

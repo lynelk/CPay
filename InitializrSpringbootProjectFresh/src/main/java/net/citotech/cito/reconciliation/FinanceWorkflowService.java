@@ -3,6 +3,8 @@ package net.citotech.cito.reconciliation;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -138,6 +140,142 @@ public class FinanceWorkflowService {
         result.put("exceptionCount", exceptionCount(currency));
         result.put("unmatchedAmount", amount(currency, "UNMATCHED"));
         return result;
+    }
+
+    /**
+     * Finance-close dashboard for the admin screen: the live {@link #report} plus the panel counts
+     * the screen renders. {@code statementsReceived} counts distinct statement imports that
+     * produced records for the currency ({@code reconciliation_imports} itself carries no currency
+     * column); {@code parkedCallbacks} counts {@code callback_tasks} stuck in PARKED (the same
+     * semantics the readiness dashboard uses); {@code openControls} counts OPEN {@code
+     * operating_control_events}; {@code pendingSubmissions} lists daily-close rows still awaiting a
+     * checker's approval.
+     */
+    public Map<String, Object> dashboard(String currency) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("currency", currency);
+        result.putAll(report(currency));
+        result.put("statementsReceived", scalarInt(statementsReceivedSql(), currency));
+        result.put("parkedCallbacks", parkedCallbackCount());
+        result.put("openControls", openControlCount());
+        result.put("closeStatus", latestCloseStatus(currency));
+        result.put(
+                "unmatchedRecords",
+                result.get("unmatchedCount")); // alias the module/tests read (`unmatchedRecords`)
+        result.put("pendingSubmissions", pendingSubmissions(currency));
+        return result;
+    }
+
+    private String statementsReceivedSql() {
+        return "SELECT COUNT(DISTINCT import_id) FROM reconciliation_records WHERE currency=:currency";
+    }
+
+    private int parkedCallbackCount() {
+        Integer value =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM callback_tasks WHERE task_status='PARKED'",
+                        new MapSqlParameterSource(),
+                        Integer.class);
+        return value == null ? 0 : value;
+    }
+
+    private int openControlCount() {
+        Integer value =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM operating_control_events WHERE event_status='OPEN'",
+                        new MapSqlParameterSource(),
+                        Integer.class);
+        return value == null ? 0 : value;
+    }
+
+    private String latestCloseStatus(String currency) {
+        List<String> statuses =
+                jdbcTemplate.query(
+                        "SELECT close_status FROM reconciliation_daily_closes WHERE currency=:currency ORDER BY close_date DESC, id DESC LIMIT 1",
+                        new MapSqlParameterSource("currency", currency),
+                        (rs, rowNum) -> rs.getString("close_status"));
+        return statuses.isEmpty() ? "OPEN" : statuses.get(0);
+    }
+
+    private List<Map<String, Object>> pendingSubmissions(String currency) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("currency", currency);
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT close_date, currency, close_status, requested_by, requested_at "
+                                + "FROM reconciliation_daily_closes WHERE currency=:currency "
+                                + "AND close_status='PENDING_APPROVAL' ORDER BY requested_at DESC",
+                        p);
+        return rows.stream().map(this::pendingView).toList();
+    }
+
+    private Map<String, Object> pendingView(Map<String, Object> row) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        Object closeDate = row.get("close_date");
+        view.put("closeDate", closeDate == null ? null : String.valueOf(closeDate));
+        view.put("currency", String.valueOf(row.get("currency")));
+        view.put("status", String.valueOf(row.get("close_status")));
+        Object requestedAt = row.get("requested_at");
+        view.put("submittedAt", requestedAt == null ? null : String.valueOf(requestedAt));
+        view.put("submittedBy", String.valueOf(row.get("requested_by")));
+        return view;
+    }
+
+    /**
+     * Daily-close history with maker/checker/rejection fields (audit item: no historical view).
+     * Most recent first, capped at {@code limit} (max 500).
+     */
+    public List<Map<String, Object>> history(String currency, int limit) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("currency", currency);
+        p.addValue("limit", Math.max(1, Math.min(limit, 500)));
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT id, close_date, currency, close_status, matched_count, unmatched_count, "
+                                + "exception_count, variance_amount, approved_variance_amount, requested_by, requested_at, "
+                                + "approved_by, approved_at, closed_by, closed_at, rejection_reason, created_at "
+                                + "FROM reconciliation_daily_closes WHERE currency=:currency "
+                                + "ORDER BY close_date DESC, id DESC LIMIT :limit",
+                        p);
+        return rows.stream().map(this::historyView).toList();
+    }
+
+    private Map<String, Object> historyView(Map<String, Object> row) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("id", numeric(row.get("id")));
+        Object closeDate = row.get("close_date");
+        view.put("closeDate", closeDate == null ? null : String.valueOf(closeDate));
+        view.put("currency", String.valueOf(row.get("currency")));
+        view.put("closeStatus", String.valueOf(row.get("close_status")));
+        view.put("matchedCount", numeric(row.get("matched_count")));
+        view.put("unmatchedCount", numeric(row.get("unmatched_count")));
+        view.put("exceptionCount", numeric(row.get("exception_count")));
+        view.put("varianceAmount", numeric(row.get("variance_amount")));
+        view.put("approvedVarianceAmount", numeric(row.get("approved_variance_amount")));
+        view.put("requestedBy", stringOrNull(row.get("requested_by")));
+        view.put("requestedAt", stringOrNull(row.get("requested_at")));
+        view.put("approvedBy", stringOrNull(row.get("approved_by")));
+        view.put("approvedAt", stringOrNull(row.get("approved_at")));
+        view.put("closedBy", stringOrNull(row.get("closed_by")));
+        view.put("closedAt", stringOrNull(row.get("closed_at")));
+        view.put("rejectionReason", stringOrNull(row.get("rejection_reason")));
+        view.put("createdAt", stringOrNull(row.get("created_at")));
+        return view;
+    }
+
+    private int scalarInt(String sql, String currency) {
+        Integer value =
+                jdbcTemplate.queryForObject(
+                        sql, new MapSqlParameterSource("currency", currency), Integer.class);
+        return value == null ? 0 : value;
+    }
+
+    private Object numeric(Object value) {
+        return value instanceof Number ? value : BigDecimal.ZERO;
+    }
+
+    private String stringOrNull(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     /**

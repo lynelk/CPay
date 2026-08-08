@@ -5,11 +5,13 @@ import { ApiError } from '../../shared/api/httpClient';
 
 const {
   useFinanceCloseSummary,
+  useFinanceCloseHistory,
   useFinanceCloseSubmitMutation,
   useFinanceCloseApproveMutation,
   useFinanceCloseRejectMutation,
 } = vi.hoisted(() => ({
   useFinanceCloseSummary: vi.fn(),
+  useFinanceCloseHistory: vi.fn(),
   useFinanceCloseSubmitMutation: vi.fn(),
   useFinanceCloseApproveMutation: vi.fn(),
   useFinanceCloseRejectMutation: vi.fn(),
@@ -22,6 +24,7 @@ vi.mock('../../shared/api/hooks', async () => {
   return {
     ...actual,
     useFinanceCloseSummary,
+    useFinanceCloseHistory,
     useFinanceCloseSubmitMutation,
     useFinanceCloseApproveMutation,
     useFinanceCloseRejectMutation,
@@ -68,6 +71,7 @@ const SUMMARY = {
 beforeEach(() => {
   vi.clearAllMocks();
   useFinanceCloseSummary.mockReturnValue(queryResult({ data: SUMMARY }));
+  useFinanceCloseHistory.mockReturnValue(queryResult({ data: [] }));
   useFinanceCloseSubmitMutation.mockReturnValue(mutationResult());
   useFinanceCloseApproveMutation.mockReturnValue(mutationResult());
   useFinanceCloseRejectMutation.mockReturnValue(mutationResult());
@@ -195,6 +199,50 @@ describe('ModuleFinanceClose', () => {
 
     expect(screen.getByText('finance-maker')).toBeInTheDocument();
     expect(screen.getByText('PENDING_APPROVAL')).toBeInTheDocument();
+  });
+
+  it('renders the daily-close history table with marker and checker fields', () => {
+    useFinanceCloseHistory.mockReturnValue(
+      queryResult({
+        data: [
+          {
+            id: 7,
+            closeDate: '2026-08-01',
+            currency: 'UGX',
+            closeStatus: 'CLOSED',
+            matchedCount: 10,
+            unmatchedCount: 0,
+            exceptionCount: 1,
+            varianceAmount: 0,
+            approvedVarianceAmount: 1000,
+            requestedBy: 'finance-maker',
+            requestedAt: '2026-08-01T22:00:00',
+            approvedBy: 'finance-checker',
+            approvedAt: '2026-08-02T08:00:00',
+            closedBy: 'finance-checker',
+            closedAt: '2026-08-02T08:00:00',
+            rejectionReason: null,
+            createdAt: '2026-08-01T22:00:00',
+          },
+        ],
+      }),
+    );
+
+    render(<ModuleFinanceClose />);
+
+    expect(screen.getByText('2026-08-01')).toBeInTheDocument();
+    // 'finance-maker' also appears in the pending-submissions fixture (submittedBy),
+    // so assert on both occurrences rather than a single match.
+    expect(screen.getAllByText('finance-maker')).toHaveLength(2);
+    expect(screen.getByText('finance-checker')).toBeInTheDocument();
+  });
+
+  it('shows an empty state when there is no close history', () => {
+    useFinanceCloseHistory.mockReturnValue(queryResult({ data: [] }));
+
+    render(<ModuleFinanceClose />);
+
+    expect(screen.getByText(/No daily-close rows yet/i)).toBeInTheDocument();
   });
 
   it('shows an error banner when a mutation fails', async () => {

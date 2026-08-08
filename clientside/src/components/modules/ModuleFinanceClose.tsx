@@ -15,13 +15,14 @@ import {
 import type { Column } from '../../ui';
 import {
   useFinanceCloseSummary,
+  useFinanceCloseHistory,
   useFinanceCloseSubmitMutation,
   useFinanceCloseApproveMutation,
   useFinanceCloseRejectMutation,
   useLoaderSync,
   useRefreshSignal,
 } from '../../shared/api/hooks';
-import type { FinanceCloseSummary } from '../../shared/api/hooks';
+import type { FinanceCloseHistoryRow, FinanceCloseSummary } from '../../shared/api/hooks';
 import { ApiError } from '../../shared/api/httpClient';
 
 /**
@@ -72,22 +73,26 @@ function ModuleFinanceClose({ loader, refreshSignal, sessionExpired }: ModuleFin
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
   const summaryQuery = useFinanceCloseSummary(currency);
+  const historyQuery = useFinanceCloseHistory(currency);
   const submitMutation = useFinanceCloseSubmitMutation();
   const approveMutation = useFinanceCloseApproveMutation();
   const rejectMutation = useFinanceCloseRejectMutation();
 
   useLoaderSync(
     loader,
-    summaryQuery.isFetching || submitMutation.isPending || approveMutation.isPending || rejectMutation.isPending,
+    summaryQuery.isFetching || historyQuery.isFetching || submitMutation.isPending || approveMutation.isPending || rejectMutation.isPending,
   );
-  useRefreshSignal(refreshSignal, [summaryQuery.refetch]);
+  useRefreshSignal(refreshSignal, [summaryQuery.refetch, historyQuery.refetch]);
 
   useEffect(() => {
-    if (summaryQuery.error instanceof ApiError && summaryQuery.error.status === 401) {
+    if (
+      (summaryQuery.error instanceof ApiError && summaryQuery.error.status === 401) ||
+      (historyQuery.error instanceof ApiError && historyQuery.error.status === 401)
+    ) {
       sessionExpired?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaryQuery.error]);
+  }, [summaryQuery.error, historyQuery.error]);
 
   const summary: FinanceCloseSummary | undefined = summaryQuery.data;
 
@@ -140,6 +145,26 @@ function ModuleFinanceClose({ loader, refreshSignal, sessionExpired }: ModuleFin
   }
 
   const pendingRows = summary?.pendingSubmissions ?? [];
+
+  const historyRows: FinanceCloseHistoryRow[] = historyQuery.data ?? [];
+
+  const historyColumns: Column<FinanceCloseHistoryRow>[] = [
+    { key: 'closeDate', header: 'Close date', accessor: (r) => r.closeDate ?? '' },
+    { key: 'currency', header: 'Currency', accessor: (r) => r.currency ?? '' },
+    {
+      key: 'closeStatus',
+      header: 'Status',
+      render: (r) => <Badge tone={statusTone(r.closeStatus)}>{r.closeStatus ?? 'UNKNOWN'}</Badge>,
+    },
+    { key: 'matchedCount', header: 'Matched', accessor: (r) => String(r.matchedCount ?? '') },
+    { key: 'unmatchedCount', header: 'Unmatched', accessor: (r) => String(r.unmatchedCount ?? '') },
+    { key: 'varianceAmount', header: 'Variance', accessor: (r) => String(r.varianceAmount ?? '') },
+    { key: 'requestedBy', header: 'Maker', accessor: (r) => r.requestedBy ?? '' },
+    { key: 'requestedAt', header: 'Requested at', accessor: (r) => r.requestedAt ?? '' },
+    { key: 'approvedBy', header: 'Checker', accessor: (r) => r.approvedBy ?? '' },
+    { key: 'approvedAt', header: 'Approved at', accessor: (r) => r.approvedAt ?? '' },
+    { key: 'rejectionReason', header: 'Rejection reason', accessor: (r) => r.rejectionReason ?? '' },
+  ];
 
   const pendingColumns: Column<{ closeDate?: string; currency?: string; submittedBy?: string; submittedAt?: string; status?: string }>[] = [
     { key: 'closeDate', header: 'Close date', accessor: (r) => r.closeDate ?? '' },
@@ -232,6 +257,20 @@ function ModuleFinanceClose({ loader, refreshSignal, sessionExpired }: ModuleFin
           pageSize={20}
           emptyText="No pending submissions."
         />
+      </Section>
+
+      <Section title="Daily-close history (maker/checker)">
+        {historyQuery.isLoading ? <Spinner label="Loading close history" /> : null}
+        {historyQuery.error ? <Alert variant="error">{errorMessage(historyQuery.error)}</Alert> : null}
+        {!historyQuery.isLoading && !historyQuery.error ? (
+          <Table
+            columns={historyColumns}
+            rows={historyRows}
+            rowKey={(r) => r.id ?? 0}
+            pageSize={20}
+            emptyText="No daily-close rows yet for this currency."
+          />
+        ) : null}
       </Section>
     </div>
   );

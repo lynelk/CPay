@@ -940,6 +940,43 @@ export interface FinanceCloseSummary {
   [key: string]: unknown;
 }
 
+export interface FinanceCloseHistoryRow {
+  id?: number;
+  closeDate?: string;
+  currency?: string;
+  closeStatus?: string;
+  matchedCount?: number | string;
+  unmatchedCount?: number | string;
+  exceptionCount?: number | string;
+  varianceAmount?: number | string;
+  approvedVarianceAmount?: number | string;
+  requestedBy?: string | null;
+  requestedAt?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  closedBy?: string | null;
+  closedAt?: string | null;
+  rejectionReason?: string | null;
+  createdAt?: string | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Daily-close history with maker/checker/rejection fields —
+ * `/api/v2/admin/recon-finance/history?currency=&limit=` (audit E6: the summary
+ * endpoint never returned closed days).
+ */
+export function useFinanceCloseHistory(currency = 'UGX', limit = 100) {
+  return useQuery({
+    queryKey: ['finance-close', 'history', currency, limit],
+    queryFn: () =>
+      request<FinanceCloseHistoryRow[]>(
+        `/api/v2/admin/recon-finance/history?currency=${encodeURIComponent(currency)}&limit=${limit}`,
+      ),
+    refetchInterval: 120_000,
+  });
+}
+
 /** `/api/v2/admin/recon-finance/summary` — the finance daily-close picture for a currency. */
 export function useFinanceCloseSummary(currency = 'UGX') {
   return useQuery({
@@ -1179,6 +1216,91 @@ export function usePayoutCancelMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payout-approvals'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Payout controls config (audit V34) — admin self-service for payout_controls
+//
+// Backed by PayoutConfigController (/api/v2/admin/payout-controls/**), gated by
+// the `payout-controls-config` feature flag (V36). Rows saved here are read by
+// PayoutControlService.evaluate on the live v2 payout path, so a limit set on
+// this screen is enforceable immediately.
+// ---------------------------------------------------------------------------
+
+export interface PayoutControlRow {
+  id?: number;
+  merchant_id?: number;
+  channel_code?: string;
+  currency?: string;
+  country?: string;
+  daily_amount_limit?: number | string | null;
+  monthly_amount_limit?: number | string | null;
+  per_transaction_limit?: number | string | null;
+  beneficiary_velocity_limit?: number | string | null;
+  approval_required_flag?: string;
+  enabled_flag?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface PayoutControlConfigPayload {
+  merchantId: number;
+  channelCode: string;
+  currency: string;
+  country?: string;
+  dailyAmountLimit?: number | string;
+  monthlyAmountLimit?: number | string;
+  perTransactionLimit?: number | string;
+  beneficiaryVelocityLimit?: number | string;
+  approvalRequiredFlag?: string;
+  enabledFlag?: string;
+  changedBy?: string;
+}
+
+/** `/api/v2/admin/payout-controls` — configured limit rows, optionally filtered to one merchant. */
+export function usePayoutControlConfigs(merchantFilter = '') {
+  const params = new URLSearchParams();
+  if (merchantFilter.trim()) params.set('merchantId', merchantFilter.trim());
+  const query = params.toString();
+  return useQuery({
+    queryKey: ['payout-controls', 'config', merchantFilter],
+    queryFn: () =>
+      request<PayoutControlRow[]>(
+        `/api/v2/admin/payout-controls${query ? `?${query}` : ''}`,
+      ),
+    refetchInterval: 120_000,
+  });
+}
+
+/** Inserts or updates a payout-control row; returns the saved row. */
+export function usePayoutControlUpsertMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: PayoutControlConfigPayload) =>
+      request<PayoutControlRow>(`/api/v2/admin/payout-controls`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payout-controls', 'config'] });
+    },
+  });
+}
+
+/** Deletes a payout-control row by id. */
+export function usePayoutControlDeleteMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (controlId: number) =>
+      request<{ code?: string; id?: number; deleted?: number }>(
+        `/api/v2/admin/payout-controls/${controlId}`,
+        { method: 'DELETE' },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payout-controls', 'config'] });
     },
   });
 }

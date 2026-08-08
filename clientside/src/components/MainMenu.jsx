@@ -11,6 +11,7 @@ const navGroups = [
       { value: 'reconciliation', text: 'Reconciliation', Icon: Icons.ReconcileIcon },
       { value: 'financeclose', text: 'Finance Close', Icon: Icons.CalendarIcon },
       { value: 'payoutapprovals', text: 'Payout Approvals', Icon: Icons.PaymentsIcon },
+      { value: 'payoutcontrols', text: 'Payout Controls', Icon: Icons.CardsIcon },
       { value: 'settlementclose', text: 'Settlement Close', Icon: Icons.ReconcileIcon },
       { value: 'webhookops', text: 'Webhook Ops', Icon: Icons.SmsIcon },
     ],
