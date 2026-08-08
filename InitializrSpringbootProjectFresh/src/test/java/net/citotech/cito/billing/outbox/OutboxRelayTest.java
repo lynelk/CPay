@@ -130,6 +130,48 @@ class OutboxRelayTest {
                 .update(contains("PROCESSING"), any(MapSqlParameterSource.class));
     }
 
+    @Test
+    void processBatchInvokesEveryMatchingHandlerForOneEntry() throws Exception {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        stubFindDue(jdbcTemplate, entryRow(6L, "USAGE_EVENT_RECORDED", 0));
+        when(jdbcTemplate.update(contains("PROCESSING"), any(MapSqlParameterSource.class)))
+                .thenReturn(1);
+        FakeHandler first = new FakeHandler("USAGE_EVENT_RECORDED", null);
+        FakeHandler second = new FakeHandler("USAGE_EVENT_RECORDED", null);
+
+        OutboxRelay relay = newRelay(jdbcTemplate, first, second);
+        relay.processBatch(10);
+
+        assertThat(first.invocations.get()).isEqualTo(1);
+        assertThat(second.invocations.get()).isEqualTo(1);
+        verify(jdbcTemplate)
+                .update(
+                        contains("DELIVERED"),
+                        argThat((MapSqlParameterSource p) -> p.getValue("id").equals(6L)));
+    }
+
+    @Test
+    void processBatchStillRunsEveryHandlerWhenAnEarlierOneThrows() throws Exception {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        stubFindDue(jdbcTemplate, entryRow(7L, "USAGE_EVENT_RECORDED", 0));
+        when(jdbcTemplate.update(contains("PROCESSING"), any(MapSqlParameterSource.class)))
+                .thenReturn(1);
+        FakeHandler failing = new FakeHandler("USAGE_EVENT_RECORDED", new RuntimeException("boom"));
+        FakeHandler healthy = new FakeHandler("USAGE_EVENT_RECORDED", null);
+
+        OutboxRelay relay = newRelay(jdbcTemplate, failing, healthy);
+        relay.processBatch(10);
+
+        assertThat(failing.invocations.get()).isEqualTo(1);
+        assertThat(healthy.invocations.get()).isEqualTo(1);
+        verify(jdbcTemplate)
+                .update(
+                        contains("status='PENDING', attempt_count"),
+                        argThat((MapSqlParameterSource p) -> p.getValue("id").equals(7L)));
+        verify(jdbcTemplate, never())
+                .update(contains("status='DELIVERED'"), any(MapSqlParameterSource.class));
+    }
+
     private OutboxRelay newRelay(
             NamedParameterJdbcTemplate jdbcTemplate, OutboxEventHandler... handlers) {
         OutboxRelay relay = new OutboxRelay(jdbcTemplate, objectMapper, List.of(handlers));

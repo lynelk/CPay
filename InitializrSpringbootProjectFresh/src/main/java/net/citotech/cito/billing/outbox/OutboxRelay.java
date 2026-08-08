@@ -19,13 +19,18 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Polls {@code PENDING} {@code billing_outbox} rows (ADR 0005) and dispatches each to the first
- * registered {@link OutboxEventHandler} whose {@code supports(eventType)} matches, following the
- * same ShedLock + {@code @Scheduled} pattern as {@code scheduler/LedgerOperationsScheduler} so
- * exactly one instance processes a batch at a time cluster-wide - no per-row claim token is needed
- * beyond the guarded {@code PENDING -> PROCESSING} update. Every entry this method touches leaves
- * it {@code DELIVERED}, retried back to {@code PENDING} with backoff, or parked {@code FAILED}
- * after {@code maxAttempts} - never left stuck in {@code PROCESSING}.
+ * Polls {@code PENDING} {@code billing_outbox} rows (ADR 0005) and dispatches each to every
+ * registered {@link OutboxEventHandler} whose {@code supports(eventType)} matches - not just the
+ * first, since Phase 2 needs independent side effects (usage-event production, rated-charge
+ * computation, ...) off the same entry - following the same ShedLock + {@code @Scheduled} pattern
+ * as {@code scheduler/LedgerOperationsScheduler} so exactly one instance processes a batch at a
+ * time cluster-wide - no per-row claim token is needed beyond the guarded {@code PENDING ->
+ * PROCESSING} update. If any matching handler throws, the whole entry retries with backoff as a
+ * unit (no partial-success tracking) - safe because every handler's downstream write must be
+ * idempotent, so re-running an already-succeeded handler on retry is a no-op, not a duplicate.
+ * Every entry this method touches leaves it {@code DELIVERED}, retried back to {@code PENDING} with
+ * backoff, or parked {@code FAILED} after {@code maxAttempts} - never left stuck in {@code
+ * PROCESSING}.
  */
 @Component
 @ConditionalOnProperty(
@@ -83,20 +88,32 @@ public class OutboxRelay {
     }
 
     private void processOne(BillingOutboxEntry entry) {
-        try {
-            OutboxEventHandler handler =
-                    handlers.stream()
-                            .filter(h -> h.supports(entry.eventType()))
-                            .findFirst()
-                            .orElseThrow(
-                                    () ->
-                                            new IllegalStateException(
-                                                    "No handler registered for event type "
-                                                            + entry.eventType()));
-            handler.handle(entry);
+        List<OutboxEventHandler> matching =
+                handlers.stream().filter(h -> h.supports(entry.eventType())).toList();
+        if (matching.isEmpty()) {
+            recordFailure(entry, "No handler registered for event type " + entry.eventType());
+            return;
+        }
+
+        // Every matching handler is attempted even if an earlier one fails, so one handler's
+        // outage never delays another's independent side effect (e.g. usage-event production
+        // succeeding while rated-charge computation is temporarily broken) - safe because a
+        // retry re-running an already-succeeded handler must be a no-op (idempotent by design).
+        Exception firstFailure = null;
+        for (OutboxEventHandler handler : matching) {
+            try {
+                handler.handle(entry);
+            } catch (Exception ex) {
+                if (firstFailure == null) {
+                    firstFailure = ex;
+                }
+            }
+        }
+
+        if (firstFailure == null) {
             markDelivered(entry.id());
-        } catch (Exception ex) {
-            recordFailure(entry, ex.getMessage());
+        } else {
+            recordFailure(entry, firstFailure.getMessage());
         }
     }
 
