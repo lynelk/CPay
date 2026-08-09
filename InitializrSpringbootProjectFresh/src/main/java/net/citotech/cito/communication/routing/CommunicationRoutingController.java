@@ -55,13 +55,8 @@ public class CommunicationRoutingController {
             return Map.of("code", "000", "resolved", false);
         }
         RuleRow row = rule.get();
-        ProviderRow provider =
-                repository.provider(row.providerCode(), channel).orElse(null);
-        return Map.of(
-                "code", "000",
-                "resolved", true,
-                "rule", row,
-                "provider", provider);
+        ProviderRow provider = repository.provider(row.providerCode(), channel).orElse(null);
+        return Map.of("code", "000", "resolved", true, "rule", row, "provider", provider);
     }
 
     @PostMapping(path = "/rules")

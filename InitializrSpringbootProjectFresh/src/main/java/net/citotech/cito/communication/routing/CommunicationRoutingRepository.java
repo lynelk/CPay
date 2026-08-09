@@ -137,7 +137,9 @@ public class CommunicationRoutingRepository {
                 new MapSqlParameterSource("id", ruleId));
     }
 
-    /** The single rule the router lookup would pick for a merchant+channel (debug/effective view). */
+    /**
+     * The single rule the router lookup would pick for a merchant+channel (debug/effective view).
+     */
     public Optional<RuleRow> effectiveRule(String channel, Long merchantId) {
         List<RuleRow> rows = ruleCandidates(channel, merchantId);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));

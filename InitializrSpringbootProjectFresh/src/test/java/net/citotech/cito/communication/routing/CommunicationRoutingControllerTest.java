@@ -2,7 +2,6 @@ package net.citotech.cito.communication.routing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -71,8 +70,7 @@ class CommunicationRoutingControllerTest {
         when(repository.effectiveRule("SMS", 7L)).thenReturn(Optional.empty());
 
         Map<String, Object> body =
-                new CommunicationRoutingController(repository)
-                        .effective(7L, "SMS");
+                new CommunicationRoutingController(repository).effective(7L, "SMS");
 
         assertThat(body.get("code")).isEqualTo("000");
         assertThat(body.get("resolved")).isEqualTo(false);
@@ -81,7 +79,16 @@ class CommunicationRoutingControllerTest {
     @Test
     void effectiveResolvesTheWinningRuleWithItsProvider() {
         CommunicationRoutingRepository repository = mock(CommunicationRoutingRepository.class);
-        RuleRow rule = new RuleRow(2L, "SMS", 7L, 10, "YO_SMS", "YES", "2026-08-09 00:00:00", "2026-08-09 00:00:00");
+        RuleRow rule =
+                new RuleRow(
+                        2L,
+                        "SMS",
+                        7L,
+                        10,
+                        "YO_SMS",
+                        "YES",
+                        "2026-08-09 00:00:00",
+                        "2026-08-09 00:00:00");
         when(repository.effectiveRule("SMS", 7L)).thenReturn(Optional.of(rule));
         when(repository.provider("YO_SMS", "SMS"))
                 .thenReturn(
@@ -99,8 +106,7 @@ class CommunicationRoutingControllerTest {
                                         "2026-08-09 00:00:00")));
 
         Map<String, Object> body =
-                new CommunicationRoutingController(repository)
-                        .effective(7L, "SMS");
+                new CommunicationRoutingController(repository).effective(7L, "SMS");
 
         assertThat(body.get("code")).isEqualTo("000");
         assertThat(body.get("resolved")).isEqualTo(true);
@@ -111,7 +117,16 @@ class CommunicationRoutingControllerTest {
     @Test
     void upsertRuleDelegatesAndReturnsTheSavedRow() {
         CommunicationRoutingRepository repository = mock(CommunicationRoutingRepository.class);
-        RuleRow saved = new RuleRow(3L, "SMS", 7L, 10, "AFRICAS_TALKING", "YES", "2026-08-09 00:00:00", "2026-08-09 00:00:00");
+        RuleRow saved =
+                new RuleRow(
+                        3L,
+                        "SMS",
+                        7L,
+                        10,
+                        "AFRICAS_TALKING",
+                        "YES",
+                        "2026-08-09 00:00:00",
+                        "2026-08-09 00:00:00");
         when(repository.upsertRule(any(), anyString(), any(), any(), anyString(), anyString()))
                 .thenReturn(saved);
 
@@ -123,8 +138,7 @@ class CommunicationRoutingControllerTest {
 
         assertThat(body.get("code")).isEqualTo("000");
         assertThat(((RuleRow) body.get("rule")).providerCode()).isEqualTo("AFRICAS_TALKING");
-        verify(repository)
-                .upsertRule(any(), anyString(), any(), any(), anyString(), anyString());
+        verify(repository).upsertRule(any(), anyString(), any(), any(), anyString(), anyString());
     }
 
     @Test

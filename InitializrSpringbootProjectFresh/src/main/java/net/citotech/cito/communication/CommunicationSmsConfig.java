@@ -3,8 +3,11 @@ package net.citotech.cito.communication;
 import java.util.HashMap;
 import java.util.Map;
 import net.citotech.cito.communication.routing.ProviderRouter;
+import net.citotech.cito.communication.sms.AfricasTalkingSmsGatewayAdapter;
 import net.citotech.cito.communication.sms.LegacySettingsSmsGatewayAdapter;
 import net.citotech.cito.communication.sms.SmsGatewayAdapter;
+import net.citotech.cito.communication.sms.TwilioSmsGatewayAdapter;
+import net.citotech.cito.communication.sms.YoSmsGatewayAdapter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,9 +29,15 @@ public class CommunicationSmsConfig {
 
     @Bean
     public Map<String, SmsGatewayAdapter> smsAdaptersByCode(
-            LegacySettingsSmsGatewayAdapter legacySettingsSmsGatewayAdapter) {
+            LegacySettingsSmsGatewayAdapter legacySettingsSmsGatewayAdapter,
+            YoSmsGatewayAdapter yoSmSmsGatewayAdapter,
+            AfricasTalkingSmsGatewayAdapter africastalkingSmsGatewayAdapter,
+            TwilioSmsGatewayAdapter twilioSmsGatewayAdapter) {
         Map<String, SmsGatewayAdapter> adapters = new HashMap<>();
         adapters.put(LEGACY_SETTINGS_CODE, legacySettingsSmsGatewayAdapter);
+        adapters.put("YO_SMS", yoSmSmsGatewayAdapter);
+        adapters.put("AFRICAS_TALKING", africastalkingSmsGatewayAdapter);
+        adapters.put("TWILIO_SMS", twilioSmsGatewayAdapter);
         return Map.copyOf(adapters);
     }
 }

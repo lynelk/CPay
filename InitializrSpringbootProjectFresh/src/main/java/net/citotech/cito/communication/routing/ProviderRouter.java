@@ -22,8 +22,8 @@ import org.springframework.stereotype.Component;
  * (merchant_id = the request's merchant) beats the platform default (merchant_id IS NULL); lowest
  * {@code priority} wins; ties break by lowest id. The V50 seed routes SMS to {@code
  * LEGACY_SETTINGS} as the platform default, so an unconfigured deployment keeps the exact
- * pre-router behavior. Any unresolved/unknown/disabled target falls back to the legacy adapter,
- * and a routing-table read failure (e.g. DB briefly down) also falls back to legacy rather than
+ * pre-router behavior. Any unresolved/unknown/disabled target falls back to the legacy adapter, and
+ * a routing-table read failure (e.g. DB briefly down) also falls back to legacy rather than
  * hard-failing the batch — routing is metadata, delivery availability wins.
  */
 @Component
@@ -57,7 +57,8 @@ public class ProviderRouter implements SmsGatewayAdapter {
     SmsGatewayAdapter resolveFor(long merchantId, String channel) {
         SmsGatewayAdapter legacy = adaptersByCode.get(LEGACY_CODE);
         if (legacy == null) {
-            throw new IllegalStateException("No legacy SMS adapter registered in smsAdaptersByCode");
+            throw new IllegalStateException(
+                    "No legacy SMS adapter registered in smsAdaptersByCode");
         }
 
         String providerCode;

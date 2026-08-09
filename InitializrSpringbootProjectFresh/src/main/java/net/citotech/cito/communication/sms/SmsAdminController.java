@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
  * Thin admin trigger for the extracted SMS pending-send delivery worker (ISO domain mapping:
  * communication/sms, B1 "thin controllers"). This is the first-class replacement path for the
  * legacy {@code POST /transactions/testSendPendingSmsCron} endpoint: it delegates the entire
- * bill/send/reverse/update loop to {@link SmsDeliveryService} instead of carrying the logic
- * inline. The remote-trigger path remains ShedLock-serialized at the worker/scheduler level, so
- * this HTTP trigger and the opt-in {@link SmsDeliveryScheduler} can both run in HA safely.
+ * bill/send/reverse/update loop to {@link SmsDeliveryService} instead of carrying the logic inline.
+ * The remote-trigger path remains ShedLock-serialized at the worker/scheduler level, so this HTTP
+ * trigger and the opt-in {@link SmsDeliveryScheduler} can both run in HA safely.
  */
 @RestController
 @RequestMapping(path = "/api/v2/admin/communication/sms")
