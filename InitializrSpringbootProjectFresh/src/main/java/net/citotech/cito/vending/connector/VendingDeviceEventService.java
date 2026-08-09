@@ -45,30 +45,41 @@ public class VendingDeviceEventService {
 
     public Map<String, Object> process(long merchantId, Contract contract, String rawBody) {
         JsonNode body = parse(rawBody);
-        String externalEventId = required(valueAt(body, contract.callbackEventIdField()), "callback event id");
-        String externalDeviceId = required(valueAt(body, contract.callbackDeviceField()), "callback device id");
-        String eventType = required(valueAt(body, contract.callbackEventTypeField()), "callback event type");
+        String externalEventId =
+                required(valueAt(body, contract.callbackEventIdField()), "callback event id");
+        String externalDeviceId =
+                required(valueAt(body, contract.callbackDeviceField()), "callback device id");
+        String eventType =
+                required(valueAt(body, contract.callbackEventTypeField()), "callback event type");
 
-        long callbackId = registerCallback(
-                merchantId,
-                contract.connectorCode(),
-                externalEventId,
-                externalDeviceId,
-                eventType,
-                rawBody);
+        long callbackId =
+                registerCallback(
+                        merchantId,
+                        contract.connectorCode(),
+                        externalEventId,
+                        externalDeviceId,
+                        eventType,
+                        rawBody);
         if (callbackId == 0) {
             return Map.of("status", "DUPLICATE", "eventId", externalEventId);
         }
 
         try {
-            Map<String, Object> device = requireDevice(merchantId, contract.connectorCode(), externalDeviceId);
+            Map<String, Object> device =
+                    requireDevice(merchantId, contract.connectorCode(), externalDeviceId);
             EventValues values = eventValues(merchantId, contract.connectorCode());
             String normalizedEvent = eventType.trim().toUpperCase(Locale.ROOT);
             String rentalReference = valueAt(body, contract.callbackRentalField());
             String assetCode = valueAt(body, contract.callbackAssetField());
-            Integer availableCount = integerOrNull(valueAt(body, contract.callbackAvailableCountField()));
+            Integer availableCount =
+                    integerOrNull(valueAt(body, contract.callbackAvailableCountField()));
 
-            if (matches(normalizedEvent, values.heartbeatValue(), "HEARTBEAT", "DEVICE_ONLINE", "INVENTORY")) {
+            if (matches(
+                    normalizedEvent,
+                    values.heartbeatValue(),
+                    "HEARTBEAT",
+                    "DEVICE_ONLINE",
+                    "INVENTORY")) {
                 heartbeat(merchantId, number(device.get("id")), availableCount);
                 repository.event(
                         merchantId,
@@ -79,7 +90,11 @@ public class VendingDeviceEventService {
                         null,
                         null,
                         "{\"externalEventId\":\"" + json(externalEventId) + "\"}");
-            } else if (matches(normalizedEvent, values.offlineValue(), "DEVICE_OFFLINE", "OFFLINE")) {
+            } else if (matches(
+                    normalizedEvent,
+                    values.offlineValue(),
+                    "DEVICE_OFFLINE",
+                    "OFFLINE")) {
                 setDeviceStatus(merchantId, number(device.get("id")), "OFFLINE");
                 repository.event(
                         merchantId,
@@ -90,26 +105,57 @@ public class VendingDeviceEventService {
                         null,
                         null,
                         null);
-            } else if (matches(normalizedEvent, values.releaseValue(), "ASSET_RELEASED", "POWER_BANK_RELEASED", "RELEASED")) {
-                if (!rentalReference.isBlank()) confirmRelease(merchantId, rentalReference);
+            } else if (matches(
+                    normalizedEvent,
+                    values.releaseValue(),
+                    "ASSET_RELEASED",
+                    "POWER_BANK_RELEASED",
+                    "RELEASED")) {
+                if (rentalReference.isBlank()) {
+                    throw new PaymentGatewayException(
+                            "Release callback cannot be reconciled because callbackRentalField is not mapped or is absent");
+                }
+                if (repository.markRentalActive(merchantId, rentalReference) == 0) {
+                    Map<String, Object> rental =
+                            repository.rental(merchantId, rentalReference)
+                                    .orElseThrow(
+                                            () ->
+                                                    new PaymentGatewayException(
+                                                            "Release callback rental was not found"));
+                    if (!"ACTIVE".equalsIgnoreCase(String.valueOf(rental.get("status")))) {
+                        throw new PaymentGatewayException(
+                                "Release callback does not match a release-pending rental");
+                    }
+                }
                 if (!assetCode.isBlank()) markAssetOut(merchantId, assetCode);
                 repository.event(
                         merchantId,
                         "MANUFACTURER_RELEASE_CONFIRMED",
-                        rentalReference.isBlank() ? "DEVICE" : "RENTAL",
-                        rentalReference.isBlank() ? String.valueOf(device.get("device_code")) : rentalReference,
+                        "RENTAL",
+                        rentalReference,
                         "manufacturer:" + contract.connectorCode(),
                         null,
                         null,
                         "{\"assetCode\":\"" + json(assetCode) + "\"}");
-            } else if (matches(normalizedEvent, values.returnValue(), "ASSET_RETURNED", "POWER_BANK_RETURNED", "RETURNED")) {
+            } else if (matches(
+                    normalizedEvent,
+                    values.returnValue(),
+                    "ASSET_RETURNED",
+                    "POWER_BANK_RETURNED",
+                    "RETURNED")) {
                 if (rentalReference.isBlank()) {
                     throw new PaymentGatewayException(
                             "Return callback cannot be reconciled because callbackRentalField is not mapped");
                 }
-                if (!assetCode.isBlank()) markAssetAvailable(merchantId, number(device.get("id")), assetCode);
-                Map<String, Object> rental = repository.rental(merchantId, rentalReference)
-                        .orElseThrow(() -> new PaymentGatewayException("Return callback rental was not found"));
+                if (!assetCode.isBlank()) {
+                    markAssetAvailable(merchantId, number(device.get("id")), assetCode);
+                }
+                Map<String, Object> rental =
+                        repository.rental(merchantId, rentalReference)
+                                .orElseThrow(
+                                        () ->
+                                                new PaymentGatewayException(
+                                                        "Return callback rental was not found"));
                 String status = String.valueOf(rental.get("status"));
                 if ("ACTIVE".equalsIgnoreCase(status)) {
                     rentals.returnRental(
@@ -136,10 +182,14 @@ public class VendingDeviceEventService {
 
             markCallback(callbackId, "PROCESSED", null);
             return Map.of(
-                    "status", "PROCESSED",
-                    "eventId", externalEventId,
-                    "eventType", eventType,
-                    "deviceCode", String.valueOf(device.get("device_code")));
+                    "status",
+                    "PROCESSED",
+                    "eventId",
+                    externalEventId,
+                    "eventType",
+                    eventType,
+                    "deviceCode",
+                    String.valueOf(device.get("device_code")));
         } catch (RuntimeException e) {
             markCallback(callbackId, "FAILED", safeMessage(e));
             throw e;
@@ -168,15 +218,17 @@ public class VendingDeviceEventService {
         p.addValue("raw_body", rawBody == null ? "" : rawBody);
         int inserted = jdbc.update(sql, p);
         if (inserted == 0) return 0;
-        Long id = jdbc.queryForObject(
-                "SELECT id FROM vending_device_callbacks WHERE merchant_id=:tenant_merchant_id "
-                        + "AND connector_code=:connector_code AND external_event_id=:external_event_id",
-                p,
-                Long.class);
+        Long id =
+                jdbc.queryForObject(
+                        "SELECT id FROM vending_device_callbacks WHERE merchant_id=:tenant_merchant_id "
+                                + "AND connector_code=:connector_code AND external_event_id=:external_event_id",
+                        p,
+                        Long.class);
         return id == null ? 0 : id;
     }
 
-    private Map<String, Object> requireDevice(long merchantId, String connectorCode, String externalId) {
+    private Map<String, Object> requireDevice(
+            long merchantId, String connectorCode, String externalId) {
         String sql =
                 "SELECT id, device_code, status, available_count FROM vending_devices "
                         + "WHERE merchant_id=:tenant_merchant_id AND connector_code=:connector_code "
@@ -186,7 +238,10 @@ public class VendingDeviceEventService {
         p.addValue("connector_code", connectorCode);
         p.addValue("external_device_id", externalId);
         List<Map<String, Object>> rows = jdbc.queryForList(sql, p);
-        if (rows.isEmpty()) throw new PaymentGatewayException("Manufacturer callback device is not registered");
+        if (rows.isEmpty()) {
+            throw new PaymentGatewayException(
+                    "Manufacturer callback device is not registered");
+        }
         return rows.get(0);
     }
 
@@ -198,7 +253,10 @@ public class VendingDeviceEventService {
         MapSqlParameterSource p = TenantScopeGuard.scope(null, merchantId);
         p.addValue("connector_code", connectorCode);
         List<Map<String, Object>> rows = jdbc.queryForList(sql, p);
-        if (rows.isEmpty()) return new EventValues("HEARTBEAT", "ASSET_RETURNED", "ASSET_RELEASED", "DEVICE_OFFLINE");
+        if (rows.isEmpty()) {
+            return new EventValues(
+                    "HEARTBEAT", "ASSET_RETURNED", "ASSET_RELEASED", "DEVICE_OFFLINE");
+        }
         Map<String, Object> row = rows.get(0);
         return new EventValues(
                 text(row.get("callback_heartbeat_value")),
@@ -229,16 +287,6 @@ public class VendingDeviceEventService {
         jdbc.update(sql, p);
     }
 
-    private void confirmRelease(long merchantId, String rentalReference) {
-        String sql =
-                "UPDATE vending_rentals SET status='ACTIVE' WHERE merchant_id=:tenant_merchant_id "
-                        + "AND rental_reference=:rental_reference AND status IN ('READY_TO_RELEASE','RELEASE_FAILED')";
-        TenantScopeGuard.assertTenantBound(sql);
-        MapSqlParameterSource p = TenantScopeGuard.scope(null, merchantId);
-        p.addValue("rental_reference", rentalReference);
-        jdbc.update(sql, p);
-    }
-
     private void markAssetOut(long merchantId, String assetCode) {
         updateAsset(merchantId, assetCode, null, "RENTED");
     }
@@ -247,7 +295,8 @@ public class VendingDeviceEventService {
         updateAsset(merchantId, assetCode, deviceId, "AVAILABLE");
     }
 
-    private void updateAsset(long merchantId, String assetCode, Long deviceId, String status) {
+    private void updateAsset(
+            long merchantId, String assetCode, Long deviceId, String status) {
         String sql =
                 "UPDATE vending_assets SET status=:status, device_id=COALESCE(:device_id, device_id), "
                         + "last_seen_at=CURRENT_TIMESTAMP WHERE merchant_id=:tenant_merchant_id AND asset_code=:asset_code";
@@ -272,12 +321,16 @@ public class VendingDeviceEventService {
     private JsonNode parse(String rawBody) {
         try {
             JsonNode body = mapper.readTree(rawBody == null ? "" : rawBody);
-            if (body == null || !body.isObject()) throw new PaymentGatewayException("Vending callback body must be a JSON object");
+            if (body == null || !body.isObject()) {
+                throw new PaymentGatewayException(
+                        "Vending callback body must be a JSON object");
+            }
             return body;
         } catch (PaymentGatewayException e) {
             throw e;
         } catch (Exception e) {
-            throw new PaymentGatewayException("Vending callback body is invalid JSON");
+            throw new PaymentGatewayException(
+                    "Vending callback body is invalid JSON");
         }
     }
 
@@ -293,7 +346,9 @@ public class VendingDeviceEventService {
 
     private boolean matches(String actual, String configured, String... aliases) {
         if (actual.equalsIgnoreCase(text(configured))) return true;
-        for (String alias : aliases) if (actual.equalsIgnoreCase(alias)) return true;
+        for (String alias : aliases) {
+            if (actual.equalsIgnoreCase(alias)) return true;
+        }
         return false;
     }
 
@@ -307,11 +362,15 @@ public class VendingDeviceEventService {
     }
 
     private long number(Object value) {
-        return value instanceof Number n ? n.longValue() : Long.parseLong(String.valueOf(value));
+        return value instanceof Number n
+                ? n.longValue()
+                : Long.parseLong(String.valueOf(value));
     }
 
     private String required(String value, String name) {
-        if (value == null || value.isBlank()) throw new PaymentGatewayException(name + " is required");
+        if (value == null || value.isBlank()) {
+            throw new PaymentGatewayException(name + " is required");
+        }
         return value.trim();
     }
 
@@ -321,17 +380,23 @@ public class VendingDeviceEventService {
 
     private String sha256(String value) {
         try {
-            return HexFormat.of().formatHex(
-                    MessageDigest.getInstance("SHA-256")
-                            .digest((value == null ? "" : value).getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(
+                                            (value == null ? "" : value)
+                                                    .getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
-            throw new IllegalStateException("Unable to hash vending callback body", e);
+            throw new IllegalStateException(
+                    "Unable to hash vending callback body", e);
         }
     }
 
     private String safeMessage(RuntimeException e) {
         String message = e.getMessage();
-        return message == null ? e.getClass().getSimpleName() : message.substring(0, Math.min(500, message.length()));
+        return message == null
+                ? e.getClass().getSimpleName()
+                : message.substring(0, Math.min(500, message.length()));
     }
 
     private String json(String value) {
@@ -340,5 +405,8 @@ public class VendingDeviceEventService {
     }
 
     private record EventValues(
-            String heartbeatValue, String returnValue, String releaseValue, String offlineValue) {}
+            String heartbeatValue,
+            String returnValue,
+            String releaseValue,
+            String offlineValue) {}
 }
