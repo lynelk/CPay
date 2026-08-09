@@ -80,7 +80,11 @@ public class VendingRepository {
         p.addValue("daily_cap_amount", dailyCapAmount);
         p.addValue("overtime_amount", overtimeAmount);
         p.addValue("overtime_days", overtimeDays);
-        p.addValue("refund_mode", refundMode == null || refundMode.isBlank() ? "ORIGINAL_ROUTE" : refundMode.trim().toUpperCase());
+        p.addValue(
+                "refund_mode",
+                refundMode == null || refundMode.isBlank()
+                        ? "ORIGINAL_ROUTE"
+                        : refundMode.trim().toUpperCase());
         String sql =
                 "INSERT INTO vending_pricing_policies "
                         + "(merchant_id, policy_code, name, currency, deposit_amount, free_minutes, unit_price, "
@@ -102,7 +106,10 @@ public class VendingRepository {
                                 "SELECT * FROM vending_pricing_policies WHERE merchant_id=:tenant_merchant_id AND id=:id AND active_flag='YES'",
                                 merchantId,
                                 new MapSqlParameterSource("id", policyId))
-                        .orElseThrow(() -> new PaymentGatewayException("Vending pricing policy was not found or is inactive"));
+                        .orElseThrow(
+                                () ->
+                                        new PaymentGatewayException(
+                                                "Vending pricing policy was not found or is inactive"));
         return new VendingPricingPolicy(
                 number(row.get("id")),
                 merchantId,
@@ -138,19 +145,25 @@ public class VendingRepository {
             String connectorCode,
             String externalDeviceId,
             int slotCount) {
-        // Tenant-scoped existence checks prevent binding another merchant's location/pricing row.
         pricingPolicy(merchantId, pricingPolicyId);
         tenantOne(
                         "SELECT id FROM vending_locations WHERE merchant_id=:tenant_merchant_id AND id=:id AND status='ACTIVE'",
                         merchantId,
                         new MapSqlParameterSource("id", locationId))
-                .orElseThrow(() -> new PaymentGatewayException("Vending location was not found or is inactive"));
+                .orElseThrow(
+                        () ->
+                                new PaymentGatewayException(
+                                        "Vending location was not found or is inactive"));
         MapSqlParameterSource p = TenantScopeGuard.scope(null, merchantId);
         p.addValue("location_id", locationId);
         p.addValue("pricing_policy_id", pricingPolicyId);
         p.addValue("device_code", required(deviceCode, "deviceCode"));
         p.addValue("device_type", required(deviceType, "deviceType").toUpperCase());
-        p.addValue("connector_code", connectorCode == null || connectorCode.isBlank() ? "SIMULATED" : connectorCode.trim().toUpperCase());
+        p.addValue(
+                "connector_code",
+                connectorCode == null || connectorCode.isBlank()
+                        ? "SIMULATED"
+                        : connectorCode.trim().toUpperCase());
         p.addValue("external_device_id", blankToNull(externalDeviceId));
         p.addValue("slot_count", Math.max(0, slotCount));
         String sql =
@@ -165,12 +178,15 @@ public class VendingRepository {
         return tenantOne(
                         "SELECT * FROM vending_devices WHERE merchant_id=:tenant_merchant_id AND device_code=:device_code",
                         merchantId,
-                        new MapSqlParameterSource("device_code", required(deviceCode, "deviceCode")))
-                .orElseThrow(() -> new PaymentGatewayException("Vending device was not found"));
+                        new MapSqlParameterSource(
+                                "device_code", required(deviceCode, "deviceCode")))
+                .orElseThrow(
+                        () -> new PaymentGatewayException("Vending device was not found"));
     }
 
     public List<Map<String, Object>> rentals(long merchantId, int limit) {
-        MapSqlParameterSource p = new MapSqlParameterSource("limit", Math.max(1, Math.min(limit, 500)));
+        MapSqlParameterSource p =
+                new MapSqlParameterSource("limit", Math.max(1, Math.min(limit, 500)));
         return tenantList(
                 "SELECT id, rental_reference, device_id, customer_mask, channel_code, currency, deposit_amount, "
                         + "escrow_amount, usage_amount, refund_amount, surcharge_created, billed_blocks, status, started_at, ended_at, created_at, updated_at "
@@ -183,28 +199,32 @@ public class VendingRepository {
         return tenantOne(
                 "SELECT * FROM vending_rentals WHERE merchant_id=:tenant_merchant_id AND rental_reference=:rental_reference",
                 merchantId,
-                new MapSqlParameterSource("rental_reference", required(rentalReference, "rentalReference")));
+                new MapSqlParameterSource(
+                        "rental_reference", required(rentalReference, "rentalReference")));
     }
 
-    public Optional<Map<String, Object>> activeRentalForCustomer(long merchantId, String customerHash) {
+    public Optional<Map<String, Object>> activeRentalForCustomer(
+            long merchantId, String customerHash) {
         MapSqlParameterSource p = new MapSqlParameterSource("customer_hash", customerHash);
         return tenantOne(
                 "SELECT id, rental_reference, status FROM vending_rentals "
                         + "WHERE merchant_id=:tenant_merchant_id AND customer_hash=:customer_hash "
-                        + "AND status IN ('PAYMENT_PENDING','READY_TO_RELEASE','ACTIVE','RELEASE_FAILED','REFUND_PENDING') "
+                        + "AND status IN ('PAYMENT_PENDING','READY_TO_RELEASE','RELEASE_PENDING','ACTIVE','RELEASE_FAILED','REFUND_PENDING') "
                         + "ORDER BY id DESC LIMIT 1",
                 merchantId,
                 p);
     }
 
-    public Map<String, Object> customerBalance(long merchantId, String customerHash, String currency) {
+    public Map<String, Object> customerBalance(
+            long merchantId, String customerHash, String currency) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("customer_hash", customerHash);
         p.addValue("currency", currency);
-        Optional<Map<String, Object>> existing = tenantOne(
-                "SELECT * FROM vending_customer_balances WHERE merchant_id=:tenant_merchant_id AND customer_hash=:customer_hash AND currency=:currency",
-                merchantId,
-                p);
+        Optional<Map<String, Object>> existing =
+                tenantOne(
+                        "SELECT * FROM vending_customer_balances WHERE merchant_id=:tenant_merchant_id AND customer_hash=:customer_hash AND currency=:currency",
+                        merchantId,
+                        p);
         if (existing.isPresent()) return existing.get();
         MapSqlParameterSource insert = TenantScopeGuard.scope(p, merchantId);
         String sql =
@@ -253,17 +273,29 @@ public class VendingRepository {
         return number(rental(merchantId, rentalReference).orElseThrow().get("id"));
     }
 
-    public void setCollectTransaction(long merchantId, String rentalReference, String transactionId) {
+    public void setCollectTransaction(
+            long merchantId, String rentalReference, String transactionId) {
         tenantUpdate(
                 "UPDATE vending_rentals SET collect_transaction_id=:transaction_id WHERE merchant_id=:tenant_merchant_id AND rental_reference=:rental_reference",
                 merchantId,
-                new MapSqlParameterSource().addValue("transaction_id", transactionId).addValue("rental_reference", rentalReference));
+                new MapSqlParameterSource()
+                        .addValue("transaction_id", transactionId)
+                        .addValue("rental_reference", rentalReference));
     }
 
     public int activateAfterSuccessfulCollection(long merchantId, String rentalReference) {
         return tenantUpdate(
-                "UPDATE vending_rentals SET status='READY_TO_RELEASE', started_at=CURRENT_TIMESTAMP "
+                "UPDATE vending_rentals SET status='READY_TO_RELEASE' "
                         + "WHERE merchant_id=:tenant_merchant_id AND rental_reference=:rental_reference AND status='PAYMENT_PENDING'",
+                merchantId,
+                new MapSqlParameterSource("rental_reference", rentalReference));
+    }
+
+    public int markRentalActive(long merchantId, String rentalReference) {
+        return tenantUpdate(
+                "UPDATE vending_rentals SET status='ACTIVE', started_at=COALESCE(started_at,CURRENT_TIMESTAMP) "
+                        + "WHERE merchant_id=:tenant_merchant_id AND rental_reference=:rental_reference "
+                        + "AND status IN ('READY_TO_RELEASE','RELEASE_PENDING','RELEASE_FAILED')",
                 merchantId,
                 new MapSqlParameterSource("rental_reference", rentalReference));
     }
@@ -272,16 +304,22 @@ public class VendingRepository {
         tenantUpdate(
                 "UPDATE vending_rentals SET status=:status WHERE merchant_id=:tenant_merchant_id AND rental_reference=:rental_reference",
                 merchantId,
-                new MapSqlParameterSource().addValue("status", status).addValue("rental_reference", rentalReference));
+                new MapSqlParameterSource()
+                        .addValue("status", status)
+                        .addValue("rental_reference", rentalReference));
     }
 
-    public void settlePriorSurcharge(long merchantId, String customerHash, String currency, BigDecimal amount) {
+    public void settlePriorSurcharge(
+            long merchantId, String customerHash, String currency, BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) return;
         tenantUpdate(
                 "UPDATE vending_customer_balances SET surcharge_balance=GREATEST(0, surcharge_balance-:amount) "
                         + "WHERE merchant_id=:tenant_merchant_id AND customer_hash=:customer_hash AND currency=:currency",
                 merchantId,
-                new MapSqlParameterSource().addValue("amount", amount).addValue("customer_hash", customerHash).addValue("currency", currency));
+                new MapSqlParameterSource()
+                        .addValue("amount", amount)
+                        .addValue("customer_hash", customerHash)
+                        .addValue("currency", currency));
     }
 
     public void completeRental(
@@ -308,32 +346,51 @@ public class VendingRepository {
                         .addValue("rental_reference", rentalReference));
     }
 
-    public void addSurcharge(long merchantId, String customerHash, String currency, BigDecimal amount) {
+    public void addSurcharge(
+            long merchantId, String customerHash, String currency, BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) return;
         customerBalance(merchantId, customerHash, currency);
         tenantUpdate(
                 "UPDATE vending_customer_balances SET surcharge_balance=surcharge_balance+:amount "
                         + "WHERE merchant_id=:tenant_merchant_id AND customer_hash=:customer_hash AND currency=:currency",
                 merchantId,
-                new MapSqlParameterSource().addValue("amount", amount).addValue("customer_hash", customerHash).addValue("currency", currency));
+                new MapSqlParameterSource()
+                        .addValue("amount", amount)
+                        .addValue("customer_hash", customerHash)
+                        .addValue("currency", currency));
     }
 
-    public BigDecimal waiveSurcharge(long merchantId, String customerHash, String currency, BigDecimal requested) {
+    public BigDecimal waiveSurcharge(
+            long merchantId, String customerHash, String currency, BigDecimal requested) {
         Map<String, Object> balance = customerBalance(merchantId, customerHash, currency);
         BigDecimal existing = decimal(balance.get("surcharge_balance"));
-        BigDecimal amount = requested == null ? existing : requested.max(BigDecimal.ZERO).min(existing);
+        BigDecimal amount =
+                requested == null
+                        ? existing
+                        : requested.max(BigDecimal.ZERO).min(existing);
         settlePriorSurcharge(merchantId, customerHash, currency, amount);
         return amount;
     }
 
-    public void setRefundTransaction(long merchantId, String rentalReference, String transactionId) {
+    public void setRefundTransaction(
+            long merchantId, String rentalReference, String transactionId) {
         tenantUpdate(
                 "UPDATE vending_rentals SET refund_transaction_id=:transaction_id WHERE merchant_id=:tenant_merchant_id AND rental_reference=:rental_reference",
                 merchantId,
-                new MapSqlParameterSource().addValue("transaction_id", transactionId).addValue("rental_reference", rentalReference));
+                new MapSqlParameterSource()
+                        .addValue("transaction_id", transactionId)
+                        .addValue("rental_reference", rentalReference));
     }
 
-    public void event(long merchantId, String eventType, String entityType, String entityReference, String actor, BigDecimal amount, String currency, String detailJson) {
+    public void event(
+            long merchantId,
+            String eventType,
+            String entityType,
+            String entityReference,
+            String actor,
+            BigDecimal amount,
+            String currency,
+            String detailJson) {
         MapSqlParameterSource p = TenantScopeGuard.scope(null, merchantId);
         p.addValue("event_type", eventType);
         p.addValue("entity_type", entityType);
@@ -349,7 +406,62 @@ public class VendingRepository {
         jdbc.update(sql, p);
     }
 
-    public void command(long merchantId, long deviceId, Long rentalId, String reference, String type, String connector, String status, String providerReference, String responseJson) {
+    /**
+     * Claims a physical device command before any network call. The unique command reference makes
+     * this an atomic cross-instance idempotency gate, so two simultaneous payment/status polls cannot
+     * both eject the same power bank.
+     */
+    public boolean claimCommand(
+            long merchantId,
+            long deviceId,
+            Long rentalId,
+            String reference,
+            String type,
+            String connector,
+            String requestJson) {
+        MapSqlParameterSource p = TenantScopeGuard.scope(null, merchantId);
+        p.addValue("device_id", deviceId);
+        p.addValue("rental_id", rentalId);
+        p.addValue("reference", reference);
+        p.addValue("type", type);
+        p.addValue("connector", connector);
+        p.addValue("request_json", blankToNull(requestJson));
+        String sql =
+                "INSERT IGNORE INTO vending_commands (merchant_id, device_id, rental_id, command_reference, command_type, connector_code, status, request_json) "
+                        + "VALUES (:tenant_merchant_id, :device_id, :rental_id, :reference, :type, :connector, 'DISPATCHING', :request_json)";
+        TenantScopeGuard.assertTenantBound(sql);
+        return jdbc.update(sql, p) == 1;
+    }
+
+    public void completeCommand(
+            long merchantId,
+            String reference,
+            String status,
+            String providerReference,
+            String responseJson) {
+        tenantUpdate(
+                "UPDATE vending_commands SET status=:status, provider_reference=:provider_reference, "
+                        + "response_json=:response_json, completed_at=CURRENT_TIMESTAMP "
+                        + "WHERE merchant_id=:tenant_merchant_id AND command_reference=:reference AND status='DISPATCHING'",
+                merchantId,
+                new MapSqlParameterSource()
+                        .addValue("reference", reference)
+                        .addValue("status", status)
+                        .addValue("provider_reference", blankToNull(providerReference))
+                        .addValue("response_json", blankToNull(responseJson)));
+    }
+
+    /** Legacy/upsert command evidence path retained for non-release operational callers. */
+    public void command(
+            long merchantId,
+            long deviceId,
+            Long rentalId,
+            String reference,
+            String type,
+            String connector,
+            String status,
+            String providerReference,
+            String responseJson) {
         MapSqlParameterSource p = TenantScopeGuard.scope(null, merchantId);
         p.addValue("device_id", deviceId);
         p.addValue("rental_id", rentalId);
@@ -367,23 +479,28 @@ public class VendingRepository {
         jdbc.update(sql, p);
     }
 
-    private List<Map<String, Object>> tenantList(String sql, long merchantId, MapSqlParameterSource params) {
+    private List<Map<String, Object>> tenantList(
+            String sql, long merchantId, MapSqlParameterSource params) {
         TenantScopeGuard.assertTenantBound(sql);
         return jdbc.queryForList(sql, TenantScopeGuard.scope(params, merchantId));
     }
 
-    private Optional<Map<String, Object>> tenantOne(String sql, long merchantId, MapSqlParameterSource params) {
+    private Optional<Map<String, Object>> tenantOne(
+            String sql, long merchantId, MapSqlParameterSource params) {
         List<Map<String, Object>> rows = tenantList(sql, merchantId, params);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
-    private int tenantUpdate(String sql, long merchantId, MapSqlParameterSource params) {
+    private int tenantUpdate(
+            String sql, long merchantId, MapSqlParameterSource params) {
         TenantScopeGuard.assertTenantBound(sql);
         return jdbc.update(sql, TenantScopeGuard.scope(params, merchantId));
     }
 
     private String required(String value, String name) {
-        if (value == null || value.trim().isEmpty()) throw new PaymentGatewayException(name + " is required");
+        if (value == null || value.trim().isEmpty()) {
+            throw new PaymentGatewayException(name + " is required");
+        }
         return value.trim();
     }
 
@@ -392,21 +509,29 @@ public class VendingRepository {
     }
 
     private BigDecimal positive(BigDecimal value, String name) {
-        if (value == null || value.signum() <= 0) throw new PaymentGatewayException(name + " must be greater than zero");
+        if (value == null || value.signum() <= 0) {
+            throw new PaymentGatewayException(name + " must be greater than zero");
+        }
         return value;
     }
 
     private BigDecimal nonNegative(BigDecimal value, String name) {
-        if (value == null || value.signum() < 0) throw new PaymentGatewayException(name + " must not be negative");
+        if (value == null || value.signum() < 0) {
+            throw new PaymentGatewayException(name + " must not be negative");
+        }
         return value;
     }
 
     public static long number(Object value) {
-        return value instanceof Number n ? n.longValue() : Long.parseLong(String.valueOf(value));
+        return value instanceof Number n
+                ? n.longValue()
+                : Long.parseLong(String.valueOf(value));
     }
 
     public static int integer(Object value) {
-        return value instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(value));
+        return value instanceof Number n
+                ? n.intValue()
+                : Integer.parseInt(String.valueOf(value));
     }
 
     public static Integer nullableInteger(Object value) {
@@ -414,7 +539,9 @@ public class VendingRepository {
     }
 
     public static BigDecimal decimal(Object value) {
-        return value instanceof BigDecimal b ? b : new BigDecimal(String.valueOf(value));
+        return value instanceof BigDecimal b
+                ? b
+                : new BigDecimal(String.valueOf(value));
     }
 
     public static BigDecimal nullableDecimal(Object value) {
