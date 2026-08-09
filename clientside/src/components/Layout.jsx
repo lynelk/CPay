@@ -22,6 +22,7 @@ import ModulePayoutApprovals from './modules/ModulePayoutApprovals';
 import ModulePayoutControls from './modules/ModulePayoutControls';
 import ModuleSettlementClose from './modules/ModuleSettlementClose';
 import ModuleWebhookOps from './modules/ModuleWebhookOps';
+import ModuleVending from './modules/ModuleVending';
 
 import { apiFetch } from '../shared/api/httpClient';
 import { apiUrl } from '../shared/config';
@@ -32,6 +33,7 @@ const menuTitles = {
   merchants: { title: strings.menu_merchants, subtitle: strings.menu_merchants_subtitle },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_admin },
   reconciliation: { title: strings.menu_reconciliation, subtitle: strings.menu_reconciliation_subtitle },
+  vending: { title: 'Vending', subtitle: 'Multi-tenant device estate, rentals, callbacks and manufacturer commands' },
   financeclose: { title: 'Finance Close', subtitle: 'Maker-checker daily close for reconciliation' },
   payoutapprovals: { title: 'Payout Approvals', subtitle: 'Maker-checker approval queue for limit-parked payouts' },
   payoutcontrols: { title: 'Payout Controls', subtitle: 'Configure payout risk limits enforced on the v2 path' },
@@ -90,6 +92,7 @@ class LayoutWithOutRouter extends React.Component {
       case 'merchants': return <ModuleMerchants {...moduleProps} />;
       case 'transactions': return <ModuleTransactions {...moduleProps} />;
       case 'reconciliation': return <ModuleReconciliation {...moduleProps} />;
+      case 'vending': return <ModuleVending {...moduleProps} />;
       case 'financeclose': return <ModuleFinanceClose {...moduleProps} />;
       case 'payoutapprovals': return <ModulePayoutApprovals {...moduleProps} />;
       case 'payoutcontrols': return <ModulePayoutControls {...moduleProps} />;
