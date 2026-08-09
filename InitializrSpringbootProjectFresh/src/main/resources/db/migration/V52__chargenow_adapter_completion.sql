@@ -10,7 +10,9 @@ ALTER TABLE `vending_connector_configs`
   ADD COLUMN `auth_key_header` VARCHAR(120) NULL AFTER `auth_timestamp_header`,
   ADD COLUMN `auth_signature_encoding` VARCHAR(16) NOT NULL DEFAULT 'BASE64' AFTER `auth_key_header`,
   ADD COLUMN `auth_signing_template` VARCHAR(1000) NULL AFTER `auth_signature_encoding`,
-  ADD COLUMN `callback_signature_encoding` VARCHAR(16) NOT NULL DEFAULT 'BASE64' AFTER `callback_signature_mode`;
+  ADD COLUMN `callback_signature_encoding` VARCHAR(16) NOT NULL DEFAULT 'BASE64' AFTER `callback_signature_mode`,
+  ADD COLUMN `callback_command_reference_field` VARCHAR(160) NULL AFTER `callback_rental_field`,
+  ADD COLUMN `callback_provider_reference_field` VARCHAR(160) NULL AFTER `callback_command_reference_field`;
 
 CREATE TABLE IF NOT EXISTS `vending_connector_operations` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
