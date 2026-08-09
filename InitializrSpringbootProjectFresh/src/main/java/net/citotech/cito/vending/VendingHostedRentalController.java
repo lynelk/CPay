@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Customer-facing H5/QR vending flow. No merchant/admin session is required. */
@@ -75,7 +74,7 @@ public class VendingHostedRentalController {
                     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#dff7ff 0,#eef4f7 42%,#f7f9fa 100%);padding:18px}
                     .shell{max-width:520px;margin:3vh auto}.brand{font-size:14px;font-weight:800;letter-spacing:.12em;color:#057e9f;text-transform:uppercase}
                     .card{background:rgba(255,255,255,.94);border:1px solid #d9e5ea;border-radius:24px;box-shadow:0 24px 60px rgba(15,43,60,.13);padding:24px;margin-top:14px}
-                    h1{font-size:28px;line-height:1.1;margin:8px 0}h2{font-size:22px;margin:8px 0}.muted{color:#607483}.price{font-size:30px;font-weight:800;margin:14px 0}
+                    h1{font-size:28px;line-height:1.1;margin:8px 0}.muted{color:#607483}.price{font-size:30px;font-weight:800;margin:14px 0}
                     .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.fact{background:#f3f8fa;border-radius:14px;padding:12px}.fact b{display:block;margin-top:4px}
                     label{font-size:13px;font-weight:700;display:block;margin:14px 0 7px}input,select,button{width:100%;height:50px;border-radius:13px;font:inherit}
                     input,select{border:1px solid #c8d8df;background:white;color:#102235;padding:0 13px}button{border:0;background:#0797bd;color:white;font-weight:800;margin-top:18px;cursor:pointer}
@@ -114,7 +113,7 @@ public class VendingHostedRentalController {
                     </section>
                   </main>
                   <script>
-                    const token = "%s";
+                    const token = "__CPAY_VENDING_TOKEN__";
                     const loading = document.getElementById('loading');
                     const content = document.getElementById('content');
                     const statusBox = document.getElementById('status');
@@ -153,7 +152,7 @@ public class VendingHostedRentalController {
                     loadStation().catch(err=>{loading.textContent=err.message||'Station unavailable';});
                   </script>
                 </body></html>
-                """.formatted(token);
+                """.replace("__CPAY_VENDING_TOKEN__", token);
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
     }
 
