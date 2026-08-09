@@ -333,6 +333,17 @@ POST /api/v2/admin/vending/devices/{merchantId}/{deviceCode}/rotate-public-token
 - Manufacturer auth values and callback secrets are encrypted at rest and redacted from list/view responses.
 - Raw manufacturer error bodies are not copied into merchant-facing messages.
 
+## Validation
+
+The PR CI now validates both frontend and backend rather than merely exercising the React build:
+
+- React/Vite build and Vitest suite on Node 20.x and 22.x;
+- Java 21 backend package/compile against the active `InitializrSpringbootProjectFresh/pom.xml`;
+- `VendingPricingEngineTest` for tariff/free-window/cap/overtime behaviour;
+- `VendingCallbackSecurityServiceTest` for valid HMAC acceptance, invalid signature rejection, stale timestamp rejection and nonce replay rejection.
+
+The current validation is intentionally not described as OEM certification. It proves the CPay implementation compiles and its local security/rating invariants pass; real cabinet certification still requires the manufacturer integration pack, sandbox credentials and test hardware.
+
 ## Required OEM production pack
 
 Before enabling `CHARGENOW` for production, populate and certify the real manufacturer's contract covering at least:
