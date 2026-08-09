@@ -227,7 +227,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
               <>
                 <ThemeToggle />
                 <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>{strings.settings}</Button>
-                <Button variant="primary" classNameName="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button>
+                <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button>
                 <UserChip
                   name={user.name || user.username || 'Merchant User'}
                   meta={user.email || user.account_number || 'Signed in'}
