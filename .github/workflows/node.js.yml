@@ -3,7 +3,7 @@ name: CPay CI
 
 on:
   push:
-    branches: [ "main", "feature/vending-platform-power-bank" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
