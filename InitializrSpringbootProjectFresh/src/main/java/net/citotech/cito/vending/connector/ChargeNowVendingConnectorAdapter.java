@@ -28,10 +28,10 @@ import org.springframework.stereotype.Component;
  * each OEM operation's exact method, path, JSON template and response mappings from tenant-owned
  * configuration. Nothing in this class invents a private ChargeNow URL or field name.
  *
- * <p>JSON request templates may use {@code {{externalDeviceId}}}, {@code {{commandReference}}},
- * {@code {{rentalReference}}}, {@code {{merchantId}}}, {@code {{deviceId}}}, plus any command
- * parameter supplied by CPay. Authentication signing templates additionally support
- * {@code {{timestamp}}}, {@code {{method}}}, {@code {{path}}} and {@code {{body}}}.
+ * <p>Operation paths and JSON request templates may use {@code {{externalDeviceId}}}, {@code
+ * {{commandReference}}}, {@code {{rentalReference}}}, {@code {{merchantId}}}, {@code {{deviceId}}},
+ * plus any command parameter supplied by CPay. Authentication signing templates additionally
+ * support {@code {{timestamp}}}, {@code {{method}}}, {@code {{path}}} and {@code {{body}}}.
  */
 @Component
 public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter {
@@ -62,10 +62,11 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
 
         try {
             Map<String, String> values = templateValues(command);
+            String renderedPath = replace(operation.commandPath(), values);
             String body = renderBody(operation.requestTemplate(), values);
-            String url = join(contract.commandBaseUrl(), operation.commandPath());
+            String url = join(contract.commandBaseUrl(), renderedPath);
             Map<String, String> headers =
-                    authHeaders(contract, command, operation, body, values);
+                    authHeaders(contract, operation, renderedPath, body, values);
             headers.put("Accept", "application/json");
             if (!body.isBlank()) headers.put("Content-Type", "application/json");
             if (!operation.idempotencyHeaderName().isBlank()) {
@@ -81,9 +82,9 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
             boolean success = httpOk && contractOk;
             String reference = valueAt(responseJson, operation.responseReferenceField());
             if (reference.isBlank() && success) reference = command.commandReference();
-            String message = valueAt(responseJson, operation.responseMessageField());
-            if (message.isBlank()) {
-                message =
+            String responseMessage = valueAt(responseJson, operation.responseMessageField());
+            if (responseMessage.isBlank()) {
+                responseMessage =
                         success
                                 ? "Manufacturer command accepted"
                                 : safeFailure(response, operation.commandType());
@@ -94,7 +95,8 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
                                     ? "COMPLETED"
                                     : "ACCEPTED")
                             : "FAILED";
-            return new VendingCommandResult(success, reference, resultStatus, message);
+            return new VendingCommandResult(
+                    success, reference, resultStatus, responseMessage);
         } catch (PaymentGatewayException e) {
             throw e;
         } catch (Exception e) {
@@ -110,8 +112,10 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         values.put("merchantId", String.valueOf(command.merchantId()));
         values.put("deviceId", String.valueOf(command.deviceId()));
         if (command.parameters() != null) {
-            command.parameters().forEach(
-                    (key, value) -> values.put(key, value == null ? "" : value));
+            command.parameters()
+                    .forEach(
+                            (key, value) ->
+                                    values.put(key, value == null ? "" : value));
         }
         values.putIfAbsent("rentalReference", "");
         return values;
@@ -121,7 +125,8 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         if (template == null || template.isBlank()) return "";
         JsonNode parsed = mapper.readTree(template);
         if (parsed == null || (!parsed.isObject() && !parsed.isArray())) {
-            throw new PaymentGatewayException("Manufacturer requestTemplate must be a JSON object or array");
+            throw new PaymentGatewayException(
+                    "Manufacturer requestTemplate must be a JSON object or array");
         }
         return mapper.writeValueAsString(substitute(parsed.deepCopy(), values));
     }
@@ -152,8 +157,8 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
 
     private Map<String, String> authHeaders(
             Contract contract,
-            VendingCommand command,
             Operation operation,
+            String renderedPath,
             String body,
             Map<String, String> values)
             throws Exception {
@@ -191,7 +196,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
             Map<String, String> signingValues = new LinkedHashMap<>(values);
             signingValues.put("timestamp", timestamp);
             signingValues.put("method", operation.httpMethod());
-            signingValues.put("path", operation.commandPath());
+            signingValues.put("path", renderedPath);
             signingValues.put("body", body);
             String signingTemplate =
                     contract.authSigningTemplate().isBlank()
@@ -221,7 +226,8 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
             }
             return headers;
         }
-        throw new PaymentGatewayException("Unsupported manufacturer auth mode: " + mode);
+        throw new PaymentGatewayException(
+                "Unsupported manufacturer auth mode: " + mode);
     }
 
     private boolean operationSuccess(Operation operation, JsonNode body) {
@@ -269,7 +275,8 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
     }
 
     private String join(String base, String path) {
-        String left = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+        String left =
+                base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
         String right = path.startsWith("/") ? path : "/" + path;
         return left + right;
     }
@@ -294,7 +301,9 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
 
     private String encodeHmac(String secret, String value, String encoding) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        mac.init(
+                new SecretKeySpec(
+                        secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
         byte[] digest = mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
         return "HEX".equalsIgnoreCase(encoding)
                 ? HexFormat.of().formatHex(digest)
