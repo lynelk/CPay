@@ -43,7 +43,8 @@ public class VendingAdminController {
     @GetMapping(path = "/overview")
     public Map<String, Object> overview(
             @RequestParam(name = "merchantId", required = false) Long merchantId) {
-        String where = merchantId == null || merchantId <= 0 ? "" : " WHERE merchant_id=:merchant_id";
+        String where =
+                merchantId == null || merchantId <= 0 ? "" : " WHERE merchant_id=:merchant_id";
         MapSqlParameterSource p = new MapSqlParameterSource();
         if (!where.isEmpty()) p.addValue("merchant_id", merchantId);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -52,10 +53,20 @@ public class VendingAdminController {
         result.put("assets", count("vending_assets", where, p));
         result.put("rentals", count("vending_rentals", where, p));
         result.put("activeRentals", countWhere("vending_rentals", where, p, "status='ACTIVE'"));
-        result.put("pendingPayments", countWhere("vending_rentals", where, p, "status='PAYMENT_PENDING'"));
-        result.put("refundPending", countWhere("vending_rentals", where, p, "status IN ('REFUND_PENDING','REFUND_FAILED')"));
+        result.put(
+                "pendingPayments",
+                countWhere("vending_rentals", where, p, "status='PAYMENT_PENDING'"));
+        result.put(
+                "refundPending",
+                countWhere(
+                        "vending_rentals",
+                        where,
+                        p,
+                        "status IN ('REFUND_PENDING','REFUND_FAILED')"));
         result.put("offlineDevices", countWhere("vending_devices", where, p, "status='OFFLINE'"));
-        result.put("failedCallbacks", countWhere("vending_device_callbacks", where, p, "processing_status='FAILED'"));
+        result.put(
+                "failedCallbacks",
+                countWhere("vending_device_callbacks", where, p, "processing_status='FAILED'"));
         result.put("recentRentals", recentRentals(merchantId, 50));
         return result;
     }
@@ -73,7 +84,9 @@ public class VendingAdminController {
         }
         return jdbc.queryForList(
                 "SELECT id, merchant_id, event_type, entity_type, entity_reference, actor, amount, currency, detail_json, created_at "
-                        + "FROM vending_events" + where + " ORDER BY id DESC LIMIT :limit",
+                        + "FROM vending_events"
+                        + where
+                        + " ORDER BY id DESC LIMIT :limit",
                 p);
     }
 
@@ -91,7 +104,9 @@ public class VendingAdminController {
         return jdbc.queryForList(
                 "SELECT id, merchant_id, connector_code, external_event_id, external_device_id, event_type, "
                         + "signature_status, processing_status, error_message, created_at, processed_at "
-                        + "FROM vending_device_callbacks" + where + " ORDER BY id DESC LIMIT :limit",
+                        + "FROM vending_device_callbacks"
+                        + where
+                        + " ORDER BY id DESC LIMIT :limit",
                 p);
     }
 
@@ -109,7 +124,8 @@ public class VendingAdminController {
         return jdbc.queryForList(
                 "SELECT id, merchant_id, device_id, rental_id, command_reference, command_type, connector_code, "
                         + "status, provider_reference, created_at, completed_at FROM vending_commands"
-                        + where + " ORDER BY id DESC LIMIT :limit",
+                        + where
+                        + " ORDER BY id DESC LIMIT :limit",
                 p);
     }
 
@@ -136,7 +152,8 @@ public class VendingAdminController {
             @PathVariable("merchantId") long merchantId,
             @PathVariable("connectorCode") String connectorCode) {
         try {
-            return ResponseEntity.ok(configurations.rotateCallbackSecret(merchantId, connectorCode));
+            return ResponseEntity.ok(
+                    configurations.rotateCallbackSecret(merchantId, connectorCode));
         } catch (PaymentGatewayException e) {
             return ResponseEntity.badRequest()
                     .body(Map.of("code", "VENDING_CONNECTOR_REJECTED", "message", e.getMessage()));
@@ -148,7 +165,8 @@ public class VendingAdminController {
             @PathVariable("merchantId") long merchantId,
             @PathVariable("deviceCode") String deviceCode) {
         try {
-            return ResponseEntity.ok(hosted.rotateDevicePublicToken(merchantId, deviceCode, appBaseUrl));
+            return ResponseEntity.ok(
+                    hosted.rotateDevicePublicToken(merchantId, deviceCode, appBaseUrl));
         } catch (PaymentGatewayException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("code", "VENDING_DEVICE_REJECTED", "message", e.getMessage()));
@@ -162,7 +180,8 @@ public class VendingAdminController {
 
     private long countWhere(
             String table, String tenantWhere, MapSqlParameterSource p, String condition) {
-        String where = tenantWhere.isEmpty() ? " WHERE " + condition : tenantWhere + " AND " + condition;
+        String where =
+                tenantWhere.isEmpty() ? " WHERE " + condition : tenantWhere + " AND " + condition;
         return count(table, where, p);
     }
 
@@ -178,7 +197,8 @@ public class VendingAdminController {
                         + "r.deposit_amount, r.usage_amount, r.refund_amount, r.surcharge_created, r.status, "
                         + "r.started_at, r.ended_at, r.created_at FROM vending_rentals r "
                         + "LEFT JOIN vending_devices d ON d.id=r.device_id AND d.merchant_id=r.merchant_id"
-                        + where + " ORDER BY r.id DESC LIMIT :limit",
+                        + where
+                        + " ORDER BY r.id DESC LIMIT :limit",
                 p);
     }
 }

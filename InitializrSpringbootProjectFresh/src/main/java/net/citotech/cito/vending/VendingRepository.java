@@ -180,8 +180,7 @@ public class VendingRepository {
                         merchantId,
                         new MapSqlParameterSource(
                                 "device_code", required(deviceCode, "deviceCode")))
-                .orElseThrow(
-                        () -> new PaymentGatewayException("Vending device was not found"));
+                .orElseThrow(() -> new PaymentGatewayException("Vending device was not found"));
     }
 
     public List<Map<String, Object>> rentals(long merchantId, int limit) {
@@ -365,9 +364,7 @@ public class VendingRepository {
         Map<String, Object> balance = customerBalance(merchantId, customerHash, currency);
         BigDecimal existing = decimal(balance.get("surcharge_balance"));
         BigDecimal amount =
-                requested == null
-                        ? existing
-                        : requested.max(BigDecimal.ZERO).min(existing);
+                requested == null ? existing : requested.max(BigDecimal.ZERO).min(existing);
         settlePriorSurcharge(merchantId, customerHash, currency, amount);
         return amount;
     }
@@ -408,8 +405,8 @@ public class VendingRepository {
 
     /**
      * Claims a physical device command before any network call. The unique command reference makes
-     * this an atomic cross-instance idempotency gate, so two simultaneous payment/status polls cannot
-     * both eject the same power bank.
+     * this an atomic cross-instance idempotency gate, so two simultaneous payment/status polls
+     * cannot both eject the same power bank.
      */
     public boolean claimCommand(
             long merchantId,
@@ -491,8 +488,7 @@ public class VendingRepository {
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
-    private int tenantUpdate(
-            String sql, long merchantId, MapSqlParameterSource params) {
+    private int tenantUpdate(String sql, long merchantId, MapSqlParameterSource params) {
         TenantScopeGuard.assertTenantBound(sql);
         return jdbc.update(sql, TenantScopeGuard.scope(params, merchantId));
     }
@@ -523,15 +519,11 @@ public class VendingRepository {
     }
 
     public static long number(Object value) {
-        return value instanceof Number n
-                ? n.longValue()
-                : Long.parseLong(String.valueOf(value));
+        return value instanceof Number n ? n.longValue() : Long.parseLong(String.valueOf(value));
     }
 
     public static int integer(Object value) {
-        return value instanceof Number n
-                ? n.intValue()
-                : Integer.parseInt(String.valueOf(value));
+        return value instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(value));
     }
 
     public static Integer nullableInteger(Object value) {
@@ -539,9 +531,7 @@ public class VendingRepository {
     }
 
     public static BigDecimal decimal(Object value) {
-        return value instanceof BigDecimal b
-                ? b
-                : new BigDecimal(String.valueOf(value));
+        return value instanceof BigDecimal b ? b : new BigDecimal(String.valueOf(value));
     }
 
     public static BigDecimal nullableDecimal(Object value) {

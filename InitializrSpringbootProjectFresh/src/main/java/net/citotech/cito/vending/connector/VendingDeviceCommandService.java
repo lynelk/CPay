@@ -36,7 +36,11 @@ public class VendingDeviceCommandService {
             String commandType,
             Map<String, String> parameters,
             String actor) {
-        String type = normalize(commandType == null || commandType.isBlank() ? "QUERY_STATUS" : commandType);
+        String type =
+                normalize(
+                        commandType == null || commandType.isBlank()
+                                ? "QUERY_STATUS"
+                                : commandType);
         if (!SAFE_COMMANDS.contains(type)) {
             throw new PaymentGatewayException(
                     "Only read-only manufacturer probe operations are allowed from this endpoint");
@@ -65,12 +69,14 @@ public class VendingDeviceCommandService {
 
         try {
             VendingConnectorAdapter.VendingCommandResult result =
-                    connectors.require(connectorCode)
+                    connectors
+                            .require(connectorCode)
                             .execute(
                                     new VendingConnectorAdapter.VendingCommand(
                                             merchantId,
                                             deviceId,
-                                            VendingRepository.string(device.get("external_device_id")),
+                                            VendingRepository.string(
+                                                    device.get("external_device_id")),
                                             commandReference,
                                             type,
                                             parameters == null ? Map.of() : parameters));

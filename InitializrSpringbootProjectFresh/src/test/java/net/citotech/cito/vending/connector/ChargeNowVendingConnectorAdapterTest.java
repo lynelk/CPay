@@ -59,8 +59,7 @@ class ChargeNowVendingConnectorAdapterTest {
                     return response;
                 });
 
-        var adapter =
-                new ChargeNowVendingConnectorAdapter(configurations, new ObjectMapper());
+        var adapter = new ChargeNowVendingConnectorAdapter(configurations, new ObjectMapper());
         var result =
                 adapter.execute(
                         new VendingConnectorAdapter.VendingCommand(
@@ -138,17 +137,11 @@ class ChargeNowVendingConnectorAdapterTest {
                     return response;
                 });
 
-        var adapter =
-                new ChargeNowVendingConnectorAdapter(configurations, new ObjectMapper());
+        var adapter = new ChargeNowVendingConnectorAdapter(configurations, new ObjectMapper());
         var result =
                 adapter.execute(
                         new VendingConnectorAdapter.VendingCommand(
-                                7L,
-                                55L,
-                                "CAB-99",
-                                "VEND-PROBE-1",
-                                "QUERY_STATUS",
-                                Map.of()));
+                                7L, 55L, "CAB-99", "VEND-PROBE-1", "QUERY_STATUS", Map.of()));
 
         assertTrue(result.success());
         assertEquals("COMPLETED", result.status());

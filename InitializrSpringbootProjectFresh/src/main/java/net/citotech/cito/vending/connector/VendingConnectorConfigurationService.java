@@ -70,7 +70,10 @@ public class VendingConnectorConfigurationService {
     public Map<String, Object> view(long merchantId, String connectorCode) {
         String normalized = normalize(connectorCode);
         return list(merchantId).stream()
-                .filter(row -> normalized.equals(normalize(String.valueOf(row.get("connector_code")))))
+                .filter(
+                        row ->
+                                normalized.equals(
+                                        normalize(String.valueOf(row.get("connector_code")))))
                 .findFirst()
                 .orElseThrow(
                         () ->
@@ -159,7 +162,8 @@ public class VendingConnectorConfigurationService {
     }
 
     @Transactional
-    public Map<String, Object> save(long merchantId, String connectorCode, Map<String, Object> body) {
+    public Map<String, Object> save(
+            long merchantId, String connectorCode, Map<String, Object> body) {
         String code = normalize(connectorCode);
         String baseUrl = required(body.get("commandBaseUrl"), "commandBaseUrl");
         String releasePath = required(body.get("releasePath"), "releasePath");
@@ -221,7 +225,8 @@ public class VendingConnectorConfigurationService {
         p.addValue("auth_secret_ciphertext", authSecretCipher);
         p.addValue("response_success_field", blankToNull(text(body.get("responseSuccessField"))));
         p.addValue("response_success_value", blankToNull(text(body.get("responseSuccessValue"))));
-        p.addValue("response_reference_field", blankToNull(text(body.get("responseReferenceField"))));
+        p.addValue(
+                "response_reference_field", blankToNull(text(body.get("responseReferenceField"))));
         p.addValue("response_message_field", blankToNull(text(body.get("responseMessageField"))));
         p.addValue("callback_secret_ciphertext", callbackCipher);
         p.addValue("callback_signature_mode", callbackMode);
@@ -239,11 +244,8 @@ public class VendingConnectorConfigurationService {
                 "callback_event_type_field",
                 defaulted(body.get("callbackEventTypeField"), "eventType"));
         p.addValue(
-                "callback_event_id_field",
-                defaulted(body.get("callbackEventIdField"), "eventId"));
-        p.addValue(
-                "callback_device_field",
-                defaulted(body.get("callbackDeviceField"), "deviceId"));
+                "callback_event_id_field", defaulted(body.get("callbackEventIdField"), "eventId"));
+        p.addValue("callback_device_field", defaulted(body.get("callbackDeviceField"), "deviceId"));
         p.addValue("callback_rental_field", blankToNull(text(body.get("callbackRentalField"))));
         p.addValue("callback_asset_field", blankToNull(text(body.get("callbackAssetField"))));
         p.addValue(
@@ -330,7 +332,9 @@ public class VendingConnectorConfigurationService {
                 .orElseThrow();
     }
 
-    /** Generates a strong callback secret, stores only its ciphertext, and returns cleartext once. */
+    /**
+     * Generates a strong callback secret, stores only its ciphertext, and returns cleartext once.
+     */
     @Transactional
     public Map<String, Object> rotateCallbackSecret(long merchantId, String connectorCode) {
         String code = normalize(connectorCode);
@@ -379,7 +383,8 @@ public class VendingConnectorConfigurationService {
         if ("NONE".equals(contract.authMode()) && !isLocalSandbox(contract.commandBaseUrl())) {
             issues.add("Outbound authentication cannot be NONE for a non-local OEM endpoint");
         }
-        if (!AUTH_MODES.contains(contract.authMode())) issues.add("Unsupported outbound authentication mode");
+        if (!AUTH_MODES.contains(contract.authMode()))
+            issues.add("Unsupported outbound authentication mode");
         if (!CALLBACK_MODES.contains(contract.callbackSignatureMode())) {
             issues.add("Unsupported callback authentication mode");
         }
@@ -408,25 +413,18 @@ public class VendingConnectorConfigurationService {
         String method = allowed(body.get("httpMethod"), "POST", HTTP_METHODS, "httpMethod");
         String path = required(body.get("commandPath"), "commandPath");
         String completion =
-                allowed(
-                        body.get("completionMode"),
-                        "CALLBACK",
-                        COMPLETION_MODES,
-                        "completionMode");
+                allowed(body.get("completionMode"), "CALLBACK", COMPLETION_MODES, "completionMode");
         MapSqlParameterSource p = TenantScopeGuard.scope(null, merchantId);
         p.addValue("connector_code", code);
         p.addValue("command_type", type);
         p.addValue("http_method", method);
         p.addValue("command_path", path);
         p.addValue("request_template", blankToNull(text(body.get("requestTemplate"))));
-        p.addValue(
-                "idempotency_header_name",
-                blankToNull(text(body.get("idempotencyHeaderName"))));
+        p.addValue("idempotency_header_name", blankToNull(text(body.get("idempotencyHeaderName"))));
         p.addValue("response_success_field", blankToNull(text(body.get("responseSuccessField"))));
         p.addValue("response_success_value", blankToNull(text(body.get("responseSuccessValue"))));
         p.addValue(
-                "response_reference_field",
-                blankToNull(text(body.get("responseReferenceField"))));
+                "response_reference_field", blankToNull(text(body.get("responseReferenceField"))));
         p.addValue("response_message_field", blankToNull(text(body.get("responseMessageField"))));
         p.addValue("completion_mode", completion);
         p.addValue("active_flag", yesNo(body.get("active"), true));
@@ -464,8 +462,7 @@ public class VendingConnectorConfigurationService {
 
     private void validateAuthSecrets(String mode, String authValueCipher, String authSecretCipher) {
         if ("NONE".equals(mode)) return;
-        if (("BEARER".equals(mode) || "API_KEY_HEADER".equals(mode))
-                && blank(authValueCipher)) {
+        if (("BEARER".equals(mode) || "API_KEY_HEADER".equals(mode)) && blank(authValueCipher)) {
             throw new PaymentGatewayException("authValue is required for " + mode);
         }
         if ("BASIC".equals(mode) && (blank(authValueCipher) || blank(authSecretCipher))) {
@@ -534,9 +531,7 @@ public class VendingConnectorConfigurationService {
         if (value instanceof Boolean b) return b ? "YES" : "NO";
         String raw = text(value);
         if (raw.isBlank()) return fallback ? "YES" : "NO";
-        return ("YES".equalsIgnoreCase(raw)
-                        || "TRUE".equalsIgnoreCase(raw)
-                        || "1".equals(raw))
+        return ("YES".equalsIgnoreCase(raw) || "TRUE".equalsIgnoreCase(raw) || "1".equals(raw))
                 ? "YES"
                 : "NO";
     }
@@ -546,7 +541,10 @@ public class VendingConnectorConfigurationService {
             URI uri = URI.create(url);
             String scheme = uri.getScheme();
             String host = uri.getHost();
-            if (host == null || host.isBlank() || uri.getUserInfo() != null || uri.getFragment() != null) {
+            if (host == null
+                    || host.isBlank()
+                    || uri.getUserInfo() != null
+                    || uri.getFragment() != null) {
                 throw new IllegalArgumentException();
             }
             if ("https".equalsIgnoreCase(scheme)) return;

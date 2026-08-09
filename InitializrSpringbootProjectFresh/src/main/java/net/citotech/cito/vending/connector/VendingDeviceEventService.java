@@ -21,8 +21,8 @@ import org.springframework.stereotype.Service;
 /**
  * Applies already-authenticated manufacturer events to tenant-scoped vending state.
  *
- * <p>This method deliberately does not wrap callback registration, domain application and the
- * final audit update in one transaction. A failed domain mutation must still leave a durable
+ * <p>This method deliberately does not wrap callback registration, domain application and the final
+ * audit update in one transaction. A failed domain mutation must still leave a durable
  * VERIFIED/FAILED callback row for operations and replay analysis instead of rolling the evidence
  * back with the failed state change.
  */
@@ -106,10 +106,7 @@ public class VendingDeviceEventService {
                         null,
                         "{\"externalEventId\":\"" + json(externalEventId) + "\"}");
             } else if (matches(
-                    normalizedEvent,
-                    values.offlineValue(),
-                    "DEVICE_OFFLINE",
-                    "OFFLINE")) {
+                    normalizedEvent, values.offlineValue(), "DEVICE_OFFLINE", "OFFLINE")) {
                 setDeviceStatus(merchantId, number(device.get("id")), "OFFLINE");
                 repository.event(
                         merchantId,
@@ -132,7 +129,8 @@ public class VendingDeviceEventService {
                 }
                 if (repository.markRentalActive(merchantId, rentalReference) == 0) {
                     Map<String, Object> rental =
-                            repository.rental(merchantId, rentalReference)
+                            repository
+                                    .rental(merchantId, rentalReference)
                                     .orElseThrow(
                                             () ->
                                                     new PaymentGatewayException(
@@ -166,7 +164,8 @@ public class VendingDeviceEventService {
                     markAssetAvailable(merchantId, number(device.get("id")), assetCode);
                 }
                 Map<String, Object> rental =
-                        repository.rental(merchantId, rentalReference)
+                        repository
+                                .rental(merchantId, rentalReference)
                                 .orElseThrow(
                                         () ->
                                                 new PaymentGatewayException(
@@ -254,8 +253,7 @@ public class VendingDeviceEventService {
         p.addValue("external_device_id", externalId);
         List<Map<String, Object>> rows = jdbc.queryForList(sql, p);
         if (rows.isEmpty()) {
-            throw new PaymentGatewayException(
-                    "Manufacturer callback device is not registered");
+            throw new PaymentGatewayException("Manufacturer callback device is not registered");
         }
         return rows.get(0);
     }
@@ -310,8 +308,7 @@ public class VendingDeviceEventService {
         updateAsset(merchantId, assetCode, deviceId, "AVAILABLE");
     }
 
-    private void updateAsset(
-            long merchantId, String assetCode, Long deviceId, String status) {
+    private void updateAsset(long merchantId, String assetCode, Long deviceId, String status) {
         String sql =
                 "UPDATE vending_assets SET status=:status, device_id=COALESCE(:device_id, device_id), "
                         + "last_seen_at=CURRENT_TIMESTAMP WHERE merchant_id=:tenant_merchant_id AND asset_code=:asset_code";
@@ -337,15 +334,13 @@ public class VendingDeviceEventService {
         try {
             JsonNode body = mapper.readTree(rawBody == null ? "" : rawBody);
             if (body == null || !body.isObject()) {
-                throw new PaymentGatewayException(
-                        "Vending callback body must be a JSON object");
+                throw new PaymentGatewayException("Vending callback body must be a JSON object");
             }
             return body;
         } catch (PaymentGatewayException e) {
             throw e;
         } catch (Exception e) {
-            throw new PaymentGatewayException(
-                    "Vending callback body is invalid JSON");
+            throw new PaymentGatewayException("Vending callback body is invalid JSON");
         }
     }
 
@@ -377,9 +372,7 @@ public class VendingDeviceEventService {
     }
 
     private long number(Object value) {
-        return value instanceof Number n
-                ? n.longValue()
-                : Long.parseLong(String.valueOf(value));
+        return value instanceof Number n ? n.longValue() : Long.parseLong(String.valueOf(value));
     }
 
     private String required(String value, String name) {
@@ -402,8 +395,7 @@ public class VendingDeviceEventService {
                                             (value == null ? "" : value)
                                                     .getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
-            throw new IllegalStateException(
-                    "Unable to hash vending callback body", e);
+            throw new IllegalStateException("Unable to hash vending callback body", e);
         }
     }
 
@@ -420,8 +412,5 @@ public class VendingDeviceEventService {
     }
 
     private record EventValues(
-            String heartbeatValue,
-            String returnValue,
-            String releaseValue,
-            String offlineValue) {}
+            String heartbeatValue, String returnValue, String releaseValue, String offlineValue) {}
 }

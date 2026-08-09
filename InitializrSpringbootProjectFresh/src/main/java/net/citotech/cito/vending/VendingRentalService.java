@@ -76,8 +76,7 @@ public class VendingRentalService {
             throw new PaymentGatewayException("Customer is blocked from vending rentals");
         }
 
-        BigDecimal surchargeBalance =
-                VendingRepository.decimal(balance.get("surcharge_balance"));
+        BigDecimal surchargeBalance = VendingRepository.decimal(balance.get("surcharge_balance"));
         BigDecimal deposit = policy.depositAmount();
         BigDecimal surchargePlanned = deposit.min(surchargeBalance).max(BigDecimal.ZERO);
         BigDecimal escrow = deposit.subtract(surchargePlanned);
@@ -208,7 +207,8 @@ public class VendingRentalService {
                         requestEvidence);
         if (!claimed) {
             // Another CPay instance has already claimed this deterministic physical command. Never
-            // race it with a second eject call merely because two browsers happened to poll at once.
+            // race it with a second eject call merely because two browsers happened to poll at
+            // once.
             return rentalView(merchantId, rentalReference);
         }
         repository.setRentalStatus(merchantId, rentalReference, "RELEASE_PENDING");
@@ -280,8 +280,7 @@ public class VendingRentalService {
         }
     }
 
-    public Map<String, Object> returnRental(
-            long merchantId, String rentalReference, String actor) {
+    public Map<String, Object> returnRental(long merchantId, String rentalReference, String actor) {
         requireEnabled(merchantId);
         Map<String, Object> rental = requireRental(merchantId, rentalReference);
         if (!"ACTIVE".equals(VendingRepository.string(rental.get("status")))) {
@@ -289,23 +288,19 @@ public class VendingRentalService {
         }
         VendingPricingPolicy policy =
                 repository.pricingPolicy(
-                        merchantId,
-                        VendingRepository.number(rental.get("pricing_policy_id")));
+                        merchantId, VendingRepository.number(rental.get("pricing_policy_id")));
         Instant startedAt = VendingRepository.instant(rental.get("started_at"));
-        long suspendedSeconds =
-                VendingRepository.number(rental.get("billing_suspended_seconds"));
-        if ("YES".equalsIgnoreCase(
-                VendingRepository.string(rental.get("bill_suspended_time_flag")))) {
+        long suspendedSeconds = VendingRepository.number(rental.get("billing_suspended_seconds"));
+        if ("YES"
+                .equalsIgnoreCase(
+                        VendingRepository.string(rental.get("bill_suspended_time_flag")))) {
             suspendedSeconds = 0;
         }
-        Rating rating =
-                pricingEngine.rate(policy, startedAt, Instant.now(), suspendedSeconds);
+        Rating rating = pricingEngine.rate(policy, startedAt, Instant.now(), suspendedSeconds);
         BigDecimal escrow = VendingRepository.decimal(rental.get("escrow_amount"));
         BigDecimal refund = escrow.subtract(rating.usageAmount()).max(BigDecimal.ZERO);
-        BigDecimal surcharge =
-                rating.usageAmount().subtract(escrow).max(BigDecimal.ZERO);
-        String refundReference =
-                refund.signum() > 0 ? "VEND-REFUND-" + rentalReference : null;
+        BigDecimal surcharge = rating.usageAmount().subtract(escrow).max(BigDecimal.ZERO);
+        String refundReference = refund.signum() > 0 ? "VEND-REFUND-" + rentalReference : null;
         String nextStatus = refund.signum() > 0 ? "REFUND_PENDING" : "SETTLED";
 
         repository.completeRental(
@@ -352,8 +347,7 @@ public class VendingRentalService {
         requireEnabled(merchantId);
         CustomerIdentity identity = identities.protect(merchantId, customerMsisdn);
         BigDecimal waived =
-                repository.waiveSurcharge(
-                        merchantId, identity.hash(), currency, amount);
+                repository.waiveSurcharge(merchantId, identity.hash(), currency, amount);
         repository.event(
                 merchantId,
                 "SURCHARGE_WAIVED",
@@ -367,14 +361,11 @@ public class VendingRentalService {
         response.put("customer", identity.mask());
         response.put("waivedAmount", waived);
         response.put("currency", currency);
-        response.put(
-                "balance",
-                repository.customerBalance(merchantId, identity.hash(), currency));
+        response.put("balance", repository.customerBalance(merchantId, identity.hash(), currency));
         return response;
     }
 
-    private void syncCollection(
-            long merchantId, Map<String, Object> rental, String actor) {
+    private void syncCollection(long merchantId, Map<String, Object> rental, String actor) {
         String reference = VendingRepository.string(rental.get("collect_reference"));
         Transaction tx =
                 transactionRepository
@@ -383,20 +374,17 @@ public class VendingRentalService {
                                 () ->
                                         new PaymentGatewayException(
                                                 "Deposit transaction has not been recorded yet"));
-        String txStatus =
-                tx.getStatus() == null ? "" : tx.getStatus().trim().toUpperCase();
+        String txStatus = tx.getStatus() == null ? "" : tx.getStatus().trim().toUpperCase();
         if (isSuccess(txStatus)) {
             int activated =
                     repository.activateAfterSuccessfulCollection(
-                            merchantId,
-                            VendingRepository.string(rental.get("rental_reference")));
+                            merchantId, VendingRepository.string(rental.get("rental_reference")));
             if (activated > 0) {
                 repository.settlePriorSurcharge(
                         merchantId,
                         VendingRepository.string(rental.get("customer_hash")),
                         VendingRepository.string(rental.get("currency")),
-                        VendingRepository.decimal(
-                                rental.get("surcharge_settled_from_deposit")));
+                        VendingRepository.decimal(rental.get("surcharge_settled_from_deposit")));
                 repository.event(
                         merchantId,
                         "DEPOSIT_CONFIRMED",
@@ -407,10 +395,7 @@ public class VendingRentalService {
                         VendingRepository.string(rental.get("currency")),
                         null);
             }
-            release(
-                    merchantId,
-                    VendingRepository.string(rental.get("rental_reference")),
-                    actor);
+            release(merchantId, VendingRepository.string(rental.get("rental_reference")), actor);
         } else if (isFailure(txStatus)) {
             repository.setRentalStatus(
                     merchantId,
@@ -419,8 +404,7 @@ public class VendingRentalService {
         }
     }
 
-    private void submitRefund(
-            long merchantId, Map<String, Object> rental, String actor) {
+    private void submitRefund(long merchantId, Map<String, Object> rental, String actor) {
         BigDecimal refund = VendingRepository.decimal(rental.get("refund_amount"));
         if (refund.signum() <= 0) return;
         try {
@@ -428,8 +412,7 @@ public class VendingRentalService {
                     paymentService.refund(
                             merchantId,
                             identities.reveal(
-                                    VendingRepository.string(
-                                            rental.get("customer_ciphertext"))),
+                                    VendingRepository.string(rental.get("customer_ciphertext"))),
                             refund.toPlainString(),
                             VendingRepository.string(rental.get("currency")),
                             VendingRepository.string(rental.get("channel_code")),
@@ -460,10 +443,8 @@ public class VendingRentalService {
         }
     }
 
-    private void syncRefund(
-            long merchantId, Map<String, Object> rental, String actor) {
-        String refundReference =
-                VendingRepository.string(rental.get("refund_reference"));
+    private void syncRefund(long merchantId, Map<String, Object> rental, String actor) {
+        String refundReference = VendingRepository.string(rental.get("refund_reference"));
         if (refundReference.isBlank()) return;
         var tx = transactionRepository.findByMerchantReference(merchantId, refundReference);
         if (tx.isEmpty()) {
@@ -473,9 +454,7 @@ public class VendingRentalService {
             return;
         }
         String txStatus =
-                tx.get().getStatus() == null
-                        ? ""
-                        : tx.get().getStatus().trim().toUpperCase();
+                tx.get().getStatus() == null ? "" : tx.get().getStatus().trim().toUpperCase();
         if (isSuccess(txStatus)) {
             repository.setRentalStatus(
                     merchantId,
@@ -499,14 +478,13 @@ public class VendingRentalService {
     }
 
     private Map<String, Object> requireRental(long merchantId, String reference) {
-        return repository.rental(merchantId, reference)
-                .orElseThrow(
-                        () -> new PaymentGatewayException("Vending rental was not found"));
+        return repository
+                .rental(merchantId, reference)
+                .orElseThrow(() -> new PaymentGatewayException("Vending rental was not found"));
     }
 
     private Map<String, Object> rentalView(long merchantId, String reference) {
-        Map<String, Object> row =
-                new LinkedHashMap<>(requireRental(merchantId, reference));
+        Map<String, Object> row = new LinkedHashMap<>(requireRental(merchantId, reference));
         row.remove("customer_hash");
         row.remove("customer_ciphertext");
         return row;
@@ -514,8 +492,7 @@ public class VendingRentalService {
 
     private void requireEnabled(long merchantId) {
         if (!features.isEnabled(FeatureKeys.VENDING_PLATFORM, merchantId)) {
-            throw new PaymentGatewayException(
-                    "Vending platform is not enabled for this merchant");
+            throw new PaymentGatewayException("Vending platform is not enabled for this merchant");
         }
     }
 
@@ -526,9 +503,7 @@ public class VendingRentalService {
     }
 
     private boolean isFailure(String status) {
-        return "FAILED".equals(status)
-                || "REJECTED".equals(status)
-                || "CANCELLED".equals(status);
+        return "FAILED".equals(status) || "REJECTED".equals(status) || "CANCELLED".equals(status);
     }
 
     private String safeMessage(RuntimeException e) {
@@ -539,8 +514,6 @@ public class VendingRentalService {
 
     private String json(String value) {
         if (value == null) return "";
-        return value.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n");
+        return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
     }
 }

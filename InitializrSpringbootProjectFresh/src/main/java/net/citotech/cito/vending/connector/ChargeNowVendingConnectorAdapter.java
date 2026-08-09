@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
  * Production HTTP adapter for ChargeNow/Bajie OEM hardware.
  *
  * <p>ChargeNow's public material confirms cloud-connected stations, remote unlock commands and
- * real-time status synchronization, while the partner wire contract is not publicly documented.
- * The adapter therefore implements the real HTTP/authentication/correlation mechanics and loads
- * each OEM operation's exact method, path, JSON template and response mappings from tenant-owned
+ * real-time status synchronization, while the partner wire contract is not publicly documented. The
+ * adapter therefore implements the real HTTP/authentication/correlation mechanics and loads each
+ * OEM operation's exact method, path, JSON template and response mappings from tenant-owned
  * configuration. Nothing in this class invents a private ChargeNow URL or field name.
  *
  * <p>Operation paths and JSON request templates may use {@code {{externalDeviceId}}}, {@code
@@ -95,8 +95,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
                                     ? "COMPLETED"
                                     : "ACCEPTED")
                             : "FAILED";
-            return new VendingCommandResult(
-                    success, reference, resultStatus, responseMessage);
+            return new VendingCommandResult(success, reference, resultStatus, responseMessage);
         } catch (PaymentGatewayException e) {
             throw e;
         } catch (Exception e) {
@@ -113,9 +112,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         values.put("deviceId", String.valueOf(command.deviceId()));
         if (command.parameters() != null) {
             command.parameters()
-                    .forEach(
-                            (key, value) ->
-                                    values.put(key, value == null ? "" : value));
+                    .forEach((key, value) -> values.put(key, value == null ? "" : value));
         }
         values.putIfAbsent("rentalReference", "");
         return values;
@@ -138,8 +135,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
                     .forEachRemaining(
                             entry ->
                                     object.set(
-                                            entry.getKey(),
-                                            substitute(entry.getValue(), values)));
+                                            entry.getKey(), substitute(entry.getValue(), values)));
             return object;
         }
         if (node.isArray()) {
@@ -173,9 +169,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         if ("API_KEY_HEADER".equals(mode)) {
             requireSecret(contract.authValue(), "authValue");
             String header =
-                    contract.authHeaderName().isBlank()
-                            ? "X-API-Key"
-                            : contract.authHeaderName();
+                    contract.authHeaderName().isBlank() ? "X-API-Key" : contract.authHeaderName();
             headers.put(header, contract.authValue());
             return headers;
         }
@@ -226,8 +220,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
             }
             return headers;
         }
-        throw new PaymentGatewayException(
-                "Unsupported manufacturer auth mode: " + mode);
+        throw new PaymentGatewayException("Unsupported manufacturer auth mode: " + mode);
     }
 
     private boolean operationSuccess(Operation operation, JsonNode body) {
@@ -275,8 +268,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
     }
 
     private String join(String base, String path) {
-        String left =
-                base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+        String left = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
         String right = path.startsWith("/") ? path : "/" + path;
         return left + right;
     }
@@ -301,9 +293,7 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
 
     private String encodeHmac(String secret, String value, String encoding) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(
-                new SecretKeySpec(
-                        secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
         byte[] digest = mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
         return "HEX".equalsIgnoreCase(encoding)
                 ? HexFormat.of().formatHex(digest)

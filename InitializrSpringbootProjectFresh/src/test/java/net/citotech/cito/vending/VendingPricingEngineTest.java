@@ -42,8 +42,12 @@ class VendingPricingEngineTest {
                         null,
                         "ORIGINAL_ROUTE");
         Instant start = Instant.parse("2026-08-09T10:00:00Z");
-        assertEquals(BigDecimal.ZERO.setScale(4), engine.rate(policy, start, start.plusSeconds(5 * 60L), 0).usageAmount());
-        assertEquals(new BigDecimal("1000.0000"), engine.rate(policy, start, start.plusSeconds(6 * 60L), 0).usageAmount());
+        assertEquals(
+                BigDecimal.ZERO.setScale(4),
+                engine.rate(policy, start, start.plusSeconds(5 * 60L), 0).usageAmount());
+        assertEquals(
+                new BigDecimal("1000.0000"),
+                engine.rate(policy, start, start.plusSeconds(6 * 60L), 0).usageAmount());
     }
 
     @Test

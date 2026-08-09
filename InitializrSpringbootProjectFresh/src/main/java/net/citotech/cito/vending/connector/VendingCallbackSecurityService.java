@@ -67,8 +67,7 @@ public class VendingCallbackSecurityService {
         byte[] expected = hmac(contract.callbackSecret(), base);
         if (!constantTimeSignatureEquals(
                 expected, signature, contract.callbackSignatureEncoding())) {
-            throw new PaymentGatewayException(
-                    "Vending callback signature verification failed");
+            throw new PaymentGatewayException("Vending callback signature verification failed");
         }
         if (!nonce.isBlank()) claimNonce(merchantId, contract.connectorCode(), nonce);
         return contract;
@@ -96,8 +95,7 @@ public class VendingCallbackSecurityService {
         try {
             jdbc.update(sql, p);
         } catch (DuplicateKeyException e) {
-            throw new PaymentGatewayException(
-                    "Vending callback nonce has already been used");
+            throw new PaymentGatewayException("Vending callback nonce has already been used");
         }
     }
 
@@ -108,8 +106,7 @@ public class VendingCallbackSecurityService {
             try {
                 return Instant.parse(value);
             } catch (DateTimeParseException e) {
-                throw new PaymentGatewayException(
-                        "Vending callback timestamp is invalid");
+                throw new PaymentGatewayException("Vending callback timestamp is invalid");
             }
         }
     }
@@ -128,18 +125,14 @@ public class VendingCallbackSecurityService {
     private byte[] hmac(String secret, String value) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(
-                    new SecretKeySpec(
-                            secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             return mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            throw new IllegalStateException(
-                    "Unable to verify vending callback signature", e);
+            throw new IllegalStateException("Unable to verify vending callback signature", e);
         }
     }
 
-    private boolean constantTimeSignatureEquals(
-            byte[] expected, String supplied, String encoding) {
+    private boolean constantTimeSignatureEquals(byte[] expected, String supplied, String encoding) {
         String normalized = supplied == null ? "" : supplied.trim();
         if (normalized.regionMatches(true, 0, "sha256=", 0, 7)) {
             normalized = normalized.substring(7);

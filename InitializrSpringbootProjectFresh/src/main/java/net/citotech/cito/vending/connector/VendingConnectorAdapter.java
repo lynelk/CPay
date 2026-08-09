@@ -3,8 +3,8 @@ package net.citotech.cito.vending.connector;
 import java.util.Map;
 
 /**
- * Manufacturer/device integration seam. A ChargeNow cabinet or another vending platform is added
- * by implementing this contract instead of contaminating rental/payment logic with vendor-specific
+ * Manufacturer/device integration seam. A ChargeNow cabinet or another vending platform is added by
+ * implementing this contract instead of contaminating rental/payment logic with vendor-specific
  * HTTP calls.
  */
 public interface VendingConnectorAdapter {

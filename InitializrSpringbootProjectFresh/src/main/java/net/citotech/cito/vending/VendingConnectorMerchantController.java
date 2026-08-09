@@ -52,18 +52,13 @@ public class VendingConnectorMerchantController {
             @PathVariable("connectorCode") String connectorCode,
             @RequestBody Map<String, Object> body,
             HttpServletRequest request) {
-        return handle(
-                request,
-                merchantId -> configurations.save(merchantId, connectorCode, body));
+        return handle(request, merchantId -> configurations.save(merchantId, connectorCode, body));
     }
 
     @GetMapping(path = "/connectors/{connectorCode}/operations")
     public ResponseEntity<?> operations(
-            @PathVariable("connectorCode") String connectorCode,
-            HttpServletRequest request) {
-        return handle(
-                request,
-                merchantId -> configurations.operations(merchantId, connectorCode));
+            @PathVariable("connectorCode") String connectorCode, HttpServletRequest request) {
+        return handle(request, merchantId -> configurations.operations(merchantId, connectorCode));
     }
 
     @PostMapping(path = "/connectors/{connectorCode}/operations/{commandType}")
@@ -75,14 +70,12 @@ public class VendingConnectorMerchantController {
         return handle(
                 request,
                 merchantId ->
-                        configurations.saveOperation(
-                                merchantId, connectorCode, commandType, body));
+                        configurations.saveOperation(merchantId, connectorCode, commandType, body));
     }
 
     @GetMapping(path = "/connectors/{connectorCode}/callback-correlation")
     public ResponseEntity<?> callbackCorrelation(
-            @PathVariable("connectorCode") String connectorCode,
-            HttpServletRequest request) {
+            @PathVariable("connectorCode") String connectorCode, HttpServletRequest request) {
         return handle(
                 request,
                 merchantId -> {
@@ -114,21 +107,16 @@ public class VendingConnectorMerchantController {
 
     @GetMapping(path = "/connectors/{connectorCode}/readiness")
     public ResponseEntity<?> readiness(
-            @PathVariable("connectorCode") String connectorCode,
-            HttpServletRequest request) {
-        return handle(
-                request,
-                merchantId -> configurations.readiness(merchantId, connectorCode));
+            @PathVariable("connectorCode") String connectorCode, HttpServletRequest request) {
+        return handle(request, merchantId -> configurations.readiness(merchantId, connectorCode));
     }
 
     @PostMapping(path = "/connectors/{connectorCode}/rotate-callback-secret")
     public ResponseEntity<?> rotateCallbackSecret(
-            @PathVariable("connectorCode") String connectorCode,
-            HttpServletRequest request) {
+            @PathVariable("connectorCode") String connectorCode, HttpServletRequest request) {
         return handle(
                 request,
-                merchantId ->
-                        configurations.rotateCallbackSecret(merchantId, connectorCode));
+                merchantId -> configurations.rotateCallbackSecret(merchantId, connectorCode));
     }
 
     @PostMapping(path = "/devices/{deviceCode}/probe")
@@ -187,17 +175,13 @@ public class VendingConnectorMerchantController {
 
     @PostMapping(path = "/devices/{deviceCode}/rotate-public-token")
     public ResponseEntity<?> rotatePublicToken(
-            @PathVariable("deviceCode") String deviceCode,
-            HttpServletRequest request) {
+            @PathVariable("deviceCode") String deviceCode, HttpServletRequest request) {
         return handle(
                 request,
-                merchantId ->
-                        hosted.rotateDevicePublicToken(
-                                merchantId, deviceCode, appBaseUrl));
+                merchantId -> hosted.rotateDevicePublicToken(merchantId, deviceCode, appBaseUrl));
     }
 
-    private ResponseEntity<?> handle(
-            HttpServletRequest request, MerchantOperation operation) {
+    private ResponseEntity<?> handle(HttpServletRequest request, MerchantOperation operation) {
         try {
             MerchantUser user = currentMerchantUser(request);
             if (user.getMerchant_id() == null) {
@@ -238,9 +222,7 @@ public class VendingConnectorMerchantController {
         raw.forEach(
                 (key, item) -> {
                     if (key != null) {
-                        result.put(
-                                String.valueOf(key),
-                                item == null ? "" : String.valueOf(item));
+                        result.put(String.valueOf(key), item == null ? "" : String.valueOf(item));
                     }
                 });
         return result;
@@ -251,9 +233,7 @@ public class VendingConnectorMerchantController {
     }
 
     private String safe(String value) {
-        return value == null || value.isBlank()
-                ? "Vending connector operation rejected"
-                : value;
+        return value == null || value.isBlank() ? "Vending connector operation rejected" : value;
     }
 
     @FunctionalInterface

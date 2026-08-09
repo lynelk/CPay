@@ -11,16 +11,17 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Keeps vending money movement inside CPay's established orchestration path. That preserves provider
- * routing, risk checks, idempotent transaction references, webhooks, billing usage and the core
- * double-entry ledger instead of inventing a second payment engine for machines.
+ * Keeps vending money movement inside CPay's established orchestration path. That preserves
+ * provider routing, risk checks, idempotent transaction references, webhooks, billing usage and the
+ * core double-entry ledger instead of inventing a second payment engine for machines.
  */
 @Service
 public class VendingPaymentService {
     private final NamedParameterJdbcTemplate jdbc;
     private final PaymentOrchestrationService payments;
 
-    public VendingPaymentService(NamedParameterJdbcTemplate jdbc, PaymentOrchestrationService payments) {
+    public VendingPaymentService(
+            NamedParameterJdbcTemplate jdbc, PaymentOrchestrationService payments) {
         this.jdbc = jdbc;
         this.payments = payments;
     }
@@ -64,11 +65,7 @@ public class VendingPaymentService {
     }
 
     private PaymentRequest request(
-            Merchant merchant,
-            String amount,
-            String currency,
-            String channel,
-            String reference) {
+            Merchant merchant, String amount, String currency, String channel, String reference) {
         PaymentRequest request = new PaymentRequest();
         request.setMerchantNumber(merchant.getAccount_number());
         request.setAmount(amount);

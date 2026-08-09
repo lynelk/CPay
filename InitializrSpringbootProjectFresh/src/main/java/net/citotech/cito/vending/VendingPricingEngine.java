@@ -23,7 +23,8 @@ public class VendingPricingEngine {
             Instant endedAt,
             long excludedSuspendedSeconds) {
         if (policy == null || startedAt == null || endedAt == null || endedAt.isBefore(startedAt)) {
-            throw new IllegalArgumentException("A valid pricing policy and rental time range are required");
+            throw new IllegalArgumentException(
+                    "A valid pricing policy and rental time range are required");
         }
         if (policy.billingBlockMinutes() <= 0 || policy.minimumBillingBlocks() < 0) {
             throw new IllegalArgumentException("Billing block configuration is invalid");
@@ -52,7 +53,8 @@ public class VendingPricingEngine {
 
         if (positive(policy.dailyCapAmount())) {
             long chargeDays = Math.max(1, (billableMinutes + 1439) / 1440);
-            BigDecimal cap = money(policy.dailyCapAmount().multiply(BigDecimal.valueOf(chargeDays)));
+            BigDecimal cap =
+                    money(policy.dailyCapAmount().multiply(BigDecimal.valueOf(chargeDays)));
             amount = amount.min(cap);
         }
         if (positive(policy.overtimeAmount())) {
@@ -69,5 +71,9 @@ public class VendingPricingEngine {
         return (value == null ? BigDecimal.ZERO : value).setScale(4, RoundingMode.HALF_UP);
     }
 
-    public record Rating(long billableMinutes, long billedBlocks, BigDecimal usageAmount, boolean overtimeSettled) {}
+    public record Rating(
+            long billableMinutes,
+            long billedBlocks,
+            BigDecimal usageAmount,
+            boolean overtimeSettled) {}
 }

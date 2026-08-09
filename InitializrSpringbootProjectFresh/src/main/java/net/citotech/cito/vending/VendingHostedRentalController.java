@@ -61,7 +61,8 @@ public class VendingHostedRentalController {
     @GetMapping(path = "/vending/rent/{publicToken}", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> page(@PathVariable("publicToken") String publicToken) {
         String token = js(publicToken);
-        String html = """
+        String html =
+                """
                 <!doctype html>
                 <html lang="en">
                 <head>
@@ -152,13 +153,19 @@ public class VendingHostedRentalController {
                     loadStation().catch(err=>{loading.textContent=err.message||'Station unavailable';});
                   </script>
                 </body></html>
-                """.replace("__CPAY_VENDING_TOKEN__", token);
+                """
+                        .replace("__CPAY_VENDING_TOKEN__", token);
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
     }
 
     private ResponseEntity<?> error(HttpStatus status, String message) {
         return ResponseEntity.status(status)
-                .body(Map.of("code", "VENDING_HOSTED_REJECTED", "message", message == null ? "Request rejected" : message));
+                .body(
+                        Map.of(
+                                "code",
+                                "VENDING_HOSTED_REJECTED",
+                                "message",
+                                message == null ? "Request rejected" : message));
     }
 
     private String text(Object value) {

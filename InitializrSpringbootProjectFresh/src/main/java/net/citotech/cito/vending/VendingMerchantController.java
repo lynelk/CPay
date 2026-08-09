@@ -190,7 +190,8 @@ public class VendingMerchantController {
 
     private MerchantUser currentMerchantUser(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
-        if (session == null || !(session.getAttribute("merchantUser") instanceof MerchantUser user)) {
+        if (session == null
+                || !(session.getAttribute("merchantUser") instanceof MerchantUser user)) {
             throw new PaymentGatewayException("Merchant login is required");
         }
         return user;
@@ -246,7 +247,8 @@ public class VendingMerchantController {
     }
 
     private Map<String, Object> error(String code, String message) {
-        return Map.of("code", code, "message", message == null ? "Vending operation failed" : message);
+        return Map.of(
+                "code", code, "message", message == null ? "Vending operation failed" : message);
     }
 
     @FunctionalInterface

@@ -27,7 +27,8 @@ class VendingCallbackSecurityServiceTest {
     void validTimestampNonceAndBodyHmacIsAccepted() throws Exception {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
+        when(configurations.require(7L, "CHARGENOW"))
+                .thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         when(jdbc.update(any(String.class), any(MapSqlParameterSource.class))).thenReturn(1);
         var service = new VendingCallbackSecurityService(configurations, jdbc);
 
@@ -44,7 +45,8 @@ class VendingCallbackSecurityServiceTest {
     void hexTimestampBodyHmacIsAcceptedWithoutNonce() throws Exception {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_BODY", "HEX"));
+        when(configurations.require(7L, "CHARGENOW"))
+                .thenReturn(contract("HMAC_SHA256_TS_BODY", "HEX"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
 
         String body = "{\"eventId\":\"evt-hex\"}";
@@ -58,7 +60,8 @@ class VendingCallbackSecurityServiceTest {
     void staticTokenHeaderModeSupportsOemCallbacksWithoutInventedTimestampHeaders() {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("STATIC_TOKEN_HEADER", "BASE64"));
+        when(configurations.require(7L, "CHARGENOW"))
+                .thenReturn(contract("STATIC_TOKEN_HEADER", "BASE64"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
         var request = new MockHttpServletRequest();
         request.addHeader("X-CPay-Vending-Signature", SECRET);
@@ -70,11 +73,17 @@ class VendingCallbackSecurityServiceTest {
     void invalidSignatureIsRejectedBeforeNonceClaim() {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
+        when(configurations.require(7L, "CHARGENOW"))
+                .thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
 
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
-        var request = request(timestamp, "nonce-2", Base64.getEncoder().encodeToString("wrong".getBytes(StandardCharsets.UTF_8)));
+        var request =
+                request(
+                        timestamp,
+                        "nonce-2",
+                        Base64.getEncoder()
+                                .encodeToString("wrong".getBytes(StandardCharsets.UTF_8)));
 
         assertThrows(
                 PaymentGatewayException.class,
@@ -85,7 +94,8 @@ class VendingCallbackSecurityServiceTest {
     void replayedNonceIsRejectedEvenWithValidHmac() throws Exception {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
+        when(configurations.require(7L, "CHARGENOW"))
+                .thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         when(jdbc.update(any(String.class), any(MapSqlParameterSource.class)))
                 .thenThrow(new DuplicateKeyException("duplicate nonce"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
@@ -104,7 +114,8 @@ class VendingCallbackSecurityServiceTest {
     void staleTimestampIsRejected() throws Exception {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
+        when(configurations.require(7L, "CHARGENOW"))
+                .thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
 
         String timestamp = String.valueOf(Instant.now().minusSeconds(600).getEpochSecond());

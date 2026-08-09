@@ -24,7 +24,9 @@ public class VendingCustomerIdentityService {
         if (merchantId <= 0) throw new PaymentGatewayException("merchantId is required");
         String normalized = normalize(rawMsisdn);
         return new CustomerIdentity(
-                hash(merchantId + ":" + normalized), mask(normalized), cryptoService.encrypt(normalized));
+                hash(merchantId + ":" + normalized),
+                mask(normalized),
+                cryptoService.encrypt(normalized));
     }
 
     public String reveal(String cipherText) {

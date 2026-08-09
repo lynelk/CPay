@@ -46,7 +46,8 @@ public class VendingHostedRentalService {
 
     /** Generates/rotates a station QR token. The token is intentionally public but high entropy. */
     @Transactional
-    public Map<String, Object> rotateDevicePublicToken(long merchantId, String deviceCode, String appBaseUrl) {
+    public Map<String, Object> rotateDevicePublicToken(
+            long merchantId, String deviceCode, String appBaseUrl) {
         Map<String, Object> device = repository.deviceByCode(merchantId, deviceCode);
         String token = randomToken();
         String sql =
@@ -61,7 +62,9 @@ public class VendingHostedRentalService {
         result.put("deviceCode", deviceCode);
         result.put("publicToken", token);
         result.put("hostedPath", "/vending/rent/" + token);
-        result.put("qrPayload", base.isBlank() ? "/vending/rent/" + token : base + "/vending/rent/" + token);
+        result.put(
+                "qrPayload",
+                base.isBlank() ? "/vending/rent/" + token : base + "/vending/rent/" + token);
         return result;
     }
 
@@ -96,14 +99,20 @@ public class VendingHostedRentalService {
         long merchantId = number(device.get("merchant_id"));
         requireEnabled(merchantId);
         if (!rateLimits.allow(
-                "vending-hosted-start:" + hash(publicToken).substring(0, 16) + ":" + safeIp(clientIp), 8)) {
-            throw new PaymentGatewayException("Too many rental attempts. Please wait and try again");
+                "vending-hosted-start:"
+                        + hash(publicToken).substring(0, 16)
+                        + ":"
+                        + safeIp(clientIp),
+                8)) {
+            throw new PaymentGatewayException(
+                    "Too many rental attempts. Please wait and try again");
         }
         if (!"ONLINE".equalsIgnoreCase(text(device.get("status")))) {
             throw new PaymentGatewayException("This vending station is currently unavailable");
         }
         if (number(device.get("available_count")) <= 0) {
-            throw new PaymentGatewayException("This vending station has no available items right now");
+            throw new PaymentGatewayException(
+                    "This vending station has no available items right now");
         }
 
         Map<String, Object> rental =
@@ -141,10 +150,12 @@ public class VendingHostedRentalService {
                         + "WHERE session_token_hash=:token_hash LIMIT 1";
         MapSqlParameterSource p = new MapSqlParameterSource("token_hash", hash(statusToken));
         List<Map<String, Object>> rows = jdbc.queryForList(sql, p);
-        if (rows.isEmpty()) throw new PaymentGatewayException("Hosted rental session was not found");
+        if (rows.isEmpty())
+            throw new PaymentGatewayException("Hosted rental session was not found");
         Map<String, Object> session = rows.get(0);
         Instant expires = instant(session.get("expires_at"));
-        if (expires.isBefore(Instant.now()) || "EXPIRED".equalsIgnoreCase(text(session.get("status")))) {
+        if (expires.isBefore(Instant.now())
+                || "EXPIRED".equalsIgnoreCase(text(session.get("status")))) {
             throw new PaymentGatewayException("Hosted rental session has expired");
         }
         long merchantId = number(session.get("merchant_id"));
@@ -152,12 +163,16 @@ public class VendingHostedRentalService {
         try {
             rentals.sync(merchantId, rentalReference, "hosted-status");
         } catch (PaymentGatewayException ignored) {
-            // Polling is best-effort. Current persisted state remains authoritative when an upstream
+            // Polling is best-effort. Current persisted state remains authoritative when an
+            // upstream
             // provider/device is still pending or has not produced a transaction row yet.
         }
         touch(statusToken);
-        Map<String, Object> rental = repository.rental(merchantId, rentalReference)
-                .orElseThrow(() -> new PaymentGatewayException("Hosted rental was not found"));
+        Map<String, Object> rental =
+                repository
+                        .rental(merchantId, rentalReference)
+                        .orElseThrow(
+                                () -> new PaymentGatewayException("Hosted rental was not found"));
         return safeRental(rental);
     }
 
@@ -175,7 +190,8 @@ public class VendingHostedRentalService {
                         + "LEFT JOIN vending_locations l ON l.id=d.location_id AND l.merchant_id=d.merchant_id "
                         + "WHERE d.public_token=:public_token LIMIT 1";
         List<Map<String, Object>> rows =
-                jdbc.queryForList(sql, new MapSqlParameterSource("public_token", publicToken.trim()));
+                jdbc.queryForList(
+                        sql, new MapSqlParameterSource("public_token", publicToken.trim()));
         if (rows.isEmpty()) throw new PaymentGatewayException("Vending station was not found");
         return rows.get(0);
     }
@@ -215,9 +231,12 @@ public class VendingHostedRentalService {
 
     private String hash(String value) {
         try {
-            return HexFormat.of().formatHex(
-                    MessageDigest.getInstance("SHA-256")
-                            .digest((value == null ? "" : value).getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(
+                                            (value == null ? "" : value)
+                                                    .getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
             throw new IllegalStateException("Unable to hash vending hosted token", e);
         }
@@ -233,7 +252,9 @@ public class VendingHostedRentalService {
     }
 
     private String safeIp(String value) {
-        return value == null || value.isBlank() ? "unknown" : value.replaceAll("[^0-9a-fA-F.:]", "");
+        return value == null || value.isBlank()
+                ? "unknown"
+                : value.replaceAll("[^0-9a-fA-F.:]", "");
     }
 
     private Instant instant(Object value) {
