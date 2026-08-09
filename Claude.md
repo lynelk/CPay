@@ -163,6 +163,15 @@ Base package: `net.citotech.cito`.
   (`/api/v2/admin/recon-finance`) and `SettlementOpsController`
   (`/api/v2/admin/reconciliation/settlements`).
 - **`ledger/`** — double-entry ledger service (`DoubleEntryLedgerServiceTest` covers invariants).
+  `reverse(originalTransactionReference, newTransactionReference, reason)` posts a mirror-image
+  balanced group under a new reference (delegates to `post()` internally for idempotency/balance
+  reuse) — the only way this ledger corrects a posting, per `Docs/Money-ledger-and-orchestration-
+  roadmap.md`'s "propose matched corrections, never mutate" rule. `post()`/`reverse()` also reject
+  a posting whose currency has an active `ledger_period_locks` (`V46`) row covering *today* —
+  fail-open by construction (an empty lock table always allows), since `post()` has 9 real
+  production dependents and an accidental lock must never silently halt payment processing
+  platform-wide; the check only ever blocks today's postings, never a retroactive historical
+  period, since neither method takes a backdating parameter.
 - **`merchant/`** — merchant self-service signup, channel configuration.
   `MerchantChannelCryptoService` (AES-256-GCM) encrypts channel credentials and, via the
   `MerchantKeyCryptoRegistry` static bridge, the legacy `hmac_secret` field for static-utility
@@ -218,7 +227,7 @@ Base package: `net.citotech.cito`.
   balance-monitoring view (`/api/v2/admin/balance-monitoring/overview`, gated by the
   `balance-monitoring` flag) combining current gateway float balances, treasury positions, and the
   latest nightly float snapshots.
-- **`billing/`** — the billing engine (Phase 0/1/2 complete, `Docs/Adr/0003`-`0006`; merchant-scoped
+- **`billing/`** — the billing engine (Phase 0-3 complete, `Docs/Adr/0003`-`0006`; merchant-scoped
   1:1 for now, schema-ready for a future multi-tenant BaaS model). `tenancy/` — `BillingTenantResolver`
   resolves `merchantId → billing_tenant_id` (throws if unmapped; every merchant is backfilled a
   tenant by `V38`). `usage/` — `UsageGatewayService.recordUsage(...)` writes an idempotent
@@ -267,7 +276,37 @@ Base package: `net.citotech.cito`.
   `merchant_transactions_log` against `billing_usage_events` for a trailing window (the Phase 1
   exit-criterion artifact); with the outbox handlers now wired, a merchant with the
   `billing-usage-outbox` flag on reconciles cleanly once the relay runs — proved end to end by
-  `PaymentPipelineReconciliationTestcontainersTest`.
+  `PaymentPipelineReconciliationTestcontainersTest`. `integration/cpay/BillingLedgerAccountTemplateService`
+  is the only place in the billing module allowed to call `DoubleEntryLedgerService.post()`
+  directly (ADR 0004) — implements 7 of the spec's 8 accounting patterns (postpaid charge with
+  optional tax, provider cost accrual, prepaid top-up/consumption, invoice payment, credit note,
+  BaaS platform fee) as pre-built balanced `LedgerEntryCommand` lists against a new
+  `billing:{tenantId}:{ccy}:{purpose}` account-code namespace (owner_type `BILLING_TENANT`), then
+  immediately records a `billing_ledger_links` (`V45`) row via `BillingLedgerLinkWriter` tagged
+  with one of five link types (`CHARGE`/`INVOICE`/`PAYMENT`/`COST`/`REVERSAL`) so a ledger
+  transaction traces back to its billing artifact without ever mutating `ledger_transactions`/
+  `ledger_entries` directly. `invoicing/` — the periodic billing-statement domain
+  (`billing_invoices`/`billing_invoice_lines`, `V47`), distinct from `checkout.InvoiceService`'s
+  one-off request-to-pay invoices: `BillingInvoiceService.createDraft`/`stageCharges` (idempotent —
+  `billing_invoice_lines.billing_rated_charge_id` is unique, so re-staging only picks up what's
+  still unstaged) build a `DRAFT` invoice from `CUSTOMER_CHARGE` rated charges (never
+  `PROVIDER_COST`); `finalizeInvoice` requires the completeness gate `APPROVED`, posts the invoice
+  total via `BillingLedgerAccountTemplateService.postCustomerCharge` (invoice number as the
+  idempotent charge reference — a concurrent double-finalize resolves to the same ledger
+  transaction id and the loser's `status='DRAFT'`-guarded update throws, rolling back its whole
+  transaction), then flips the row to `FINALIZED` — immutable from then on, since `stageCharges`
+  rejects any non-`DRAFT` invoice. `reconciliation/BillingCompletenessGateService` is the maker-
+  checker gate a `DRAFT` invoice must pass to finalize (`billing_completeness_gates`, `V49`),
+  mirroring `FinanceWorkflowService`'s `requested_by<>approved_by` shape, with one deliberate
+  difference: a `FAIL` completeness result doesn't block submission, but a checker approving a
+  `FAIL` gate must supply a non-blank waiver reason. `billing_credit_notes`/
+  `billing_payment_allocations` (`V48`) are schema-only so far — correcting/settling a finalized
+  invoice without ever mutating it — with no service wired yet. `export/BillingTraceChainService`
+  is read-only trace-chain infra (no controller, no FOCUS-style export format — that's a much
+  later phase): `traceBySourceReference`/`traceByInvoice` join usage event → rated charge →
+  invoice line → invoice → ledger entry in one query; one invoice finalize posts one ledger
+  transaction with 2-3 entries, so a result legitimately fans out to one row per ledger entry, not
+  one row per charge.
 - **`compliance/`** — `RiskDecisionService` now also enforces a KYC-tier-aware cap
   (`compliance_profiles.tier` for `entity_type='MERCHANT'`) and a payer-velocity rule capping how
   often the same payer identifier can transact in a rolling window, alongside the existing blocklist
@@ -298,8 +337,8 @@ backfilling successful legacy pay-in/pay-out rows that are missing their idempot
 `CPAY_LEDGER_REPAIR_LIMIT` and do not broaden it to failed or non-terminal rows without an explicit
 accounting decision.
 
-Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V44` (through
-`V44__billing_rated_charges.sql`); do not mark a snapshot as a real release snapshot unless it was
+Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V49` (through
+`V49__billing_completeness_gate.sql`); do not mark a snapshot as a real release snapshot unless it was
 generated from a freshly migrated database with the documented `mysqldump --no-data` command. The
 committed snapshots still reflect `V30` and must be regenerated before the next release tag.
 

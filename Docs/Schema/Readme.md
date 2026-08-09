@@ -14,9 +14,9 @@ The legacy XML runner is gated by `CPAY_LEGACY_DBCHANGES_ENABLED=false` by defau
 
 ## Current snapshot
 
-Flyway is currently at `V44` (through `V44__billing_rated_charges.sql`).
+Flyway is currently at `V49` (through `V49__billing_completeness_gate.sql`).
 `Docs/Schema/snapshots/2026-07-28-cpayadmin.sql` is the latest committed snapshot, but it predates
-later migrations (`V19` through `V44`). Unlike the July 16 snapshot below, no live migrated
+later migrations (`V19` through `V49`). Unlike the July 16 snapshot below, no live migrated
 database was available when it was written, so it was hand-reconstructed by reading the migration
 DDL rather than produced with `mysqldump`. Treat it as a review aid, not the release baseline.
 Regenerate a real no-data snapshot against a freshly migrated database before tagging a release so
@@ -100,6 +100,13 @@ billing_outbox
 billing_price_book_versions
   -> billing_price_components
 billing_rated_charges
+billing_ledger_links
+ledger_period_locks
+billing_invoices
+  -> billing_invoice_lines
+billing_credit_notes
+billing_payment_allocations
+billing_completeness_gates
 
 operating_control_events
 operations_alerts

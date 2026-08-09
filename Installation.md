@@ -95,8 +95,9 @@ Recent production-control migrations include:
 - GnuGrid identity-verification records (`V37`)
 - billing tenancy core tables (`V38`)
 - billing service/meter catalog (`V39`), immutable usage-event stream (`V40`), transactional outbox (`V41`), a feature-flag seed row (`V42`), price-book schema (`V43`), and rated-charge/cost records (`V44`)
+- ledger-to-billing trace links (`V45`), ledger period locks (`V46`), the periodic billing-invoice domain (`V47`), billing credit-notes/payment-allocation schema (`V48`), and the billing completeness-gate maker-checker table (`V49`)
 
-Flyway is currently at `V44`.
+Flyway is currently at `V49`.
 
 For staging or production, always test migrations on a copy of the database before applying them to a live environment.
 
