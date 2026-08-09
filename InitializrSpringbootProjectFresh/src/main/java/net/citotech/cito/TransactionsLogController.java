@@ -6302,7 +6302,10 @@ public class TransactionsLogController {
     // batch concurrently and double-bill/double-send. ShedLock now guards the whole method
     // cross-instance, exactly like testCheckstatusCron/paymentsPayCron. The @Scheduled below
     // stays commented out - this runs on operator/script invocation only.
-    @SchedulerLock(name = "testSendPendingSmsCron", lockAtMostFor = "PT15M", lockAtLeastFor = "PT30S")
+    @SchedulerLock(
+            name = "testSendPendingSmsCron",
+            lockAtMostFor = "PT15M",
+            lockAtLeastFor = "PT30S")
 
     // @Scheduled(fixedDelay = 3000, initialDelay = 1000)
     public String testSendPendingSmsCron(/*@RequestBody String requestBody,

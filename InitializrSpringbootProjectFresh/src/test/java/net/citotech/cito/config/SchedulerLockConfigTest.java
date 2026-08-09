@@ -136,7 +136,8 @@ class SchedulerLockConfigTest {
         // runs on operator/script invocation), so unlike the pure-scheduler crons it legitimately
         // stays @PostMapping - but it must still carry ShedLock so two replicas can't process the
         // same PENDING batch concurrently.
-        Method smsCron = TransactionsLogController.class.getDeclaredMethod("testSendPendingSmsCron");
+        Method smsCron =
+                TransactionsLogController.class.getDeclaredMethod("testSendPendingSmsCron");
 
         SchedulerLock smsLock = smsCron.getAnnotation(SchedulerLock.class);
         assertThat(smsLock).isNotNull();
