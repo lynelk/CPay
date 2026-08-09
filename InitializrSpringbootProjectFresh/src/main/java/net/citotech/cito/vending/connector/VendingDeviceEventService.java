@@ -16,9 +16,15 @@ import net.citotech.cito.vending.connector.VendingConnectorConfigurationService.
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-/** Applies already-authenticated manufacturer events to tenant-scoped vending state. */
+/**
+ * Applies already-authenticated manufacturer events to tenant-scoped vending state.
+ *
+ * <p>This method deliberately does not wrap callback registration, domain application and the
+ * final audit update in one transaction. A failed domain mutation must still leave a durable
+ * VERIFIED/FAILED callback row for operations and replay analysis instead of rolling the evidence
+ * back with the failed state change.
+ */
 @Service
 public class VendingDeviceEventService {
     private final NamedParameterJdbcTemplate jdbc;
@@ -37,7 +43,6 @@ public class VendingDeviceEventService {
         this.repository = repository;
     }
 
-    @Transactional
     public Map<String, Object> process(long merchantId, Contract contract, String rawBody) {
         JsonNode body = parse(rawBody);
         String externalEventId = required(valueAt(body, contract.callbackEventIdField()), "callback event id");
@@ -118,7 +123,6 @@ public class VendingDeviceEventService {
                             "Return callback does not match an active or already-returned rental");
                 }
             } else {
-                // Unknown authenticated events are retained for audit without mutating state.
                 repository.event(
                         merchantId,
                         "MANUFACTURER_EVENT_UNMAPPED",
