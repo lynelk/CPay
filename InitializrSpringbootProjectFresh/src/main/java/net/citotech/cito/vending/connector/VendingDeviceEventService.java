@@ -12,6 +12,7 @@ import net.citotech.cito.admin.TenantScopeGuard;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.vending.VendingRentalService;
 import net.citotech.cito.vending.VendingRepository;
+import net.citotech.cito.vending.connector.VendingCallbackCorrelationService.Mapping;
 import net.citotech.cito.vending.connector.VendingConnectorConfigurationService.Contract;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -31,16 +32,19 @@ public class VendingDeviceEventService {
     private final ObjectMapper mapper;
     private final VendingRentalService rentals;
     private final VendingRepository repository;
+    private final VendingCallbackCorrelationService correlations;
 
     public VendingDeviceEventService(
             NamedParameterJdbcTemplate jdbc,
             ObjectMapper mapper,
             VendingRentalService rentals,
-            VendingRepository repository) {
+            VendingRepository repository,
+            VendingCallbackCorrelationService correlations) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.rentals = rentals;
         this.repository = repository;
+        this.correlations = correlations;
     }
 
     public Map<String, Object> process(long merchantId, Contract contract, String rawBody) {
@@ -70,6 +74,17 @@ public class VendingDeviceEventService {
             EventValues values = eventValues(merchantId, contract.connectorCode());
             String normalizedEvent = eventType.trim().toUpperCase(Locale.ROOT);
             String rentalReference = valueAt(body, contract.callbackRentalField());
+            if (rentalReference.isBlank()) {
+                Mapping mapping = correlations.mapping(merchantId, contract.connectorCode());
+                String commandReference = valueAt(body, mapping.commandReferenceField());
+                String providerReference = valueAt(body, mapping.providerReferenceField());
+                rentalReference =
+                        correlations.resolveRentalReference(
+                                merchantId,
+                                contract.connectorCode(),
+                                commandReference,
+                                providerReference);
+            }
             String assetCode = valueAt(body, contract.callbackAssetField());
             Integer availableCount =
                     integerOrNull(valueAt(body, contract.callbackAvailableCountField()));
@@ -113,7 +128,7 @@ public class VendingDeviceEventService {
                     "RELEASED")) {
                 if (rentalReference.isBlank()) {
                     throw new PaymentGatewayException(
-                            "Release callback cannot be reconciled because callbackRentalField is not mapped or is absent");
+                            "Release callback cannot be reconciled: map a rental, command, or OEM provider reference field");
                 }
                 if (repository.markRentalActive(merchantId, rentalReference) == 0) {
                     Map<String, Object> rental =
@@ -145,7 +160,7 @@ public class VendingDeviceEventService {
                     "RETURNED")) {
                 if (rentalReference.isBlank()) {
                     throw new PaymentGatewayException(
-                            "Return callback cannot be reconciled because callbackRentalField is not mapped");
+                            "Return callback cannot be reconciled: map a rental, command, or OEM provider reference field");
                 }
                 if (!assetCode.isBlank()) {
                     markAssetAvailable(merchantId, number(device.get("id")), assetCode);
