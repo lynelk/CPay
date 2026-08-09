@@ -23,7 +23,31 @@ const AUTH_MODES = [
   { value: 'API_KEY_HEADER', label: 'API key header' },
   { value: 'BASIC', label: 'Basic auth' },
   { value: 'HMAC_SHA256_TS_BODY', label: 'HMAC SHA-256' },
-  { value: 'NONE', label: 'None (sandbox only)' },
+  { value: 'NONE', label: 'None (localhost sandbox only)' },
+];
+
+const CALLBACK_MODES = [
+  { value: 'HMAC_SHA256_TS_NONCE_BODY', label: 'HMAC timestamp + nonce + body' },
+  { value: 'HMAC_SHA256_TS_BODY', label: 'HMAC timestamp + body' },
+  { value: 'HMAC_SHA256_BODY', label: 'HMAC body' },
+  { value: 'STATIC_TOKEN_HEADER', label: 'Static callback token header' },
+];
+
+const ENCODINGS = [
+  { value: 'BASE64', label: 'Base64' },
+  { value: 'HEX', label: 'Hex' },
+];
+
+const COMPLETION_MODES = [
+  { value: 'CALLBACK', label: 'Callback confirms physical completion' },
+  { value: 'IMMEDIATE', label: 'HTTP response confirms completion' },
+];
+
+const HTTP_METHODS = [
+  { value: 'GET', label: 'GET' },
+  { value: 'POST', label: 'POST' },
+  { value: 'PUT', label: 'PUT' },
+  { value: 'PATCH', label: 'PATCH' },
 ];
 
 function message(error: unknown): string {
@@ -36,12 +60,18 @@ function text(value: unknown): string {
   return value == null ? '' : String(value);
 }
 
+function issues(value: unknown): string {
+  if (!Array.isArray(value)) return '';
+  return value.map(text).filter(Boolean).join(' · ');
+}
+
 export default function MerchantModuleVending({ loader, refreshSignal, sessionExpired }: ModuleProps): React.ReactElement {
   const [overview, setOverview] = useState<Overview>({});
   const [locations, setLocations] = useState<Row[]>([]);
   const [pricing, setPricing] = useState<Row[]>([]);
   const [devices, setDevices] = useState<Row[]>([]);
   const [connectors, setConnectors] = useState<Row[]>([]);
+  const [readiness, setReadiness] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [feedback, setFeedback] = useState<string>('');
@@ -68,21 +98,41 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
   const [commandBaseUrl, setCommandBaseUrl] = useState('');
   const [releasePath, setReleasePath] = useState('');
   const [releaseTemplate, setReleaseTemplate] = useState('{"stationId":"{{externalDeviceId}}","requestId":"{{commandReference}}","rentalReference":"{{rentalReference}}"}');
+  const [releaseIdempotencyHeader, setReleaseIdempotencyHeader] = useState('');
+  const [releaseCompletionMode, setReleaseCompletionMode] = useState('CALLBACK');
+
   const [authMode, setAuthMode] = useState('BEARER');
   const [authHeaderName, setAuthHeaderName] = useState('');
+  const [authTimestampHeader, setAuthTimestampHeader] = useState('');
+  const [authKeyHeader, setAuthKeyHeader] = useState('');
+  const [authSignatureEncoding, setAuthSignatureEncoding] = useState('BASE64');
+  const [authSigningTemplate, setAuthSigningTemplate] = useState('{{timestamp}}\n{{commandReference}}\n{{body}}');
   const [authValue, setAuthValue] = useState('');
   const [authSecret, setAuthSecret] = useState('');
+
   const [callbackSecret, setCallbackSecret] = useState('');
-  const [responseSuccessField, setResponseSuccessField] = useState('');
-  const [responseSuccessValue, setResponseSuccessValue] = useState('');
-  const [responseReferenceField, setResponseReferenceField] = useState('');
-  const [responseMessageField, setResponseMessageField] = useState('');
+  const [callbackSignatureMode, setCallbackSignatureMode] = useState('HMAC_SHA256_TS_NONCE_BODY');
+  const [callbackSignatureEncoding, setCallbackSignatureEncoding] = useState('BASE64');
+  const [callbackSignatureHeader, setCallbackSignatureHeader] = useState('X-CPay-Vending-Signature');
+  const [callbackTimestampHeader, setCallbackTimestampHeader] = useState('X-CPay-Vending-Timestamp');
+  const [callbackNonceHeader, setCallbackNonceHeader] = useState('X-CPay-Vending-Nonce');
   const [callbackEventTypeField, setCallbackEventTypeField] = useState('eventType');
   const [callbackEventIdField, setCallbackEventIdField] = useState('eventId');
   const [callbackDeviceField, setCallbackDeviceField] = useState('deviceId');
   const [callbackRentalField, setCallbackRentalField] = useState('rentalReference');
+  const [callbackCommandReferenceField, setCallbackCommandReferenceField] = useState('');
+  const [callbackProviderReferenceField, setCallbackProviderReferenceField] = useState('');
   const [callbackAssetField, setCallbackAssetField] = useState('assetCode');
   const [callbackAvailableField, setCallbackAvailableField] = useState('availableCount');
+
+  const [responseSuccessField, setResponseSuccessField] = useState('');
+  const [responseSuccessValue, setResponseSuccessValue] = useState('');
+  const [responseReferenceField, setResponseReferenceField] = useState('');
+  const [responseMessageField, setResponseMessageField] = useState('');
+
+  const [statusHttpMethod, setStatusHttpMethod] = useState('GET');
+  const [statusPath, setStatusPath] = useState('/stations/{{externalDeviceId}}/status');
+  const [statusTemplate, setStatusTemplate] = useState('');
 
   async function load() {
     setBusy(true);
@@ -112,7 +162,7 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
 
   useEffect(() => { void load(); }, [refreshSignal]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function mutate(path: string, body?: unknown) {
+  async function mutate(path: string, body?: unknown, successMessage = 'Saved successfully.') {
     setBusy(true);
     loader?.('START');
     setError(null);
@@ -122,13 +172,29 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
         method: 'POST',
         body: body === undefined ? undefined : JSON.stringify(body),
       });
-      setFeedback('Saved successfully.');
+      setFeedback(successMessage);
       await load();
       return result;
     } catch (e) {
       setError(e);
       if (e instanceof ApiError && e.status === 401) sessionExpired?.();
       return null;
+    } finally {
+      setBusy(false);
+      loader?.('STOP');
+    }
+  }
+
+  async function checkReadiness() {
+    setBusy(true);
+    loader?.('START');
+    setError(null);
+    try {
+      const result = await request<Row>('/api/v2/merchant-self-service/vending/connectors/CHARGENOW/readiness');
+      setReadiness(result);
+      setFeedback(text(result.status));
+    } catch (e) {
+      setError(e);
     } finally {
       setBusy(false);
       loader?.('STOP');
@@ -165,6 +231,18 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
     { key: 'status', header: 'Status', accessor: r => text(r.status) },
     { key: 'available', header: 'Available', accessor: r => `${text(r.available_count)} / ${text(r.slot_count)}` },
     {
+      key: 'probe', header: '', render: r => text(r.connector_code) === 'CHARGENOW' ? (
+        <Button variant="ghost" className="ios-btn--sm" onClick={async () => {
+          const result = await mutate(
+            `/api/v2/merchant-self-service/vending/devices/${encodeURIComponent(text(r.device_code))}/probe`,
+            { commandType: 'QUERY_STATUS' },
+            'Manufacturer status probe completed.',
+          );
+          if (result) setFeedback(`${text(result.status)}: ${text(result.message)}`);
+        }}>Probe OEM</Button>
+      ) : null,
+    },
+    {
       key: 'qr', header: '', render: r => (
         <Button variant="ghost" className="ios-btn--sm" onClick={async () => {
           const result = await mutate(`/api/v2/merchant-self-service/vending/devices/${encodeURIComponent(text(r.device_code))}/rotate-public-token`);
@@ -178,6 +256,7 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
     { key: 'connector', header: 'Connector', accessor: r => text(r.connector_code) },
     { key: 'url', header: 'Command host', accessor: r => text(r.command_base_url) },
     { key: 'auth', header: 'Auth', accessor: r => text(r.auth_mode) },
+    { key: 'callback', header: 'Callback auth', accessor: r => text(r.callback_signature_mode) },
     { key: 'active', header: 'Active', accessor: r => text(r.active_flag) },
     { key: 'secret', header: 'Callback secret', accessor: r => text(r.callback_secret_configured) },
   ];
@@ -187,6 +266,7 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
       {busy && !overview.locations ? <Spinner label="Loading vending operations" /> : null}
       {error ? <Alert variant="error">{message(error)}</Alert> : null}
       {feedback ? <Alert variant="success">{feedback}</Alert> : null}
+      {readiness && text(readiness.status) !== 'READY_FOR_OEM_SANDBOX' ? <Alert variant="warning">ChargeNow setup: {text(readiness.status)}. {issues(readiness.issues)}</Alert> : null}
 
       <Card flush><div style={{ padding: 'var(--ios-space-4)' }}>
         <Toolbar><strong>Vending estate</strong><Button variant="ghost" className="ios-btn--sm" onClick={() => void load()}>Refresh</Button></Toolbar>
@@ -236,36 +316,77 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
       </div></Card>
 
       <Card flush><div style={{ padding: 'var(--ios-space-4)' }}>
-        <Toolbar><strong>4. ChargeNow / manufacturer contract</strong></Toolbar>
-        <p style={{ marginTop: 0 }}>Enter the endpoint, authentication and exact JSON-field mappings from the manufacturer's integration pack. CPay deliberately does not guess unpublished ChargeNow wire details.</p>
+        <Toolbar><strong>4. ChargeNow manufacturer contract</strong><Button variant="ghost" className="ios-btn--sm" onClick={() => void checkReadiness()}>Check readiness</Button></Toolbar>
+        <p style={{ marginTop: 0 }}>Enter the exact endpoint, authentication and field mappings from the OEM integration pack. An accepted HTTP response defaults to RELEASE_PENDING; billing begins only after the configured release callback confirms the cabinet actually dispensed the asset.</p>
         <Grid>
           <TextField id="vend-command-url" label="Command base URL" value={commandBaseUrl} onValueChange={setCommandBaseUrl} placeholder="https://manufacturer.example/api" />
-          <TextField id="vend-release-path" label="Release path" value={releasePath} onValueChange={setReleasePath} placeholder="from OEM API pack" />
-          <Field label="Authentication"><Select value={authMode} options={AUTH_MODES} onValueChange={setAuthMode} /></Field>
-          <TextField id="vend-auth-header" label="Auth header name" value={authHeaderName} onValueChange={setAuthHeaderName} />
-          <TextField id="vend-auth-value" label="Auth value / username" value={authValue} onValueChange={setAuthValue} />
+          <TextField id="vend-release-path" label="Release path" value={releasePath} onValueChange={setReleasePath} placeholder="/stations/release" />
+          <TextField id="vend-release-idempotency" label="OEM idempotency header" value={releaseIdempotencyHeader} onValueChange={setReleaseIdempotencyHeader} placeholder="e.g. Idempotency-Key" />
+          <Field label="Release completion"><Select value={releaseCompletionMode} options={COMPLETION_MODES} onValueChange={setReleaseCompletionMode} /></Field>
+          <Field label="Outbound authentication"><Select value={authMode} options={AUTH_MODES} onValueChange={setAuthMode} /></Field>
+          <TextField id="vend-auth-header" label="Signature/API-key header" value={authHeaderName} onValueChange={setAuthHeaderName} />
+          <TextField id="vend-auth-timestamp-header" label="HMAC timestamp header" value={authTimestampHeader} onValueChange={setAuthTimestampHeader} />
+          <TextField id="vend-auth-key-header" label="HMAC public-key header" value={authKeyHeader} onValueChange={setAuthKeyHeader} />
+          <Field label="Outbound signature encoding"><Select value={authSignatureEncoding} options={ENCODINGS} onValueChange={setAuthSignatureEncoding} /></Field>
+          <TextField id="vend-auth-value" label="Auth value / username / public key" value={authValue} onValueChange={setAuthValue} />
           <TextField id="vend-auth-secret" label="Auth secret / password" value={authSecret} onValueChange={setAuthSecret} />
-          <TextField id="vend-callback-secret" label="Callback HMAC secret" value={callbackSecret} onValueChange={setCallbackSecret} />
+        </Grid>
+        <label htmlFor="vend-auth-signing-template" style={{ display: 'block', marginTop: 'var(--ios-space-3)', fontWeight: 700 }}>Outbound HMAC signing template</label>
+        <textarea id="vend-auth-signing-template" value={authSigningTemplate} onChange={e => setAuthSigningTemplate(e.target.value)} rows={3} style={{ width: '100%', marginTop: 8, borderRadius: 12, padding: 12 }} />
+        <label htmlFor="vend-release-template" style={{ display: 'block', marginTop: 'var(--ios-space-3)', fontWeight: 700 }}>Release request JSON template</label>
+        <textarea id="vend-release-template" value={releaseTemplate} onChange={e => setReleaseTemplate(e.target.value)} rows={5} style={{ width: '100%', marginTop: 8, borderRadius: 12, padding: 12 }} />
+
+        <Toolbar><strong>Response and callback mapping</strong></Toolbar>
+        <Grid>
           <TextField id="vend-success-field" label="Response success field" value={responseSuccessField} onValueChange={setResponseSuccessField} />
           <TextField id="vend-success-value" label="Response success value" value={responseSuccessValue} onValueChange={setResponseSuccessValue} />
-          <TextField id="vend-reference-field" label="Response reference field" value={responseReferenceField} onValueChange={setResponseReferenceField} />
+          <TextField id="vend-reference-field" label="Response OEM reference field" value={responseReferenceField} onValueChange={setResponseReferenceField} />
           <TextField id="vend-message-field" label="Response message field" value={responseMessageField} onValueChange={setResponseMessageField} />
+          <Field label="Callback authentication"><Select value={callbackSignatureMode} options={CALLBACK_MODES} onValueChange={setCallbackSignatureMode} /></Field>
+          <Field label="Callback signature encoding"><Select value={callbackSignatureEncoding} options={ENCODINGS} onValueChange={setCallbackSignatureEncoding} /></Field>
+          <TextField id="vend-callback-secret" label="Callback secret / token" value={callbackSecret} onValueChange={setCallbackSecret} />
+          <TextField id="vend-callback-signature-header" label="Callback signature/token header" value={callbackSignatureHeader} onValueChange={setCallbackSignatureHeader} />
+          <TextField id="vend-callback-timestamp-header" label="Callback timestamp header" value={callbackTimestampHeader} onValueChange={setCallbackTimestampHeader} />
+          <TextField id="vend-callback-nonce-header" label="Callback nonce header" value={callbackNonceHeader} onValueChange={setCallbackNonceHeader} />
           <TextField id="vend-event-type-field" label="Callback event-type field" value={callbackEventTypeField} onValueChange={setCallbackEventTypeField} />
           <TextField id="vend-event-id-field" label="Callback event-id field" value={callbackEventIdField} onValueChange={setCallbackEventIdField} />
           <TextField id="vend-callback-device-field" label="Callback device-id field" value={callbackDeviceField} onValueChange={setCallbackDeviceField} />
           <TextField id="vend-callback-rental-field" label="Callback rental-ref field" value={callbackRentalField} onValueChange={setCallbackRentalField} />
+          <TextField id="vend-callback-command-field" label="Fallback callback command-ref field" value={callbackCommandReferenceField} onValueChange={setCallbackCommandReferenceField} />
+          <TextField id="vend-callback-provider-field" label="Fallback callback OEM-ref field" value={callbackProviderReferenceField} onValueChange={setCallbackProviderReferenceField} />
           <TextField id="vend-callback-asset-field" label="Callback asset field" value={callbackAssetField} onValueChange={setCallbackAssetField} />
           <TextField id="vend-callback-available-field" label="Callback available-count field" value={callbackAvailableField} onValueChange={setCallbackAvailableField} />
         </Grid>
-        <label htmlFor="vend-release-template" style={{ display: 'block', marginTop: 'var(--ios-space-3)', fontWeight: 700 }}>Release request JSON template</label>
-        <textarea id="vend-release-template" value={releaseTemplate} onChange={e => setReleaseTemplate(e.target.value)} rows={5} style={{ width: '100%', marginTop: 8, borderRadius: 12, padding: 12 }} />
-        <div style={{ marginTop: 'var(--ios-space-3)' }}>
+        <div style={{ display: 'flex', gap: 'var(--ios-space-2)', flexWrap: 'wrap', marginTop: 'var(--ios-space-3)' }}>
           <Button variant="primary" onClick={() => mutate('/api/v2/merchant-self-service/vending/connectors/CHARGENOW', {
-            commandBaseUrl, releasePath, releaseRequestTemplate: releaseTemplate, authMode, authHeaderName,
-            authValue, authSecret, callbackSecret, responseSuccessField, responseSuccessValue,
-            responseReferenceField, responseMessageField, callbackEventTypeField, callbackEventIdField,
-            callbackDeviceField, callbackRentalField, callbackAssetField, callbackAvailableCountField: callbackAvailableField, active: true,
+            commandBaseUrl, releasePath, releaseRequestTemplate: releaseTemplate, releaseCompletionMode,
+            idempotencyHeaderName: releaseIdempotencyHeader, authMode, authHeaderName, authTimestampHeader,
+            authKeyHeader, authSignatureEncoding, authSigningTemplate, authValue, authSecret, callbackSecret,
+            callbackSignatureMode, callbackSignatureEncoding, callbackSignatureHeader, callbackTimestampHeader,
+            callbackNonceHeader, responseSuccessField, responseSuccessValue, responseReferenceField,
+            responseMessageField, callbackEventTypeField, callbackEventIdField, callbackDeviceField,
+            callbackRentalField, callbackAssetField, callbackAvailableCountField: callbackAvailableField, active: true,
           })}>Save manufacturer contract</Button>
+          <Button variant="ghost" onClick={() => mutate('/api/v2/merchant-self-service/vending/connectors/CHARGENOW/callback-correlation', {
+            callbackCommandReferenceField, callbackProviderReferenceField,
+          })}>Save callback correlation</Button>
+        </div>
+      </div></Card>
+
+      <Card flush><div style={{ padding: 'var(--ios-space-4)' }}>
+        <Toolbar><strong>5. ChargeNow status / diagnostic operation</strong></Toolbar>
+        <p style={{ marginTop: 0 }}>Map a read-only OEM status operation, then use Probe OEM on a registered ChargeNow device. The path supports <code>{'{{externalDeviceId}}'}</code>.</p>
+        <Grid>
+          <Field label="HTTP method"><Select value={statusHttpMethod} options={HTTP_METHODS} onValueChange={setStatusHttpMethod} /></Field>
+          <TextField id="vend-status-path" label="Status path" value={statusPath} onValueChange={setStatusPath} />
+        </Grid>
+        <label htmlFor="vend-status-template" style={{ display: 'block', marginTop: 'var(--ios-space-3)', fontWeight: 700 }}>Optional status request JSON template</label>
+        <textarea id="vend-status-template" value={statusTemplate} onChange={e => setStatusTemplate(e.target.value)} rows={3} style={{ width: '100%', marginTop: 8, borderRadius: 12, padding: 12 }} />
+        <div style={{ marginTop: 'var(--ios-space-3)' }}>
+          <Button variant="primary" onClick={() => mutate('/api/v2/merchant-self-service/vending/connectors/CHARGENOW/operations/QUERY_STATUS', {
+            httpMethod: statusHttpMethod, commandPath: statusPath, requestTemplate: statusTemplate,
+            completionMode: 'IMMEDIATE', active: true,
+          })}>Save status operation</Button>
         </div>
       </div></Card>
 
