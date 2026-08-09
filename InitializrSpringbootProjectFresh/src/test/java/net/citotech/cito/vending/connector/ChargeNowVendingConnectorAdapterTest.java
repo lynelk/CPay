@@ -83,7 +83,7 @@ class ChargeNowVendingConnectorAdapterTest {
     }
 
     @Test
-    void hmacHexAuthenticationAndImmediateProbeAreSupported() {
+    void hmacHexAuthenticationAndTemplatedImmediateProbeAreSupported() {
         var configurations = mock(VendingConnectorConfigurationService.class);
         Contract contract =
                 new Contract(
@@ -114,7 +114,7 @@ class ChargeNowVendingConnectorAdapterTest {
                 new Operation(
                         "QUERY_STATUS",
                         "GET",
-                        "/stations/CAB-99/status",
+                        "/stations/{{externalDeviceId}}/status",
                         "",
                         "",
                         "",
@@ -126,9 +126,11 @@ class ChargeNowVendingConnectorAdapterTest {
         when(configurations.requireOperation(7L, "CHARGENOW", "QUERY_STATUS"))
                 .thenReturn(operation);
 
+        AtomicReference<String> url = new AtomicReference<>();
         AtomicReference<Map<String, String>> headers = new AtomicReference<>();
         Common.setOutboundHttpExecutor(
                 (m, u, d, h) -> {
+                    url.set(u);
                     headers.set(h);
                     HttpRequestResponse response = new HttpRequestResponse();
                     response.setStatusCode(200);
@@ -150,6 +152,7 @@ class ChargeNowVendingConnectorAdapterTest {
 
         assertTrue(result.success());
         assertEquals("COMPLETED", result.status());
+        assertEquals("https://oem.example/api/stations/CAB-99/status", url.get());
         assertEquals("public-key", headers.get().get("X-OEM-Key"));
         assertTrue(headers.get().get("X-OEM-Signature").matches("[0-9a-f]{64}"));
         assertTrue(headers.get().containsKey("X-OEM-Timestamp"));
