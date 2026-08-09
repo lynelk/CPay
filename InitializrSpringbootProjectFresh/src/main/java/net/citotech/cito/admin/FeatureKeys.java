@@ -15,6 +15,7 @@ public final class FeatureKeys {
             "provider-certification-dashboard";
     public static final String REGULATOR_REPORTING_UI = "regulator-reporting-ui";
     public static final String TREASURY_DASHBOARD = "treasury-dashboard";
+    public static final String VENDING_PLATFORM = "vending-platform";
 
     private FeatureKeys() {}
 }
