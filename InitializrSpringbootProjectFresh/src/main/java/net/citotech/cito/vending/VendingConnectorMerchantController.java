@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.vending.connector.VendingCallbackCorrelationService;
 import net.citotech.cito.vending.connector.VendingConnectorConfigurationService;
 import net.citotech.cito.vending.connector.VendingDeviceCommandService;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,16 +24,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(path = "/api/v2/merchant-self-service/vending")
 public class VendingConnectorMerchantController {
     private final VendingConnectorConfigurationService configurations;
+    private final VendingCallbackCorrelationService correlations;
     private final VendingHostedRentalService hosted;
     private final VendingDeviceCommandService commands;
     private final String appBaseUrl;
 
     public VendingConnectorMerchantController(
             VendingConnectorConfigurationService configurations,
+            VendingCallbackCorrelationService correlations,
             VendingHostedRentalService hosted,
             VendingDeviceCommandService commands,
             @Value("${app.base-url:}") String appBaseUrl) {
         this.configurations = configurations;
+        this.correlations = correlations;
         this.hosted = hosted;
         this.commands = commands;
         this.appBaseUrl = appBaseUrl;
@@ -73,6 +77,39 @@ public class VendingConnectorMerchantController {
                 merchantId ->
                         configurations.saveOperation(
                                 merchantId, connectorCode, commandType, body));
+    }
+
+    @GetMapping(path = "/connectors/{connectorCode}/callback-correlation")
+    public ResponseEntity<?> callbackCorrelation(
+            @PathVariable("connectorCode") String connectorCode,
+            HttpServletRequest request) {
+        return handle(
+                request,
+                merchantId -> {
+                    var mapping = correlations.mapping(merchantId, connectorCode);
+                    return Map.of(
+                            "connectorCode",
+                            connectorCode.trim().toUpperCase(),
+                            "callbackCommandReferenceField",
+                            mapping.commandReferenceField(),
+                            "callbackProviderReferenceField",
+                            mapping.providerReferenceField());
+                });
+    }
+
+    @PostMapping(path = "/connectors/{connectorCode}/callback-correlation")
+    public ResponseEntity<?> saveCallbackCorrelation(
+            @PathVariable("connectorCode") String connectorCode,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+        return handle(
+                request,
+                merchantId ->
+                        correlations.save(
+                                merchantId,
+                                connectorCode,
+                                text(body.get("callbackCommandReferenceField")),
+                                text(body.get("callbackProviderReferenceField"))));
     }
 
     @GetMapping(path = "/connectors/{connectorCode}/readiness")
@@ -201,7 +238,9 @@ public class VendingConnectorMerchantController {
         raw.forEach(
                 (key, item) -> {
                     if (key != null) {
-                        result.put(String.valueOf(key), item == null ? "" : String.valueOf(item));
+                        result.put(
+                                String.valueOf(key),
+                                item == null ? "" : String.valueOf(item));
                     }
                 });
         return result;
