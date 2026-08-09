@@ -7,8 +7,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,20 +16,22 @@ import net.citotech.cito.Common;
 import net.citotech.cito.Model.HttpRequestResponse;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.vending.connector.VendingConnectorConfigurationService.Contract;
+import net.citotech.cito.vending.connector.VendingConnectorConfigurationService.Operation;
 import org.springframework.stereotype.Component;
 
 /**
  * Production HTTP adapter for ChargeNow/Bajie OEM hardware.
  *
- * <p>No unpublished manufacturer endpoint, signature scheme or JSON field is hard-coded. The real
- * commercial API contract is supplied per tenant through {@code vending_connector_configs}. This
- * lets CPay control real cabinets immediately after the OEM provides the integration pack without
- * teaching the rental state machine vendor-specific wire details.
+ * <p>ChargeNow's public material confirms cloud-connected stations, remote unlock commands and
+ * real-time status synchronization, while the partner wire contract is not publicly documented.
+ * The adapter therefore implements the real HTTP/authentication/correlation mechanics and loads
+ * each OEM operation's exact method, path, JSON template and response mappings from tenant-owned
+ * configuration. Nothing in this class invents a private ChargeNow URL or field name.
  *
- * <p>The release request is a JSON template supplied by the OEM/operator. String values may contain
- * {@code {{externalDeviceId}}}, {@code {{commandReference}}}, {@code {{rentalReference}}},
- * {@code {{merchantId}}}, or {@code {{deviceId}}}. Replacement happens after JSON parsing, so values
- * remain correctly escaped.
+ * <p>JSON request templates may use {@code {{externalDeviceId}}}, {@code {{commandReference}}},
+ * {@code {{rentalReference}}}, {@code {{merchantId}}}, {@code {{deviceId}}}, plus any command
+ * parameter supplied by CPay. Authentication signing templates additionally support
+ * {@code {{timestamp}}}, {@code {{method}}}, {@code {{path}}} and {@code {{body}}}.
  */
 @Component
 public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter {
@@ -49,81 +51,111 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
 
     @Override
     public VendingCommandResult execute(VendingCommand command) {
-        if (!"RELEASE_ASSET".equalsIgnoreCase(command.commandType())) {
-            return new VendingCommandResult(
-                    false,
-                    "",
-                    "UNSUPPORTED",
-                    "ChargeNow connector has no configured mapping for " + command.commandType());
-        }
         Contract contract = configurations.require(command.merchantId(), connectorCode());
+        Operation operation =
+                configurations.requireOperation(
+                        command.merchantId(), connectorCode(), command.commandType());
+        if (command.externalDeviceId() == null || command.externalDeviceId().isBlank()) {
+            throw new PaymentGatewayException(
+                    "ChargeNow manufacturer device id is required for " + command.commandType());
+        }
+
         try {
-            String body = renderReleaseBody(contract, command);
-            Map<String, String> headers = authHeaders(contract, command.commandReference(), body);
-            headers.put("Content-Type", "application/json");
+            Map<String, String> values = templateValues(command);
+            String body = renderBody(operation.requestTemplate(), values);
+            String url = join(contract.commandBaseUrl(), operation.commandPath());
+            Map<String, String> headers =
+                    authHeaders(contract, command, operation, body, values);
             headers.put("Accept", "application/json");
-            String url = join(contract.commandBaseUrl(), contract.releasePath());
-            HttpRequestResponse response = Common.doHttpRequest("POST", url, body, headers);
+            if (!body.isBlank()) headers.put("Content-Type", "application/json");
+            if (!operation.idempotencyHeaderName().isBlank()) {
+                headers.put(operation.idempotencyHeaderName(), command.commandReference());
+            }
+
+            HttpRequestResponse response =
+                    Common.doHttpRequest(operation.httpMethod(), url, body, headers);
             boolean httpOk = response.getStatusCode() >= 200 && response.getStatusCode() < 300;
             String responseBody = response.getResponse() == null ? "" : response.getResponse();
-            JsonNode responseJson = parseObject(responseBody);
-            boolean contractOk = contractSuccess(contract, responseJson);
+            JsonNode responseJson = parseJson(responseBody);
+            boolean contractOk = operationSuccess(operation, responseJson);
             boolean success = httpOk && contractOk;
-            String reference = valueAt(responseJson, contract.responseReferenceField());
-            String message = valueAt(responseJson, contract.responseMessageField());
+            String reference = valueAt(responseJson, operation.responseReferenceField());
+            if (reference.isBlank() && success) reference = command.commandReference();
+            String message = valueAt(responseJson, operation.responseMessageField());
             if (message.isBlank()) {
-                message = success
-                        ? "Manufacturer release command accepted"
-                        : safeFailure(response);
+                message =
+                        success
+                                ? "Manufacturer command accepted"
+                                : safeFailure(response, operation.commandType());
             }
-            return new VendingCommandResult(
-                    success,
-                    reference,
-                    success ? "ACCEPTED" : "FAILED",
-                    message);
+            String resultStatus =
+                    success
+                            ? ("IMMEDIATE".equals(operation.completionMode())
+                                    ? "COMPLETED"
+                                    : "ACCEPTED")
+                            : "FAILED";
+            return new VendingCommandResult(success, reference, resultStatus, message);
         } catch (PaymentGatewayException e) {
             throw e;
         } catch (Exception e) {
-            throw new PaymentGatewayException("Unable to execute ChargeNow vending command");
+            throw new PaymentGatewayException(
+                    "Unable to execute ChargeNow vending command: " + command.commandType());
         }
     }
 
-    private String renderReleaseBody(Contract contract, VendingCommand command) throws Exception {
-        JsonNode template = mapper.readTree(contract.releaseRequestTemplate());
-        if (template == null || (!template.isObject() && !template.isArray())) {
-            throw new PaymentGatewayException("Manufacturer releaseRequestTemplate must be JSON");
-        }
+    private Map<String, String> templateValues(VendingCommand command) {
         Map<String, String> values = new LinkedHashMap<>();
         values.put("externalDeviceId", nullToEmpty(command.externalDeviceId()));
-        values.put("commandReference", command.commandReference());
-        values.put("rentalReference", command.parameters().getOrDefault("rentalReference", ""));
+        values.put("commandReference", nullToEmpty(command.commandReference()));
         values.put("merchantId", String.valueOf(command.merchantId()));
         values.put("deviceId", String.valueOf(command.deviceId()));
-        return mapper.writeValueAsString(substitute(template.deepCopy(), values));
+        if (command.parameters() != null) {
+            command.parameters().forEach(
+                    (key, value) -> values.put(key, value == null ? "" : value));
+        }
+        values.putIfAbsent("rentalReference", "");
+        return values;
+    }
+
+    private String renderBody(String template, Map<String, String> values) throws Exception {
+        if (template == null || template.isBlank()) return "";
+        JsonNode parsed = mapper.readTree(template);
+        if (parsed == null || (!parsed.isObject() && !parsed.isArray())) {
+            throw new PaymentGatewayException("Manufacturer requestTemplate must be a JSON object or array");
+        }
+        return mapper.writeValueAsString(substitute(parsed.deepCopy(), values));
     }
 
     private JsonNode substitute(JsonNode node, Map<String, String> values) {
         if (node.isObject()) {
             ObjectNode object = (ObjectNode) node;
-            object.fields().forEachRemaining(entry -> object.set(entry.getKey(), substitute(entry.getValue(), values)));
+            object.fields()
+                    .forEachRemaining(
+                            entry ->
+                                    object.set(
+                                            entry.getKey(),
+                                            substitute(entry.getValue(), values)));
             return object;
         }
         if (node.isArray()) {
             ArrayNode array = (ArrayNode) node;
-            for (int i = 0; i < array.size(); i++) array.set(i, substitute(array.get(i), values));
+            for (int i = 0; i < array.size(); i++) {
+                array.set(i, substitute(array.get(i), values));
+            }
             return array;
         }
         if (node.isTextual()) {
-            String value = node.asText();
-            for (Map.Entry<String, String> entry : values.entrySet()) {
-                value = value.replace("{{" + entry.getKey() + "}}", entry.getValue());
-            }
-            return mapper.getNodeFactory().textNode(value);
+            return mapper.getNodeFactory().textNode(replace(node.asText(), values));
         }
         return node;
     }
 
-    private Map<String, String> authHeaders(Contract contract, String reference, String body)
+    private Map<String, String> authHeaders(
+            Contract contract,
+            VendingCommand command,
+            Operation operation,
+            String body,
+            Map<String, String> values)
             throws Exception {
         Map<String, String> headers = new LinkedHashMap<>();
         String mode = contract.authMode();
@@ -135,39 +167,67 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         }
         if ("API_KEY_HEADER".equals(mode)) {
             requireSecret(contract.authValue(), "authValue");
-            String header = contract.authHeaderName().isBlank() ? "X-API-Key" : contract.authHeaderName();
+            String header =
+                    contract.authHeaderName().isBlank()
+                            ? "X-API-Key"
+                            : contract.authHeaderName();
             headers.put(header, contract.authValue());
             return headers;
         }
         if ("BASIC".equals(mode)) {
             requireSecret(contract.authValue(), "authValue");
             requireSecret(contract.authSecret(), "authSecret");
-            String token = Base64.getEncoder().encodeToString(
-                    (contract.authValue() + ":" + contract.authSecret()).getBytes(StandardCharsets.UTF_8));
+            String token =
+                    Base64.getEncoder()
+                            .encodeToString(
+                                    (contract.authValue() + ":" + contract.authSecret())
+                                            .getBytes(StandardCharsets.UTF_8));
             headers.put("Authorization", "Basic " + token);
             return headers;
         }
         if ("HMAC_SHA256_TS_BODY".equals(mode)) {
             requireSecret(contract.authSecret(), "authSecret");
             String timestamp = String.valueOf(Instant.now().getEpochSecond());
-            String base = timestamp + "\n" + reference + "\n" + body;
-            String signature = hmac(contract.authSecret(), base);
-            headers.put("X-CPay-Vending-Timestamp", timestamp);
+            Map<String, String> signingValues = new LinkedHashMap<>(values);
+            signingValues.put("timestamp", timestamp);
+            signingValues.put("method", operation.httpMethod());
+            signingValues.put("path", operation.commandPath());
+            signingValues.put("body", body);
+            String signingTemplate =
+                    contract.authSigningTemplate().isBlank()
+                            ? "{{timestamp}}\n{{commandReference}}\n{{body}}"
+                            : contract.authSigningTemplate();
+            String signature =
+                    encodeHmac(
+                            contract.authSecret(),
+                            replace(signingTemplate, signingValues),
+                            contract.authSignatureEncoding());
+            headers.put(
+                    contract.authTimestampHeader().isBlank()
+                            ? "X-CPay-Vending-Timestamp"
+                            : contract.authTimestampHeader(),
+                    timestamp);
             headers.put(
                     contract.authHeaderName().isBlank()
                             ? "X-CPay-Vending-Signature"
                             : contract.authHeaderName(),
                     signature);
-            if (!contract.authValue().isBlank()) headers.put("X-CPay-Vending-Key", contract.authValue());
+            if (!contract.authValue().isBlank()) {
+                headers.put(
+                        contract.authKeyHeader().isBlank()
+                                ? "X-CPay-Vending-Key"
+                                : contract.authKeyHeader(),
+                        contract.authValue());
+            }
             return headers;
         }
         throw new PaymentGatewayException("Unsupported manufacturer auth mode: " + mode);
     }
 
-    private boolean contractSuccess(Contract contract, JsonNode body) {
-        if (contract.responseSuccessField().isBlank()) return true;
-        String actual = valueAt(body, contract.responseSuccessField());
-        if (contract.responseSuccessValue().isBlank()) {
+    private boolean operationSuccess(Operation operation, JsonNode body) {
+        if (operation.responseSuccessField().isBlank()) return true;
+        String actual = valueAt(body, operation.responseSuccessField());
+        if (operation.responseSuccessValue().isBlank()) {
             return "TRUE".equalsIgnoreCase(actual)
                     || "SUCCESS".equalsIgnoreCase(actual)
                     || "OK".equalsIgnoreCase(actual)
@@ -175,13 +235,14 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
                     || "0".equals(actual)
                     || "200".equals(actual);
         }
-        return contract.responseSuccessValue().equalsIgnoreCase(actual);
+        return operation.responseSuccessValue().equalsIgnoreCase(actual);
     }
 
-    private JsonNode parseObject(String body) {
+    private JsonNode parseJson(String body) {
         if (body == null || body.isBlank()) return mapper.createObjectNode();
         try {
-            return mapper.readTree(body);
+            JsonNode parsed = mapper.readTree(body);
+            return parsed == null ? mapper.createObjectNode() : parsed;
         } catch (Exception ignored) {
             return mapper.createObjectNode();
         }
@@ -197,11 +258,14 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         return current == null || current.isNull() ? "" : current.asText("");
     }
 
-    private String safeFailure(HttpRequestResponse response) {
+    private String safeFailure(HttpRequestResponse response, String commandType) {
         if (response.getStatusCode() > 0) {
-            return "Manufacturer command failed with HTTP " + response.getStatusCode();
+            return commandType + " failed with manufacturer HTTP " + response.getStatusCode();
         }
-        return "Manufacturer command could not be delivered";
+        String transport = response.getErrorMessage();
+        return transport == null || transport.isBlank()
+                ? commandType + " could not be delivered to manufacturer"
+                : commandType + " transport failed: " + truncate(transport, 240);
     }
 
     private String join(String base, String path) {
@@ -210,16 +274,35 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         return left + right;
     }
 
+    private String replace(String template, Map<String, String> values) {
+        String result = template == null ? "" : template;
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            result =
+                    result.replace(
+                            "{{" + entry.getKey() + "}}",
+                            entry.getValue() == null ? "" : entry.getValue());
+        }
+        return result;
+    }
+
     private void requireSecret(String value, String name) {
         if (value == null || value.isBlank()) {
-            throw new PaymentGatewayException("Manufacturer connector " + name + " is not configured");
+            throw new PaymentGatewayException(
+                    "Manufacturer connector " + name + " is not configured");
         }
     }
 
-    private String hmac(String secret, String value) throws Exception {
+    private String encodeHmac(String secret, String value, String encoding) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-        return Base64.getEncoder().encodeToString(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));
+        byte[] digest = mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
+        return "HEX".equalsIgnoreCase(encoding)
+                ? HexFormat.of().formatHex(digest)
+                : Base64.getEncoder().encodeToString(digest);
+    }
+
+    private String truncate(String value, int max) {
+        return value.length() <= max ? value : value.substring(0, max);
     }
 
     private String nullToEmpty(String value) {
