@@ -49,7 +49,7 @@ The supplied ChargeNow management manual informed the generic model:
 
 The manual is an **operations guide**, not a manufacturer wire/API specification. It demonstrates background actions such as cabinet placement and power-bank pop-up/ejection, but does not provide the authenticated request/response contract needed to implement those actions against real hardware.
 
-CPay now contains a production `CHARGENOW` HTTP adapter, but the adapter is **contract-provisioned**. Operators enter the actual endpoint, authentication mode, release JSON template and response/callback mappings from the manufacturer's integration pack. This is a real transport and callback implementation without pretending that undocumented OEM details are known.
+CPay now contains a production-capable `CHARGENOW` HTTP adapter, but the adapter is **contract-provisioned**. Operators enter the actual endpoint, authentication mode, release JSON template and response/callback mappings from the manufacturer's integration pack. This is a real transport and callback implementation without pretending that undocumented OEM details are known. It is not considered OEM-certified until those real manufacturer details, sandbox credentials and test hardware have been validated end to end.
 
 ## Schema
 
