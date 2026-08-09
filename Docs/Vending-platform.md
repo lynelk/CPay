@@ -2,182 +2,132 @@
 
 ## Purpose
 
-The Vending Platform adds machine/device commerce to CPay without creating a second payment gateway beside CPay. It is a multi-tenant domain rooted in the existing CPay merchant, payment orchestration, feature registry, transaction store, risk controls and ledger.
+The Vending Platform adds machine/device commerce to CPay without creating another payment stack beside it. Power-bank rental is the first profile, but the domain is intentionally reusable for rental cabinets, lockers, dispensers and other machine-led commerce.
 
-Power-bank rental is the first supported operating profile. The domain model is deliberately generic enough for lockers, rental cabinets, dispensers, ticketing devices, parking/charging assets and other machine-led vending workflows.
+The merchant remains the tenant. CPay remains the money system of record. Manufacturer hardware remains an adapter boundary.
 
-## Design principles
+## Source boundary
 
-1. **Merchant is the tenant.** Every vending-owned table carries `merchant_id`, and merchant-scoped repository access binds `TenantScopeGuard.TENANT_PARAM`.
-2. **CPay remains the money system of record.** Deposit collection and refund/payout use `PaymentOrchestrationService`; vending does not call a mobile-money provider directly and does not maintain a competing financial ledger.
-3. **Vendor hardware is an adapter.** Physical machine operations use `VendingConnectorAdapter` and `VendingConnectorRegistry`, mirroring CPay's payment-provider adapter approach.
-4. **The manufacturer's wire contract is configuration.** OEM URLs, authentication, JSON request template and response/callback field mappings are tenant-scoped data. CPay does not hard-code endpoint guesses from an operations manual.
-5. **Asynchronous payment status is explicit.** A mobile-money request is not treated as cash merely because it was submitted. A rental stays `PAYMENT_PENDING` until the CPay transaction is successful.
-6. **Device callbacks are authenticated before state mutation.** HMAC, timestamp window, nonce replay protection and external-event idempotency run before a heartbeat, release or return event is trusted.
-7. **State changes are auditable.** `vending_events`, `vending_commands` and `vending_device_callbacks` retain operational evidence while CPay's normal transaction, risk, webhook, billing and ledger records retain financial evidence.
-8. **Sensitive customer data is minimised.** Rentals store a tenant-scoped SHA-256 customer hash, a masked display value and encrypted MSISDN. The clear MSISDN is only recovered when CPay must address a refund payout.
-9. **Public QR sessions are opaque and revocable.** Physical station QR tokens are cryptographically random; per-rental status tokens are stored only as SHA-256 hashes and expire after 24 hours.
-10. **Feature rollout is reversible.** `vending-platform` is globally disabled by V50 and can be enabled per merchant through the existing feature registry.
+The supplied ChargeNow management material documents the operating model: stores, pricing, cabinets, power-bank release, heartbeat/online state, returns, monitoring and reporting. It does **not** provide the private manufacturer wire contract required to hard-code a production endpoint, authentication algorithm or payload schema.
 
-## Source operating models
+Public Bajie/ChargeNow material also describes cloud-connected stations, remote unlock commands, real-time status and an Open API/Webhook capability. It still does not publish the tenant-specific partner endpoint and credential contract needed for certification.
 
-### Supplied power-bank prototype
+For that reason CPay implements a real, configurable `CHARGENOW` HTTP adapter. OEM URLs, HTTP methods, authentication, signing templates, request templates, success mappings and callback field mappings are tenant configuration. The adapter is complete on the CPay side without pretending undocumented OEM details are known.
 
-The first profile preserves the supplied prototype's commercial logic:
+**OEM certification remains an external deployment gate** until the manufacturer provides the integration pack, sandbox credentials and a test cabinet.
 
-- deposit: UGX 20,000
-- hourly rate: UGX 2,000
-- minimum one billable hour
-- round a partial billing block upward
-- on return, refund the unused part of escrow
-- if usage exceeds escrow, carry the shortfall as a customer surcharge
-- on a later rental, a new deposit first settles an existing surcharge and only the remainder protects the new rental
-- an authorised operator may waive all or part of a surcharge; a waiver is a write-off, not a money movement
+## Flyway schema
 
-Unlike the prototype, the implementation does **not** reduce an old surcharge before the new deposit has actually succeeded. The planned split is stored on the pending rental and applied only when CPay reports the collection successful.
+Main now owns Flyway V50 for Communication Routing, so vending uses the next available versions:
 
-### ChargeNow management model
+- `V51__vending_platform.sql` - locations, pricing policies, devices, assets, customer balances, rentals, command evidence and operational events.
+- `V52__vending_manufacturer_hosted.sql` - OEM connector contracts, callback replay/idempotency evidence and hosted-rental sessions.
+- `V53__chargenow_adapter_completion.sql` - operation-specific OEM mappings, outbound HMAC configuration, callback signature encoding and callback command/provider-reference correlation fields.
 
-The supplied ChargeNow management manual informed the generic model:
-
-- stores/locations and business hours
-- pricing policies with deposit, free duration, unit price, billing block, daily cap, overtime amount and overtime days
-- charging cabinets/devices, slots/assets, online/offline/heartbeat state
-- rental lifecycle and exception states
-- manual settlement, billing suspension and refund operations
-- agent/store/device reporting and operational monitoring
-
-The manual is an **operations guide**, not a manufacturer wire/API specification. It demonstrates background actions such as cabinet placement and power-bank pop-up/ejection, but does not provide the authenticated request/response contract needed to implement those actions against real hardware.
-
-CPay now contains a production-capable `CHARGENOW` HTTP adapter, but the adapter is **contract-provisioned**. Operators enter the actual endpoint, authentication mode, release JSON template and response/callback mappings from the manufacturer's integration pack. This is a real transport and callback implementation without pretending that undocumented OEM details are known. It is not considered OEM-certified until those real manufacturer details, sandbox credentials and test hardware have been validated end to end.
-
-## Schema
-
-Flyway V50 introduces the base vending estate:
+Important tables are:
 
 | Table | Purpose |
 |---|---|
-| `vending_locations` | Tenant-owned stores/sites/venues. |
-| `vending_pricing_policies` | Reusable device/location pricing rules. |
-| `vending_devices` | Cabinets, vending machines and other controllable devices. |
-| `vending_assets` | Rentable/dispensable inventory or slots. |
-| `vending_customer_balances` | Tenant-scoped surcharge/debt and block state. |
-| `vending_rentals` | Rental/order state plus CPay transaction references and pricing snapshot values. |
-| `vending_commands` | Manufacturer command evidence and provider references. |
-| `vending_events` | Append-oriented operational audit history. |
+| `vending_locations` | Merchant-owned sites/stores. |
+| `vending_pricing_policies` | Deposit/rate/cap/overtime policies. |
+| `vending_devices` | Cabinets and other controlled devices. |
+| `vending_assets` | Power banks/slots or other rentable inventory. |
+| `vending_customer_balances` | Tenant-scoped surcharge/debt state. |
+| `vending_rentals` | Rental lifecycle and CPay transaction references. |
+| `vending_commands` | Atomic command claims plus OEM command evidence. |
+| `vending_events` | Operational audit trail. |
+| `vending_connector_configs` | Tenant OEM host/auth/callback configuration. |
+| `vending_connector_operations` | Per-command HTTP method/path/template/response mapping. |
+| `vending_callback_nonces` | Replay protection. |
+| `vending_device_callbacks` | Authenticated callback evidence/idempotency. |
+| `vending_hosted_sessions` | Hash-only customer status sessions. |
 
-Flyway V51 adds the manufacturer/hosted-rental layer:
+Every owned row is tenant-scoped by `merchant_id`; repository SQL uses `TenantScopeGuard`.
 
-| Table | Purpose |
-|---|---|
-| `vending_connector_configs` | Tenant-scoped OEM URL, auth, request template, response mappings and encrypted callback secret. |
-| `vending_callback_nonces` | Replay-protection store for authenticated manufacturer callbacks. |
-| `vending_device_callbacks` | External-event idempotency, signature state, processing state and raw callback evidence. |
-| `vending_hosted_sessions` | Hash-only, expiring public rental status sessions. |
+## Power-bank commercial profile
 
-No foreign keys are used, matching the loose-coupling convention already used by several CPay domains. Cross-tenant relationships are instead validated in repository operations before binding rows.
+The supplied prototype is represented by the generic pricing engine rather than by one-off rental arithmetic:
 
-## Pricing engine
+- UGX 20,000 deposit;
+- UGX 2,000 per hour;
+- minimum one billable block;
+- partial blocks round upward;
+- unused escrow is refunded after return;
+- usage above escrow becomes a customer surcharge;
+- a later successful deposit first settles an existing surcharge;
+- an authorised surcharge waiver is a write-off, not a money movement.
 
-`VendingPricingEngine` supports:
-
-- deposit amount
-- free minutes
-- unit price
-- billing block minutes
-- minimum billing blocks
-- daily cap
-- overtime/final purchase amount
-- overtime days
-- excluded billing-suspension seconds
-
-Free-time behaviour follows the supplied ChargeNow description: if the session is returned inside the free window it is free; once the window is exceeded, normal billing uses the whole rental duration rather than subtracting the free window.
-
-A power-bank policy matching the supplied prototype can be created with:
-
-```json
-{
-  "policyCode": "POWERBANK_UG",
-  "name": "Uganda power-bank standard",
-  "currency": "UGX",
-  "depositAmount": "20000",
-  "freeMinutes": 0,
-  "unitPrice": "2000",
-  "billingBlockMinutes": 60,
-  "minimumBillingBlocks": 1,
-  "refundMode": "ORIGINAL_ROUTE"
-}
-```
+CPay collection/refund is always submitted through `PaymentOrchestrationService`, preserving provider routing, risk controls, payout controls, CPay transactions, ledger posting, webhooks and billing hooks.
 
 ## Rental state machine
 
+The physical release state is deliberately separate from payment success:
+
 ```text
 PAYMENT_PENDING
-   | CPay collection successful
-   v
+      |
+      | CPay collection SUCCESS
+      v
 READY_TO_RELEASE
-   | manufacturer RELEASE_ASSET accepted
-   v
+      |
+      | atomic RELEASE_ASSET command claim
+      v
+RELEASE_PENDING
+      |
+      | authenticated OEM release callback
+      | OR an operation explicitly certified as IMMEDIATE
+      v
 ACTIVE
-   | authenticated return event / operator return
-   +--------------------------+
-   |                          |
-   v                          v
-SETTLED                  REFUND_PENDING
-                              |
-                              | CPay payout successful
-                              v
-                           SETTLED
+      |
+      | authenticated return / controlled return
+      +-------------------------+
+      |                         |
+      v                         v
+   SETTLED                 REFUND_PENDING
+                                |
+                                | CPay payout SUCCESS
+                                v
+                             SETTLED
 
-Failure paths:
+Failure states:
 PAYMENT_FAILED
-RELEASE_FAILED -> retry release
-REFUND_FAILED  -> operator review/retry
+RELEASE_FAILED
+REFUND_FAILED
 ```
 
-The rental start timestamp is taken when a successful collection is promoted to `READY_TO_RELEASE`, not when the first payment request is merely submitted.
+### Billing clock
 
-## Payment flow
+`started_at` is now set when physical release is confirmed, not merely when the deposit succeeds. This avoids charging a customer for the time a cabinet spent waiting to eject an asset.
 
-### Start
+### Double-eject prevention
 
-1. Resolve the tenant's device and pricing policy.
-2. Normalise/protect the customer identifier.
-3. Reject another open rental for the same tenant/customer.
-4. Read any existing surcharge.
-5. Calculate the planned deposit split: old surcharge first, remainder to current escrow.
-6. Store `PAYMENT_PENDING` rental.
-7. Submit the full deposit through `PaymentOrchestrationService.collect` using a deterministic `VEND-COLLECT-*` reference.
-8. Rental sync reconciles the CPay transaction. Only `SUCCESSFUL/SUCCESS/COMPLETED` advances the rental and applies the planned old-surcharge reduction.
-9. Dispatch `RELEASE_ASSET` through the configured manufacturer adapter.
+The release command reference is deterministic: `VEND-RELEASE-{rentalReference}`.
 
-### Return
+Before any OEM network call, CPay performs an atomic `INSERT IGNORE` command claim into `vending_commands`. The unique command reference is therefore a cross-instance idempotency gate. Two browser polls, worker races or application instances cannot both dispatch the same release command.
 
-1. Receive an authenticated manufacturer return callback or a controlled operator return action.
-2. Rate the active rental using its pricing policy and billable duration.
-3. If usage is below escrow, the difference becomes `refund_amount`.
-4. If usage exceeds escrow, the shortfall is added to `vending_customer_balances.surcharge_balance`.
-5. Persist settlement and audit event.
-6. Submit any refund through `PaymentOrchestrationService.payout` using `VEND-REFUND-*`.
-7. Rental sync marks the rental settled when the CPay refund payout becomes successful.
+If the OEM accepts a callback-completed release, the rental remains `RELEASE_PENDING`. CPay does not repeatedly eject merely because another status poll arrives.
 
-The existing CPay adapter routing, merchant permissions, risk rules, payout controls, provider transactions, core ledger and billing usage hooks therefore remain in force for vending money movement.
+A failed deterministic release is not silently re-issued. Its command evidence remains claimed until an operator/OEM reconciliation determines whether another physical command is safe. This is preferable to discovering the meaning of “at least once” with two power banks on the floor.
 
-## Manufacturer integration
+## ChargeNow adapter
 
-### ChargeNow adapter
+`ChargeNowVendingConnectorAdapter` executes configured OEM operations through CPay's shared outbound HTTP executor.
 
-`ChargeNowVendingConnectorAdapter` is a real outbound HTTP adapter. It deliberately contains **no guessed OEM endpoint**. A tenant supplies the actual contract under `vending_connector_configs`.
+### Operation registry
 
-Supported outbound authentication modes are:
+Each operation is stored in `vending_connector_operations` and has:
 
-- `BEARER`
-- `API_KEY_HEADER`
-- `BASIC`
-- `HMAC_SHA256_TS_BODY`
-- `NONE` for controlled sandbox use
+- `command_type`, for example `RELEASE_ASSET` or `QUERY_STATUS`;
+- HTTP method;
+- command path;
+- optional JSON request template;
+- optional OEM idempotency header;
+- response success field/value;
+- response reference field;
+- response message field;
+- completion mode: `CALLBACK` or `IMMEDIATE`.
 
-The release request is a JSON template. Text nodes may contain:
+Paths and JSON text values can use:
 
 ```text
 {{externalDeviceId}}
@@ -187,35 +137,47 @@ The release request is a JSON template. Text nodes may contain:
 {{deviceId}}
 ```
 
-CPay parses the template as JSON before replacement so inserted values remain JSON-escaped rather than being concatenated into an unsafe raw body.
+Arbitrary command parameters are also available as placeholders. For example a status path can be configured as:
 
-Example configuration shape:
-
-```json
-{
-  "commandBaseUrl": "https://oem.example/api",
-  "releasePath": "/station/release",
-  "releaseRequestTemplate": "{\"stationId\":\"{{externalDeviceId}}\",\"requestId\":\"{{commandReference}}\",\"rentalReference\":\"{{rentalReference}}\"}",
-  "authMode": "BEARER",
-  "authValue": "<token from OEM>",
-  "callbackSecret": "<shared HMAC secret>",
-  "responseSuccessField": "code",
-  "responseSuccessValue": "0",
-  "responseReferenceField": "data.commandId",
-  "responseMessageField": "message",
-  "callbackEventTypeField": "eventType",
-  "callbackEventIdField": "eventId",
-  "callbackDeviceField": "deviceId",
-  "callbackRentalField": "rentalReference",
-  "callbackAssetField": "assetCode",
-  "callbackAvailableCountField": "availableCount",
-  "active": true
-}
+```text
+/stations/{{externalDeviceId}}/status
 ```
 
-Secrets are encrypted using CPay's merchant-channel AES-GCM service and are not returned by connector list/view APIs. Callback secrets can be rotated, with the new cleartext value returned once.
+JSON templates are parsed as JSON before string-node substitution. CPay is not constructing raw JSON by concatenating an unescaped device identifier and hoping everyone behaves.
 
-### Authenticated device callbacks
+### Outbound authentication
+
+Supported contract modes are:
+
+- `BEARER`
+- `API_KEY_HEADER`
+- `BASIC`
+- `HMAC_SHA256_TS_BODY`
+- `NONE`, only for localhost/loopback sandbox testing
+
+HMAC mode supports:
+
+- configurable signature header;
+- configurable timestamp header;
+- optional public/API-key header;
+- `BASE64` or `HEX` signatures;
+- configurable signing template.
+
+Signing-template variables include:
+
+```text
+{{timestamp}}
+{{method}}
+{{path}}
+{{body}}
+{{commandReference}}
+```
+
+`{{path}}` is the **rendered** command path, not the unexpanded template.
+
+OEM credentials and callback secrets are encrypted at rest with CPay's existing merchant-channel AES-GCM service. Connector list/view APIs return only configured/not-configured indicators, not clear secrets.
+
+## Device callbacks
 
 Manufacturer callbacks are received at:
 
@@ -223,152 +185,163 @@ Manufacturer callbacks are received at:
 POST /api/v2/vending/device-callbacks/{connectorCode}/{merchantId}
 ```
 
-Default callback headers:
+Supported callback authentication modes are:
+
+- `HMAC_SHA256_TS_NONCE_BODY`
+- `HMAC_SHA256_TS_BODY`
+- `HMAC_SHA256_BODY`
+- `STATIC_TOKEN_HEADER`
+
+HMAC signatures can be Base64 or hexadecimal. Timestamp-based modes enforce a five-minute skew window. Nonce mode persists a tenant/connector nonce and rejects replay. Signature/token comparison is constant-time.
+
+Authenticated callbacks are also idempotent by manufacturer external event id and retained in `vending_device_callbacks` with the raw body hash, signature state, processing state and error detail.
+
+Normalized events currently include:
+
+- heartbeat/device-online/inventory;
+- device offline;
+- asset/power-bank released;
+- asset/power-bank returned.
+
+Unknown authenticated events are retained as unmapped evidence rather than coerced into a state transition.
+
+## Callback correlation
+
+A real OEM may not echo CPay's `rentalReference`. CPay therefore supports three ways to correlate release/return callbacks:
+
+1. a configured rental-reference field;
+2. a configured CPay command-reference field;
+3. a configured OEM provider-reference field.
+
+The latter two resolve through `vending_commands` to the tenant's rental. This keeps the callback engine compatible with partner contracts that return their own command ID instead of a CPay-specific rental identifier.
+
+## Safe station diagnostics
+
+Merchants can configure read-only OEM operations such as `QUERY_STATUS` and invoke them through the device probe API. The probe service whitelists only diagnostic command types:
 
 ```text
-X-CPay-Vending-Signature
-X-CPay-Vending-Timestamp
-X-CPay-Vending-Nonce
+QUERY_STATUS
+GET_STATUS
+PING
+INVENTORY_STATUS
 ```
 
-For `HMAC_SHA256_TS_NONCE_BODY`, the signed base string is:
+`RELEASE_ASSET` is intentionally excluded. Physical release remains owned by the paid rental state machine.
+
+Merchant endpoints include:
 
 ```text
-TIMESTAMP
-NONCE
-RAW_REQUEST_BODY
+GET  /api/v2/merchant-self-service/vending/connectors
+POST /api/v2/merchant-self-service/vending/connectors/{connectorCode}
+GET  /api/v2/merchant-self-service/vending/connectors/{connectorCode}/operations
+POST /api/v2/merchant-self-service/vending/connectors/{connectorCode}/operations/{commandType}
+GET  /api/v2/merchant-self-service/vending/connectors/{connectorCode}/callback-correlation
+POST /api/v2/merchant-self-service/vending/connectors/{connectorCode}/callback-correlation
+GET  /api/v2/merchant-self-service/vending/connectors/{connectorCode}/readiness
+POST /api/v2/merchant-self-service/vending/connectors/{connectorCode}/rotate-callback-secret
+POST /api/v2/merchant-self-service/vending/devices/{deviceCode}/probe
+POST /api/v2/merchant-self-service/vending/devices/{deviceCode}/rotate-public-token
 ```
 
-The HMAC is SHA-256 and Base64 encoded. CPay also supports `HMAC_SHA256_BODY` where required by an OEM contract.
+## Readiness gate
 
-Before any device/rental mutation CPay checks:
+`GET .../connectors/{connectorCode}/readiness` evaluates whether CPay has enough configuration to enter an OEM sandbox. It checks the active connector, release operation, outbound auth policy and required callback mappings.
 
-1. active tenant/connector contract;
-2. required signature/timestamp/nonce headers;
-3. timestamp within a five-minute skew window;
-4. constant-time HMAC match;
-5. nonce has not previously been consumed for that tenant/connector;
-6. external event id has not already been processed.
+Possible states are:
 
-Normalized event processing currently handles heartbeat/online inventory, device offline, asset released and asset returned. Unknown but authenticated events are retained as `MANUFACTURER_EVENT_UNMAPPED` rather than silently trusted as a known state transition.
+- `NOT_CONFIGURED`
+- `INCOMPLETE`
+- `READY_FOR_OEM_SANDBOX`
+
+`READY_FOR_OEM_SANDBOX` means CPay configuration is internally complete. It does **not** mean the manufacturer has certified the integration.
 
 ## Customer QR / hosted rental
 
-Each physical station can be given a cryptographically random public token. The QR code points to:
+Each station can be assigned a high-entropy public token. Its QR target is:
 
 ```text
 GET /vending/rent/{publicToken}
 ```
 
-The responsive hosted page:
+The hosted journey:
 
-1. loads the station/location/pricing and live available count;
-2. collects the customer's mobile-money number and optional network selection;
-3. creates the rental through the same `VendingRentalService` used by the portal API;
+1. loads location, pricing and current availability;
+2. accepts the customer's mobile-money number/network;
+3. starts the same tenant-scoped rental state machine used by merchant operations;
 4. submits the deposit through CPay;
-5. receives an opaque per-rental status token;
-6. polls status while the customer approves the mobile-money request;
-7. shows release success only once the rental reaches `ACTIVE`.
+5. polls using a separate opaque status token stored only as a SHA-256 hash;
+6. reports success only once the rental is `ACTIVE`.
 
-Public API routes behind that page are:
+Hosted starts use the database-backed rate limiter. Status sessions expire after 24 hours.
 
-```text
-GET  /api/v2/vending/hosted/stations/{publicToken}
-POST /api/v2/vending/hosted/stations/{publicToken}/start
-GET  /api/v2/vending/hosted/sessions/{statusToken}
-```
+## Merchant and admin UI
 
-Hosted starts are rate-limited in the existing DB-backed rate limiter. Status tokens are high-entropy random values, only their SHA-256 hashes are persisted, and sessions expire after 24 hours.
+The merchant Vending module now provides:
 
-## Merchant API and UI
+- locations and pricing policies;
+- device registration and external OEM device ids;
+- station QR target rotation;
+- ChargeNow base URL and release operation configuration;
+- Bearer/API-key/Basic/HMAC credentials;
+- HMAC headers, encoding and signing template;
+- OEM idempotency-header mapping;
+- response and callback field mappings;
+- callback command/provider-reference fallback mapping;
+- sandbox readiness check;
+- configurable `QUERY_STATUS` operation;
+- per-device safe OEM status probe;
+- rental list and synchronization.
 
-Merchant vending operations remain under the existing merchant-session boundary:
-
-```text
-GET  /api/v2/merchant-self-service/vending/overview
-GET  /api/v2/merchant-self-service/vending/locations
-POST /api/v2/merchant-self-service/vending/locations
-GET  /api/v2/merchant-self-service/vending/pricing
-POST /api/v2/merchant-self-service/vending/pricing
-GET  /api/v2/merchant-self-service/vending/devices
-POST /api/v2/merchant-self-service/vending/devices
-GET  /api/v2/merchant-self-service/vending/rentals?limit=100
-POST /api/v2/merchant-self-service/vending/rentals/start
-POST /api/v2/merchant-self-service/vending/rentals/{reference}/sync
-POST /api/v2/merchant-self-service/vending/rentals/{reference}/release
-POST /api/v2/merchant-self-service/vending/rentals/{reference}/return
-POST /api/v2/merchant-self-service/vending/surcharges/waive
-GET  /api/v2/merchant-self-service/vending/connectors
-POST /api/v2/merchant-self-service/vending/connectors/{connectorCode}
-POST /api/v2/merchant-self-service/vending/connectors/{connectorCode}/rotate-callback-secret
-POST /api/v2/merchant-self-service/vending/devices/{deviceCode}/rotate-public-token
-```
-
-`MerchantModuleVending` exposes location setup, pricing, device registration, manufacturer contract configuration, QR-target rotation and rental visibility inside the merchant portal. The `LegacySessionAuthorizationFilter` now explicitly includes the vending self-service prefix.
-
-## Admin operations and UI
-
-Admin routes are protected by both `/api/v2/admin/**` role matching and class-level `@PreAuthorize("hasRole('ADMIN')")`:
-
-```text
-GET  /api/v2/admin/vending/overview[?merchantId=...]
-GET  /api/v2/admin/vending/events[?merchantId=...]
-GET  /api/v2/admin/vending/callbacks[?merchantId=...]
-GET  /api/v2/admin/vending/commands[?merchantId=...]
-GET  /api/v2/admin/vending/connectors/{merchantId}
-POST /api/v2/admin/vending/connectors/{merchantId}/{connectorCode}
-POST /api/v2/admin/vending/connectors/{merchantId}/{connectorCode}/rotate-callback-secret
-POST /api/v2/admin/vending/devices/{merchantId}/{deviceCode}/rotate-public-token
-```
-
-`ModuleVending` gives operations a tenant-filterable view of estate counts, active/pending rentals, offline devices, failed callbacks, manufacturer commands and operational events.
+The admin Vending module remains a cross-tenant monitoring surface for estate counts, rentals, offline devices, callbacks, commands and operational events.
 
 ## Security boundaries
 
-- Merchant vending configuration is protected by the existing portal session filter and normal browser CSRF mechanism.
-- Public hosted/customer routes do not use a merchant session and are narrowly scoped to opaque station/status tokens.
-- Manufacturer callback POSTs are CSRF-exempt because they are server-to-server, but they are independently authenticated using the configured HMAC contract, timestamp and nonce.
-- Admin vending routes inherit the existing `hasRole('ADMIN')` path rule and add method-level `@PreAuthorize`.
-- Customer MSISDNs remain hash/mask/encrypted-at-rest as in the base V50 design.
-- Manufacturer auth values and callback secrets are encrypted at rest and redacted from list/view responses.
-- Raw manufacturer error bodies are not copied into merchant-facing messages.
+- Merchant configuration remains under the existing merchant-session filter and browser CSRF protection.
+- Admin vending routes inherit `/api/v2/admin/**` role enforcement and class-level `@PreAuthorize`.
+- Provider callbacks are CSRF-exempt server-to-server calls but independently authenticated by the configured OEM callback contract.
+- Public hosted routes expose only opaque station/session tokens and rate-limited actions.
+- Customer MSISDN is hash/mask/encrypted-at-rest.
+- OEM credentials/callback secrets are encrypted and redacted.
+- Command evidence and callback evidence are retained for reconciliation and incident review.
+- Physical release cannot be invoked through the generic diagnostic endpoint.
 
 ## Validation
 
-The PR CI now validates both frontend and backend rather than merely exercising the React build:
+The vending CI lane builds the frontend on Node 20 and 22, compiles/packages the Java 21 backend and runs targeted vending tests including:
 
-- React/Vite build and Vitest suite on Node 20.x and 22.x;
-- Java 21 backend package/compile against the active `InitializrSpringbootProjectFresh/pom.xml`;
-- `VendingPricingEngineTest` for tariff/free-window/cap/overtime behaviour;
-- `VendingCallbackSecurityServiceTest` for valid HMAC acceptance, invalid signature rejection, stale timestamp rejection and nonce replay rejection.
+- `VendingPricingEngineTest`
+- `VendingCallbackSecurityServiceTest`
+- `ChargeNowVendingConnectorAdapterTest`
 
-The current validation is intentionally not described as OEM certification. It proves the CPay implementation compiles and its local security/rating invariants pass; real cabinet certification still requires the manufacturer integration pack, sandbox credentials and test hardware.
+The adapter tests cover configured release transport, callback-vs-immediate completion, OEM idempotency headers, rendered operation paths, Bearer authentication and HMAC-HEX authentication.
 
-## Required OEM production pack
+## Remaining external certification work
 
-Before enabling `CHARGENOW` for production, populate and certify the real manufacturer's contract covering at least:
+The CPay-side ChargeNow adapter is complete enough for the OEM sandbox. Production activation still requires the manufacturer's actual partner pack:
 
-- production and sandbox base URLs;
-- authentication/signature/token rules;
-- device/station identifiers;
-- release/eject endpoint and exact JSON body;
-- success/error response mapping;
-- return/slot event callback fields;
-- heartbeat/inventory callback fields;
-- callback HMAC/signature contract;
-- idempotency/correlation identifiers;
-- timeout/retry semantics;
-- error/status catalogue;
-- sandbox/test device details.
+- sandbox and production base URLs;
+- supported operations and exact paths;
+- credential/token/signature rules;
+- exact release request and acknowledgement contract;
+- OEM idempotency semantics;
+- status/diagnostic operation contract;
+- callback authentication rules;
+- event names and JSON paths;
+- command/rental/provider reference echo behavior;
+- return/asset/slot identifiers;
+- timeout and retry rules;
+- OEM error/status catalogue;
+- sandbox account and test cabinet.
 
-The implementation is intentionally ready to receive these facts as configuration. It does not convert an operations screenshot into a fictional API, because payment/device incident reports already have enough material without our help.
+Once those are supplied, they are entered as tenant connector/operation configuration and tested against the cabinet. No rental/payment service rewrite should be required.
 
-## Remaining production slices
+## Broader vending work after OEM certification
 
-1. Add a distributed-lock/claim worker for automatic payment/refund synchronization instead of relying on portal/customer polling.
-2. Add an atomic release-command claim so concurrent status polls can never dispatch the same physical release twice across application instances.
-3. Extend asset/slot assignment reconciliation for OEM callbacks where the hardware returns a concrete slot and asset identifier.
-4. Add billing suspension/resume and manual settlement UI actions already represented by schema/pricing concepts.
-5. Add Testcontainers coverage for tenant isolation, callback replay, concurrent release, and the full collect -> release -> return -> refund flow.
-6. Add reconciliation views joining vending rental references to CPay transaction, ledger and provider statement evidence.
-7. Run real OEM sandbox certification once the manufacturer integration pack and test cabinet are available.
+ChargeNow adapter completion does not magically finish every vending roadmap item, because software remains stubbornly composed of more than one checkbox. Separate follow-up work includes:
+
+- distributed background synchronization for pending CPay collection/refund transactions;
+- explicit operator reconciliation/retry workflow for ambiguous failed release commands;
+- richer slot/asset inventory reconciliation where OEM callbacks expose concrete slot identifiers;
+- billing suspend/resume and manual-settlement controls;
+- Testcontainers/WireMock end-to-end tenant/concurrency coverage;
+- vending-to-CPay ledger/provider-statement reconciliation views.
