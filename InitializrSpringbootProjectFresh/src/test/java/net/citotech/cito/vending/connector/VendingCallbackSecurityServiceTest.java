@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HexFormat;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import net.citotech.cito.gateway.PaymentGatewayException;
@@ -26,24 +27,50 @@ class VendingCallbackSecurityServiceTest {
     void validTimestampNonceAndBodyHmacIsAccepted() throws Exception {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract());
+        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         when(jdbc.update(any(String.class), any(MapSqlParameterSource.class))).thenReturn(1);
         var service = new VendingCallbackSecurityService(configurations, jdbc);
 
         String body = "{\"eventId\":\"evt-1\",\"eventType\":\"HEARTBEAT\",\"deviceId\":\"CAB-1\"}";
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
         String nonce = "nonce-1";
-        var request = request(timestamp, nonce, sign(timestamp + "\n" + nonce + "\n" + body));
+        var request = request(timestamp, nonce, signBase64(timestamp + "\n" + nonce + "\n" + body));
 
         Contract verified = service.verify(7L, "CHARGENOW", request, body);
         assertEquals("CHARGENOW", verified.connectorCode());
     }
 
     @Test
+    void hexTimestampBodyHmacIsAcceptedWithoutNonce() throws Exception {
+        var configurations = mock(VendingConnectorConfigurationService.class);
+        var jdbc = mock(NamedParameterJdbcTemplate.class);
+        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_BODY", "HEX"));
+        var service = new VendingCallbackSecurityService(configurations, jdbc);
+
+        String body = "{\"eventId\":\"evt-hex\"}";
+        String timestamp = String.valueOf(Instant.now().getEpochSecond());
+        var request = request(timestamp, null, signHex(timestamp + "\n" + body));
+
+        assertEquals("CHARGENOW", service.verify(7L, "CHARGENOW", request, body).connectorCode());
+    }
+
+    @Test
+    void staticTokenHeaderModeSupportsOemCallbacksWithoutInventedTimestampHeaders() {
+        var configurations = mock(VendingConnectorConfigurationService.class);
+        var jdbc = mock(NamedParameterJdbcTemplate.class);
+        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("STATIC_TOKEN_HEADER", "BASE64"));
+        var service = new VendingCallbackSecurityService(configurations, jdbc);
+        var request = new MockHttpServletRequest();
+        request.addHeader("X-CPay-Vending-Signature", SECRET);
+
+        assertEquals("CHARGENOW", service.verify(7L, "CHARGENOW", request, "{}").connectorCode());
+    }
+
+    @Test
     void invalidSignatureIsRejectedBeforeNonceClaim() {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract());
+        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
 
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
@@ -58,7 +85,7 @@ class VendingCallbackSecurityServiceTest {
     void replayedNonceIsRejectedEvenWithValidHmac() throws Exception {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract());
+        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         when(jdbc.update(any(String.class), any(MapSqlParameterSource.class)))
                 .thenThrow(new DuplicateKeyException("duplicate nonce"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
@@ -66,7 +93,7 @@ class VendingCallbackSecurityServiceTest {
         String body = "{\"eventId\":\"evt-3\"}";
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
         String nonce = "nonce-replayed";
-        var request = request(timestamp, nonce, sign(timestamp + "\n" + nonce + "\n" + body));
+        var request = request(timestamp, nonce, signBase64(timestamp + "\n" + nonce + "\n" + body));
 
         assertThrows(
                 PaymentGatewayException.class,
@@ -77,13 +104,13 @@ class VendingCallbackSecurityServiceTest {
     void staleTimestampIsRejected() throws Exception {
         var configurations = mock(VendingConnectorConfigurationService.class);
         var jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract());
+        when(configurations.require(7L, "CHARGENOW")).thenReturn(contract("HMAC_SHA256_TS_NONCE_BODY", "BASE64"));
         var service = new VendingCallbackSecurityService(configurations, jdbc);
 
         String timestamp = String.valueOf(Instant.now().minusSeconds(600).getEpochSecond());
         String nonce = "nonce-stale";
         String body = "{}";
-        var request = request(timestamp, nonce, sign(timestamp + "\n" + nonce + "\n" + body));
+        var request = request(timestamp, nonce, signBase64(timestamp + "\n" + nonce + "\n" + body));
 
         assertThrows(
                 PaymentGatewayException.class,
@@ -93,34 +120,41 @@ class VendingCallbackSecurityServiceTest {
     private MockHttpServletRequest request(String timestamp, String nonce, String signature) {
         var request = new MockHttpServletRequest();
         request.addHeader("X-CPay-Vending-Signature", signature);
-        request.addHeader("X-CPay-Vending-Timestamp", timestamp);
-        request.addHeader("X-CPay-Vending-Nonce", nonce);
+        if (timestamp != null) request.addHeader("X-CPay-Vending-Timestamp", timestamp);
+        if (nonce != null) request.addHeader("X-CPay-Vending-Nonce", nonce);
         return request;
     }
 
-    private String sign(String base) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-        return Base64.getEncoder().encodeToString(mac.doFinal(base.getBytes(StandardCharsets.UTF_8)));
+    private String signBase64(String base) throws Exception {
+        return Base64.getEncoder().encodeToString(sign(base));
     }
 
-    private Contract contract() {
+    private String signHex(String base) throws Exception {
+        return HexFormat.of().formatHex(sign(base));
+    }
+
+    private byte[] sign(String base) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return mac.doFinal(base.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private Contract contract(String mode, String encoding) {
         return new Contract(
                 7L,
                 "CHARGENOW",
                 "https://manufacturer.example",
-                "/release",
-                "{}",
                 "NONE",
                 "",
                 "",
                 "",
-                "",
+                "BASE64",
                 "",
                 "",
                 "",
                 SECRET,
-                "HMAC_SHA256_TS_NONCE_BODY",
+                mode,
+                encoding,
                 "X-CPay-Vending-Signature",
                 "X-CPay-Vending-Timestamp",
                 "X-CPay-Vending-Nonce",
