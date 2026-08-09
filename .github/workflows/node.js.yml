@@ -1,4 +1,4 @@
-# CPay frontend + backend compile validation.
+# CPay frontend + backend validation.
 name: CPay CI
 
 on:
@@ -46,7 +46,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
         cache-dependency-path: InitializrSpringbootProjectFresh/pom.xml
-    - name: Compile and package backend
-      run: mvn -B -DskipTests package --file InitializrSpringbootProjectFresh/pom.xml
+    - name: Compile, package and check Java formatting
+      run: mvn -B -DskipTests verify --file InitializrSpringbootProjectFresh/pom.xml
     - name: Run vending pricing, callback-security and ChargeNow adapter tests
       run: mvn -B -Dtest=VendingPricingEngineTest,VendingCallbackSecurityServiceTest,ChargeNowVendingConnectorAdapterTest test --file InitializrSpringbootProjectFresh/pom.xml
