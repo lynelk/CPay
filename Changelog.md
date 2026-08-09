@@ -8,10 +8,6 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Added
 
-- Added the multi-tenant vending platform (`net.citotech.cito.vending`, Flyway V50/V51): merchant-scoped locations, pricing policies, devices/assets, rentals, customer surcharge balances, command/event evidence, a generic manufacturer-adapter registry, and the Uganda power-bank rental profile (UGX 20,000 deposit / UGX 2,000 hourly billing) integrated with CPay collect/payout orchestration rather than a separate payment engine.
-- Added a contract-provisioned `CHARGENOW` vending HTTP adapter: tenant-specific OEM endpoint/auth/request-template/response mappings are encrypted/configured at runtime instead of hard-coding undocumented manufacturer wire details; authenticated manufacturer callbacks add HMAC verification, five-minute timestamp freshness, nonce replay protection, external-event idempotency, heartbeat/offline/release/return handling, and retained callback evidence.
-- Added a customer QR/H5 vending rental journey (`/vending/rent/{publicToken}` plus `/api/v2/vending/hosted/**`) with cryptographically random station tokens, hash-only 24-hour rental status sessions, DB-backed start rate limiting, mobile-money deposit submission through CPay, and polling that only reports device release once the rental becomes `ACTIVE`.
-- Added merchant and admin vending portal modules: merchants can configure locations/pricing/devices/OEM contracts and rotate station QR targets, while admins can monitor estate totals, rentals, offline devices, callbacks, manufacturer commands and operational events across tenants.
 - Added provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments statement imports with shared CSV/XLSX parsing support.
 - Added a ledger-refreshed channel-balance read model so dashboard balance views no longer need to recompute every card directly from statement rows.
 - Added request correlation IDs and structured JSON console logging for backend observability.
@@ -82,3 +78,43 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 ### Changed
 
 - Removed `common.base_url` (a dead, always-empty legacy config field) from every frontend call site in favor of `shared/config.ts`'s `apiUrl()`, and centralized the ad-hoc `localStorage` admin/merchant user read behind a shared `readStoredUser(portal)` helper for the class components that can't use the `useAuth()` hook directly.
+- Chart line/point colors now resolve through the same CSS-variable helper as the rest of the dashboard charts, instead of a hardcoded hex color and a bare white point-border that looked wrong in dark mode.
+- Routed legacy outbound provider HTTP calls through a Spring-managed `RestClient` executor with central timeout, error, and metrics handling.
+- Updated Docker Compose onboarding to use the canonical backend path and the current local sandbox defaults.
+- Made Flyway the documented canonical migration path and gated the legacy XML DB change runner behind `CPAY_LEGACY_DBCHANGES_ENABLED`.
+- Removed safe unused Java imports, locals, and an empty application shell class.
+- Made transaction timeout scans and timeout minutes configurable.
+- Enabled graceful shutdown defaults.
+- Tightened legacy SMS scheduling to compare `send_time` with `java.time` while preserving the existing `yyyy-MM-dd HH:mm:ss` API format.
+- Tightened CORS headers and added standard security headers.
+- The pre-existing local scheduler file locks are now a secondary safeguard behind ShedLock's distributed lock, rather than the only protection against concurrent cron execution.
+- Bumped `org.json` (20240303 → 20260719), Apache POI (5.2.5 → 5.5.1), and Bucket4j (7.6.0 → 8.0.1, switched from the now-relocated `com.github.vladimir-bukhtoyarov` Maven coordinates to the current `com.bucket4j` ones) after a dependency-currency review.
+- Continued dependency currency (Track A): Bucket4j-core 8.0.1 → 8.10.1 and springdoc-openapi-starter-webmvc-ui 3.0.3 → 3.1.0 (backend, both verified via the full 668-test suite and the Spotless verify gate); frontend safe-group patch/minor bumps (react-router-dom 7.18.2, Vite 8.2.1, @vitejs/plugin-react 6.0.5, Tailwind 4.3.3, @tanstack/react-query 5.101.4, typescript-eslint 8.66.0, ESLint 9.39.5 and others) with `npm audit fix` clearing the two transient dev vulnerabilities (brace-expansion, fast-uri) and the esbuild install script approved; infra/SDK bumps — MySQL image pinned 8.4 → **8.4.10** (June 2026 critical patch) in `compose.yaml`, Maven Docker build-stage image 3.9.9 → **3.9.16** (runtime keeps the floating `eclipse-temurin:21-jre` tag so JDK security patches are picked up on rebuild), and the Python SDK's `cryptography` floor raised 42.0.0 → **47.0.0** (Node/PHP SDKs are dependency-manifest-free pure-stdlib and needed no change). React 19 remains a deliberately separate later PR; wiremock-standalone stays 3.x pending a stable 4.x.
+- Removed an unused `Section` import from `ModulePayoutApprovals.tsx` flagged by the ESLint upgrade, leaving `npm run lint` clean (0 errors, 0 warnings).
+
+### Fixed
+
+- Fixed SHA-256 hex formatting to emit full 64-character hashes.
+- Fixed client IP extraction to avoid concatenating proxy headers and null values.
+- Added visible spreadsheet upload limits for size, type, and row count.
+- Removed the runtime TLS verification bypass path; local development should use trusted test certificates or provider sandboxes instead of a global trust-all switch.
+- Added a legacy callback terminal-state/provider-reference guard to avoid re-applying the ledger/statement path when a provider redelivers the same terminal callback.
+- Fixed SMS provider rejection handling so non-2xx provider responses are marked `REJECTED` and refunded instead of being recorded as sent.
+- Fixed the SMS pending-send batch (`POST /transactions/testSendPendingSmsCron`) being protected only by a single-host filesystem lock in HA deployments: it now carries `@SchedulerLock(name = "testSendPendingSmsCron", PT15M/PT30S)` so two replicas can no longer process the same PENDING batch concurrently (billing merchants twice / double-sending SMS). Regression coverage added in `SchedulerLockConfigTest`.
+
+### Operational
+
+- Confirmed the schema documentation currently tracks Flyway through V44 and points operators to regenerate a real `mysqldump` snapshot from a migrated database before release tagging.
+- Added Flyway migrations `V29__provider_conversation_references.sql` and `V30__shedlock.sql`.
+- Added Flyway migrations `V31__merchant_key_encryption.sql`, `V32__kyc_tier_limits.sql`, `V33__maker_checker_finance_close.sql`, `V34__payout_controls.sql`, `V35__efris_regulator_pii.sql`, `V36__feature_registry.sql`, `V37__identity_verification.sql`, and `V38__billing_tenancy_core.sql`.
+- Added Flyway migrations `V39__billing_service_catalog.sql` (service/meter catalog, seeded with the payment/SMS/webhook/invoice services), `V40__billing_usage_events.sql` (immutable, unique `idempotency_key`), `V41__billing_outbox.sql`, `V42__billing_usage_outbox_feature_flag.sql`, and `V43__billing_price_books.sql` (price-book-version/price-component schema, calculation logic not yet wired at the time).
+- Added Flyway migration `V44__billing_rated_charges.sql` (stores the rating engine's computed output — price-book version, tier path, rounding policy — keyed by idempotency, reused for both customer charges and provider costs via a `charge_type` discriminator).
+- Added Flyway migrations `V45__billing_ledger_links.sql` (traces a ledger posting back to its billing artifact), `V46__ledger_period_locks.sql` (fail-open "posting halted today" switch for `DoubleEntryLedgerService`), `V47__billing_invoices_core.sql` (`billing_invoices`/`billing_invoice_lines`, DRAFT→FINALIZED→VOID), `V48__billing_credit_notes_and_allocations.sql` (`billing_credit_notes`/`billing_payment_allocations`, schema only), and `V49__billing_completeness_gate.sql` (`billing_completeness_gates`, maker-checker). Flyway is now at `V49`; the schema snapshot under `Docs/Schema/snapshots/` still reflects `V30` and needs regenerating from a freshly migrated database before the next release tag.
+- Added a per-merchant feature registry (`merchant_feature_flags`, V36) with a server-side resolution service (`FeatureRegistryService`), tenant-scoped via `TenantScopeGuard`, and an admin surface under `/api/v2/admin/feature-registry/**` for reversible per-merchant feature rollout.
+- Added a GnuGrid NIN identity-verification pilot (`identity/`, V37) gated by the `identity-gnugrid` feature flag: consent-mandated requests, PII-safe storage (NIN/full-name/MSISDN stored only as hashes + masks), provider callback endpoint, and an admin surface under `/api/v2/admin/identity/**`.
+- Added billing tenancy core (V38, ADR 0003): `billing_tenants`/`billing_customers`/`billing_accounts` with a 1:1 backfill for existing merchants, laying the scoping root for the future billing engine.
+- Added admin self-service configuration of `payout_controls` rows (`PayoutConfigService`/`PayoutConfigController` under `/api/v2/admin/payout-controls/**`, gated by the `payout-controls-config` flag) and the `ModulePayoutControls` admin screen; a row saved here is enforced immediately by the v2 payout path.
+- Added `ModuleFinanceClose` with a historical daily-close view (`GET /api/v2/admin/recon-finance/history`) alongside the existing summary/pending-submissions surface.
+- Added a balance-monitoring pilot surface (`BalanceMonitoringService`/`BalanceMonitoringController` under `/api/v2/admin/balance-monitoring/overview`, gated by the `balance-monitoring` flag) combining gateway float balances, treasury positions, and the latest nightly float snapshots.
+- Added `FeatureKeys` as the canonical feature-flag key catalog referenced by feature consumers.
+- Added `TenantScopeGuard` cross-tenant isolation guardrail with unit tests proving merchant-scoped registry access always binds the tenant key.
