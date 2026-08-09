@@ -910,6 +910,130 @@ export function useReplayWebhookDeliveryMutation() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Communication routing (B1a) — provider catalog + delivery routing rules
+//
+// Backed by CommunicationRoutingController (/api/v2/admin/communication/routing/**).
+// Writes are immediate: the backend ProviderRouter reads these tables on every
+// send, so a saved rule takes effect on the next pending-send sweep.
+// ---------------------------------------------------------------------------
+
+export interface CommunicationProviderRow {
+  id?: number;
+  providerCode?: string;
+  providerName?: string;
+  channel?: string;
+  adapterClass?: string;
+  baseUrl?: string | null;
+  credentialsRef?: string;
+  enabledFlag?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface CommunicationRuleRow {
+  id?: number;
+  channel?: string;
+  merchantId?: number | null;
+  priority?: number;
+  providerCode?: string;
+  enabledFlag?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface CommunicationEffectiveResult {
+  resolved?: boolean;
+  rule?: CommunicationRuleRow | null;
+  provider?: CommunicationProviderRow | null;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/communication/routing/providers` — the provider catalog. */
+export function useCommunicationProviders() {
+  return useQuery({
+    queryKey: ['communication', 'routing', 'providers'],
+    queryFn: async (): Promise<CommunicationProviderRow[]> => {
+      const res = await request<{ code?: string; providers?: CommunicationProviderRow[] }>(
+        '/api/v2/admin/communication/routing/providers',
+      );
+      return res.providers ?? [];
+    },
+    staleTime: 30_000,
+  });
+}
+
+/** `/api/v2/admin/communication/routing/rules` — routing rules (merchant-specific won). */
+export function useCommunicationRoutingRules() {
+  return useQuery({
+    queryKey: ['communication', 'routing', 'rules'],
+    queryFn: async (): Promise<CommunicationRuleRow[]> => {
+      const res = await request<{ code?: string; rules?: CommunicationRuleRow[] }>(
+        '/api/v2/admin/communication/routing/rules',
+      );
+      return res.rules ?? [];
+    },
+    staleTime: 30_000,
+  });
+}
+
+/** `/api/v2/admin/communication/routing/effective` — preview which rule+provider would win. */
+export function useCommunicationEffectiveRule(merchantId: string, channel = 'SMS') {
+  const enabled = Boolean(merchantId.trim());
+  return useQuery({
+    queryKey: ['communication', 'routing', 'effective', merchantId.trim(), channel],
+    queryFn: () => {
+      const params = new URLSearchParams({ channel });
+      if (merchantId.trim()) params.set('merchantId', merchantId.trim());
+      return request<CommunicationEffectiveResult>(
+        `/api/v2/admin/communication/routing/effective?${params.toString()}`,
+      );
+    },
+    enabled,
+  });
+}
+
+export interface CommunicationRuleUpsertPayload {
+  id?: number | null;
+  channel: string;
+  merchantId?: number | null;
+  priority: number;
+  providerCode: string;
+  enabledFlag: string;
+}
+
+/** Inserts or updates a routing rule; a merchant-specific rule beats the platform default. */
+export function useCommunicationRuleUpsertMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CommunicationRuleUpsertPayload) =>
+      request<{ code?: string; rule?: CommunicationRuleRow }>(
+        '/api/v2/admin/communication/routing/rules',
+        { method: 'POST', body: JSON.stringify(payload) },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['communication', 'routing'] });
+    },
+  });
+}
+
+/** Deletes a routing rule by id. */
+export function useCommunicationRuleDeleteMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ruleId: number) =>
+      request<{ code?: string; deleted?: number }>(
+        `/api/v2/admin/communication/routing/rules/${ruleId}`,
+        { method: 'DELETE' },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['communication', 'routing'] });
+    },
+  });
+}
+
 // NOTE: POST /api/v2/admin/reconciliation/auto-match is covered by
 // `useAutoMatchMutation` above (the endpoint returns a plain number).
 

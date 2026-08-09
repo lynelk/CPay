@@ -22,6 +22,7 @@ import ModulePayoutApprovals from './modules/ModulePayoutApprovals';
 import ModulePayoutControls from './modules/ModulePayoutControls';
 import ModuleSettlementClose from './modules/ModuleSettlementClose';
 import ModuleWebhookOps from './modules/ModuleWebhookOps';
+import ModuleCommunicationRouting from './modules/ModuleCommunicationRouting';
 
 import { apiFetch } from '../shared/api/httpClient';
 import { apiUrl } from '../shared/config';
@@ -37,6 +38,7 @@ const menuTitles = {
   payoutcontrols: { title: 'Payout Controls', subtitle: 'Configure payout risk limits enforced on the v2 path' },
   settlementclose: { title: 'Settlement Close', subtitle: 'Maker-checker settlement batch close' },
   webhookops: { title: 'Webhook Ops', subtitle: 'Merchant callback verification and test events' },
+  communicationrouting: { title: 'Communication Routing', subtitle: 'SMS provider selection and routing rules' },
   admins: { title: strings.menu_admins, subtitle: strings.menu_admins_subtitle_admin },
   audittrail: { title: strings.menu_audittrail, subtitle: strings.menu_audittrail_subtitle_admin },
   settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_admin },
@@ -95,6 +97,7 @@ class LayoutWithOutRouter extends React.Component {
       case 'payoutcontrols': return <ModulePayoutControls {...moduleProps} />;
       case 'settlementclose': return <ModuleSettlementClose {...moduleProps} />;
       case 'webhookops': return <ModuleWebhookOps {...moduleProps} />;
+      case 'communicationrouting': return <ModuleCommunicationRouting {...moduleProps} />;
       case 'audittrail': return <ModuleAuditTrail {...moduleProps} />;
       case 'settings': return <ModuleSettings {...moduleProps} />;
       case 'dashboard':
