@@ -171,6 +171,49 @@ class BillingInvoiceRepositoryTestcontainersTest {
         assertThat(updated.totalAmount()).isEqualByComparingTo("100");
     }
 
+    @Test
+    void finalizeInvoiceFlipsStatusAndRecordsTheLedgerTransaction() {
+        NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        BillingInvoiceRepository repository = new BillingInvoiceRepository(jdbcTemplate);
+        long invoiceId =
+                repository.insertDraft(
+                        11L,
+                        "BINV-K1-5",
+                        "UGX",
+                        LocalDate.of(2026, 6, 1),
+                        LocalDate.of(2026, 6, 30));
+
+        int updated = repository.finalizeInvoice(invoiceId, "billing-finalizer", 777L);
+
+        assertThat(updated).isEqualTo(1);
+        BillingInvoiceRecord finalized = repository.find(invoiceId).orElseThrow();
+        assertThat(finalized.status()).isEqualTo("FINALIZED");
+        assertThat(finalized.finalizedBy()).isEqualTo("billing-finalizer");
+        assertThat(finalized.finalizedAt()).isNotNull();
+        assertThat(finalized.ledgerTransactionId()).isEqualTo(777L);
+    }
+
+    @Test
+    void finalizeInvoiceReturnsZeroAndLeavesTheRowUntouchedWhenAlreadyFinalized() {
+        NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        BillingInvoiceRepository repository = new BillingInvoiceRepository(jdbcTemplate);
+        long invoiceId =
+                repository.insertDraft(
+                        12L,
+                        "BINV-K1-6",
+                        "UGX",
+                        LocalDate.of(2026, 7, 1),
+                        LocalDate.of(2026, 7, 31));
+        repository.finalizeInvoice(invoiceId, "billing-finalizer", 888L);
+
+        int secondAttempt = repository.finalizeInvoice(invoiceId, "someone-else", 999L);
+
+        assertThat(secondAttempt).isZero();
+        BillingInvoiceRecord finalized = repository.find(invoiceId).orElseThrow();
+        assertThat(finalized.finalizedBy()).isEqualTo("billing-finalizer");
+        assertThat(finalized.ledgerTransactionId()).isEqualTo(888L);
+    }
+
     private long insertRatedCharge(
             NamedParameterJdbcTemplate jdbcTemplate,
             long billingTenantId,

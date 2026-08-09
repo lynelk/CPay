@@ -4,22 +4,33 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
+import net.citotech.cito.billing.reconciliation.BillingCompletenessGateService;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Draft-invoice creation and charge staging for the {@code billing_invoices} domain (Flyway {@code
- * V47}) - the periodic billing statement, distinct from {@code checkout.InvoiceService}'s one-off
- * request-to-pay invoices. Finalizing a draft into an immutable, ledger-posted invoice is a
- * separate, later slice; this service only ever produces/mutates {@code DRAFT} invoices.
+ * Draft-invoice creation, charge staging, and finalize for the {@code billing_invoices} domain
+ * (Flyway {@code V47}) - the periodic billing statement, distinct from {@code
+ * checkout.InvoiceService}'s one-off request-to-pay invoices. {@link #createDraft}/{@link
+ * #stageCharges} only ever produce/mutate {@code DRAFT} invoices; {@link #finalizeInvoice} is the
+ * one transition out of DRAFT, after which the invoice is immutable (enforced by {@code
+ * requireDraftInvoice} rejecting any further staging).
  */
 @Service
 public class BillingInvoiceService {
     private final BillingInvoiceRepository repository;
+    private final BillingCompletenessGateService completenessGateService;
+    private final BillingLedgerAccountTemplateService ledgerAccountTemplateService;
 
-    public BillingInvoiceService(BillingInvoiceRepository repository) {
+    public BillingInvoiceService(
+            BillingInvoiceRepository repository,
+            BillingCompletenessGateService completenessGateService,
+            BillingLedgerAccountTemplateService ledgerAccountTemplateService) {
         this.repository = repository;
+        this.completenessGateService = completenessGateService;
+        this.ledgerAccountTemplateService = ledgerAccountTemplateService;
     }
 
     @Transactional
@@ -76,6 +87,59 @@ public class BillingInvoiceService {
             repository.updateTotals(billingInvoiceId, subtotal, total);
         }
         return unstaged.size();
+    }
+
+    /**
+     * Finalize workflow: requires the invoice still be DRAFT and its completeness gate {@code
+     * APPROVED} ({@link BillingCompletenessGateService#isApproved}), posts the invoice total to the
+     * ledger via {@link BillingLedgerAccountTemplateService#postCustomerCharge} using the invoice
+     * number as the idempotent charge reference (already unique), then flips the row to {@code
+     * FINALIZED} ({@link BillingInvoiceRepository#finalizeInvoice}, guarded {@code WHERE
+     * status='DRAFT'} for race safety - if two calls race, the ledger post dedupes to the same
+     * transaction id via {@code DoubleEntryLedgerService}'s own idempotency, and whichever caller
+     * loses the DRAFT-guarded update throws, rolling back its entire transaction including any
+     * {@code billing_ledger_links} row the ledger post wrote on its behalf).
+     *
+     * <p>Deliberately does not validate a zero subtotal itself: an invoice with nothing ever staged
+     * trivially passes the completeness gate (zero unstaged charges) but will fail at {@code
+     * DoubleEntryLedgerService.post()}'s own "entry amount must be greater than zero" check before
+     * any row is written, since the whole method is {@code @Transactional} - that failure is the
+     * intended guard, not a gap.
+     *
+     * @return the ledger transaction id the finalize posted
+     */
+    @Transactional
+    public long finalizeInvoice(long billingInvoiceId, String finalizedBy) {
+        if (finalizedBy == null || finalizedBy.isBlank()) {
+            throw new PaymentGatewayException("Billing invoice finalize requires a finalizer");
+        }
+        BillingInvoiceRecord invoice = requireDraftInvoice(billingInvoiceId);
+        if (!completenessGateService.isApproved(billingInvoiceId)) {
+            throw new PaymentGatewayException(
+                    "Billing invoice "
+                            + billingInvoiceId
+                            + " completeness gate is not approved - submit and approve it first");
+        }
+
+        long ledgerTransactionId =
+                ledgerAccountTemplateService.postCustomerCharge(
+                        invoice.billingTenantId(),
+                        invoice.currency(),
+                        invoice.subtotalAmount(),
+                        invoice.taxAmount(),
+                        invoice.invoiceNumber(),
+                        "Billing invoice " + invoice.invoiceNumber() + " finalized");
+
+        int updated =
+                repository.finalizeInvoice(
+                        billingInvoiceId, finalizedBy.trim(), ledgerTransactionId);
+        if (updated == 0) {
+            throw new PaymentGatewayException(
+                    "Billing invoice "
+                            + billingInvoiceId
+                            + " was finalized by a concurrent request");
+        }
+        return ledgerTransactionId;
     }
 
     private BillingInvoiceRecord requireDraftInvoice(long billingInvoiceId) {

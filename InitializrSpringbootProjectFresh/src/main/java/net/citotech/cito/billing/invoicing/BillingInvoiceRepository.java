@@ -157,6 +157,26 @@ public class BillingInvoiceRepository {
                 p);
     }
 
+    /**
+     * Flips a DRAFT invoice to FINALIZED, recording who finalized it and the ledger transaction the
+     * finalize posted. The {@code status='DRAFT'} guard makes this safe under a race: if two {@code
+     * BillingInvoiceService#finalizeInvoice} calls for the same invoice interleave, only one UPDATE
+     * affects a row - the caller that gets {@code 0} must treat that as a failure, not silently
+     * succeed.
+     */
+    public int finalizeInvoice(
+            long billingInvoiceId, String finalizedBy, long ledgerTransactionId) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("id", billingInvoiceId);
+        p.addValue("finalized_by", finalizedBy);
+        p.addValue("ledger_transaction_id", ledgerTransactionId);
+        return jdbcTemplate.update(
+                "UPDATE billing_invoices SET status='FINALIZED', finalized_at=CURRENT_TIMESTAMP, "
+                        + "finalized_by=:finalized_by, ledger_transaction_id=:ledger_transaction_id "
+                        + "WHERE id=:id AND status='DRAFT'",
+                p);
+    }
+
     private BillingInvoiceRecord mapInvoice(ResultSet rs, int rowNum) throws SQLException {
         Timestamp finalizedAt = rs.getTimestamp("finalized_at");
         Object ledgerTransactionIdObj = rs.getObject("ledger_transaction_id");
