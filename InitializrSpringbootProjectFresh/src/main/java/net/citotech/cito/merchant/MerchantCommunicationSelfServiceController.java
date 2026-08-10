@@ -1,7 +1,6 @@
 package net.citotech.cito.merchant;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import net.citotech.cito.Model.MerchantUser;
@@ -18,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Merchant communication operations with tenant scope taken exclusively from the session. */
+/** Merchant communication operations authorized exclusively by MerchantRole. */
 @RestController
 @RequestMapping(path = "/api/v2/merchant-self-service/communication")
 public class MerchantCommunicationSelfServiceController {
@@ -35,19 +34,17 @@ public class MerchantCommunicationSelfServiceController {
     public ResponseEntity<?> sendWhatsApp(
             @RequestBody Map<String, Object> body, HttpServletRequest request) {
         try {
-            long merchantId = merchantId(request);
+            long merchantId = merchantIdWithCommunicationAccess(request);
             WhatsAppSendResult result =
                     whatsAppDeliveryService.send(
                             new WhatsAppSendRequest(
                                     merchantId,
                                     text(body.get("recipients")),
                                     text(body.get("content"))));
-            // Provider trace/body are deliberately not returned to merchant users.
             return ResponseEntity.ok(
                     Map.of("status", result.status(), "successful", result.successful()));
         } catch (PaymentGatewayException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(error("MERCHANT_SESSION_REQUIRED", ex.getMessage()));
+            return forbidden(ex);
         } catch (IllegalArgumentException | IllegalStateException ex) {
             return ResponseEntity.badRequest()
                     .body(error("WHATSAPP_SEND_REJECTED", ex.getMessage()));
@@ -57,22 +54,21 @@ public class MerchantCommunicationSelfServiceController {
     @GetMapping(path = "/ussd/sessions")
     public ResponseEntity<?> ussdSessions(HttpServletRequest request) {
         try {
-            return ResponseEntity.ok(ussdSessionService.recentSessions(merchantId(request)));
+            return ResponseEntity.ok(
+                    ussdSessionService.recentSessions(merchantIdWithCommunicationAccess(request)));
         } catch (PaymentGatewayException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(error("MERCHANT_SESSION_REQUIRED", ex.getMessage()));
+            return forbidden(ex);
         }
     }
 
-    private long merchantId(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session == null || !(session.getAttribute("merchantUser") instanceof MerchantUser user)) {
-            throw new PaymentGatewayException("Merchant login is required");
-        }
-        if (user.getMerchant_id() == null || user.getMerchant_id() <= 0) {
-            throw new PaymentGatewayException("Merchant login is required");
-        }
+    private long merchantIdWithCommunicationAccess(HttpServletRequest request) {
+        MerchantUser user = MerchantAuthorization.requireCapability(request, "COMMUNICATION");
         return user.getMerchant_id();
+    }
+
+    private ResponseEntity<?> forbidden(PaymentGatewayException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(error("MERCHANT_COMMUNICATION_FORBIDDEN", ex.getMessage()));
     }
 
     private String text(Object value) {
