@@ -1019,7 +1019,7 @@ public class Common {
         return balances;
     }
 
-    static String numberFormat(Double n) {
+    public static String numberFormat(Double n) {
         String formattedNumber = String.format("%,.2f", n);
         return formattedNumber;
     }
