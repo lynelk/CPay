@@ -8,12 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * Compatibility seam around the extracted legacy money engine.
+ * Application seam around the extracted legacy money engine.
  *
- * <p>Modern orchestration depends on this service rather than the Common compatibility facade.
- * Raw v1 callers may continue using Common.doPayIn/doPayOut, whose public signatures now delegate
- * to the same {@link LegacyMoneyMovementEngine}. That keeps one execution implementation while the
- * old API surface remains stable.
+ * <p>Modern orchestration uses {@link #collect} / {@link #payout} after it has already authorized
+ * risk. Legacy portal flows use the {@code WithRisk} variants so they retain the raw-v1 behavior of
+ * authorizing inside the compatibility engine. Raw API v1 callers may continue using the Common
+ * facade; all paths execute the same physical engine.
  */
 @Service
 public class LegacyMoneyMovementService {
@@ -37,5 +37,17 @@ public class LegacyMoneyMovementService {
     public String payout(Transaction transaction, Merchant merchant) {
         return LegacyMoneyMovementEngine.doPayOut(
                 transaction, merchant, jdbcTemplate, transactionManager, true);
+    }
+
+    /** Legacy portal/v1-style collection: the engine owns risk authorization. */
+    public String collectWithRisk(Transaction transaction, Merchant merchant) {
+        return LegacyMoneyMovementEngine.doPayIn(
+                transaction, merchant, jdbcTemplate, transactionManager, false);
+    }
+
+    /** Legacy portal/v1-style payout: the engine owns risk authorization. */
+    public String payoutWithRisk(Transaction transaction, Merchant merchant) {
+        return LegacyMoneyMovementEngine.doPayOut(
+                transaction, merchant, jdbcTemplate, transactionManager, false);
     }
 }
