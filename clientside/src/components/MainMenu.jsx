@@ -22,7 +22,14 @@ const navGroups = [
   {
     title: 'KYC & Customer Mgt',
     items: [
-      { value: 'merchants', text: 'Customers & KYC', Icon: Icons.StoreIcon },
+      { value: 'merchants', text: 'Customer Directory', Icon: Icons.StoreIcon },
+      { value: 'kyccustomers', text: 'KYC & Compliance', Icon: Icons.ShieldIcon },
+    ],
+  },
+  {
+    title: 'Billing',
+    items: [
+      { value: 'billing', text: 'Pricing & Rating', Icon: Icons.CardsIcon },
     ],
   },
   {
