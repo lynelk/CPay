@@ -16,19 +16,26 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
+    private static final String MERCHANT_SELF_SERVICE_PREFIX = "/api/v2/merchant-self-service";
+
     private static final List<String> PORTAL_SESSION_PREFIXES = List.of(
         "/admins",
         "/audittrail",
         "/merchants",
         "/settings",
         "/transactions",
-        "/api/v2/merchant-self-service/channels",
-        "/api/v2/merchant-self-service/batches",
-        "/api/v2/merchant-self-service/webhooks",
+        MERCHANT_SELF_SERVICE_PREFIX,
         "/api/v2/portal"
     );
+
     private static final List<String> PUBLIC_SETTINGS_PATHS = List.of(
         "/settings/public-login-appearance"
+    );
+
+    private static final List<String> PUBLIC_MERCHANT_SELF_SERVICE_PATHS = List.of(
+        "/api/v2/merchant-self-service/signup",
+        "/api/v2/merchant-self-service/verify-email",
+        "/api/v2/merchant-self-service/verify-email/resend"
     );
 
     @Override
@@ -59,6 +66,9 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         }
         String path = request.getRequestURI();
         if (HttpMethod.GET.matches(request.getMethod()) && PUBLIC_SETTINGS_PATHS.contains(path)) {
+            return false;
+        }
+        if (PUBLIC_MERCHANT_SELF_SERVICE_PATHS.contains(path)) {
             return false;
         }
         return PORTAL_SESSION_PREFIXES.stream().anyMatch(path::startsWith);
