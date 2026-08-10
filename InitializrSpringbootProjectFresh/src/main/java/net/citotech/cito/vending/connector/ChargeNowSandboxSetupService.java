@@ -1,6 +1,7 @@
 package net.citotech.cito.vending.connector;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import net.citotech.cito.gateway.PaymentGatewayException;
@@ -30,8 +31,7 @@ public class ChargeNowSandboxSetupService {
     @Transactional
     public Map<String, Object> apply(long merchantId, Map<String, Object> body) {
         Map<String, Object> connector = mutableRequiredMap(body.get("connector"), "connector");
-        Map<String, Object> operationBundle =
-                requiredMap(body.get("operations"), "operations");
+        Map<String, Object> operationBundle = requiredMap(body.get("operations"), "operations");
         Map<String, Object> release =
                 requiredMap(operationBundle.get("RELEASE_ASSET"), "operations.RELEASE_ASSET");
 
@@ -43,6 +43,11 @@ public class ChargeNowSandboxSetupService {
         copyIfBlank(connector, "responseSuccessValue", release.get("responseSuccessValue"));
         copyIfBlank(connector, "responseReferenceField", release.get("responseReferenceField"));
         copyIfBlank(connector, "responseMessageField", release.get("responseMessageField"));
+
+        Map<String, Object> correlation = optionalMap(body.get("callbackCorrelation"));
+        String commandReferenceField = text(correlation.get("callbackCommandReferenceField"));
+        String providerReferenceField = text(correlation.get("callbackProviderReferenceField"));
+        ensureCallbackCanCorrelate(connector, commandReferenceField, providerReferenceField);
 
         configurations.save(merchantId, CONNECTOR_CODE, connector);
         for (Map.Entry<String, Object> entry : operationBundle.entrySet()) {
@@ -57,16 +62,11 @@ public class ChargeNowSandboxSetupService {
                     requiredMap(entry.getValue(), "operations." + commandType));
         }
 
-        Map<String, Object> correlation = optionalMap(body.get("callbackCorrelation"));
-        String commandReferenceField = text(correlation.get("callbackCommandReferenceField"));
-        String providerReferenceField = text(correlation.get("callbackProviderReferenceField"));
         correlations.save(
                 merchantId,
                 CONNECTOR_CODE,
                 commandReferenceField,
                 providerReferenceField);
-
-        ensureCallbackCanCorrelate(connector, commandReferenceField, providerReferenceField);
         return manifest(merchantId);
     }
 
@@ -92,7 +92,7 @@ public class ChargeNowSandboxSetupService {
                             mapping.providerReferenceField()));
         } catch (PaymentGatewayException e) {
             result.put("connector", Map.of());
-            result.put("operations", java.util.List.of());
+            result.put("operations", List.of());
             result.put("callbackCorrelation", Map.of());
         }
         return result;
