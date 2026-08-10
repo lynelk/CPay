@@ -70,6 +70,42 @@ def replace_method(source: str, marker: str, replacement: str) -> str:
     return source[:start] + replacement.rstrip() + source[end:]
 
 
+def user_guard(method_name: str, mapping: str, permission: str, delegate: str) -> str:
+    return f'''@PostMapping(path = "{mapping}")
+    public String {method_name}(
+            @RequestBody String requestBody,
+            HttpServletRequest request,
+            HttpServletResponse response) {{
+        HttpSession session = request.getSession();
+        if (session.getAttribute("user") == null) {{
+            return GeneralException.getError("107", GeneralException.ERRORS_107);
+        }}
+        User sessionUser = (User) session.getAttribute("user");
+        if (!Common.isUserAllowedAccessToThis("{permission}", sessionUser)) {{
+            return GeneralException.getError("110", GeneralException.ERRORS_110);
+        }}
+        return {delegate};
+    }}'''
+
+
+def merchant_guard(method_name: str, mapping: str, permission: str, delegate: str) -> str:
+    return f'''@PostMapping(path = "{mapping}")
+    public String {method_name}(
+            @RequestBody String requestBody,
+            HttpServletRequest request,
+            HttpServletResponse response) {{
+        HttpSession session = request.getSession();
+        if (session.getAttribute("merchantUser") == null) {{
+            return GeneralException.getError("107", GeneralException.ERRORS_107);
+        }}
+        MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
+        if (!Common.isUserAllowedAccessToThis("{permission}", sessionUser)) {{
+            return GeneralException.getError("110", GeneralException.ERRORS_110);
+        }}
+        return {delegate};
+    }}'''
+
+
 def rewrite_controller() -> None:
     source = CONTROLLER.read_text()
     field_anchor = (
@@ -85,41 +121,64 @@ def rewrite_controller() -> None:
             raise RuntimeError("TransactionsLogController dependency anchor changed")
         source = source.replace(field_anchor, field_anchor + query_field, 1)
 
-    admin_method = '''@PostMapping(path = "/getTransactions")
-    public String getTransactions(
-            @RequestBody String requestBody,
-            HttpServletRequest request,
-            HttpServletResponse response) {
-        HttpSession session = request.getSession();
-        if (session.getAttribute("user") == null) {
-            return GeneralException.getError("107", GeneralException.ERRORS_107);
-        }
-        User sessionUser = (User) session.getAttribute("user");
-        if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
-            return GeneralException.getError("110", GeneralException.ERRORS_110);
-        }
-        return transactionQueryService.adminTransactions(requestBody);
-    }'''
-    source = replace_method(source, '@PostMapping(path = "/getTransactions")', admin_method)
-
-    merchant_method = '''@PostMapping(path = "/getMerchantTransactions")
-    public String getMerchantTransactions(
-            @RequestBody String requestBody,
-            HttpServletRequest request,
-            HttpServletResponse response) {
-        HttpSession session = request.getSession();
-        if (session.getAttribute("merchantUser") == null) {
-            return GeneralException.getError("107", GeneralException.ERRORS_107);
-        }
-        MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-        if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
-            return GeneralException.getError("110", GeneralException.ERRORS_110);
-        }
-        return transactionQueryService.merchantTransactions(requestBody, sessionUser);
-    }'''
-    source = replace_method(
-        source, '@PostMapping(path = "/getMerchantTransactions")', merchant_method
-    )
+    replacements = [
+        (
+            '@PostMapping(path = "/getTransactions")',
+            user_guard(
+                "getTransactions",
+                "/getTransactions",
+                "ACCESS_TRANSACTION_LOG",
+                "transactionQueryService.adminTransactions(requestBody)",
+            ),
+        ),
+        (
+            '@PostMapping(path = "/getMerchantTransactions")',
+            merchant_guard(
+                "getMerchantTransactions",
+                "/getMerchantTransactions",
+                "ACCESS_TRANSACTION_LOG",
+                "transactionQueryService.merchantTransactions(requestBody, sessionUser)",
+            ),
+        ),
+        (
+            '@PostMapping(path = "/getMerchantPayments")',
+            merchant_guard(
+                "getMerchantPayments",
+                "/getMerchantPayments",
+                "ACCESS_TRANSACTION_LOG",
+                "transactionQueryService.merchantPayments(requestBody, sessionUser)",
+            ),
+        ),
+        (
+            '@PostMapping(path = "/getMerchantSms")',
+            merchant_guard(
+                "getMerchantSms",
+                "/getMerchantSms",
+                "ACCESS_SMS_LOG",
+                "transactionQueryService.merchantSms(requestBody, sessionUser)",
+            ),
+        ),
+        (
+            '@PostMapping(path = "/getMerchantStatement")',
+            user_guard(
+                "getMerchantStatement",
+                "/getMerchantStatement",
+                "ACCESS_TRANSACTION_LOG",
+                "transactionQueryService.adminMerchantStatement(requestBody)",
+            ),
+        ),
+        (
+            '@PostMapping(path = "/getMerchantStatementByMerchant")',
+            merchant_guard(
+                "getMerchantStatementByMerchant",
+                "/getMerchantStatementByMerchant",
+                "ACCESS_TRANSACTION_LOG",
+                "transactionQueryService.ownMerchantStatement(requestBody, sessionUser)",
+            ),
+        ),
+    ]
+    for marker, replacement in replacements:
+        source = replace_method(source, marker, replacement)
     CONTROLLER.write_text(source)
 
 
