@@ -63,10 +63,7 @@ public class ChargeNowSandboxSetupService {
         }
 
         correlations.save(
-                merchantId,
-                CONNECTOR_CODE,
-                commandReferenceField,
-                providerReferenceField);
+                merchantId, CONNECTOR_CODE, commandReferenceField, providerReferenceField);
         return manifest(merchantId);
     }
 
