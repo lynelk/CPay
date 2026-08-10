@@ -2,6 +2,7 @@
 """Deterministic, idempotent source rewrite for the legacy god-class extraction track."""
 from pathlib import Path
 import re
+import textwrap
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "InitializrSpringbootProjectFresh" / "src" / "main" / "java" / "net" / "citotech" / "cito"
@@ -67,19 +68,43 @@ def imports_of(source: str) -> str:
     return "\n".join(line for line in source.splitlines() if line.startswith("import "))
 
 
-def engine_source(name: str, imports: str, methods: list[str], javadoc: str) -> str:
+def normalize_engine_body(methods: list[str]) -> str:
     body = "\n\n".join(method.strip() for method in methods)
     body = re.sub(r"(?<![\w.])recordStatementTx\(", "Common.recordStatementTx(", body)
     body = re.sub(r"(?<![\w.])enqueueMerchantCallback\(", "Common.enqueueMerchantCallback(", body)
+    # The substitutions above target call sites. Restore method declarations if an extracted class
+    # itself owns one of those methods.
+    body = body.replace("public static String Common.recordStatementTx(", "public static String recordStatementTx(")
+    body = body.replace("public static void Common.enqueueMerchantCallback(", "public static void enqueueMerchantCallback(")
+    return textwrap.indent(body, "    ")
+
+
+def engine_source(name: str, imports: str, methods: list[str], javadoc: str) -> str:
     return (
         "package net.citotech.cito;\n\n"
         + imports
         + "\n\n/** " + javadoc + " */\n"
         + "public final class " + name + " {\n"
         + "    private " + name + "() {}\n\n"
-        + body
+        + normalize_engine_body(methods)
         + "\n}\n"
     )
+
+
+def repair_generated_engines() -> None:
+    for path in (MONEY_ENGINE, STATEMENT_ENGINE, RESOLUTION_ENGINE):
+        if not path.exists():
+            continue
+        text = path.read_text()
+        fixed = text.replace(
+            "public static String Common.recordStatementTx(",
+            "public static String recordStatementTx(",
+        ).replace(
+            "public static void Common.enqueueMerchantCallback(",
+            "public static void enqueueMerchantCallback(",
+        )
+        if fixed != text:
+            path.write_text(fixed)
 
 
 def user_guard(method_name: str, mapping: str, permission: str, delegate: str) -> str:
@@ -142,18 +167,13 @@ def rewrite_controller() -> None:
 
     statement_marker = "public String recordStatementTx(Statement tx, String balance_type)"
     if statement_marker in source:
-        source = replace_method(
-            source,
-            statement_marker,
-            '''public String recordStatementTx(Statement tx, String balance_type) {
+        source = replace_method(source, statement_marker, '''public String recordStatementTx(Statement tx, String balance_type) {
         return transactionResolutionService.recordStatement(tx, balance_type);
-    }''',
-        )
+    }''')
     source, migrated = re.subn(
         r"Common\.updateTx\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)",
         r"transactionResolutionService.update(\1)", source)
     print(f"Migrated {migrated} direct Common.updateTx controller call(s).")
-
     helper = "private List<Beneficiary> getBatchBeneficiaries(long batch_id)"
     if helper in source and source.count("getBatchBeneficiaries(") == 1:
         source = remove_method(source, helper)
@@ -189,126 +209,54 @@ def rewrite_common_pure_helpers(source: str) -> str:
 
 
 def extract_statement_engine(source: str, imports: str) -> str:
-    delegate_token = "LegacyStatementEngine.recordStatementTx"
-    if delegate_token in source:
-        return source
-    markers = [
-        "public static String recordStatementTx(\n",
-        "public static String recordStatementTxWithoutTransaction(\n",
-        "private static String recordStatementTxCore(\n",
-        "private static GatewayBalanceType resolveStatementBalanceType(\n",
-        "private static void refreshMerchantChannelBalanceReadModel(\n",
-        "private static BigDecimal decimal(Object value)",
-    ]
-    methods = [method_text(source, marker) for marker in markers]
-    STATEMENT_ENGINE.write_text(engine_source(
-        "LegacyStatementEngine", imports, methods,
-        "Legacy statement/balance mutation engine extracted from Common; public Common methods remain compatibility delegates."))
+    if "LegacyStatementEngine.recordStatementTx" in source: return source
+    markers = ["public static String recordStatementTx(\n", "public static String recordStatementTxWithoutTransaction(\n", "private static String recordStatementTxCore(\n", "private static GatewayBalanceType resolveStatementBalanceType(\n", "private static void refreshMerchantChannelBalanceReadModel(\n", "private static BigDecimal decimal(Object value)"]
+    STATEMENT_ENGINE.write_text(engine_source("LegacyStatementEngine", imports, [method_text(source, m) for m in markers], "Legacy statement/balance mutation engine extracted from Common; public Common methods remain compatibility delegates."))
     source = replace_method(source, markers[0], '''public static String recordStatementTx(
-            Statement tx,
-            String balance_type,
-            NamedParameterJdbcTemplate jdbcTemplate,
+            Statement tx, String balance_type, NamedParameterJdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager) {
         return LegacyStatementEngine.recordStatementTx(tx, balance_type, jdbcTemplate, transactionManager);
     }''')
     source = replace_method(source, markers[1], '''public static String recordStatementTxWithoutTransaction(
-            Statement tx,
-            String balance_type,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager,
-            TransactionStatus status) {
-        return LegacyStatementEngine.recordStatementTxWithoutTransaction(
-                tx, balance_type, jdbcTemplate, transactionManager, status);
+            Statement tx, String balance_type, NamedParameterJdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager, TransactionStatus status) {
+        return LegacyStatementEngine.recordStatementTxWithoutTransaction(tx, balance_type, jdbcTemplate, transactionManager, status);
     }''')
-    for marker in markers[2:]:
-        source = remove_method(source, marker)
+    for marker in markers[2:]: source = remove_method(source, marker)
     return source
 
 
 def extract_money_engine(source: str, imports: str) -> str:
-    if "LegacyMoneyMovementEngine.doPayIn" in source:
-        return source
-    four_in = '''public static String doPayIn(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager)'''
-    five_in = '''public static String doPayIn(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager,
-            boolean skipRiskCheck)'''
-    four_out = '''public static String doPayOut(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager)'''
-    five_out = '''public static String doPayOut(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager,
-            boolean skipRiskCheck)'''
-    helpers = [
-        "private static String buildIdempotentReplayResponse(Transaction existingTx)",
-        "private static String authorizeLegacyRisk(\n",
-    ]
+    if "LegacyMoneyMovementEngine.doPayIn" in source: return source
+    four_in = "public static String doPayIn(\n            Transaction newTx,\n            Merchant merchant,\n            NamedParameterJdbcTemplate jdbcTemplate,\n            PlatformTransactionManager transactionManager)"
+    five_in = "public static String doPayIn(\n            Transaction newTx,\n            Merchant merchant,\n            NamedParameterJdbcTemplate jdbcTemplate,\n            PlatformTransactionManager transactionManager,\n            boolean skipRiskCheck)"
+    four_out = "public static String doPayOut(\n            Transaction newTx,\n            Merchant merchant,\n            NamedParameterJdbcTemplate jdbcTemplate,\n            PlatformTransactionManager transactionManager)"
+    five_out = "public static String doPayOut(\n            Transaction newTx,\n            Merchant merchant,\n            NamedParameterJdbcTemplate jdbcTemplate,\n            PlatformTransactionManager transactionManager,\n            boolean skipRiskCheck)"
+    helpers = ["private static String buildIdempotentReplayResponse(Transaction existingTx)", "private static String authorizeLegacyRisk(\n"]
     markers = helpers + [four_in, five_in, four_out, five_out]
-    methods = [method_text(source, marker) for marker in markers]
-    MONEY_ENGINE.write_text(engine_source(
-        "LegacyMoneyMovementEngine", imports, methods,
-        "Legacy pay-in/pay-out execution engine extracted from Common while preserving the v1 compatibility signatures."))
-    source = replace_method(source, four_in, '''public static String doPayIn(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager) {
+    MONEY_ENGINE.write_text(engine_source("LegacyMoneyMovementEngine", imports, [method_text(source, m) for m in markers], "Legacy pay-in/pay-out execution engine extracted from Common while preserving the v1 compatibility signatures."))
+    source = replace_method(source, four_in, '''public static String doPayIn(Transaction newTx, Merchant merchant, NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
         return LegacyMoneyMovementEngine.doPayIn(newTx, merchant, jdbcTemplate, transactionManager);
     }''')
-    source = replace_method(source, five_in, '''public static String doPayIn(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager,
-            boolean skipRiskCheck) {
-        return LegacyMoneyMovementEngine.doPayIn(
-                newTx, merchant, jdbcTemplate, transactionManager, skipRiskCheck);
+    source = replace_method(source, five_in, '''public static String doPayIn(Transaction newTx, Merchant merchant, NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager, boolean skipRiskCheck) {
+        return LegacyMoneyMovementEngine.doPayIn(newTx, merchant, jdbcTemplate, transactionManager, skipRiskCheck);
     }''')
-    source = replace_method(source, four_out, '''public static String doPayOut(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager) {
+    source = replace_method(source, four_out, '''public static String doPayOut(Transaction newTx, Merchant merchant, NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
         return LegacyMoneyMovementEngine.doPayOut(newTx, merchant, jdbcTemplate, transactionManager);
     }''')
-    source = replace_method(source, five_out, '''public static String doPayOut(
-            Transaction newTx,
-            Merchant merchant,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager,
-            boolean skipRiskCheck) {
-        return LegacyMoneyMovementEngine.doPayOut(
-                newTx, merchant, jdbcTemplate, transactionManager, skipRiskCheck);
+    source = replace_method(source, five_out, '''public static String doPayOut(Transaction newTx, Merchant merchant, NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager, boolean skipRiskCheck) {
+        return LegacyMoneyMovementEngine.doPayOut(newTx, merchant, jdbcTemplate, transactionManager, skipRiskCheck);
     }''')
-    for marker in helpers:
-        source = remove_method(source, marker)
+    for marker in helpers: source = remove_method(source, marker)
     return source
 
 
 def extract_resolution_engine(source: str, imports: str) -> str:
-    if "TransactionResolutionEngine.update" in source:
-        return source
+    if "TransactionResolutionEngine.update" in source: return source
     update_marker = "public static String updateTx(\n"
     helper_marker = "private static boolean providerReferenceAlreadyApplied(\n"
-    methods = [method_text(source, helper_marker), method_text(source, update_marker)]
-    RESOLUTION_ENGINE.write_text(engine_source(
-        "TransactionResolutionEngine", imports, methods,
-        "Transaction status-resolution and settlement/reversal command engine extracted from Common."))
-    source = replace_method(source, update_marker, '''public static String updateTx(
-            Transaction tx,
-            NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager) {
+    RESOLUTION_ENGINE.write_text(engine_source("TransactionResolutionEngine", imports, [method_text(source, helper_marker), method_text(source, update_marker)], "Transaction status-resolution and settlement/reversal command engine extracted from Common."))
+    source = replace_method(source, update_marker, '''public static String updateTx(Transaction tx, NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
         return TransactionResolutionEngine.updateTx(tx, jdbcTemplate, transactionManager);
     }''')
     source = remove_method(source, helper_marker)
@@ -326,8 +274,10 @@ def rewrite_common() -> None:
 
 
 def main() -> None:
+    repair_generated_engines()
     rewrite_controller()
     rewrite_common()
+    repair_generated_engines()
     print("God-class extraction delegates and physical engines applied.")
 
 
