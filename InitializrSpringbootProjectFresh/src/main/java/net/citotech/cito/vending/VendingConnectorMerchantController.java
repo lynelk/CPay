@@ -34,7 +34,7 @@ public class VendingConnectorMerchantController {
             VendingCallbackCorrelationService correlations,
             VendingHostedRentalService hosted,
             VendingDeviceCommandService commands,
-            @Value("${app.base-url:}") String appBaseUrl) {
+            @Value("${app.base.url:}") String appBaseUrl) {
         this.configurations = configurations;
         this.correlations = correlations;
         this.hosted = hosted;
