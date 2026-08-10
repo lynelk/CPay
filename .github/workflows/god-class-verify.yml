@@ -17,13 +17,14 @@ jobs:
         with:
           ref: refactor/preferred-architecture-alignment
           fetch-depth: 0
-      - name: Finalize controller money seam
+      - name: Finalize extracted compatibility seams
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p = Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/TransactionsLogController.java')
-          s = p.read_text()
+
+          controller = Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/TransactionsLogController.java')
+          s = controller.read_text()
           anchor = '    private net.citotech.cito.transactions.TransactionResolutionService transactionResolutionService;\n'
           field = '\n    @Autowired\n    private net.citotech.cito.payments.legacy.LegacyMoneyMovementService legacyMoneyMovementService;\n'
           if 'LegacyMoneyMovementService legacyMoneyMovementService' not in s:
@@ -36,8 +37,22 @@ jobs:
           s, payouts = re.subn(
               r'Common\.doPayOut\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)',
               r'legacyMoneyMovementService.payoutWithRisk(\1, \2)', s)
-          p.write_text(s)
+          controller.write_text(s)
           print(f'migrated controller direct money calls: payin={payins}, payout={payouts}')
+
+          query = Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/transactions/TransactionQueryService.java')
+          q = query.read_text()
+          method_start = q.index('    public String merchantTransactions(')
+          next_method = q.index('    public String merchantPayments(', method_start)
+          block = q[method_start:next_method]
+          old = '''        } catch (JSONException | IllegalArgumentException ex) {\n            return GeneralException.getError("102", GeneralException.ERRORS_102);\n        }\n    }\n\n'''
+          new = '''        } catch (JSONException ex) {\n            return GeneralException.getError("102", GeneralException.ERRORS_102);\n        } catch (IllegalArgumentException ex) {\n            if (ex.getMessage() != null && ex.getMessage().contains("YYYY-MM-DD")) {\n                return GeneralException.getError("101", ex.getMessage());\n            }\n            return GeneralException.getError("102", GeneralException.ERRORS_102);\n        }\n    }\n\n'''
+          if old in block:
+              block = block.replace(old, new, 1)
+              q = q[:method_start] + block + q[next_method:]
+              query.write_text(q)
+          elif 'contains("YYYY-MM-DD")' not in block:
+              raise SystemExit('merchantTransactions catch block changed unexpectedly')
           PY
       - name: Set up JDK 21
         uses: actions/setup-java@v5
