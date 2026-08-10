@@ -2604,9 +2604,7 @@ public class Common {
 
     public static double round(double value, int places) {
         if (places < 0) throw new IllegalArgumentException();
-        return java.math.BigDecimal.valueOf(value)
-                .setScale(places, java.math.RoundingMode.HALF_UP)
-                .doubleValue();
+        return java.math.BigDecimal.valueOf(value).setScale(places, java.math.RoundingMode.HALF_UP).doubleValue();
     }
 
     public static void enqueueMerchantCallback(
