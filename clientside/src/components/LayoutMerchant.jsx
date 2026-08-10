@@ -20,6 +20,8 @@ import MerchantModuleMerchantAccount from './modules/merchant/MerchantModuleMerc
 import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
 import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
 import MerchantModuleWebhooks from './modules/merchant/MerchantModuleWebhooks';
+import MerchantModuleKyc from './modules/merchant/MerchantModuleKyc';
+import MerchantModuleBilling from './modules/merchant/MerchantModuleBilling';
 
 import { apiFetch } from '../shared/api/httpClient';
 import { apiUrl } from '../shared/config';
@@ -33,6 +35,8 @@ const menuTitles = {
   payments: { title: 'Payments', subtitle: strings.menu_payments_subtitle },
   sms: { title: 'Communication · SMS', subtitle: strings.menu_sms_subtitle },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_merchant },
+  kyc: { title: 'KYC & Customer Mgt', subtitle: 'Business verification, beneficial owners and KYC documents' },
+  billing: { title: 'Billing', subtitle: 'Your current pricing and usage-to-date' },
   admins: { title: 'Team & Users', subtitle: strings.menu_admins_subtitle_merchant },
   audittrail: { title: strings.menu_audittrail, subtitle: strings.menu_audittrail_subtitle_merchant },
   settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_merchant },
@@ -43,6 +47,8 @@ const menuRoutes = {
   payments: '/dashboardMerchant/payments-transactions/payments',
   transactions: '/dashboardMerchant/payments-transactions/transactions',
   statement: '/dashboardMerchant/payments-transactions/statements',
+  kyc: '/dashboardMerchant/kyc-customers/verification',
+  billing: '/dashboardMerchant/billing/usage',
   sms: '/dashboardMerchant/communication/sms',
   channels: '/dashboardMerchant/developers-integrations/payment-channels',
   webhooks: '/dashboardMerchant/developers-integrations/webhooks',
@@ -123,6 +129,8 @@ class LayoutMerchantWithOutRouter extends React.Component {
       case 'webhooks': return <MerchantModuleWebhooks {...moduleProps} />;
       case 'sms': return <MerchantModuleSms {...moduleProps} />;
       case 'transactions': return <MerchantModuleTransactions {...moduleProps} />;
+      case 'kyc': return <MerchantModuleKyc {...moduleProps} />;
+      case 'billing': return <MerchantModuleBilling {...moduleProps} />;
       case 'audittrail': return <MerchantModuleAuditTrail {...moduleProps} />;
       case 'settings': return <MerchantModuleSettings {...moduleProps} />;
       case 'dashboard':
