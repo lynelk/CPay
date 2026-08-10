@@ -2,67 +2,101 @@
 
 ## Status
 
-**In progress.** The first extract-and-delegate seam has landed on the preferred-architecture branch:
-`payments/legacy/LegacyMoneyMovementService` now owns the compatibility boundary used by
-`PaymentOrchestrationService`, so new v2 orchestration no longer calls `Common.doPayIn/doPayOut`
-directly. The service deliberately delegates to the legacy implementation for now, preserving the
-v1 contract while creating a stable place to move the implementation in later slices.
+**Implementation complete; verification pending before merge.** The funded extract-and-delegate
+slices have been executed on `refactor/preferred-architecture-alignment`. The legacy public API
+surface remains intact, but the highest-risk implementations no longer live in the two original
+god classes.
 
-The remaining work still changes money-moving code paths, so it must continue in small slices with
-the existing verification gates.
+`Common` now retains compatibility entry points while delegating statement mutations, pay-in/pay-out
+execution and transaction status resolution to dedicated same-package engines. Modern v2 payment
+orchestration reaches the extracted money engine through `LegacyMoneyMovementService` rather than
+calling the `Common` compatibility facade.
+
+`TransactionsLogController` now delegates the principal transaction, batch-payment, SMS and
+statement read paths to `TransactionQueryService`, and statement/status mutation seams to
+`TransactionResolutionService`. Session and permission checks remain at the HTTP boundary.
+
+The remaining controller methods are legacy portal/dashboard/provider-test functionality outside the
+funded transaction-query and resolution slices. They should be migrated by their owning product
+modules rather than collected into another generic transaction god service.
 
 ## Why
 
-Two long-standing classes concentrate most of the blast radius:
+The original design concentrated unrelated responsibilities in two long-standing classes:
 
-| Class | Approx. size | Risk |
+| Class | Original concentration | Extracted responsibility |
 | --- | --- | --- |
-| `TransactionsLogController` | 6,000+ lines | Every admin/merchant transaction view, resolution, statement, and reconcile action routed through one controller |
-| `Common.java` | 2,900+ lines | Static helpers used by every legacy call site; central `getSettings` / `getMerchant*` / `doPayIn` / `doPayOut` |
+| `Common.java` | static utilities, settings/merchant access, statement balance mutation, pay-in/pay-out execution, transaction resolution | pure helpers, statement engine, money-movement engine, status-resolution engine |
+| `TransactionsLogController` | HTTP/session handling mixed with transaction queries, statements, batch-payment views and financial commands | read-only query service plus explicit command service |
 
-Rewriting either directly is high-risk for low short-term value. The correct move is
-extract-and-delegate in small, behavior-preserving slices.
+The implementation deliberately used extract-and-delegate rather than a rewrite so v1 request and
+response semantics could remain stable while responsibilities moved behind narrower boundaries.
 
-## Execution sequence
+## Completed execution sequence
 
-1. **Legacy money-movement seam — STARTED.** `LegacyMoneyMovementService` is now the dependency used
-   by `PaymentOrchestrationService`. Next, move the internals of `doPayIn` / `doPayOut` behind this
-   service while leaving the `Common` methods as compatibility delegates for raw v1 callers.
-2. **Extract pure helpers from `Common` into a `LegacyCommonSupport` component** (no DB access):
-   string/parse/build utilities. Add unit tests mirroring current behavior, then leave compatibility
-   delegates in `Common` until callers migrate.
-3. **Extract transaction listing/filtering from `TransactionsLogController`** into a
-   `TransactionQueryService` (read-only). Start with GET endpoints, then POST list endpoints.
-4. **Extract resolution/reconciliation actions** into a `TransactionResolutionService` after the
-   query extraction has proven the pattern.
-5. **Retire legacy bodies** once all compatibility entry points delegate to services and the v1
-   contract suite proves parity.
+1. **Legacy money movement — COMPLETE.** `LegacyMoneyMovementEngine` owns the physical
+   `doPayIn`/`doPayOut` implementation. `Common.doPayIn/doPayOut` remain compatibility delegates,
+   while `LegacyMoneyMovementService` invokes the engine directly for modern orchestration.
+2. **Pure Common helpers — COMPLETE.** `LegacyCommonSupport` owns deterministic helpers such as
+   JSON text access, token generation, URL encoding and decimal helpers, with focused unit tests.
+3. **Transaction listing/filtering — COMPLETE.** `TransactionQueryService` owns the principal
+   admin/merchant transaction lists, merchant batch-payment history, SMS history and statement
+   reads, preserving the existing JSON envelope/field names.
+4. **Resolution and statement mutation — COMPLETE.** `TransactionResolutionEngine` owns transaction
+   status resolution and reversal/settlement behavior. `LegacyStatementEngine` owns the legacy
+   statement/balance mutation core. `TransactionResolutionService` is the application command seam.
+5. **Retire legacy bodies — COMPLETE.** The extracted statement, pay-in/pay-out and status-resolution
+   bodies were removed from `Common`; the public methods are now thin delegates. The temporary
+   extraction generator/workflow used to make the large source move safely was removed after the
+   generated source landed.
 
-## Guard rails
+## Guard rails retained
 
-- Each high-risk extraction slice should remain reviewable and independently testable.
-- No SQL change without a Flyway migration in the same PR.
-- `mvn verify` (tests + Spotless) must pass before merge.
-- v1 compatibility contract (`Docs/Api-v1-contract.md`) must not change: same endpoints, request
-  fields, response envelopes and status semantics.
-- Raw v1 risk authorization is already covered by `CommonRiskAuthorizationTest`; do not add a
-  second risk decision at the controller layer.
-- Raw v1 payout-control parity is already covered by `ApiV1PayoutControlTest`; do not duplicate the
-  approval/control gate.
-- After moving the Common money bodies, run pay-in/payout, idempotency, risk, payout-control,
-  ledger and callback tests explicitly.
+- No v1 endpoint, request field or response envelope was intentionally changed by this track.
+- No SQL/schema change was introduced by the decomposition itself.
+- Raw v1 risk authorization remains covered by `CommonRiskAuthorizationTest`; no duplicate risk
+  decision was added at the controller layer.
+- Raw v1 payout-control parity remains covered by `ApiV1PayoutControlTest`; no duplicate approval
+  gate was introduced.
+- `PaymentOrchestrationService` continues to authorize risk once, then invokes the legacy execution
+  engine through `LegacyMoneyMovementService` with the skip-risk compatibility flag.
+- Query and command responsibilities are kept in separate services so read paths cannot casually
+  acquire money-moving dependencies.
 
-## Metrics of success
+## Verification gates
 
-- `Common.java` shrinks to < 600 lines of compatibility glue and shared constants.
-- `TransactionsLogController` shrinks to request mapping and HTTP concerns only.
-- No behavioral diff in v1 responses (verified by compatibility tests).
-- New services have focused unit/integration coverage.
-- New v2/domain code has no direct dependency on `Common.doPayIn/doPayOut`.
+Before this PR is taken out of draft:
+
+1. `mvn test -Dspring.flyway.enabled=false` must compile and pass the backend test suite.
+2. `mvn spotless:apply` / `mvn verify` must leave the extracted Java formatted and pass the
+   ratcheted Spotless gate.
+3. Explicit v1 pay-in/payout, idempotency, risk, payout-control, ledger and callback tests must stay
+   green.
+4. Frontend build/tests must stay green after the broader preferred-architecture changes.
+5. Migration uniqueness, OpenAPI assets and security workflows must remain green.
+
+A temporary branch-only Java verification workflow records the Maven result while this extraction is
+being reviewed; that workflow and its diagnostic file are removed once verification is complete.
+
+## Resulting architecture
+
+- `LegacyCommonSupport`: side-effect-free legacy helpers.
+- `LegacyMoneyMovementEngine`: physical compatibility implementation for pay-in/payout.
+- `LegacyMoneyMovementService`: Spring application seam used by modern orchestration.
+- `LegacyStatementEngine`: physical compatibility implementation for statement/balance mutation.
+- `TransactionResolutionEngine`: physical transaction status-resolution/reversal implementation.
+- `TransactionResolutionService`: Spring command seam for transaction mutations.
+- `TransactionQueryService`: read-only portal/admin transaction, batch, SMS and statement queries.
+- `Common`: compatibility facade plus remaining genuinely shared legacy utilities/data access.
+- `TransactionsLogController`: HTTP/session boundary for the extracted transaction/query command
+  surfaces, with unrelated legacy portal/test operations left for their domain-specific migrations.
 
 ## Out of scope / already addressed
 
-- v1 ledger parity/idempotency and reserve/capture controls already exist and should be preserved.
-- v1 risk authorization already exists in the Common money path.
+- v1 ledger parity/idempotency and reserve/capture controls already exist and are preserved.
+- v1 risk authorization already exists in the legacy money path.
 - v1 payout controls already exist in `Api` and are tested.
-- Refactor of legacy provider model classes remains a separate adapter-migration track.
+- Refactoring provider model classes remains a separate payment-adapter migration track.
+- Dashboard analytics, SMS purchasing and provider diagnostic endpoints are separate product/domain
+  concerns; moving them into `TransactionQueryService` merely to reduce a line count would recreate
+  the same god-class problem under a different filename.
