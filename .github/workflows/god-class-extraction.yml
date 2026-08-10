@@ -18,7 +18,12 @@ jobs:
           ref: refactor/preferred-architecture-alignment
           fetch-depth: 0
       - name: Apply deterministic extraction
-        run: python3 scripts/refactor_god_classes.py
+        run: |
+          python3 scripts/refactor_god_classes.py
+          # TransactionQueryService now lives in a subpackage; retain the legacy formatter as a
+          # public compatibility delegate surface until its remaining callers migrate.
+          sed -i 's/^    static String numberFormat(Double n)/    public static String numberFormat(Double n)/' \
+            InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/Common.java
       - name: Commit generated extraction when changed
         run: |
           if git diff --quiet; then
