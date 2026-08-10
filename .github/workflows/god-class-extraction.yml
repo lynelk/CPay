@@ -1,0 +1,33 @@
+name: God-class extraction rewrite
+
+on:
+  push:
+    branches:
+      - refactor/preferred-architecture-alignment
+
+permissions:
+  contents: write
+
+jobs:
+  rewrite:
+    if: ${{ !contains(github.event.head_commit.message, '[god-class-generated]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/preferred-architecture-alignment
+          fetch-depth: 0
+      - name: Apply deterministic extraction
+        run: python3 scripts/refactor_god_classes.py
+      - name: Commit generated delegates when changed
+        run: |
+          if git diff --quiet; then
+            echo "No generated changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/Common.java \
+                  InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/TransactionsLogController.java
+          git commit -m "Wire god-class extraction delegates [god-class-generated]"
+          git push origin HEAD:refactor/preferred-architecture-alignment
