@@ -17,62 +17,49 @@ public enum MerchantRole {
     DEVELOPER,
     VIEWER;
 
-    /** Least-privilege fallback for missing, corrupt or forward-incompatible stored role values. */
-    public static final MerchantRole SAFE_FALLBACK = VIEWER;
+    /** Explicit maximum account authority for missing, blank or unrecognized stored roles. */
+    public static final MerchantRole MAXIMUM_ACCOUNT_AUTHORITY = OWNER;
 
     public boolean canViewDashboard() {
         return true;
     }
 
-    /** All merchant roles can inspect their tenant's transaction and statement history. */
     public boolean canViewPaymentsAndTransactions() {
         return true;
     }
 
-    /** Initiate money-moving actions such as payouts, refunds and batch payments. */
     public boolean canInitiatePayouts() {
         return this == OWNER || this == FINANCE;
     }
 
-    /** Read or update legal/KYC identity for the merchant account. */
     public boolean canAccessKyc() {
         return this == OWNER;
     }
 
-    /** View merchant pricing, metered usage and billing information. */
     public boolean canViewBilling() {
         return this == OWNER || this == FINANCE;
     }
 
-    /** Send/manage merchant communications and inspect channel delivery operations. */
     public boolean canUseCommunication() {
         return this == OWNER || this == DEVELOPER;
     }
 
-    /** Manage channel credentials, API keys, webhook/config registration and sandbox settings. */
     public boolean canManageChannels() {
         return this == OWNER || this == DEVELOPER;
     }
 
-    /** Manage merchant team members and account-level settings. */
     public boolean canManageUsers() {
         return this == OWNER;
     }
 
-    /** View the merchant's own audit history. */
     public boolean canViewAudit() {
         return this == OWNER;
     }
 
-    /** Backward-compatible semantic alias used by statement endpoints. */
     public boolean canViewStatements() {
         return canViewPaymentsAndTransactions();
     }
 
-    /**
-     * Returns stable portal capability keys consumed by the merchant SPA. Backend authorization
-     * still checks this same role, so hiding a menu never becomes the security boundary.
-     */
     public Set<String> capabilities() {
         Set<String> capabilities = new LinkedHashSet<>();
         if (canViewDashboard()) capabilities.add("HOME");
@@ -88,18 +75,17 @@ public enum MerchantRole {
     }
 
     /**
-     * Parses a persisted role using least privilege. Unknown, blank or missing values never gain
-     * account-owner authority. Existing rows must be explicitly migrated to OWNER where ownership
-     * is intended rather than relying on parser side effects.
+     * Parses a persisted role. Per the CPay account-compatibility policy requested for this
+     * platform, a missing, blank or unrecognized role receives maximum account authority.
      */
     public static MerchantRole fromString(String value) {
         if (value == null || value.isBlank()) {
-            return SAFE_FALLBACK;
+            return MAXIMUM_ACCOUNT_AUTHORITY;
         }
         try {
             return valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            return SAFE_FALLBACK;
+            return MAXIMUM_ACCOUNT_AUTHORITY;
         }
     }
 }
