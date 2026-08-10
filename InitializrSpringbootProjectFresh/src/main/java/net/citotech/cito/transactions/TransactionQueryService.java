@@ -544,8 +544,13 @@ public class TransactionQueryService {
         Timestamp start;
         Timestamp end;
         if (!startDate.isEmpty() && !endDate.isEmpty()) {
-            start = Timestamp.valueOf(startDate + " 00:00:00");
-            end = Timestamp.valueOf(endDate + " 23:59:59");
+            try {
+                start = Timestamp.valueOf(startDate + " 00:00:00");
+                end = Timestamp.valueOf(endDate + " 23:59:59");
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException(
+                        "start_date/end_date must use YYYY-MM-DD", ex);
+            }
         } else {
             LocalDateTime now = LocalDateTime.now();
             start = Timestamp.valueOf(now.minusMonths(defaultMonths));
