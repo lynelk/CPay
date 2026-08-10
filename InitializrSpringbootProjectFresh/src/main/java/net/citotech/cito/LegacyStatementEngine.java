@@ -63,7 +63,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class LegacyStatementEngine {
     private LegacyStatementEngine() {}
 
-public static String Common.recordStatementTx(
+public static String recordStatementTx(
             Statement tx,
             String balance_type,
             NamedParameterJdbcTemplate jdbcTemplate,
