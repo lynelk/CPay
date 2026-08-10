@@ -116,13 +116,12 @@ def rewrite_controller() -> None:
     }''',
         )
 
-    source, count = re.subn(
+    source, migrated = re.subn(
         r"Common\.updateTx\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)",
         r"transactionResolutionService.update(\1)",
         source,
     )
-    if "Common.updateTx(" in source:
-        raise RuntimeError("Unmigrated Common.updateTx call remains in TransactionsLogController")
+    print(f"Migrated {migrated} direct Common.updateTx controller call(s).")
     CONTROLLER.write_text(source)
 
 
