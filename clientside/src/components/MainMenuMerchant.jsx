@@ -17,6 +17,18 @@ const navGroups = [
     ],
   },
   {
+    title: 'KYC & Customer Mgt',
+    items: [
+      { value: 'kyc', text: 'Business Verification', Icon: Icons.ShieldIcon },
+    ],
+  },
+  {
+    title: 'Billing',
+    items: [
+      { value: 'billing', text: 'Usage & Pricing', Icon: Icons.CardsIcon },
+    ],
+  },
+  {
     title: 'Communication',
     items: [
       { value: 'sms', text: 'SMS', Icon: Icons.SmsIcon },
