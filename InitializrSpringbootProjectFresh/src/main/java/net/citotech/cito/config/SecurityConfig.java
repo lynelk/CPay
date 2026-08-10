@@ -118,7 +118,9 @@ public class SecurityConfig {
                                         .requestMatchers(
                                                 "/",
                                                 "/dashboard",
+                                                "/dashboard/**",
                                                 "/dashboardMerchant",
+                                                "/dashboardMerchant/**",
                                                 "/portal",
                                                 "/api/**",
                                                 "/auth/**",
