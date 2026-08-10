@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Spinner, TextField, Toolbar } from '../../ui';
+import { Alert, Button, Card, Select, Spinner, TextField, Toolbar } from '../../ui';
 import { ApiError, request } from '../../shared/api/httpClient';
 
 interface PriceBookComponent {
@@ -41,7 +41,7 @@ export default function ModuleBilling({ loader, sessionExpired }: Props): React.
   const [tenantId, setTenantId] = useState('');
   const [serviceCode, setServiceCode] = useState('PAYMENT');
   const [meterCode, setMeterCode] = useState('TRANSACTION');
-  const [chargeType, setChargeType] = useState('TRANSACTION_FEE');
+  const [chargeType, setChargeType] = useState('CUSTOMER_CHARGE');
   const [currency, setCurrency] = useState('UGX');
   const [flatAmount, setFlatAmount] = useState('');
   const [percentageRate, setPercentageRate] = useState('');
@@ -93,7 +93,7 @@ export default function ModuleBilling({ loader, sessionExpired }: Props): React.
           billingTenantId: tenantId.trim() ? Number(tenantId.trim()) : null,
           serviceCode: serviceCode.trim(),
           meterCode: meterCode.trim(),
-          chargeType: chargeType.trim(),
+          chargeType,
           currency: currency.trim().toUpperCase(),
           createdBy: createdBy.trim() || 'admin',
           components,
@@ -125,7 +125,7 @@ export default function ModuleBilling({ loader, sessionExpired }: Props): React.
           <TextField id="billing-tenant" label="Billing tenant id" value={tenantId} onValueChange={setTenantId} placeholder="blank = platform default" />
           <TextField id="billing-service" label="Service code" value={serviceCode} onValueChange={setServiceCode} />
           <TextField id="billing-meter" label="Meter code" value={meterCode} onValueChange={setMeterCode} />
-          <TextField id="billing-charge" label="Charge type" value={chargeType} onValueChange={setChargeType} />
+          <Select id="billing-charge" label="Charge type" value={chargeType} onValueChange={setChargeType} options={[{ value: 'CUSTOMER_CHARGE', label: 'Customer charge' }, { value: 'PROVIDER_COST', label: 'Provider cost' }]} />
           <TextField id="billing-currency" label="Currency" value={currency} onValueChange={setCurrency} />
           <TextField id="billing-flat" label="Flat amount" value={flatAmount} onValueChange={setFlatAmount} inputMode="decimal" />
           <TextField id="billing-percent" label="Percentage rate" value={percentageRate} onValueChange={setPercentageRate} inputMode="decimal" />
