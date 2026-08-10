@@ -1,7 +1,6 @@
 package net.citotech.cito.merchant;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -24,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Read-only billing self-service scoped to the merchant session. */
+/** Read-only billing self-service scoped to the authenticated merchant role/session. */
 @RestController
 @RequestMapping(path = "/api/v2/merchant-self-service/billing")
 public class MerchantBillingSelfServiceController {
@@ -50,7 +49,7 @@ public class MerchantBillingSelfServiceController {
             @RequestParam("meterCode") String meterCode,
             HttpServletRequest request) {
         try {
-            long tenantId = tenantResolver.resolveTenantId(merchantId(request));
+            long tenantId = tenantResolver.resolveTenantId(merchantIdWithBillingAccess(request));
             PriceBookVersion version =
                     priceResolver
                             .resolve(tenantId, serviceCode, meterCode, "CUSTOMER_CHARGE")
@@ -73,8 +72,8 @@ public class MerchantBillingSelfServiceController {
             response.put("components", components);
             return ResponseEntity.ok(response);
         } catch (PaymentGatewayException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(error("MERCHANT_BILLING_UNAVAILABLE", ex.getMessage()));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(error("MERCHANT_BILLING_FORBIDDEN", ex.getMessage()));
         }
     }
 
@@ -86,7 +85,7 @@ public class MerchantBillingSelfServiceController {
             @RequestParam(value = "to", required = false) String to,
             HttpServletRequest request) {
         try {
-            long tenantId = tenantResolver.resolveTenantId(merchantId(request));
+            long tenantId = tenantResolver.resolveTenantId(merchantIdWithBillingAccess(request));
             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
             Instant fromTime =
                     blank(from)
@@ -107,21 +106,15 @@ public class MerchantBillingSelfServiceController {
                             "to", toTime,
                             "usage", usage));
         } catch (PaymentGatewayException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(error("MERCHANT_BILLING_UNAVAILABLE", ex.getMessage()));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(error("MERCHANT_BILLING_FORBIDDEN", ex.getMessage()));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(error("BILLING_USAGE_REJECTED", ex.getMessage()));
         }
     }
 
-    private long merchantId(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session == null || !(session.getAttribute("merchantUser") instanceof MerchantUser user)) {
-            throw new PaymentGatewayException("Merchant login is required");
-        }
-        if (user.getMerchant_id() == null || user.getMerchant_id() <= 0) {
-            throw new PaymentGatewayException("Merchant login is required");
-        }
+    private long merchantIdWithBillingAccess(HttpServletRequest request) {
+        MerchantUser user = MerchantAuthorization.requireCapability(request, "BILLING");
         return user.getMerchant_id();
     }
 
