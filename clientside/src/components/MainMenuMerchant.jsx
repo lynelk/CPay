@@ -3,33 +3,43 @@ import { NavGroup, NavItem, Icons } from '../ui';
 
 const navGroups = [
   {
-    title: 'Workspace',
+    title: 'Home',
     items: [
       { value: 'dashboard', text: 'Dashboard', Icon: Icons.DashboardIcon },
-      { value: 'channels', text: 'Payment Channels', Icon: Icons.CardsIcon },
-      { value: 'statement', text: 'Statement', Icon: Icons.ReceiptIcon },
     ],
   },
   {
-    title: 'Operations',
+    title: 'Payments & Transactions',
     items: [
       { value: 'payments', text: 'Payments', Icon: Icons.PaymentsIcon },
-      { value: 'webhooks', text: 'Webhooks', Icon: Icons.LightningIcon },
-      { value: 'sms', text: 'SMS', Icon: Icons.SmsIcon },
       { value: 'transactions', text: 'Transactions', Icon: Icons.ReceiptIcon },
+      { value: 'statement', text: 'Statements & Balances', Icon: Icons.ReceiptIcon },
+    ],
+  },
+  {
+    title: 'Communication',
+    items: [
+      { value: 'sms', text: 'SMS', Icon: Icons.SmsIcon },
+    ],
+  },
+  {
+    title: 'Developers & Integrations',
+    items: [
+      { value: 'channels', text: 'Payment Channels', Icon: Icons.CardsIcon },
+      { value: 'webhooks', text: 'Webhooks', Icon: Icons.LightningIcon },
     ],
   },
   {
     title: 'Administration',
     items: [
-      { value: 'admins', text: 'Administrators', Icon: Icons.UsersIcon },
+      { value: 'admins', text: 'Team & Users', Icon: Icons.UsersIcon },
       { value: 'audittrail', text: 'Audit Trail', Icon: Icons.HistoryIcon },
       { value: 'settings', text: 'Settings', Icon: Icons.SettingsIcon },
     ],
   },
 ];
 
-/** Merchant portal navigation. */
+/** Merchant portal navigation grouped by the preferred CPay product domains. */
 export default function MainMenuMerchant({ activeItem, onChangeMenu }) {
   return (
     <>
