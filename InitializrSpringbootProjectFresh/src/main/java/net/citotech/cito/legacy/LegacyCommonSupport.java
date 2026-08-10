@@ -49,6 +49,10 @@ public class LegacyCommonSupport {
         return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 
+    public String formatNumber(Double value) {
+        return String.format("%,.2f", value);
+    }
+
     public BigDecimal decimal(String value) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Amount is required");
