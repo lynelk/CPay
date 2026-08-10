@@ -17,7 +17,7 @@ import MerchantModuleAuditTrail from './modules/merchant/MerchantModuleAuditTrai
 import MerchantModulePayments from './modules/merchant/MerchantModulePayments';
 import MerchantModuleTransactions from './modules/merchant/MerchantModuleTransactions';
 import MerchantModuleMerchantAccount from './modules/merchant/MerchantModuleMerchantsAccount';
-import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
+import MerchantModuleCommunication from './modules/merchant/MerchantModuleCommunication';
 import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
 import MerchantModuleWebhooks from './modules/merchant/MerchantModuleWebhooks';
 import MerchantModuleKyc from './modules/merchant/MerchantModuleKyc';
@@ -33,7 +33,7 @@ const menuTitles = {
   statement: { title: 'Statements & Balances', subtitle: strings.menu_statement_subtitle },
   webhooks: { title: strings.menu_webhooks, subtitle: strings.menu_webhooks_subtitle },
   payments: { title: 'Payments', subtitle: strings.menu_payments_subtitle },
-  sms: { title: 'Communication · SMS', subtitle: strings.menu_sms_subtitle },
+  sms: { title: 'Communication', subtitle: 'SMS, WhatsApp and USSD services for your account' },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_merchant },
   kyc: { title: 'KYC & Customer Mgt', subtitle: 'Business verification, beneficial owners and KYC documents' },
   billing: { title: 'Billing', subtitle: 'Your current pricing and usage-to-date' },
@@ -49,7 +49,7 @@ const menuRoutes = {
   statement: '/dashboardMerchant/payments-transactions/statements',
   kyc: '/dashboardMerchant/kyc-customers/verification',
   billing: '/dashboardMerchant/billing/usage',
-  sms: '/dashboardMerchant/communication/sms',
+  sms: '/dashboardMerchant/communication',
   channels: '/dashboardMerchant/developers-integrations/payment-channels',
   webhooks: '/dashboardMerchant/developers-integrations/webhooks',
   admins: '/dashboardMerchant/administration/team',
@@ -127,7 +127,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
       case 'admins': return <MerchantModuleAdmins {...moduleProps} />;
       case 'payments': return <MerchantModulePayments {...moduleProps} />;
       case 'webhooks': return <MerchantModuleWebhooks {...moduleProps} />;
-      case 'sms': return <MerchantModuleSms {...moduleProps} />;
+      case 'sms': return <MerchantModuleCommunication {...moduleProps} />;
       case 'transactions': return <MerchantModuleTransactions {...moduleProps} />;
       case 'kyc': return <MerchantModuleKyc {...moduleProps} />;
       case 'billing': return <MerchantModuleBilling {...moduleProps} />;
