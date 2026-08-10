@@ -52,5 +52,5 @@ jobs:
         cache-dependency-path: InitializrSpringbootProjectFresh/pom.xml
     - name: Compile, package and check Java formatting
       run: mvn -B -DskipTests verify --file InitializrSpringbootProjectFresh/pom.xml
-    - name: Run vending pricing, callback-security and ChargeNow adapter tests
-      run: mvn -B -Dtest=VendingPricingEngineTest,VendingCallbackSecurityServiceTest,ChargeNowVendingConnectorAdapterTest test --file InitializrSpringbootProjectFresh/pom.xml
+    - name: Run vending pricing, callback-security, ChargeNow adapter and OEM sandbox tests
+      run: mvn -B -Dtest=VendingPricingEngineTest,VendingCallbackSecurityServiceTest,ChargeNowVendingConnectorAdapterTest,ChargeNowSandboxSetupServiceTest test --file InitializrSpringbootProjectFresh/pom.xml
