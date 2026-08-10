@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.citotech.cito.communication.routing.CommunicationRoutingRepository;
+import net.citotech.cito.communication.routing.CommunicationRoutingRepository.ProviderRow;
 import net.citotech.cito.communication.routing.CommunicationRoutingRepository.RuleRow;
 import org.springframework.stereotype.Service;
 
@@ -30,14 +31,24 @@ public class WhatsAppDeliveryService {
         RuleRow rule =
                 routingRepository
                         .effectiveRule(CHANNEL, request.merchantId())
+                        .filter(row -> "YES".equalsIgnoreCase(row.enabledFlag()))
                         .orElseThrow(
                                 () ->
                                         new IllegalStateException(
                                                 "No enabled WhatsApp routing rule is configured"));
-        WhatsAppGatewayAdapter adapter = adapters.get(rule.providerCode());
+        ProviderRow provider =
+                routingRepository
+                        .provider(rule.providerCode(), CHANNEL)
+                        .filter(row -> "YES".equalsIgnoreCase(row.enabledFlag()))
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "WhatsApp provider is missing or disabled: "
+                                                        + rule.providerCode()));
+        WhatsAppGatewayAdapter adapter = adapters.get(provider.providerCode());
         if (adapter == null) {
             throw new IllegalStateException(
-                    "No WhatsApp adapter registered for provider " + rule.providerCode());
+                    "No WhatsApp adapter registered for provider " + provider.providerCode());
         }
         return adapter.send(request);
     }
