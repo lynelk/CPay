@@ -97,6 +97,9 @@ public class TransactionsLogController {
     @Autowired
     private net.citotech.cito.transactions.TransactionResolutionService transactionResolutionService;
 
+    @Autowired
+    private net.citotech.cito.payments.legacy.LegacyMoneyMovementService legacyMoneyMovementService;
+
     @Autowired(required = false)
     net.citotech.cito.security.MerchantMfaService merchantMfaService;
 
@@ -2858,7 +2861,7 @@ public class TransactionsLogController {
             newTx.setTx_update_trace("");
             newTx.setTx_gateway_ref("");
 
-            String result = Common.doPayIn(newTx, merchant, jdbcTemplate, transactionManager);
+            String result = legacyMoneyMovementService.collectWithRisk(newTx, merchant);
 
             // Audit A1/B1: this portal-initiated legacy call site never wrote to the double-entry
             // ledger either - post the same entries the v2 orchestration path posts, for parity.
@@ -4214,11 +4217,7 @@ public class TransactionsLogController {
                                                     String resultPay;
                                                     try {
                                                         resultPay =
-                                                                Common.doPayOut(
-                                                                        newTx,
-                                                                        merchant,
-                                                                        jdbcTemplate,
-                                                                        transactionManager);
+                                                                legacyMoneyMovementService.payoutWithRisk(newTx, merchant);
                                                     } catch (RuntimeException payoutEx) {
                                                         ledgerService.releaseReservation(
                                                                 batchReservationReference);

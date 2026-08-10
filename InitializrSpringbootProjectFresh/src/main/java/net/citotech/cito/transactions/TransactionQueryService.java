@@ -92,7 +92,12 @@ public class TransactionQueryService {
             List<Transaction> transactions =
                     jdbcTemplate.query(sql.toString(), parameters, Common.getTransactionRowMapper());
             return transactionResponse(transactions, true, total == null ? 0L : total).toString();
-        } catch (JSONException | IllegalArgumentException ex) {
+        } catch (JSONException ex) {
+            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        } catch (IllegalArgumentException ex) {
+            if (ex.getMessage() != null && ex.getMessage().contains("YYYY-MM-DD")) {
+                return GeneralException.getError("101", ex.getMessage());
+            }
             return GeneralException.getError("102", GeneralException.ERRORS_102);
         }
     }
