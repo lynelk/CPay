@@ -4,11 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/** Covers the canonical merchant role capability matrix and least-privilege parsing contract. */
+/** Covers the canonical merchant role capability matrix and maximum-authority parsing contract. */
 class MerchantRoleTest {
 
     @Test
-    void ownerCanDoEverything() {
+    void ownerHasMaximumAccountAuthority() {
+        assertThat(MerchantRole.MAXIMUM_ACCOUNT_AUTHORITY).isEqualTo(MerchantRole.OWNER);
         assertThat(MerchantRole.OWNER.canManageUsers()).isTrue();
         assertThat(MerchantRole.OWNER.canManageChannels()).isTrue();
         assertThat(MerchantRole.OWNER.canInitiatePayouts()).isTrue();
@@ -16,6 +17,17 @@ class MerchantRoleTest {
         assertThat(MerchantRole.OWNER.canAccessKyc()).isTrue();
         assertThat(MerchantRole.OWNER.canViewBilling()).isTrue();
         assertThat(MerchantRole.OWNER.canUseCommunication()).isTrue();
+        assertThat(MerchantRole.OWNER.capabilities())
+                .contains(
+                        "HOME",
+                        "PAYMENTS_TRANSACTIONS",
+                        "MOVE_MONEY",
+                        "KYC_CUSTOMER_MGT",
+                        "BILLING",
+                        "COMMUNICATION",
+                        "DEVELOPERS_INTEGRATIONS",
+                        "ADMINISTRATION",
+                        "AUDIT");
     }
 
     @Test
@@ -26,6 +38,8 @@ class MerchantRoleTest {
         assertThat(MerchantRole.FINANCE.canViewStatements()).isTrue();
         assertThat(MerchantRole.FINANCE.canViewBilling()).isTrue();
         assertThat(MerchantRole.FINANCE.canUseCommunication()).isFalse();
+        assertThat(MerchantRole.FINANCE.capabilities())
+                .containsExactlyInAnyOrder("HOME", "PAYMENTS_TRANSACTIONS", "MOVE_MONEY", "BILLING");
     }
 
     @Test
@@ -35,6 +49,9 @@ class MerchantRoleTest {
         assertThat(MerchantRole.DEVELOPER.canUseCommunication()).isTrue();
         assertThat(MerchantRole.DEVELOPER.canInitiatePayouts()).isFalse();
         assertThat(MerchantRole.DEVELOPER.canViewStatements()).isTrue();
+        assertThat(MerchantRole.DEVELOPER.capabilities())
+                .containsExactlyInAnyOrder(
+                        "HOME", "PAYMENTS_TRANSACTIONS", "COMMUNICATION", "DEVELOPERS_INTEGRATIONS");
     }
 
     @Test
@@ -56,11 +73,11 @@ class MerchantRoleTest {
     }
 
     @Test
-    void fromStringFailsClosedToViewerOnNullBlankOrUnknownValues() {
-        assertThat(MerchantRole.fromString(null)).isEqualTo(MerchantRole.VIEWER);
-        assertThat(MerchantRole.fromString("")).isEqualTo(MerchantRole.VIEWER);
-        assertThat(MerchantRole.fromString("   ")).isEqualTo(MerchantRole.VIEWER);
-        assertThat(MerchantRole.fromString("SUPERADMIN")).isEqualTo(MerchantRole.VIEWER);
-        assertThat(MerchantRole.fromString("not-a-role")).isEqualTo(MerchantRole.VIEWER);
+    void fromStringUsesMaximumAccountAuthorityForNullBlankOrUnknownValues() {
+        assertThat(MerchantRole.fromString(null)).isEqualTo(MerchantRole.OWNER);
+        assertThat(MerchantRole.fromString("")).isEqualTo(MerchantRole.OWNER);
+        assertThat(MerchantRole.fromString("   ")).isEqualTo(MerchantRole.OWNER);
+        assertThat(MerchantRole.fromString("SUPERADMIN")).isEqualTo(MerchantRole.OWNER);
+        assertThat(MerchantRole.fromString("not-a-role")).isEqualTo(MerchantRole.OWNER);
     }
 }
