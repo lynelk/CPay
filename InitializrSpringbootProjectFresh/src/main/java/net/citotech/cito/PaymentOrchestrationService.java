@@ -22,15 +22,15 @@ import net.citotech.cito.ledger.DoubleEntryLedgerService;
 import net.citotech.cito.ledger.LedgerEntryCommand;
 import net.citotech.cito.metrics.GatewayMetrics;
 import net.citotech.cito.money.MoneyAmount;
+import net.citotech.cito.payments.legacy.LegacyMoneyMovementService;
 import net.citotech.cito.webhook.MerchantWebhookService;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 
 @Service
 public class PaymentOrchestrationService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final PlatformTransactionManager transactionManager;
+    private final LegacyMoneyMovementService legacyMoneyMovementService;
     private final PaymentChannelRegistry paymentChannelRegistry;
     private final RiskDecisionService riskDecisionService;
     private final DoubleEntryLedgerService ledgerService;
@@ -40,7 +40,7 @@ public class PaymentOrchestrationService {
 
     public PaymentOrchestrationService(
             NamedParameterJdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager,
+            LegacyMoneyMovementService legacyMoneyMovementService,
             PaymentChannelRegistry paymentChannelRegistry,
             RiskDecisionService riskDecisionService,
             DoubleEntryLedgerService ledgerService,
@@ -48,7 +48,7 @@ public class PaymentOrchestrationService {
             GatewayMetrics gatewayMetrics,
             PaymentUsageOutboxHook paymentUsageOutboxHook) {
         this.jdbcTemplate = jdbcTemplate;
-        this.transactionManager = transactionManager;
+        this.legacyMoneyMovementService = legacyMoneyMovementService;
         this.paymentChannelRegistry = paymentChannelRegistry;
         this.riskDecisionService = riskDecisionService;
         this.ledgerService = ledgerService;
@@ -83,9 +83,10 @@ public class PaymentOrchestrationService {
 
         String legacyResult;
         try {
-            // Risk is authorized exactly once at the orchestration boundary. The legacy engine is
-            // now an execution compatibility seam, not a second policy engine.
-            legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager, true);
+            // Risk is authorized exactly once at the orchestration boundary. Legacy provider
+            // execution now sits behind LegacyMoneyMovementService so Common can be decomposed
+            // without coupling new orchestration code to the god class.
+            legacyResult = legacyMoneyMovementService.collect(tx, merchant);
         } catch (RuntimeException ex) {
             gatewayMetrics.incrementGatewayError(gatewayId);
             throw ex;
@@ -144,8 +145,7 @@ public class PaymentOrchestrationService {
                 requiredAmount,
                 request.getCurrency());
         try {
-            String legacyResult =
-                    Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager, true);
+            String legacyResult = legacyMoneyMovementService.payout(tx, merchant);
             postLedgerEntries(
                     "PAYOUT",
                     request,
