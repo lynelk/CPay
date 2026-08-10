@@ -4,14 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Covers audit N7's capability matrix: OWNER has full access, FINANCE can move money but not
- * manage users/channels, DEVELOPER can manage channels but not move money, VIEWER can only view.
- * Also covers the fail-open contract of {@link MerchantRole#fromString(String)}: a null or
- * unrecognized stored role value must resolve to OWNER, never to a more restrictive role such as
- * VIEWER, so a pre-migration/unknown row never silently locks out an already-active merchant
- * user.
- */
+/** Covers the canonical merchant role capability matrix and least-privilege parsing contract. */
 class MerchantRoleTest {
 
     @Test
@@ -20,20 +13,26 @@ class MerchantRoleTest {
         assertThat(MerchantRole.OWNER.canManageChannels()).isTrue();
         assertThat(MerchantRole.OWNER.canInitiatePayouts()).isTrue();
         assertThat(MerchantRole.OWNER.canViewStatements()).isTrue();
+        assertThat(MerchantRole.OWNER.canAccessKyc()).isTrue();
+        assertThat(MerchantRole.OWNER.canViewBilling()).isTrue();
+        assertThat(MerchantRole.OWNER.canUseCommunication()).isTrue();
     }
 
     @Test
-    void financeCanMoveMoneyAndViewButNotManageUsersOrChannels() {
+    void financeCanMoveMoneyAndViewBillingButNotManageUsersOrChannels() {
         assertThat(MerchantRole.FINANCE.canManageUsers()).isFalse();
         assertThat(MerchantRole.FINANCE.canManageChannels()).isFalse();
         assertThat(MerchantRole.FINANCE.canInitiatePayouts()).isTrue();
         assertThat(MerchantRole.FINANCE.canViewStatements()).isTrue();
+        assertThat(MerchantRole.FINANCE.canViewBilling()).isTrue();
+        assertThat(MerchantRole.FINANCE.canUseCommunication()).isFalse();
     }
 
     @Test
-    void developerCanManageChannelsButNotMoveMoneyOrManageUsers() {
+    void developerCanManageChannelsAndCommunicationButNotMoveMoneyOrManageUsers() {
         assertThat(MerchantRole.DEVELOPER.canManageUsers()).isFalse();
         assertThat(MerchantRole.DEVELOPER.canManageChannels()).isTrue();
+        assertThat(MerchantRole.DEVELOPER.canUseCommunication()).isTrue();
         assertThat(MerchantRole.DEVELOPER.canInitiatePayouts()).isFalse();
         assertThat(MerchantRole.DEVELOPER.canViewStatements()).isTrue();
     }
@@ -44,6 +43,8 @@ class MerchantRoleTest {
         assertThat(MerchantRole.VIEWER.canManageChannels()).isFalse();
         assertThat(MerchantRole.VIEWER.canInitiatePayouts()).isFalse();
         assertThat(MerchantRole.VIEWER.canViewStatements()).isTrue();
+        assertThat(MerchantRole.VIEWER.capabilities())
+                .containsExactlyInAnyOrder("HOME", "PAYMENTS_TRANSACTIONS");
     }
 
     @Test
@@ -55,21 +56,11 @@ class MerchantRoleTest {
     }
 
     @Test
-    void fromStringFailsOpenToOwnerOnNullValue() {
-        assertThat(MerchantRole.fromString(null)).isEqualTo(MerchantRole.OWNER);
-    }
-
-    @Test
-    void fromStringFailsOpenToOwnerOnBlankValue() {
-        assertThat(MerchantRole.fromString("")).isEqualTo(MerchantRole.OWNER);
-        assertThat(MerchantRole.fromString("   ")).isEqualTo(MerchantRole.OWNER);
-    }
-
-    @Test
-    void fromStringFailsOpenToOwnerOnUnrecognizedValue() {
-        // e.g. a future role name this build doesn't know about, or corrupted data - must never
-        // silently downgrade to a more restrictive role like VIEWER.
-        assertThat(MerchantRole.fromString("SUPERADMIN")).isEqualTo(MerchantRole.OWNER);
-        assertThat(MerchantRole.fromString("not-a-role")).isEqualTo(MerchantRole.OWNER);
+    void fromStringFailsClosedToViewerOnNullBlankOrUnknownValues() {
+        assertThat(MerchantRole.fromString(null)).isEqualTo(MerchantRole.VIEWER);
+        assertThat(MerchantRole.fromString("")).isEqualTo(MerchantRole.VIEWER);
+        assertThat(MerchantRole.fromString("   ")).isEqualTo(MerchantRole.VIEWER);
+        assertThat(MerchantRole.fromString("SUPERADMIN")).isEqualTo(MerchantRole.VIEWER);
+        assertThat(MerchantRole.fromString("not-a-role")).isEqualTo(MerchantRole.VIEWER);
     }
 }
