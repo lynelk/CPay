@@ -17,6 +17,28 @@ jobs:
         with:
           ref: refactor/preferred-architecture-alignment
           fetch-depth: 0
+      - name: Finalize controller money seam
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/TransactionsLogController.java')
+          s = p.read_text()
+          anchor = '    private net.citotech.cito.transactions.TransactionResolutionService transactionResolutionService;\n'
+          field = '\n    @Autowired\n    private net.citotech.cito.payments.legacy.LegacyMoneyMovementService legacyMoneyMovementService;\n'
+          if 'LegacyMoneyMovementService legacyMoneyMovementService' not in s:
+              if anchor not in s:
+                  raise SystemExit('controller service anchor changed')
+              s = s.replace(anchor, anchor + field, 1)
+          s, payins = re.subn(
+              r'Common\.doPayIn\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)',
+              r'legacyMoneyMovementService.collectWithRisk(\1, \2)', s)
+          s, payouts = re.subn(
+              r'Common\.doPayOut\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)',
+              r'legacyMoneyMovementService.payoutWithRisk(\1, \2)', s)
+          p.write_text(s)
+          print(f'migrated controller direct money calls: payin={payins}, payout={payouts}')
+          PY
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -41,7 +63,7 @@ jobs:
             echo "test_status=$test_status"
             echo "format_status=$format_status"
             echo "--- tail ---"
-            tail -n 160 /tmp/god-class-test.log
+            tail -n 200 /tmp/god-class-test.log
           } > Docs/Architecture/.god-class-verify.txt
       - name: Commit verification result and formatting
         run: |
