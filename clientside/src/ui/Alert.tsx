@@ -4,7 +4,7 @@ export function Alert({
   variant = 'error',
   children,
 }: {
-  variant?: 'error' | 'success';
+  variant?: 'error' | 'success' | 'warning';
   children: React.ReactNode;
 }): React.ReactElement {
   return (

@@ -6,6 +6,7 @@ const navGroups = [
     title: 'Workspace',
     items: [
       { value: 'dashboard', text: 'Dashboard', Icon: Icons.DashboardIcon },
+      { value: 'vending', text: 'Vending', Icon: Icons.StoreIcon },
       { value: 'merchants', text: 'Merchants', Icon: Icons.StoreIcon },
       { value: 'transactions', text: 'Transactions', Icon: Icons.ReceiptIcon },
       { value: 'reconciliation', text: 'Reconciliation', Icon: Icons.ReconcileIcon },

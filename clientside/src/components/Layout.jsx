@@ -11,6 +11,7 @@ import {
 } from '../ui';
 
 import ModuleDashboard from './modules/ModuleDashboard';
+import ModuleVending from './modules/ModuleVending';
 import ModuleAdmins from './modules/ModuleAdmins';
 import ModuleSettings from './modules/ModuleSettings';
 import ModuleAuditTrail from './modules/ModuleAuditTrail';
@@ -30,6 +31,7 @@ import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
   dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_admin },
+  vending: { title: 'Vending', subtitle: 'Multi-tenant device estate, rentals, callbacks and manufacturer commands' },
   merchants: { title: strings.menu_merchants, subtitle: strings.menu_merchants_subtitle },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_admin },
   reconciliation: { title: strings.menu_reconciliation, subtitle: strings.menu_reconciliation_subtitle },
@@ -88,6 +90,7 @@ class LayoutWithOutRouter extends React.Component {
     };
 
     switch (item) {
+      case 'vending': return <ModuleVending {...moduleProps} />;
       case 'admins': return <ModuleAdmins {...moduleProps} />;
       case 'merchants': return <ModuleMerchants {...moduleProps} />;
       case 'transactions': return <ModuleTransactions {...moduleProps} />;

@@ -87,6 +87,7 @@ public class SecurityConfig {
                                                 "/api/v2/merchant-self-service/signup",
                                                 "/api/v2/native/**",
                                                 "/api/v2/payments/**",
+                                                "/api/v2/vending/**",
                                                 "/actuator/**",
                                                 "/status/**"))
                 .headers(
@@ -130,6 +131,7 @@ public class SecurityConfig {
                                                 "/dashboard",
                                                 "/dashboardMerchant",
                                                 "/portal",
+                                                "/vending/rent/**",
                                                 "/api/**",
                                                 "/auth/**",
                                                 "/admins/**",

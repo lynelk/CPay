@@ -1,11 +1,5 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
+# Build the active CPay Spring Boot backend. The repository root has no pom.xml;
+# InitializrSpringbootProjectFresh is the canonical Java 21 application.
 name: Java CI with Maven
 
 on:
@@ -16,7 +10,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -27,9 +20,11 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
+        cache-dependency-path: InitializrSpringbootProjectFresh/pom.xml
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package --file InitializrSpringbootProjectFresh/pom.xml
 
-    # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
     - name: Update dependency graph
       uses: advanced-security/maven-dependency-submission-action@b275d12641ac2d2108b2cbb7598b154ad2f2cee8
+      with:
+        directory: InitializrSpringbootProjectFresh

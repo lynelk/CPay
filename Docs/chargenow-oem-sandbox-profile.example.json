@@ -1,0 +1,60 @@
+{
+  "connector": {
+    "commandBaseUrl": "https://REPLACE_WITH_OEM_SANDBOX_HOST",
+    "authMode": "REPLACE_WITH_ONE_OF_BEARER_API_KEY_HEADER_BASIC_HMAC_SHA256_TS_BODY",
+    "authHeaderName": "REPLACE_WITH_OEM_AUTH_OR_SIGNATURE_HEADER_IF_REQUIRED",
+    "authTimestampHeader": "REPLACE_WITH_OEM_TIMESTAMP_HEADER_IF_REQUIRED",
+    "authKeyHeader": "REPLACE_WITH_OEM_PUBLIC_KEY_HEADER_IF_REQUIRED",
+    "authSignatureEncoding": "BASE64",
+    "authSigningTemplate": "REPLACE_WITH_OEM_CANONICAL_SIGNING_TEMPLATE_IF_HMAC",
+    "authValue": "REPLACE_WITH_OEM_SANDBOX_PUBLIC_VALUE_OR_TOKEN",
+    "authSecret": "REPLACE_WITH_OEM_SANDBOX_SECRET_IF_REQUIRED",
+    "callbackSecret": "REPLACE_WITH_OEM_CALLBACK_SECRET_OR_STATIC_TOKEN",
+    "callbackSignatureMode": "REPLACE_WITH_ONE_OF_HMAC_SHA256_TS_NONCE_BODY_HMAC_SHA256_TS_BODY_HMAC_SHA256_BODY_STATIC_TOKEN_HEADER",
+    "callbackSignatureEncoding": "BASE64",
+    "callbackSignatureHeader": "REPLACE_WITH_OEM_CALLBACK_SIGNATURE_OR_TOKEN_HEADER",
+    "callbackTimestampHeader": "REPLACE_WITH_OEM_CALLBACK_TIMESTAMP_HEADER_IF_REQUIRED",
+    "callbackNonceHeader": "REPLACE_WITH_OEM_CALLBACK_NONCE_HEADER_IF_REQUIRED",
+    "callbackEventTypeField": "REPLACE_WITH_OEM_EVENT_TYPE_JSON_PATH",
+    "callbackEventIdField": "REPLACE_WITH_OEM_EVENT_ID_JSON_PATH",
+    "callbackDeviceField": "REPLACE_WITH_OEM_DEVICE_ID_JSON_PATH",
+    "callbackRentalField": "",
+    "callbackAssetField": "REPLACE_WITH_OEM_ASSET_OR_POWER_BANK_JSON_PATH",
+    "callbackAvailableCountField": "REPLACE_WITH_OEM_AVAILABLE_COUNT_JSON_PATH",
+    "callbackHeartbeatValue": "REPLACE_WITH_OEM_HEARTBEAT_VALUE",
+    "callbackReturnValue": "REPLACE_WITH_OEM_RETURN_VALUE",
+    "callbackReleaseValue": "REPLACE_WITH_OEM_RELEASE_VALUE",
+    "callbackOfflineValue": "REPLACE_WITH_OEM_OFFLINE_VALUE",
+    "active": true
+  },
+  "operations": {
+    "RELEASE_ASSET": {
+      "httpMethod": "POST",
+      "commandPath": "REPLACE_WITH_OEM_RELEASE_PATH",
+      "requestTemplate": "{\"REPLACE_WITH_OEM_DEVICE_FIELD\":\"{{externalDeviceId}}\",\"REPLACE_WITH_OEM_COMMAND_REFERENCE_FIELD\":\"{{commandReference}}\",\"REPLACE_WITH_OEM_RENTAL_FIELD\":\"{{rentalReference}}\"}",
+      "idempotencyHeaderName": "REPLACE_WITH_OEM_IDEMPOTENCY_HEADER_IF_SUPPORTED",
+      "responseSuccessField": "REPLACE_WITH_OEM_SUCCESS_JSON_PATH_OR_LEAVE_EMPTY_FOR_HTTP_ONLY",
+      "responseSuccessValue": "REPLACE_WITH_OEM_SUCCESS_VALUE",
+      "responseReferenceField": "REPLACE_WITH_OEM_COMMAND_REFERENCE_RESPONSE_PATH",
+      "responseMessageField": "REPLACE_WITH_OEM_MESSAGE_RESPONSE_PATH",
+      "completionMode": "CALLBACK",
+      "active": true
+    },
+    "QUERY_STATUS": {
+      "httpMethod": "GET",
+      "commandPath": "REPLACE_WITH_OEM_STATUS_PATH_TEMPLATE_USING_{{externalDeviceId}}",
+      "requestTemplate": "",
+      "idempotencyHeaderName": "",
+      "responseSuccessField": "",
+      "responseSuccessValue": "",
+      "responseReferenceField": "",
+      "responseMessageField": "",
+      "completionMode": "IMMEDIATE",
+      "active": true
+    }
+  },
+  "callbackCorrelation": {
+    "callbackCommandReferenceField": "REPLACE_WITH_OEM_CALLBACK_COMMAND_REFERENCE_JSON_PATH_OR_EMPTY",
+    "callbackProviderReferenceField": "REPLACE_WITH_OEM_CALLBACK_PROVIDER_REFERENCE_JSON_PATH_OR_EMPTY"
+  }
+}
