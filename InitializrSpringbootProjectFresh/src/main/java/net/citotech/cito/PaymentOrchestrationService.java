@@ -70,13 +70,10 @@ public class PaymentOrchestrationService {
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
         GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
-        // Audit H3: business metrics at the orchestration seam - GatewayMetrics already existed
-        // (used by callback delivery and rate limiting) but was never wired into the actual
-        // payment orchestration flow, so cpay.transaction.initiated/completed never recorded a
-        // single collection or payout.
         gatewayMetrics.incrementTransactionInitiated(gatewayId, Transaction.TX_TYPE_PAYIN);
 
-        Double amount = parseAmount(request.getAmount());
+        MoneyAmount amountMoney = parseMoneyAmount(request.getAmount());
+        Double amount = amountMoney.asLegacyDouble();
         Transaction tx = baseTransaction(request, merchant, gatewayId, originateIp, amount);
         tx.setPayer_number(accountIdentifier);
         tx.setTx_type(Transaction.TX_TYPE_PAYIN);
@@ -86,14 +83,21 @@ public class PaymentOrchestrationService {
 
         String legacyResult;
         try {
-            // skipRiskCheck=true: riskDecisionService.authorizePayment(...) already ran above for
-            // this exact request - Common.doPayIn must not evaluate and re-record it a second time.
+            // Risk is authorized exactly once at the orchestration boundary. The legacy engine is
+            // now an execution compatibility seam, not a second policy engine.
             legacyResult = Common.doPayIn(tx, merchant, jdbcTemplate, transactionManager, true);
         } catch (RuntimeException ex) {
             gatewayMetrics.incrementGatewayError(gatewayId);
             throw ex;
         }
-        postLedgerEntries("COLLECT", request, merchant, gatewayId, tx, amount, tx.getCharges());
+        postLedgerEntries(
+                "COLLECT",
+                request,
+                merchant,
+                gatewayId,
+                tx,
+                amountMoney.asBigDecimal(),
+                legacyMoney(tx.getCharges()));
         PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
         gatewayMetrics.incrementTransactionCompleted(
                 gatewayId, Transaction.TX_TYPE_PAYIN, tx.getStatus());
@@ -115,34 +119,41 @@ public class PaymentOrchestrationService {
         String gatewayId = resolveLegacyGatewayId(request, accountIdentifier);
         PaymentChannelAdapter adapter = resolveAdapter(request, accountIdentifier, gatewayId);
         GatewayChargeDetails chargeDetails = getChargeDetails(gatewayId, merchant);
-        // Audit H3: see the matching comment in collect() above.
         gatewayMetrics.incrementTransactionInitiated(gatewayId, Transaction.TX_TYPE_PAYOUT);
 
-        Double amount = parseAmount(request.getAmount());
-        Double charges = DoPayGateway.getCustomerOutboundCharges(amount, chargeDetails);
-        ensureMerchantHasAvailableBalance(merchant, gatewayId, amount + charges);
+        MoneyAmount amountMoney = parseMoneyAmount(request.getAmount());
+        Double amount = amountMoney.asLegacyDouble();
+        Double legacyCharges = DoPayGateway.getCustomerOutboundCharges(amount, chargeDetails);
+        BigDecimal chargeAmount = legacyMoney(legacyCharges);
+        BigDecimal requiredAmount = amountMoney.asBigDecimal().add(chargeAmount);
+        ensureMerchantHasAvailableBalance(merchant, gatewayId, requiredAmount);
 
         Transaction tx = baseTransaction(request, merchant, gatewayId, originateIp, amount);
         tx.setPayer_number(accountIdentifier);
         tx.setTx_type(Transaction.TX_TYPE_PAYOUT);
         tx.setCharging_method(chargeDetails.getCustomerOutboundChargeMethod());
-        tx.setCharges(charges);
+        tx.setCharges(legacyCharges);
         tx.setTx_cost(DoPayGateway.getCostOfOutboundCharges(amount, chargeDetails));
 
-        BigDecimal reservedAmount = MoneyAmount.of(String.valueOf(amount + charges)).asBigDecimal();
         String reservationReference =
                 "payout-reserve:" + merchant.getAccount_number() + ":" + request.getReference();
         ledgerService.reserve(
                 reservationReference,
                 merchant.getId(),
                 request.getReference(),
-                reservedAmount,
+                requiredAmount,
                 request.getCurrency());
         try {
-            // skipRiskCheck=true: see the matching comment in collect() above.
             String legacyResult =
                     Common.doPayOut(tx, merchant, jdbcTemplate, transactionManager, true);
-            postLedgerEntries("PAYOUT", request, merchant, gatewayId, tx, amount, charges);
+            postLedgerEntries(
+                    "PAYOUT",
+                    request,
+                    merchant,
+                    gatewayId,
+                    tx,
+                    amountMoney.asBigDecimal(),
+                    chargeAmount);
             ledgerService.captureReservation(reservationReference);
             PaymentResult result = resultFromLegacy(request, tx, adapter, legacyResult);
             gatewayMetrics.incrementTransactionCompleted(
@@ -261,13 +272,8 @@ public class PaymentOrchestrationService {
             Merchant merchant,
             String gatewayId,
             Transaction tx,
-            Double amount,
-            Double charges) {
-        BigDecimal txAmount = MoneyAmount.of(String.valueOf(amount)).asBigDecimal();
-        BigDecimal feeAmount =
-                charges == null || charges <= 0
-                        ? BigDecimal.ZERO
-                        : MoneyAmount.of(String.valueOf(charges)).asBigDecimal();
+            BigDecimal txAmount,
+            BigDecimal feeAmount) {
         String currency = request.getCurrency().trim().toUpperCase();
         String providerAccount = "provider:" + gatewayId + ":" + currency + ":float";
         String merchantAccount =
@@ -431,12 +437,16 @@ public class PaymentOrchestrationService {
     }
 
     private void ensureMerchantHasAvailableBalance(
-            Merchant merchant, String gatewayId, Double requiredAmount) {
+            Merchant merchant, String gatewayId, BigDecimal requiredAmount) {
         List<Balance> balances =
                 Common.getMerchantBalances(String.valueOf(merchant.getId()), jdbcTemplate);
         for (Balance balance : balances) {
-            if (gatewayId.equals(balance.getGateway_id()) && requiredAmount > balance.getAmount()) {
-                throw new PaymentGatewayException("Insufficient balance for gateway " + gatewayId);
+            if (gatewayId.equals(balance.getGateway_id())) {
+                BigDecimal available = BigDecimal.valueOf(balance.getAmount());
+                if (requiredAmount.compareTo(available) > 0) {
+                    throw new PaymentGatewayException(
+                            "Insufficient balance for gateway " + gatewayId);
+                }
             }
         }
     }
@@ -503,12 +513,19 @@ public class PaymentOrchestrationService {
         }
     }
 
-    private Double parseAmount(String amount) {
+    private MoneyAmount parseMoneyAmount(String amount) {
         try {
-            return MoneyAmount.of(amount).asLegacyDouble();
+            return MoneyAmount.of(amount);
         } catch (IllegalArgumentException e) {
             throw new PaymentGatewayException(e.getMessage());
         }
+    }
+
+    private BigDecimal legacyMoney(Double amount) {
+        if (amount == null || amount <= 0d) {
+            return BigDecimal.ZERO.setScale(MoneyAmount.SCALE, MoneyAmount.ROUNDING_MODE);
+        }
+        return MoneyAmount.of(BigDecimal.valueOf(amount)).asBigDecimal();
     }
 
     private void require(String value, String field) {
