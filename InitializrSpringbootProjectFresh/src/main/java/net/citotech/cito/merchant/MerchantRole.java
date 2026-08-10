@@ -7,10 +7,9 @@ import java.util.Set;
 /**
  * Canonical merchant authorization model.
  *
- * <p>Merchant portal and merchant self-service authorization must derive access from this role
- * only. Legacy per-user privilege rows are no longer an authorization source for merchant users.
- * One authenticated merchant session is therefore sufficient for every module allowed by the
- * user's role.
+ * <p>Merchant portal and merchant self-service authorization derive access from this role only.
+ * Legacy per-user privilege rows are not an authorization source for merchant users. One
+ * authenticated merchant session is sufficient for every module allowed by the user's role.
  */
 public enum MerchantRole {
     OWNER,
@@ -18,8 +17,8 @@ public enum MerchantRole {
     DEVELOPER,
     VIEWER;
 
-    /** Explicit maximum account authority used for missing/legacy/unrecognized role values. */
-    public static final MerchantRole MAXIMUM_ACCOUNT_AUTHORITY = OWNER;
+    /** Least-privilege fallback for missing, corrupt or forward-incompatible stored role values. */
+    public static final MerchantRole SAFE_FALLBACK = VIEWER;
 
     public boolean canViewDashboard() {
         return true;
@@ -72,8 +71,7 @@ public enum MerchantRole {
 
     /**
      * Returns stable portal capability keys consumed by the merchant SPA. Backend authorization
-     * still checks the boolean capability methods above, so hiding a menu never becomes the
-     * security boundary.
+     * still checks this same role, so hiding a menu never becomes the security boundary.
      */
     public Set<String> capabilities() {
         Set<String> capabilities = new LinkedHashSet<>();
@@ -90,18 +88,18 @@ public enum MerchantRole {
     }
 
     /**
-     * Parses a persisted role. Per the CPay account-compatibility policy, a missing, blank or
-     * unrecognized role resolves to the maximum account authority rather than silently reducing an
-     * existing merchant user's access during migration or rollback/roll-forward scenarios.
+     * Parses a persisted role using least privilege. Unknown, blank or missing values never gain
+     * account-owner authority. Existing rows must be explicitly migrated to OWNER where ownership
+     * is intended rather than relying on parser side effects.
      */
     public static MerchantRole fromString(String value) {
         if (value == null || value.isBlank()) {
-            return MAXIMUM_ACCOUNT_AUTHORITY;
+            return SAFE_FALLBACK;
         }
         try {
             return valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            return MAXIMUM_ACCOUNT_AUTHORITY;
+            return SAFE_FALLBACK;
         }
     }
 }
