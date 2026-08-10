@@ -1,26 +1,34 @@
 package net.citotech.cito;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.Model.UserPrivilege;
+import net.citotech.cito.transactions.TransactionQueryService;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 /**
- * Covers audit F6: getMerchantTransactions' date-range search previously bound the raw request
- * string directly as the SQL parameter for a native datetime column comparison - a malformed value
- * would only ever surface as an opaque database error. It's now parsed into a java.sql.Timestamp
- * up front, so a bad value fails with a clear, specific error before ever reaching the database.
+ * Covers audit F6 after the query extraction: malformed date ranges are rejected by
+ * {@link TransactionQueryService} before JDBC is touched, while the controller retains the same
+ * legacy response contract.
  */
 class TransactionsLogControllerDateRangeTest {
 
     @Test
     void rejectsAMalformedDateRangeBeforeTouchingTheDatabase() throws Exception {
         TransactionsLogController controller = new TransactionsLogController();
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        TransactionQueryService queryService = new TransactionQueryService(jdbcTemplate);
+        Field field = TransactionsLogController.class.getDeclaredField("transactionQueryService");
+        field.setAccessible(true);
+        field.set(controller, queryService);
 
         UserPrivilege privilege = new UserPrivilege();
         privilege.setPrivilege("ACCESS_TRANSACTION_LOG");
@@ -44,7 +52,9 @@ class TransactionsLogControllerDateRangeTest {
         body.put("pageSize", 50);
         body.put("currentPage", 0);
 
-        String response = controller.getMerchantTransactions(body.toString(), request, new MockHttpServletResponse());
+        String response =
+                controller.getMerchantTransactions(
+                        body.toString(), request, new MockHttpServletResponse());
 
         JSONObject json = new JSONObject(response);
         assertThat(json.getString("code")).isEqualTo("101");
