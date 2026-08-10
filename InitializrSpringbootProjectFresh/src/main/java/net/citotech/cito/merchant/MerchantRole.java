@@ -1,25 +1,16 @@
 package net.citotech.cito.merchant;
 
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 
 /**
- * Merchant-side team role (audit N7). Every merchant user under an account previously had
- * identical (full) access - this enum gives merchant self-service and gateway code a small,
- * explicit capability matrix to check against instead of treating all merchant users the same.
- * Kept additive and decoupled from {@link net.citotech.cito.Model.MerchantUser} (mirrors how
- * {@link net.citotech.cito.Model.TransactionStatus} is a plain enum-with-behavior alongside the
- * free-string `status` column it interprets), so existing call sites are unaffected until they
- * opt in to a role check.
+ * Canonical merchant authorization model.
  *
- * <ul>
- *   <li>{@link #OWNER} - full access: can manage other merchant users/billing, channels, and
- *       money movement.</li>
- *   <li>{@link #FINANCE} - can view/export statements and initiate payouts/refunds, but cannot
- *       manage users or channel credentials.</li>
- *   <li>{@link #DEVELOPER} - can manage API keys/webhooks/channel config, but cannot move
- *       money.</li>
- *   <li>{@link #VIEWER} - read-only: can view statements/transactions, no mutating action.</li>
- * </ul>
+ * <p>Merchant portal and merchant self-service authorization must derive access from this role
+ * only. Legacy per-user privilege rows are no longer an authorization source for merchant users.
+ * One authenticated merchant session is therefore sufficient for every module allowed by the
+ * user's role.
  */
 public enum MerchantRole {
     OWNER,
@@ -27,40 +18,90 @@ public enum MerchantRole {
     DEVELOPER,
     VIEWER;
 
-    /** Manage other merchant users on the account (invite/edit/remove, assign roles) and billing. */
-    public boolean canManageUsers() {
-        return this == OWNER;
+    /** Explicit maximum account authority used for missing/legacy/unrecognized role values. */
+    public static final MerchantRole MAXIMUM_ACCOUNT_AUTHORITY = OWNER;
+
+    public boolean canViewDashboard() {
+        return true;
     }
 
-    /** Manage channel credentials, API keys, and webhook/config registration. */
-    public boolean canManageChannels() {
-        return this == OWNER || this == DEVELOPER;
+    /** All merchant roles can inspect their tenant's transaction and statement history. */
+    public boolean canViewPaymentsAndTransactions() {
+        return true;
     }
 
-    /** Initiate money-moving actions such as payouts/refunds. */
+    /** Initiate money-moving actions such as payouts, refunds and batch payments. */
     public boolean canInitiatePayouts() {
         return this == OWNER || this == FINANCE;
     }
 
-    /** Every role can view statements/transactions - read-only access is never restricted. */
+    /** Read or update legal/KYC identity for the merchant account. */
+    public boolean canAccessKyc() {
+        return this == OWNER;
+    }
+
+    /** View merchant pricing, metered usage and billing information. */
+    public boolean canViewBilling() {
+        return this == OWNER || this == FINANCE;
+    }
+
+    /** Send/manage merchant communications and inspect channel delivery operations. */
+    public boolean canUseCommunication() {
+        return this == OWNER || this == DEVELOPER;
+    }
+
+    /** Manage channel credentials, API keys, webhook/config registration and sandbox settings. */
+    public boolean canManageChannels() {
+        return this == OWNER || this == DEVELOPER;
+    }
+
+    /** Manage merchant team members and account-level settings. */
+    public boolean canManageUsers() {
+        return this == OWNER;
+    }
+
+    /** View the merchant's own audit history. */
+    public boolean canViewAudit() {
+        return this == OWNER;
+    }
+
+    /** Backward-compatible semantic alias used by statement endpoints. */
     public boolean canViewStatements() {
-        return true;
+        return canViewPaymentsAndTransactions();
     }
 
     /**
-     * Parses a stored/legacy role value. A missing or unrecognized value fails OPEN to OWNER
-     * (never VIEWER) - a null role (e.g. a row read before this migration ran) or a role name
-     * this build doesn't recognize (e.g. a future rollback/rollforward mismatch) must never
-     * silently downgrade an already-active merchant user's access.
+     * Returns stable portal capability keys consumed by the merchant SPA. Backend authorization
+     * still checks the boolean capability methods above, so hiding a menu never becomes the
+     * security boundary.
+     */
+    public Set<String> capabilities() {
+        Set<String> capabilities = new LinkedHashSet<>();
+        if (canViewDashboard()) capabilities.add("HOME");
+        if (canViewPaymentsAndTransactions()) capabilities.add("PAYMENTS_TRANSACTIONS");
+        if (canInitiatePayouts()) capabilities.add("MOVE_MONEY");
+        if (canAccessKyc()) capabilities.add("KYC_CUSTOMER_MGT");
+        if (canViewBilling()) capabilities.add("BILLING");
+        if (canUseCommunication()) capabilities.add("COMMUNICATION");
+        if (canManageChannels()) capabilities.add("DEVELOPERS_INTEGRATIONS");
+        if (canManageUsers()) capabilities.add("ADMINISTRATION");
+        if (canViewAudit()) capabilities.add("AUDIT");
+        return Set.copyOf(capabilities);
+    }
+
+    /**
+     * Parses a persisted role. Per the CPay account-compatibility policy, a missing, blank or
+     * unrecognized role resolves to the maximum account authority rather than silently reducing an
+     * existing merchant user's access during migration or rollback/roll-forward scenarios.
      */
     public static MerchantRole fromString(String value) {
-        if (value != null) {
-            try {
-                return valueOf(value.trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
-                // Unrecognized role name - fall through to the fail-open default below.
-            }
+        if (value == null || value.isBlank()) {
+            return MAXIMUM_ACCOUNT_AUTHORITY;
         }
-        return OWNER;
+        try {
+            return valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return MAXIMUM_ACCOUNT_AUTHORITY;
+        }
     }
 }
