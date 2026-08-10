@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import net.citotech.cito.GeneralException;
+import net.citotech.cito.Model.MerchantUser;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,25 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         }
 
         HttpSession session = request.getSession(false);
+        String path = request.getRequestURI();
+
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX)) {
+            if (session == null || !(session.getAttribute("merchantUser") instanceof MerchantUser merchantUser)) {
+                unauthorized(response);
+                return;
+            }
+            if (!merchantModuleAllowed(path, merchantUser)) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                response.getWriter().write(
+                        GeneralException.getError("110", "Merchant role does not allow access to this module."));
+                return;
+            }
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         boolean loggedIn = session != null
             && (session.getAttribute("user") != null || session.getAttribute("merchantUser") != null);
         if (loggedIn) {
@@ -54,10 +74,7 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
             return;
         }
 
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write(GeneralException.getError("107", GeneralException.ERRORS_107));
+        unauthorized(response);
     }
 
     boolean requiresPortalSession(HttpServletRequest request) {
@@ -72,5 +89,40 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
             return false;
         }
         return PORTAL_SESSION_PREFIXES.stream().anyMatch(path::startsWith);
+    }
+
+    private boolean merchantModuleAllowed(String path, MerchantUser user) {
+        if (path.equals(MERCHANT_SELF_SERVICE_PREFIX + "/access")) return true;
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/billing")) {
+            return user.merchantRole().canViewBilling();
+        }
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/kyc")) {
+            return user.merchantRole().canAccessKyc();
+        }
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/communication")) {
+            return user.merchantRole().canUseCommunication();
+        }
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/channels")
+                || path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/webhooks")
+                || path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/environment")
+                || path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/sandbox-guide")) {
+            return user.merchantRole().canManageChannels();
+        }
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/settlement-preference")) {
+            return user.merchantRole().canInitiatePayouts();
+        }
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/statements")
+                || path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/batches")) {
+            return user.merchantRole().canViewPaymentsAndTransactions();
+        }
+        // Any newly introduced merchant self-service route is denied until it is explicitly mapped.
+        return false;
+    }
+
+    private void unauthorized(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write(GeneralException.getError("107", GeneralException.ERRORS_107));
     }
 }
