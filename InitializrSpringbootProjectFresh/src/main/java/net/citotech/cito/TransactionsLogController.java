@@ -91,6 +91,9 @@ public class TransactionsLogController {
     @Autowired
     private net.citotech.cito.ledger.LegacyLedgerPostingService legacyLedgerPostingService;
 
+    @Autowired
+    private net.citotech.cito.transactions.TransactionQueryService transactionQueryService;
+
     @Autowired(required = false)
     net.citotech.cito.security.MerchantMfaService merchantMfaService;
 
@@ -99,99 +102,15 @@ public class TransactionsLogController {
             @RequestBody String requestBody,
             HttpServletRequest request,
             HttpServletResponse response) {
-        // Set the response header
-
-        // First set session variable
         HttpSession session = request.getSession();
-        try {
-            // Check if still logged in
-            User sessionUser;
-
-            if (session.getAttribute("user") == null) {
-                return GeneralException.getError("107", GeneralException.ERRORS_107);
-            }
-            sessionUser = (User) session.getAttribute("user");
-            // Get the first details
-
-            // Check permissions
-            if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
-                return GeneralException.getError("110", GeneralException.ERRORS_110);
-            }
-
-            MapSqlParameterSource parameters = new MapSqlParameterSource();
-
-            // Obtain search fields
-            JSONObject sObject = new JSONObject(requestBody);
-            String pageSize = Common.jsonText(sObject, "pageSize", "");
-            String currentPage = Common.jsonText(sObject, "currentPage", "");
-            JSONObject searchValue = sObject.getJSONObject("searchingValue");
-
-            String sqlSelect = "SELECT *  FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG + " ";
-
-            // HANDLE SEARCH PARAMETERS
-            if (!searchValue.isNull("category") && !searchValue.isNull("value")) {
-
-                String category = searchValue.getString("category");
-                String value = searchValue.getString("value");
-                if (!category.equals("all") && !value.isEmpty()) {
-                    String safeCategory = ColumnAllowlist.validate(category);
-                    sqlSelect += " WHERE " + safeCategory + " LIKE :" + safeCategory + " ";
-                    parameters.addValue(safeCategory, "%" + value + "%");
-                }
-            }
-
-            sqlSelect += " ORDER BY id DESC ";
-
-            if (pageSize != null && !pageSize.isEmpty()) {
-                int _limit = Math.max(1, Math.min(Integer.parseInt(pageSize.trim()), 1000));
-                sqlSelect += " LIMIT " + _limit;
-            }
-
-            RowMapper<Transaction> rm = Common.getTransactionRowMapper();
-
-            // ResultSet rs;
-            List<Transaction> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
-            JSONObject resJson = new JSONObject();
-            resJson.put("code", "000");
-            resJson.put("message", "true");
-            JSONArray admins_array = new JSONArray();
-            for (Transaction us : listUsers) {
-                JSONObject u_p_ = new JSONObject();
-                u_p_.put("id", us.getId());
-                Merchant merchant = Common.getMerchantById(us.getMerchant_id(), jdbcTemplate);
-                u_p_.put("merchant_number", merchant.getAccount_number());
-                u_p_.put("merchant_name", merchant.getName());
-                u_p_.put("gateway_id", us.getGateway_id());
-                u_p_.put("charges", us.getCharges());
-                u_p_.put("charges_formatted", Common.numberFormat(us.getCharges()));
-                u_p_.put("status", us.getStatus());
-                u_p_.put("original_amount", us.getOriginal_amount());
-                u_p_.put("original_amount_formatted", Common.numberFormat(us.getOriginal_amount()));
-                u_p_.put("charging_method", us.getCharging_method());
-                u_p_.put("created_on", us.getCreated_on());
-                u_p_.put("updaed_on", us.getUpdated_on());
-                u_p_.put("tx_request_trace", us.getTx_request_trace());
-                u_p_.put("tx_update_trace", us.getTx_update_trace());
-                u_p_.put("tx_description", us.getTx_description());
-                u_p_.put("tx_merchant_description", us.getTx_merchant_description());
-                u_p_.put("tx_unique_id", us.getTx_unique_id());
-                u_p_.put("tx_gateway_ref", us.getTx_gateway_ref());
-                u_p_.put("tx_merchant_ref", us.getTx_merchant_ref());
-                u_p_.put("payer_number", us.getPayer_number());
-                u_p_.put("tx_type", us.getTx_type());
-                u_p_.put("callback_trace", us.getCallback_trace());
-
-                admins_array.put(u_p_);
-            }
-            resJson.put("data", admins_array);
-
-            return resJson.toString();
-
-        } catch (JSONException ex) {
-
-            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        if (session.getAttribute("user") == null) {
+            return GeneralException.getError("107", GeneralException.ERRORS_107);
         }
+        User sessionUser = (User) session.getAttribute("user");
+        if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
+            return GeneralException.getError("110", GeneralException.ERRORS_110);
+        }
+        return transactionQueryService.adminTransactions(requestBody);
     }
 
     @PostMapping(path = "/getMerchantTransactions")
@@ -199,163 +118,15 @@ public class TransactionsLogController {
             @RequestBody String requestBody,
             HttpServletRequest request,
             HttpServletResponse response) {
-        // Set the response header
-
-        // First set session variable
         HttpSession session = request.getSession();
-        try {
-            // Check if still logged in
-            MerchantUser sessionUser;
-
-            if (session.getAttribute("merchantUser") == null) {
-                return GeneralException.getError("107", GeneralException.ERRORS_107);
-            }
-            sessionUser = (MerchantUser) session.getAttribute("merchantUser");
-            // Get the first details
-
-            // Check permissions
-            if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
-                return GeneralException.getError("110", GeneralException.ERRORS_110);
-            }
-
-            MapSqlParameterSource parameters = new MapSqlParameterSource();
-
-            // Obtain search fields
-            JSONObject sObject = new JSONObject(requestBody);
-
-            JSONObject sObjectRules = sObject.getJSONObject("search_rules");
-            String start_date = sObjectRules.getString("start_date");
-            String end_date = sObjectRules.getString("end_date");
-            String status = sObjectRules.getString("status");
-            String tx_type = sObjectRules.getString("tx_type");
-
-            int pageSize = sObject.getInt("pageSize");
-            int currentPage = sObject.isNull("currentPage") ? 0 : sObject.getInt("currentPage");
-            JSONObject searchValue = sObject.getJSONObject("searchingValue");
-
-            parameters.addValue("merchant_id", sessionUser.getMerchant_id());
-            String sqlSelect =
-                    "SELECT *  FROM "
-                            + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                            + " "
-                            + " WHERE merchant_id = :merchant_id";
-
-            String sqlSelectTotal =
-                    "SELECT count(*) as total  "
-                            + " FROM "
-                            + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-                            + " "
-                            + " WHERE merchant_id = :merchant_id";
-
-            // HANDLE SEARCH PARAMETERS
-            if (!searchValue.isNull("category") && !searchValue.isNull("value")) {
-
-                String category = searchValue.getString("category");
-                String value = searchValue.getString("value");
-                if (!category.equals("all") && !value.isEmpty()) {
-                    String safeCategory = ColumnAllowlist.validate(category);
-                    sqlSelect += " AND " + safeCategory + " LIKE :" + safeCategory + " ";
-                    parameters.addValue(safeCategory, "%" + value + "%");
-                }
-            }
-
-            if (!start_date.isEmpty() && !end_date.isEmpty()) {
-                sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
-                // Audit F6: bind a native java.sql.Timestamp, not the raw request string - a
-                // malformed date now fails fast with a clear parse error instead of silently
-                // reaching the database as an unvalidated string.
-                try {
-                    parameters.addValue(
-                            "start_date", java.sql.Timestamp.valueOf(start_date + " 00:00:00"));
-                    parameters.addValue(
-                            "end_date", java.sql.Timestamp.valueOf(end_date + " 23:59:59"));
-                } catch (IllegalArgumentException ex) {
-                    return GeneralException.getError(
-                            "101", "start_date/end_date must use YYYY-MM-DD.");
-                }
-            } else {
-                LocalDateTime dt = LocalDateTime.now();
-                java.sql.Timestamp end_date_ = java.sql.Timestamp.valueOf(dt);
-                LocalDateTime last3Months = dt.minusMonths(3);
-                java.sql.Timestamp start_date_ = java.sql.Timestamp.valueOf(last3Months);
-
-                sqlSelect += " AND (created_on BETWEEN :start_date AND :end_date) ";
-                parameters.addValue("start_date", start_date_);
-                parameters.addValue("end_date", end_date_);
-            }
-
-            if (!status.isEmpty()) {
-                sqlSelect += " AND status =:status ";
-                parameters.addValue("status", status);
-            }
-
-            if (!tx_type.isEmpty()) {
-                sqlSelect += " AND tx_type =:tx_type ";
-                parameters.addValue("tx_type", tx_type);
-            }
-
-            sqlSelect += " ORDER BY id DESC ";
-
-            /*if (pageSize != 0) {
-                sqlSelect += " LIMIT "+(pageSize * currentPage)+", "+pageSize+" ";
-            }*/
-
-            RowMapper<Long> rmTotal =
-                    new RowMapper<Long>() {
-                        public Long mapRow(ResultSet rs, int rowNum) throws SQLException {
-                            Long t = rs.getLong("total");
-                            return t;
-                        }
-                    };
-            List<Long> listLong = jdbcTemplate.query(sqlSelectTotal, parameters, rmTotal);
-
-            RowMapper<Transaction> rm = Common.getTransactionRowMapper();
-
-            // ResultSet rs;
-            List<Transaction> listUsers = jdbcTemplate.query(sqlSelect, parameters, rm);
-            JSONObject resJson = new JSONObject();
-            resJson.put("code", "000");
-            resJson.put("message", "true");
-            resJson.put("total", listLong.get(0));
-
-            JSONArray admins_array = new JSONArray();
-            for (Transaction us : listUsers) {
-                JSONObject u_p_ = new JSONObject();
-                u_p_.put("id", us.getId());
-                Merchant merchant = Common.getMerchantById(us.getMerchant_id(), jdbcTemplate);
-                u_p_.put("merchant_number", merchant.getAccount_number());
-                u_p_.put("merchant_name", merchant.getName());
-                u_p_.put("gateway_id", us.getGateway_id());
-                u_p_.put("charges", us.getCharges());
-                u_p_.put("charges_formatted", Common.numberFormat(us.getCharges()));
-                u_p_.put("status", us.getStatus());
-                u_p_.put("original_amount", us.getOriginal_amount());
-                u_p_.put("original_amount_formatted", Common.numberFormat(us.getOriginal_amount()));
-                u_p_.put("charging_method", us.getCharging_method());
-                u_p_.put("created_on", us.getCreated_on());
-                u_p_.put("updaed_on", us.getUpdated_on());
-                u_p_.put("tx_request_trace", "" /*us.getTx_request_trace()*/);
-                u_p_.put("tx_update_trace", "" /*us.getTx_update_trace()*/);
-                u_p_.put("tx_description", us.getTx_description());
-                u_p_.put("tx_merchant_description", us.getTx_merchant_description());
-                u_p_.put("tx_unique_id", us.getTx_unique_id());
-                u_p_.put("tx_gateway_ref", us.getTx_gateway_ref());
-                u_p_.put("tx_merchant_ref", us.getTx_merchant_ref());
-                u_p_.put("payer_number", us.getPayer_number());
-                u_p_.put("tx_type", us.getTx_type());
-                u_p_.put("callback_trace", us.getCallback_trace());
-
-                admins_array.put(u_p_);
-            }
-            resJson.put("data", admins_array);
-
-            return resJson.toString();
-
-        } catch (JSONException ex) {
-
-            Logger.getLogger(TransactionsLogController.class.getName()).log(Level.SEVERE, null, ex);
-            return GeneralException.getError("102", GeneralException.ERRORS_102);
+        if (session.getAttribute("merchantUser") == null) {
+            return GeneralException.getError("107", GeneralException.ERRORS_107);
         }
+        MerchantUser sessionUser = (MerchantUser) session.getAttribute("merchantUser");
+        if (!Common.isUserAllowedAccessToThis("ACCESS_TRANSACTION_LOG", sessionUser)) {
+            return GeneralException.getError("110", GeneralException.ERRORS_110);
+        }
+        return transactionQueryService.merchantTransactions(requestBody, sessionUser);
     }
 
     private List<Beneficiary> getBatchBeneficiaries(long batch_id) {

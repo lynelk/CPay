@@ -63,6 +63,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * @author josephtabajjwa
  */
 public class Common {
+    private static final net.citotech.cito.legacy.LegacyCommonSupport LEGACY_SUPPORT =
+            new net.citotech.cito.legacy.LegacyCommonSupport();
+
     public static final String DB_TABLE_ADMIN = "admins";
     public static final String DB_TABLE_ADMIN_PRIVILEGES = "admin_privileges";
     public static final String DB_TABLE_AUDIT_TRAIL = "audit_trail";
@@ -157,11 +160,7 @@ public class Common {
     }
 
     public static String jsonText(JSONObject obj, String key, String defaultValue) {
-        if (obj == null || key == null || obj.isNull(key)) {
-            return defaultValue;
-        }
-        Object value = obj.opt(key);
-        return value == null ? defaultValue : String.valueOf(value);
+        return LEGACY_SUPPORT.jsonText(obj, key, defaultValue);
     }
 
     public static void setOutboundHttpExecutor(OutboundHttpExecutor executor) {
@@ -190,11 +189,7 @@ public class Common {
      * @Parma count: is the length you would like
      */
     public static String randomNumericString(int count) {
-        StringBuilder builder = new StringBuilder();
-        while (count-- != 0) {
-            builder.append(NUMERIC_STRING.charAt(SECURE_RANDOM.nextInt(NUMERIC_STRING.length())));
-        }
-        return builder.toString();
+        return LEGACY_SUPPORT.randomNumericString(count);
     }
 
     public static String randomUrlSafeToken(int byteCount) {
@@ -295,13 +290,7 @@ public class Common {
      * @Parma count: is the length you would like
      */
     public static String randomAlphaNumericString(int count) {
-        StringBuilder builder = new StringBuilder();
-        while (count-- != 0) {
-            builder.append(
-                    ALPHA_NUMERIC_STRING.charAt(
-                            SECURE_RANDOM.nextInt(ALPHA_NUMERIC_STRING.length())));
-        }
-        return builder.toString();
+        return LEGACY_SUPPORT.randomAlphaNumericString(count);
     }
 
     /*
@@ -2610,19 +2599,14 @@ public class Common {
     }
 
     public static String urlEncodeValue(String value) {
-        try {
-            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException ex) {
-            throw new RuntimeException(ex.getCause());
-        }
+        return LEGACY_SUPPORT.urlEncodeValue(value);
     }
 
     public static double round(double value, int places) {
         if (places < 0) throw new IllegalArgumentException();
-
-        BigDecimal bd = BigDecimal.valueOf(value);
-        bd = bd.setScale(places, RoundingMode.HALF_UP);
-        return bd.doubleValue();
+        return java.math.BigDecimal.valueOf(value)
+                .setScale(places, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
     }
 
     public static void enqueueMerchantCallback(
