@@ -99,7 +99,8 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/kyc")) {
             return user.merchantRole().canAccessKyc();
         }
-        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/communication")) {
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/communication")
+                || path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/notification-preferences")) {
             return user.merchantRole().canUseCommunication();
         }
         if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/channels")
