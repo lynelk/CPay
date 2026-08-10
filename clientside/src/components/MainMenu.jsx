@@ -3,31 +3,51 @@ import { NavGroup, NavItem, Icons } from '../ui';
 
 const navGroups = [
   {
-    title: 'Workspace',
+    title: 'Home',
     items: [
       { value: 'dashboard', text: 'Dashboard', Icon: Icons.DashboardIcon },
-      { value: 'merchants', text: 'Merchants', Icon: Icons.StoreIcon },
-      { value: 'transactions', text: 'Transactions', Icon: Icons.ReceiptIcon },
-      { value: 'reconciliation', text: 'Reconciliation', Icon: Icons.ReconcileIcon },
-      { value: 'financeclose', text: 'Finance Close', Icon: Icons.CalendarIcon },
+    ],
+  },
+  {
+    title: 'Payments & Transactions',
+    items: [
+      { value: 'transactions', text: 'All Transactions', Icon: Icons.ReceiptIcon },
       { value: 'payoutapprovals', text: 'Payout Approvals', Icon: Icons.PaymentsIcon },
       { value: 'payoutcontrols', text: 'Payout Controls', Icon: Icons.CardsIcon },
+      { value: 'reconciliation', text: 'Reconciliation', Icon: Icons.ReconcileIcon },
+      { value: 'financeclose', text: 'Finance Close', Icon: Icons.CalendarIcon },
       { value: 'settlementclose', text: 'Settlement Close', Icon: Icons.ReconcileIcon },
-      { value: 'webhookops', text: 'Webhook Ops', Icon: Icons.SmsIcon },
-      { value: 'communicationrouting', text: 'Communication Routing', Icon: Icons.SmsIcon },
+    ],
+  },
+  {
+    title: 'KYC & Customer Mgt',
+    items: [
+      { value: 'merchants', text: 'Customers & KYC', Icon: Icons.StoreIcon },
+    ],
+  },
+  {
+    title: 'Communication',
+    items: [
+      { value: 'communicationrouting', text: 'Channels & Routing', Icon: Icons.SmsIcon },
+    ],
+  },
+  {
+    title: 'Developers & Integrations',
+    items: [
+      { value: 'webhookops', text: 'Webhook Operations', Icon: Icons.LightningIcon },
     ],
   },
   {
     title: 'Administration',
     items: [
-      { value: 'admins', text: 'Administrators', Icon: Icons.UsersIcon },
+      { value: 'admins', text: 'Users & Roles', Icon: Icons.UsersIcon },
       { value: 'audittrail', text: 'Audit Trail', Icon: Icons.HistoryIcon },
       { value: 'settings', text: 'Settings', Icon: Icons.SettingsIcon },
     ],
   },
 ];
 
-/** Admin portal navigation. Renders iOS nav items; selection is host-driven. */
+/** Admin portal navigation grouped by the preferred CPay product domains. */
 export default function MainMenu({ activeItem, onChangeMenu }) {
   return (
     <>
