@@ -57,11 +57,31 @@ const menuRoutes = {
   settings: '/dashboardMerchant/administration/settings',
 };
 
+const menuCapabilities = {
+  dashboard: 'HOME',
+  payments: 'PAYMENTS_TRANSACTIONS',
+  transactions: 'PAYMENTS_TRANSACTIONS',
+  statement: 'PAYMENTS_TRANSACTIONS',
+  kyc: 'KYC_CUSTOMER_MGT',
+  billing: 'BILLING',
+  sms: 'COMMUNICATION',
+  channels: 'DEVELOPERS_INTEGRATIONS',
+  webhooks: 'DEVELOPERS_INTEGRATIONS',
+  admins: 'ADMINISTRATION',
+  audittrail: 'AUDIT',
+  settings: 'ADMINISTRATION',
+};
+
 function menuForPath(pathname) {
   const exact = Object.entries(menuRoutes).find(([, path]) => pathname === path);
   if (exact) return exact[0];
   if (pathname === '/dashboardMerchant' || pathname === '/dashboardMerchant/') return 'dashboard';
   return 'dashboard';
+}
+
+function menuAllowed(item, capabilities) {
+  const required = menuCapabilities[item];
+  return Boolean(required && capabilities.includes(required));
 }
 
 class LayoutMerchantWithOutRouter extends React.Component {
@@ -77,7 +97,9 @@ class LayoutMerchantWithOutRouter extends React.Component {
       currentMenuKey: initialKey,
       refreshTick: 0,
       user: readStoredUser('merchant'),
-      currentMenuItem: this.renderModule(initialKey, 0),
+      role: null,
+      capabilities: [],
+      currentMenuItem: null,
     };
     this.menuChanged = this.menuChanged.bind(this);
     this.refreshCurrentPage = this.refreshCurrentPage.bind(this);
@@ -85,9 +107,9 @@ class LayoutMerchantWithOutRouter extends React.Component {
 
   async componentDidMount() {
     this.chartRef = React.createRef();
-    const isLoggedIn = await this.isLoggedIn();
+    const access = await this.loadAuthenticatedAccess();
     const { history } = this.props;
-    if (!isLoggedIn) {
+    if (!access) {
       this.setState({ isLogged: false });
       this.messager.alert({
         title: strings.session_expired_title,
@@ -95,18 +117,38 @@ class LayoutMerchantWithOutRouter extends React.Component {
         msg: strings.session_expired_message,
         result: () => history.push("/")
       });
-    } else {
-      const key = menuForPath(this.props.location?.pathname || '/dashboardMerchant');
-      this.setState({ isLogged: true, currentMenuKey: key, currentMenuItem: this.renderModule(key, this.state.refreshTick) });
-      if ((this.props.location?.pathname || '') === '/dashboardMerchant/' || (this.props.location?.pathname || '') === '/dashboardMerchant') {
-        history.replace(menuRoutes.dashboard);
-      }
+      return;
+    }
+
+    const stored = readStoredUser('merchant');
+    const user = { ...stored, role: access.role, capabilities: access.capabilities };
+    localStorage.setItem('merchantUser', JSON.stringify(user));
+
+    const requestedKey = menuForPath(this.props.location?.pathname || '/dashboardMerchant');
+    const key = menuAllowed(requestedKey, access.capabilities) ? requestedKey : 'dashboard';
+    this.setState({
+      isLogged: true,
+      user,
+      role: access.role,
+      capabilities: access.capabilities,
+      currentMenuKey: key,
+      currentMenuItem: this.renderModule(key, this.state.refreshTick),
+    });
+
+    const pathname = this.props.location?.pathname || '';
+    if (pathname === '/dashboardMerchant/' || pathname === '/dashboardMerchant' || key !== requestedKey) {
+      history.replace(menuRoutes[key]);
     }
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.location?.pathname !== this.props.location?.pathname) {
-      const key = menuForPath(this.props.location?.pathname || '/dashboardMerchant');
+    if (prevProps.location?.pathname !== this.props.location?.pathname && this.state.isLogged) {
+      const requestedKey = menuForPath(this.props.location?.pathname || '/dashboardMerchant');
+      const key = menuAllowed(requestedKey, this.state.capabilities) ? requestedKey : 'dashboard';
+      if (key !== requestedKey) {
+        this.props.history.replace(menuRoutes[key]);
+        return;
+      }
       if (key !== this.state.currentMenuKey) {
         this.setState({ currentMenuKey: key, currentMenuItem: this.renderModule(key, this.state.refreshTick) });
       }
@@ -148,19 +190,28 @@ class LayoutMerchantWithOutRouter extends React.Component {
     });
   }
 
-  async isLoggedIn() {
+  async loadAuthenticatedAccess() {
     try {
-      await this.setState({ loader: true, progressValue: 0 });
-      const response = await apiFetch(apiUrl("/auth/isMerchantUserLoggedIn"), {
+      this.setState({ loader: true, progressValue: 0 });
+      const sessionResponse = await apiFetch(apiUrl("/auth/isMerchantUserLoggedIn"), {
         method: 'POST', mode: 'cors', cache: 'no-cache', credentials: 'include',
         headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer', body: JSON.stringify({})
       });
-      await this.setState({ loader: false, progressValue: 0 });
-      const res = await response.json();
-      return res.code === "000" && res.message === "true";
+      const session = await sessionResponse.json();
+      if (session.code !== '000' || session.message !== 'true') return false;
+
+      const accessResponse = await apiFetch(apiUrl('/api/v2/merchant-self-service/access'), {
+        method: 'GET', mode: 'cors', cache: 'no-cache', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }, redirect: 'follow', referrer: 'no-referrer'
+      });
+      if (!accessResponse.ok) return false;
+      const access = await accessResponse.json();
+      if (access.code !== '000' || !Array.isArray(access.capabilities)) return false;
+      return access;
     } catch {
-      this.setState({ loader: false, progressValue: 0 });
       return false;
+    } finally {
+      this.setState({ loader: false, progressValue: 0 });
     }
   }
 
@@ -168,6 +219,10 @@ class LayoutMerchantWithOutRouter extends React.Component {
 
   goToScreen(item) {
     if (item === 'exit') { this.logoutUser(); return; }
+    if (!menuAllowed(item, this.state.capabilities)) {
+      this.props.history.replace(menuRoutes.dashboard);
+      return;
+    }
     const route = menuRoutes[item];
     if (route && this.props.location?.pathname !== route) {
       this.props.history.push(route);
@@ -215,15 +270,16 @@ class LayoutMerchantWithOutRouter extends React.Component {
     if (!this.state.isLogged) return this.renderLoadingGate();
     const user = this.state.user || {};
     const current = menuTitles[this.state.currentMenuKey] || menuTitles.dashboard;
+    const canOpenSettings = this.state.capabilities.includes('ADMINISTRATION');
 
     return (
       <Shell
         navOpen={this.state.navOpen}
-        sidebar={<Sidebar brand={<Brand logo={Logo} name="CPay" product="Merchant Portal" />}><MainMenuMerchant activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} /></Sidebar>}
+        sidebar={<Sidebar brand={<Brand logo={Logo} name="CPay" product="Merchant Portal" />}><MainMenuMerchant activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} capabilities={this.state.capabilities} /></Sidebar>}
         topbar={
           <TopBar
             left={<><IconButton label="Navigation" onClick={() => this.setState(s => ({ navOpen: !s.navOpen }))}><Icons.MenuIcon size={20} /></IconButton><div className="cpay-topbar-heading"><h1>{current.title}</h1><p>{current.subtitle}</p></div></>}
-            right={<><ThemeToggle /><Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>{strings.settings}</Button><Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button><UserChip name={user.name || user.username || 'Merchant User'} meta={user.email || user.account_number || 'Signed in'} /></>}
+            right={<><ThemeToggle />{canOpenSettings ? <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>{strings.settings}</Button> : null}<Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button><UserChip name={user.name || user.username || 'Merchant User'} meta={`${this.state.role || 'MERCHANT'} · ${user.email || user.account_number || 'Signed in'}`} /></>}
           />
         }
       >
