@@ -28,7 +28,8 @@ class ChargeNowSandboxSetupServiceTest {
         when(configurations.operations(7L, "CHARGENOW"))
                 .thenReturn(List.of(Map.of("command_type", "RELEASE_ASSET")));
         when(correlations.mapping(7L, "CHARGENOW"))
-                .thenReturn(new VendingCallbackCorrelationService.Mapping("requestId", "providerId"));
+                .thenReturn(
+                        new VendingCallbackCorrelationService.Mapping("requestId", "providerId"));
 
         Map<String, Object> release =
                 Map.of(
@@ -85,13 +86,14 @@ class ChargeNowSandboxSetupServiceTest {
                                 saved ->
                                         "/stations/release".equals(saved.get("releasePath"))
                                                 && "CALLBACK"
-                                                        .equals(saved.get("releaseCompletionMode"))));
+                                                        .equals(
+                                                                saved.get(
+                                                                        "releaseCompletionMode"))));
         verify(configurations).saveOperation(7L, "CHARGENOW", "RELEASE_ASSET", release);
         verify(configurations).saveOperation(7L, "CHARGENOW", "QUERY_STATUS", query);
         verify(correlations).save(7L, "CHARGENOW", "requestId", "");
         assertEquals("CHARGENOW", result.get("connectorCode"));
-        assertEquals(
-                "/api/v2/vending/device-callbacks/CHARGENOW/7", result.get("callbackPath"));
+        assertEquals("/api/v2/vending/device-callbacks/CHARGENOW/7", result.get("callbackPath"));
     }
 
     @Test
