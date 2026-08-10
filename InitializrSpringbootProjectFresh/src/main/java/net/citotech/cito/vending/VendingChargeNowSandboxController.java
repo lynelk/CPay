@@ -24,8 +24,7 @@ public class VendingChargeNowSandboxController {
     private final String appBaseUrl;
 
     public VendingChargeNowSandboxController(
-            ChargeNowSandboxSetupService sandbox,
-            @Value("${app.base.url:}") String appBaseUrl) {
+            ChargeNowSandboxSetupService sandbox, @Value("${app.base.url:}") String appBaseUrl) {
         this.sandbox = sandbox;
         this.appBaseUrl = appBaseUrl;
     }
