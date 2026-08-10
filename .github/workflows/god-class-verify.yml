@@ -17,50 +17,13 @@ jobs:
         with:
           ref: refactor/preferred-architecture-alignment
           fetch-depth: 0
-      - name: Finalize extracted compatibility seams
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          controller = Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/TransactionsLogController.java')
-          s = controller.read_text()
-          anchor = '    private net.citotech.cito.transactions.TransactionResolutionService transactionResolutionService;\n'
-          field = '\n    @Autowired\n    private net.citotech.cito.payments.legacy.LegacyMoneyMovementService legacyMoneyMovementService;\n'
-          if 'LegacyMoneyMovementService legacyMoneyMovementService' not in s:
-              if anchor not in s:
-                  raise SystemExit('controller service anchor changed')
-              s = s.replace(anchor, anchor + field, 1)
-          s, payins = re.subn(
-              r'Common\.doPayIn\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)',
-              r'legacyMoneyMovementService.collectWithRisk(\1, \2)', s)
-          s, payouts = re.subn(
-              r'Common\.doPayOut\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)',
-              r'legacyMoneyMovementService.payoutWithRisk(\1, \2)', s)
-          controller.write_text(s)
-          print(f'migrated controller direct money calls: payin={payins}, payout={payouts}')
-
-          query = Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/transactions/TransactionQueryService.java')
-          q = query.read_text()
-          method_start = q.index('    public String merchantTransactions(')
-          next_method = q.index('    public String merchantPayments(', method_start)
-          block = q[method_start:next_method]
-          old = '''        } catch (JSONException | IllegalArgumentException ex) {\n            return GeneralException.getError("102", GeneralException.ERRORS_102);\n        }\n    }\n\n'''
-          new = '''        } catch (JSONException ex) {\n            return GeneralException.getError("102", GeneralException.ERRORS_102);\n        } catch (IllegalArgumentException ex) {\n            if (ex.getMessage() != null && ex.getMessage().contains("YYYY-MM-DD")) {\n                return GeneralException.getError("101", ex.getMessage());\n            }\n            return GeneralException.getError("102", GeneralException.ERRORS_102);\n        }\n    }\n\n'''
-          if old in block:
-              block = block.replace(old, new, 1)
-              q = q[:method_start] + block + q[next_method:]
-              query.write_text(q)
-          elif 'contains("YYYY-MM-DD")' not in block:
-              raise SystemExit('merchantTransactions catch block changed unexpectedly')
-          PY
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           java-version: "21"
           distribution: "temurin"
           cache: maven
-      - name: Test, format and record result
+      - name: Test, format, verify and record result
         shell: bash
         run: |
           set +e
@@ -73,12 +36,19 @@ jobs:
           else
             format_status=99
           fi
+          if [ "$test_status" -eq 0 ] && [ "$format_status" -eq 0 ]; then
+            mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false >> /tmp/god-class-test.log 2>&1
+            verify_status=$?
+          else
+            verify_status=99
+          fi
           cd ..
           {
             echo "test_status=$test_status"
             echo "format_status=$format_status"
+            echo "verify_status=$verify_status"
             echo "--- tail ---"
-            tail -n 200 /tmp/god-class-test.log
+            tail -n 240 /tmp/god-class-test.log
           } > Docs/Architecture/.god-class-verify.txt
       - name: Commit verification result and formatting
         run: |
