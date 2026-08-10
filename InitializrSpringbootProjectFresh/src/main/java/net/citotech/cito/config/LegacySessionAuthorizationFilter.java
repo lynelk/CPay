@@ -19,28 +19,28 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
     private static final String MERCHANT_SELF_SERVICE_PREFIX = "/api/v2/merchant-self-service";
 
-    private static final List<String> PORTAL_SESSION_PREFIXES = List.of(
-        "/admins",
-        "/audittrail",
-        "/merchants",
-        "/settings",
-        "/transactions",
-        MERCHANT_SELF_SERVICE_PREFIX,
-        "/api/v2/portal"
-    );
+    private static final List<String> PORTAL_SESSION_PREFIXES =
+            List.of(
+                    "/admins",
+                    "/audittrail",
+                    "/merchants",
+                    "/settings",
+                    "/transactions",
+                    MERCHANT_SELF_SERVICE_PREFIX,
+                    "/api/v2/portal");
 
-    private static final List<String> PUBLIC_SETTINGS_PATHS = List.of(
-        "/settings/public-login-appearance"
-    );
+    private static final List<String> PUBLIC_SETTINGS_PATHS =
+            List.of("/settings/public-login-appearance");
 
-    private static final List<String> PUBLIC_MERCHANT_SELF_SERVICE_PATHS = List.of(
-        "/api/v2/merchant-self-service/signup",
-        "/api/v2/merchant-self-service/verify-email",
-        "/api/v2/merchant-self-service/verify-email/resend"
-    );
+    private static final List<String> PUBLIC_MERCHANT_SELF_SERVICE_PATHS =
+            List.of(
+                    "/api/v2/merchant-self-service/signup",
+                    "/api/v2/merchant-self-service/verify-email",
+                    "/api/v2/merchant-self-service/verify-email/resend");
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         if (!requiresPortalSession(request)) {
             filterChain.doFilter(request, response);
@@ -51,7 +51,8 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX)) {
-            if (session == null || !(session.getAttribute("merchantUser") instanceof MerchantUser merchantUser)) {
+            if (session == null
+                    || !(session.getAttribute("merchantUser") instanceof MerchantUser merchantUser)) {
                 unauthorized(response);
                 return;
             }
@@ -59,16 +60,20 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                 response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-                response.getWriter().write(
-                        GeneralException.getError("110", "Merchant role does not allow access to this module."));
+                response.getWriter()
+                        .write(
+                                GeneralException.getError(
+                                        "110", "Merchant role does not allow access to this module."));
                 return;
             }
             filterChain.doFilter(request, response);
             return;
         }
 
-        boolean loggedIn = session != null
-            && (session.getAttribute("user") != null || session.getAttribute("merchantUser") != null);
+        boolean loggedIn =
+                session != null
+                        && (session.getAttribute("user") != null
+                                || session.getAttribute("merchantUser") != null);
         if (loggedIn) {
             filterChain.doFilter(request, response);
             return;
@@ -78,16 +83,12 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
     }
 
     boolean requiresPortalSession(HttpServletRequest request) {
-        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
-            return false;
-        }
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) return false;
         String path = request.getRequestURI();
         if (HttpMethod.GET.matches(request.getMethod()) && PUBLIC_SETTINGS_PATHS.contains(path)) {
             return false;
         }
-        if (PUBLIC_MERCHANT_SELF_SERVICE_PATHS.contains(path)) {
-            return false;
-        }
+        if (PUBLIC_MERCHANT_SELF_SERVICE_PATHS.contains(path)) return false;
         return PORTAL_SESSION_PREFIXES.stream().anyMatch(path::startsWith);
     }
 
@@ -109,6 +110,9 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
                 || path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/sandbox-guide")) {
             return user.merchantRole().canManageChannels();
         }
+        if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/team")) {
+            return user.merchantRole().canManageUsers();
+        }
         if (path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/settlement-preference")) {
             return user.merchantRole().canInitiatePayouts();
         }
@@ -116,7 +120,7 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
                 || path.startsWith(MERCHANT_SELF_SERVICE_PREFIX + "/batches")) {
             return user.merchantRole().canViewPaymentsAndTransactions();
         }
-        // Any newly introduced merchant self-service route is denied until it is explicitly mapped.
+        // New merchant self-service routes are denied until deliberately assigned to a role.
         return false;
     }
 
