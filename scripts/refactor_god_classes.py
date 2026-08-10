@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
-"""Deterministic, idempotent source rewrite for the legacy god-class extraction track.
-
-The repository connector replaces whole files, which is awkward for 3k/6k-line legacy classes.
-This script performs named-method rewrites using a small Java-aware brace scanner. It deliberately
-fails when an expected anchor is absent, so source drift cannot silently produce a half-refactor.
-"""
+"""Deterministic, idempotent source rewrite for the legacy god-class extraction track."""
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "InitializrSpringbootProjectFresh" / "src" / "main" / "java" / "net" / "citotech" / "cito"
@@ -20,7 +16,6 @@ def method_span(source: str, marker: str) -> tuple[int, int]:
     brace = source.find("{", start)
     if brace < 0:
         raise RuntimeError(f"Opening brace not found after: {marker}")
-
     depth = 0
     i = brace
     state = "code"
@@ -28,39 +23,22 @@ def method_span(source: str, marker: str) -> tuple[int, int]:
         ch = source[i]
         nxt = source[i + 1] if i + 1 < len(source) else ""
         if state == "code":
-            if ch == '"':
-                state = "string"
-            elif ch == "'":
-                state = "char"
-            elif ch == "/" and nxt == "/":
-                state = "line_comment"
-                i += 1
-            elif ch == "/" and nxt == "*":
-                state = "block_comment"
-                i += 1
-            elif ch == "{":
-                depth += 1
+            if ch == '"': state = "string"
+            elif ch == "'": state = "char"
+            elif ch == "/" and nxt == "/": state = "line_comment"; i += 1
+            elif ch == "/" and nxt == "*": state = "block_comment"; i += 1
+            elif ch == "{": depth += 1
             elif ch == "}":
                 depth -= 1
-                if depth == 0:
-                    return start, i + 1
+                if depth == 0: return start, i + 1
         elif state == "string":
-            if ch == "\\":
-                i += 1
-            elif ch == '"':
-                state = "code"
+            if ch == "\\": i += 1
+            elif ch == '"': state = "code"
         elif state == "char":
-            if ch == "\\":
-                i += 1
-            elif ch == "'":
-                state = "code"
-        elif state == "line_comment":
-            if ch == "\n":
-                state = "code"
-        elif state == "block_comment":
-            if ch == "*" and nxt == "/":
-                state = "code"
-                i += 1
+            if ch == "\\": i += 1
+            elif ch == "'": state = "code"
+        elif state == "line_comment" and ch == "\n": state = "code"
+        elif state == "block_comment" and ch == "*" and nxt == "/": state = "code"; i += 1
         i += 1
     raise RuntimeError(f"Unbalanced braces after: {marker}")
 
@@ -108,77 +86,43 @@ def merchant_guard(method_name: str, mapping: str, permission: str, delegate: st
 
 def rewrite_controller() -> None:
     source = CONTROLLER.read_text()
-    field_anchor = (
-        "    @Autowired\n"
-        "    private net.citotech.cito.ledger.LegacyLedgerPostingService legacyLedgerPostingService;\n"
-    )
-    query_field = (
+    field_anchor = "    private net.citotech.cito.transactions.TransactionQueryService transactionQueryService;\n"
+    resolution_field = (
         "\n    @Autowired\n"
-        "    private net.citotech.cito.transactions.TransactionQueryService transactionQueryService;\n"
+        "    private net.citotech.cito.transactions.TransactionResolutionService transactionResolutionService;\n"
     )
-    if query_field.strip() not in source:
-        if field_anchor not in source:
-            raise RuntimeError("TransactionsLogController dependency anchor changed")
-        source = source.replace(field_anchor, field_anchor + query_field, 1)
+    if "TransactionResolutionService transactionResolutionService" not in source:
+        if field_anchor not in source: raise RuntimeError("Query-service dependency anchor changed")
+        source = source.replace(field_anchor, field_anchor + resolution_field, 1)
 
     replacements = [
-        (
-            '@PostMapping(path = "/getTransactions")',
-            user_guard(
-                "getTransactions",
-                "/getTransactions",
-                "ACCESS_TRANSACTION_LOG",
-                "transactionQueryService.adminTransactions(requestBody)",
-            ),
-        ),
-        (
-            '@PostMapping(path = "/getMerchantTransactions")',
-            merchant_guard(
-                "getMerchantTransactions",
-                "/getMerchantTransactions",
-                "ACCESS_TRANSACTION_LOG",
-                "transactionQueryService.merchantTransactions(requestBody, sessionUser)",
-            ),
-        ),
-        (
-            '@PostMapping(path = "/getMerchantPayments")',
-            merchant_guard(
-                "getMerchantPayments",
-                "/getMerchantPayments",
-                "ACCESS_TRANSACTION_LOG",
-                "transactionQueryService.merchantPayments(requestBody, sessionUser)",
-            ),
-        ),
-        (
-            '@PostMapping(path = "/getMerchantSms")',
-            merchant_guard(
-                "getMerchantSms",
-                "/getMerchantSms",
-                "ACCESS_SMS_LOG",
-                "transactionQueryService.merchantSms(requestBody, sessionUser)",
-            ),
-        ),
-        (
-            '@PostMapping(path = "/getMerchantStatement")',
-            user_guard(
-                "getMerchantStatement",
-                "/getMerchantStatement",
-                "ACCESS_TRANSACTION_LOG",
-                "transactionQueryService.adminMerchantStatement(requestBody)",
-            ),
-        ),
-        (
-            '@PostMapping(path = "/getMerchantStatementByMerchant")',
-            merchant_guard(
-                "getMerchantStatementByMerchant",
-                "/getMerchantStatementByMerchant",
-                "ACCESS_TRANSACTION_LOG",
-                "transactionQueryService.ownMerchantStatement(requestBody, sessionUser)",
-            ),
-        ),
+        ('@PostMapping(path = "/getTransactions")', user_guard("getTransactions", "/getTransactions", "ACCESS_TRANSACTION_LOG", "transactionQueryService.adminTransactions(requestBody)")),
+        ('@PostMapping(path = "/getMerchantTransactions")', merchant_guard("getMerchantTransactions", "/getMerchantTransactions", "ACCESS_TRANSACTION_LOG", "transactionQueryService.merchantTransactions(requestBody, sessionUser)")),
+        ('@PostMapping(path = "/getMerchantPayments")', merchant_guard("getMerchantPayments", "/getMerchantPayments", "ACCESS_TRANSACTION_LOG", "transactionQueryService.merchantPayments(requestBody, sessionUser)")),
+        ('@PostMapping(path = "/getMerchantSms")', merchant_guard("getMerchantSms", "/getMerchantSms", "ACCESS_SMS_LOG", "transactionQueryService.merchantSms(requestBody, sessionUser)")),
+        ('@PostMapping(path = "/getMerchantStatement")', user_guard("getMerchantStatement", "/getMerchantStatement", "ACCESS_TRANSACTION_LOG", "transactionQueryService.adminMerchantStatement(requestBody)")),
+        ('@PostMapping(path = "/getMerchantStatementByMerchant")', merchant_guard("getMerchantStatementByMerchant", "/getMerchantStatementByMerchant", "ACCESS_TRANSACTION_LOG", "transactionQueryService.ownMerchantStatement(requestBody, sessionUser)")),
     ]
     for marker, replacement in replacements:
         source = replace_method(source, marker, replacement)
+
+    statement_marker = "public String recordStatementTx(Statement tx, String balance_type)"
+    if statement_marker in source:
+        source = replace_method(
+            source,
+            statement_marker,
+            '''public String recordStatementTx(Statement tx, String balance_type) {
+        return transactionResolutionService.recordStatement(tx, balance_type);
+    }''',
+        )
+
+    source, count = re.subn(
+        r"Common\.updateTx\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*jdbcTemplate\s*,\s*transactionManager\s*\)",
+        r"transactionResolutionService.update(\1)",
+        source,
+    )
+    if "Common.updateTx(" in source:
+        raise RuntimeError("Unmigrated Common.updateTx call remains in TransactionsLogController")
     CONTROLLER.write_text(source)
 
 
@@ -190,48 +134,24 @@ def rewrite_common_pure_helpers() -> None:
     )
     anchor = "public class Common {\n"
     if "LegacyCommonSupport LEGACY_SUPPORT" not in source:
-        if anchor not in source:
-            raise RuntimeError("Common class declaration changed")
+        if anchor not in source: raise RuntimeError("Common class declaration changed")
         source = source.replace(anchor, anchor + support_field, 1)
-
-    source = replace_method(
-        source,
-        "public static String jsonText(",
-        '''public static String jsonText(JSONObject obj, String key, String defaultValue) {
+    source = replace_method(source, "public static String jsonText(", '''public static String jsonText(JSONObject obj, String key, String defaultValue) {
         return LEGACY_SUPPORT.jsonText(obj, key, defaultValue);
-    }''',
-    )
-    source = replace_method(
-        source,
-        "public static String randomNumericString(",
-        '''public static String randomNumericString(int count) {
+    }''')
+    source = replace_method(source, "public static String randomNumericString(", '''public static String randomNumericString(int count) {
         return LEGACY_SUPPORT.randomNumericString(count);
-    }''',
-    )
-    source = replace_method(
-        source,
-        "public static String randomAlphaNumericString(",
-        '''public static String randomAlphaNumericString(int count) {
+    }''')
+    source = replace_method(source, "public static String randomAlphaNumericString(", '''public static String randomAlphaNumericString(int count) {
         return LEGACY_SUPPORT.randomAlphaNumericString(count);
-    }''',
-    )
-    source = replace_method(
-        source,
-        "public static String urlEncodeValue(",
-        '''public static String urlEncodeValue(String value) {
+    }''')
+    source = replace_method(source, "public static String urlEncodeValue(", '''public static String urlEncodeValue(String value) {
         return LEGACY_SUPPORT.urlEncodeValue(value);
-    }''',
-    )
-    source = replace_method(
-        source,
-        "public static double round(",
-        '''public static double round(double value, int places) {
+    }''')
+    source = replace_method(source, "public static double round(", '''public static double round(double value, int places) {
         if (places < 0) throw new IllegalArgumentException();
-        return java.math.BigDecimal.valueOf(value)
-                .setScale(places, java.math.RoundingMode.HALF_UP)
-                .doubleValue();
-    }''',
-    )
+        return java.math.BigDecimal.valueOf(value).setScale(places, java.math.RoundingMode.HALF_UP).doubleValue();
+    }''')
     COMMON.write_text(source)
 
 
