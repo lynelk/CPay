@@ -17,6 +17,33 @@ jobs:
         with:
           ref: refactor/preferred-architecture-alignment
           fetch-depth: 0
+      - name: Restore extracted date validation contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/transactions/TransactionQueryService.java')
+          s = p.read_text()
+          old = '''        if (!startDate.isEmpty() && !endDate.isEmpty()) {
+            start = Timestamp.valueOf(startDate + " 00:00:00");
+            end = Timestamp.valueOf(endDate + " 23:59:59");
+        } else {
+'''
+          new = '''        if (!startDate.isEmpty() && !endDate.isEmpty()) {
+            try {
+                start = Timestamp.valueOf(startDate + " 00:00:00");
+                end = Timestamp.valueOf(endDate + " 23:59:59");
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException(
+                        "start_date/end_date must use YYYY-MM-DD", ex);
+            }
+        } else {
+'''
+          if old in s:
+              s = s.replace(old, new, 1)
+              p.write_text(s)
+          elif 'start_date/end_date must use YYYY-MM-DD' not in s:
+              raise SystemExit('appendDateWindow source changed unexpectedly')
+          PY
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
