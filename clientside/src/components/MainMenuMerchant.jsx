@@ -31,7 +31,7 @@ const navGroups = [
   {
     title: 'Communication',
     items: [
-      { value: 'sms', text: 'SMS', Icon: Icons.SmsIcon },
+      { value: 'sms', text: 'SMS · WhatsApp · USSD', Icon: Icons.SmsIcon },
     ],
   },
   {
