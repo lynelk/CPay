@@ -30,11 +30,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
-// Audit E3: enables @PreAuthorize as defense-in-depth on top of the path-based rules in
-// filterChain() below. This is additive hardening only - every method-level check added under
-// this flag mirrors an existing path-matcher rule (e.g. hasRole("ADMIN") for /api/v2/admin/**),
-// so it can never grant access the path matcher wouldn't already grant; it only protects against
-// the path rule drifting or being bypassed by an internal forward/include.
 @EnableMethodSecurity
 public class SecurityConfig {
     @Value(
@@ -53,12 +48,6 @@ public class SecurityConfig {
     @Value("${admin.api.password}")
     private String adminPassword;
 
-    // Audit E10: the Vite-built SPA (Clientside/build/index.html) loads its bundle via an external
-    // <script type="module"> and stylesheet <link> with no inline <script> anywhere, so script-src
-    // does not need 'unsafe-inline' - only style-src does, because the React component library
-    // sets `style={{...}}` (a DOM inline-style attribute) extensively. This extra connect-src
-    // allowance is the local Vite dev server target only; production overrides it to blank in
-    // application-production.properties so the shipped CSP has no localhost carve-out.
     @Value("${csp.connect-src.extra:http://localhost:8081 http://127.0.0.1:8081}")
     private String cspConnectSrcExtra;
 
@@ -87,6 +76,7 @@ public class SecurityConfig {
                                                 "/api/v2/merchant-self-service/signup",
                                                 "/api/v2/native/**",
                                                 "/api/v2/payments/**",
+                                                "/api/v2/communication/ussd/**",
                                                 "/actuator/**",
                                                 "/status/**"))
                 .headers(
@@ -200,6 +190,7 @@ public class SecurityConfig {
                         "X-CPay-Signature",
                         "X-CPay-Timestamp",
                         "X-CPay-Nonce",
+                        "X-CPay-USSD-Token",
                         "X-Idempotency-Key",
                         "Idempotency-Key",
                         "X-Request-ID"));
