@@ -96,8 +96,9 @@ Recent production-control migrations include:
 - billing tenancy core tables (`V38`)
 - billing service/meter catalog (`V39`), immutable usage-event stream (`V40`), transactional outbox (`V41`), a feature-flag seed row (`V42`), price-book schema (`V43`), and rated-charge/cost records (`V44`)
 - ledger-to-billing trace links (`V45`), ledger period locks (`V46`), the periodic billing-invoice domain (`V47`), billing credit-notes/payment-allocation schema (`V48`), and the billing completeness-gate maker-checker table (`V49`)
+- communication provider routing catalog/rules (`V50`), the vending/ChargeNow platform migrations (`V51`–`V53`), communication template/preference/consent core (`V56`), campaign/WhatsApp/USSD schema (`V57`), delivery-log/usage-watermark records (`V58`), encrypted provider credentials and policies (`V59`), and EMAIL/WHATSAPP/USSD billing meters (`V60`)
 
-Flyway is currently at `V49`.
+Flyway is currently at `V60` (through `V60__communication_billing_meters.sql`).
 
 For staging or production, always test migrations on a copy of the database before applying them to a live environment.
 

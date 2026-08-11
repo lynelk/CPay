@@ -78,7 +78,7 @@ export default function ModuleVending({ loader, refreshSignal, sessionExpired }:
     { key: 'created', header: 'Created', accessor: r => text(r.created_at) },
   ];
 
-  const metrics = [
+  const metrics: Array<[string, unknown]> = [
     ['Locations', overview.locations], ['Devices', overview.devices], ['Assets', overview.assets],
     ['Rentals', overview.rentals], ['Active', overview.activeRentals], ['Payment pending', overview.pendingPayments],
     ['Refund attention', overview.refundPending], ['Offline devices', overview.offlineDevices], ['Failed callbacks', overview.failedCallbacks],

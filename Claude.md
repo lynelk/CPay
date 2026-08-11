@@ -337,10 +337,10 @@ backfilling successful legacy pay-in/pay-out rows that are missing their idempot
 `CPAY_LEDGER_REPAIR_LIMIT` and do not broaden it to failed or non-terminal rows without an explicit
 accounting decision.
 
-Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V49` (through
-`V49__billing_completeness_gate.sql`); do not mark a snapshot as a real release snapshot unless it was
+Schema snapshots live under `Docs/Schema/snapshots/`. Flyway is currently at `V60` (through
+`V60__communication_billing_meters.sql`); do not mark a snapshot as a real release snapshot unless it was
 generated from a freshly migrated database with the documented `mysqldump --no-data` command. The
-committed snapshots still reflect `V30` and must be regenerated before the next release tag.
+committed snapshots still reflect `V30`/`V49` and must be regenerated before the next release tag.
 
 ## Frontend architecture
 

@@ -244,7 +244,13 @@
                     <ratchetFrom>origin/main</ratchetFrom>
                     <java>
                         <googleJavaFormat>
-                            <version>1.22.0</version>
+                            <!-- Track A follow-up: 1.22.0 calls a javac internal
+                                 (Log$DeferredDiagnosticHandler.getDiagnostics()) whose signature
+                                 changed in JDK 24+, so `mvn verify`'s Spotless step crashed with
+                                 NoSuchMethodError on JDK 25/26. 1.34.0+ adds newer-JDK support;
+                                 1.36.1 is the current release and still requires/works on the
+                                 JDK 21 baseline CI uses. -->
+                            <version>1.36.1</version>
                             <style>AOSP</style>
                         </googleJavaFormat>
                         <removeUnusedImports/>

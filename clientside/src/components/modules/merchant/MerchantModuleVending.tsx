@@ -306,8 +306,8 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
         <Grid>
           <TextField id="vend-device-code" label="Device code" value={deviceCode} onValueChange={setDeviceCode} />
           <TextField id="vend-device-type" label="Device type" value={deviceType} onValueChange={setDeviceType} />
-          <Field label="Location"><Select value={locationId} options={locationOptions} onValueChange={setLocationId} /></Field>
-          <Field label="Pricing"><Select value={pricingPolicyId} options={pricingOptions} onValueChange={setPricingPolicyId} /></Field>
+          <Field label="Location"><Select id="vend-device-location" value={locationId} options={locationOptions} onValueChange={setLocationId} /></Field>
+          <Field label="Pricing"><Select id="vend-device-pricing" value={pricingPolicyId} options={pricingOptions} onValueChange={setPricingPolicyId} /></Field>
           <TextField id="vend-connector" label="Connector code" value={deviceConnector} onValueChange={setDeviceConnector} />
           <TextField id="vend-external-device" label="Manufacturer device id" value={externalDeviceId} onValueChange={setExternalDeviceId} />
           <TextField id="vend-slots" label="Slots" value={slotCount} onValueChange={setSlotCount} />
@@ -322,12 +322,12 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
           <TextField id="vend-command-url" label="Command base URL" value={commandBaseUrl} onValueChange={setCommandBaseUrl} placeholder="https://manufacturer.example/api" />
           <TextField id="vend-release-path" label="Release path" value={releasePath} onValueChange={setReleasePath} placeholder="/stations/release" />
           <TextField id="vend-release-idempotency" label="OEM idempotency header" value={releaseIdempotencyHeader} onValueChange={setReleaseIdempotencyHeader} placeholder="e.g. Idempotency-Key" />
-          <Field label="Release completion"><Select value={releaseCompletionMode} options={COMPLETION_MODES} onValueChange={setReleaseCompletionMode} /></Field>
-          <Field label="Outbound authentication"><Select value={authMode} options={AUTH_MODES} onValueChange={setAuthMode} /></Field>
+          <Field label="Release completion"><Select id="vend-release-completion" value={releaseCompletionMode} options={COMPLETION_MODES} onValueChange={setReleaseCompletionMode} /></Field>
+          <Field label="Outbound authentication"><Select id="vend-auth-mode" value={authMode} options={AUTH_MODES} onValueChange={setAuthMode} /></Field>
           <TextField id="vend-auth-header" label="Signature/API-key header" value={authHeaderName} onValueChange={setAuthHeaderName} />
           <TextField id="vend-auth-timestamp-header" label="HMAC timestamp header" value={authTimestampHeader} onValueChange={setAuthTimestampHeader} />
           <TextField id="vend-auth-key-header" label="HMAC public-key header" value={authKeyHeader} onValueChange={setAuthKeyHeader} />
-          <Field label="Outbound signature encoding"><Select value={authSignatureEncoding} options={ENCODINGS} onValueChange={setAuthSignatureEncoding} /></Field>
+          <Field label="Outbound signature encoding"><Select id="vend-auth-encoding" value={authSignatureEncoding} options={ENCODINGS} onValueChange={setAuthSignatureEncoding} /></Field>
           <TextField id="vend-auth-value" label="Auth value / username / public key" value={authValue} onValueChange={setAuthValue} />
           <TextField id="vend-auth-secret" label="Auth secret / password" value={authSecret} onValueChange={setAuthSecret} />
         </Grid>
@@ -342,8 +342,8 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
           <TextField id="vend-success-value" label="Response success value" value={responseSuccessValue} onValueChange={setResponseSuccessValue} />
           <TextField id="vend-reference-field" label="Response OEM reference field" value={responseReferenceField} onValueChange={setResponseReferenceField} />
           <TextField id="vend-message-field" label="Response message field" value={responseMessageField} onValueChange={setResponseMessageField} />
-          <Field label="Callback authentication"><Select value={callbackSignatureMode} options={CALLBACK_MODES} onValueChange={setCallbackSignatureMode} /></Field>
-          <Field label="Callback signature encoding"><Select value={callbackSignatureEncoding} options={ENCODINGS} onValueChange={setCallbackSignatureEncoding} /></Field>
+          <Field label="Callback authentication"><Select id="vend-callback-auth" value={callbackSignatureMode} options={CALLBACK_MODES} onValueChange={setCallbackSignatureMode} /></Field>
+          <Field label="Callback signature encoding"><Select id="vend-callback-encoding" value={callbackSignatureEncoding} options={ENCODINGS} onValueChange={setCallbackSignatureEncoding} /></Field>
           <TextField id="vend-callback-secret" label="Callback secret / token" value={callbackSecret} onValueChange={setCallbackSecret} />
           <TextField id="vend-callback-signature-header" label="Callback signature/token header" value={callbackSignatureHeader} onValueChange={setCallbackSignatureHeader} />
           <TextField id="vend-callback-timestamp-header" label="Callback timestamp header" value={callbackTimestampHeader} onValueChange={setCallbackTimestampHeader} />
@@ -377,7 +377,7 @@ export default function MerchantModuleVending({ loader, refreshSignal, sessionEx
         <Toolbar><strong>5. ChargeNow status / diagnostic operation</strong></Toolbar>
         <p style={{ marginTop: 0 }}>Map a read-only OEM status operation, then use Probe OEM on a registered ChargeNow device. The path supports <code>{'{{externalDeviceId}}'}</code>.</p>
         <Grid>
-          <Field label="HTTP method"><Select value={statusHttpMethod} options={HTTP_METHODS} onValueChange={setStatusHttpMethod} /></Field>
+          <Field label="HTTP method"><Select id="vend-status-method" value={statusHttpMethod} options={HTTP_METHODS} onValueChange={setStatusHttpMethod} /></Field>
           <TextField id="vend-status-path" label="Status path" value={statusPath} onValueChange={setStatusPath} />
         </Grid>
         <label htmlFor="vend-status-template" style={{ display: 'block', marginTop: 'var(--ios-space-3)', fontWeight: 700 }}>Optional status request JSON template</label>
