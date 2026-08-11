@@ -310,7 +310,34 @@ Base package: `net.citotech.cito`.
 - **`compliance/`** — `RiskDecisionService` now also enforces a KYC-tier-aware cap
   (`compliance_profiles.tier` for `entity_type='MERCHANT'`) and a payer-velocity rule capping how
   often the same payer identifier can transact in a rolling window, alongside the existing blocklist
-  and flat single-transaction/daily-merchant caps. The remaining operational packages are
+  and flat single-transaction/daily-merchant caps.
+- **`communication/`** — the ISO-aligned messaging module. `sms/` (`SmsGatewayAdapter` SPI,
+  `SmsDeliveryService` bill→send→reverse sweep, `YoSmsGatewayAdapter`/`AfricasTalkingSmsGatewayAdapter`/
+  `TwilioSmsGatewayAdapter`), `routing/` (`ProviderRouter`, the `@Primary` rule-based `SmsGatewayAdapter`
+  delegating to the `communication_providers`/`communication_routing_rules` catalog — unknown/disabled
+  targets, empty rules, or a DB failure fall back to `LEGACY_SETTINGS` so routing can never halt
+  delivery), `email/` (`EmailDeliveryService`, typed SENT/FAILED results that never silently drop a
+  message), `template/` (`TemplateService`, `{placeholder}` substitution that fails closed on unknown/
+  INACTIVE templates), `preference/` (`PreferenceService`/`ConsentService`, consent-preserving
+  per-merchant channel preferences with quiet-hours validation and an append-only `communication_consent_log`),
+  `campaign/` (`CampaignService`/`CampaignScheduler`, DRAFT→QUEUED batch engine with per-item
+  FAILED containment), `delivery/` (`CommunicationDeliveryDispatcher` — the single provider-neutral
+  send seam with one `communication_message_deliveries` row per message; WHATSAPP/USSD fail closed
+  until their adapters exist), `usage/` (`CommunicationUsageRelay`, ShedLock-guarded, converts SENT
+  rows into idempotent `billing_usage_events` keyed `comm:<channel>:<deliveryId>` via
+  `UsageGatewayService` — a failed relay leaves the row unbilled for retry, never skipped),
+  `config/` (`ProviderPolicyService` rate-limit/timeout policies, `CommunicationSecurityController`),
+  and `credentials/` (`CommunicationCredentialStore`, AES-GCM envelopes; masked to the admin UI,
+  fails closed when missing). Flyway `V56`–`V60`; admin surfaces under `/api/v2/admin/communication/**`.
+- **`vending/`** — the vending/ChargeNow platform (merged from `origin/main`): merchant-hosted
+  vending locations, pricing policies, devices, and rentals (`VendingRepository`, `VendingRentalService`,
+  `VendingHostedRentalService`), a `VendingConnectorAdapter` registry with ChargeNow and simulated
+  OEM adapters (`connector/`: `ChargeNowVendingConnectorAdapter`, `VendingConnectorConfigurationService`,
+  `VendingCallbackSecurityService` for signed device callbacks, `VendingCallbackCorrelationService`),
+  an atomic ChargeNow OEM sandbox-setup workflow, and admin/merchant portal screens (`ModuleVending`/
+  `MerchantModuleVending`). Flyway `V51`–`V53`; docs: `Docs/Vending-platform.md`,
+  `Docs/ChargeNow-OEM-sandbox-setup.md`.
+- The remaining operational packages are
   **`checkout/`** (payment links/hosted checkout), **`scheduler/`** (timeout scans, cleanup jobs),
   **`metrics/`**, **`portal/`**,
   **`config/`** (security/CORS/production-safety config, legacy deprecation header filter, and

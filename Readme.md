@@ -1,8 +1,8 @@
 # CPay — Core Payments Gateway
 
-CPay is a payments gateway platform for managing mobile money collections, payouts, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, and operational monitoring from one central system.
+CPay is a IaaS gateway platform for managing mobile money collections, payouts, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, and operational monitoring from one central system.
 
-In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, and Safaricom M-Pesa through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, and readiness controls.
+In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, and Safaricom M-Pesa et al. through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, and readiness controls.
 
 ## What CPay does
 
@@ -185,6 +185,9 @@ The codebase now includes software controls for:
 - a treasury position read API and admin webhook test-callback/replay tooling
 - an EFRIS e-receipt extension point and BoU-style regulator reporting generator (both honestly scoped as pending real regulator credentials/schema confirmation, not certified integrations)
 - a PII-masking utility applied to high-traffic payer-number logging
+- a first-class communication module (`communication/`) covering SMS/email delivery with a rule-based provider router, a `{placeholder}` template catalog, consent-preserving channel preferences, batch campaigns, a channel-agnostic delivery log, encrypted provider credentials and provider rate-limit policies, and billing usage metering bridged into the existing billing engine
+- a vending/ChargeNow platform module (`vending/`) for merchant-hosted vending locations, pricing policies, devices, rentals, and manufacturer connectors (including an atomic ChargeNow OEM sandbox-setup workflow and signed device callbacks), with admin and merchant portal screens
+- a `google-java-format` pin current through JDK 24+ toolchains so the CI/local formatting gate runs on modern JDKs
 
 Readiness documentation is available in:
 
