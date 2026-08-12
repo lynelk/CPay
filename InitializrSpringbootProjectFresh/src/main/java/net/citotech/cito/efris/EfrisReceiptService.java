@@ -7,11 +7,11 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.HttpRequestResponse;
 import net.citotech.cito.security.CanonicalRequestSigner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EfrisReceiptService {
 
-    private static final Logger logger = Logger.getLogger(EfrisReceiptService.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(EfrisReceiptService.class);
     private static final int MAX_ATTEMPTS = 5;
     private static final String ENABLED_SETTING = "cpay.efris.enabled";
     private static final String ENDPOINT_SETTING = "cpay.efris.endpoint";
@@ -140,12 +140,10 @@ public class EfrisReceiptService {
                     enqueued++;
                 }
             } catch (Exception ex) {
-                logger.log(
-                        Level.WARNING,
-                        "EFRIS backfill skipped tx row "
-                                + row.get("tx_row_id")
-                                + ": "
-                                + ex.getMessage());
+                logger.warn(
+                        "EFRIS backfill skipped tx row {}: {}",
+                        row.get("tx_row_id"),
+                        ex.getMessage());
             }
         }
         return enqueued;

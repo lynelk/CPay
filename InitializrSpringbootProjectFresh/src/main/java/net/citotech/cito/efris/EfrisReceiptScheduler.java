@@ -1,8 +1,8 @@
 package net.citotech.cito.efris;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class EfrisReceiptScheduler {
-    private static final Logger logger = Logger.getLogger(EfrisReceiptScheduler.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(EfrisReceiptScheduler.class);
 
     private final EfrisReceiptService receiptService;
 
@@ -36,14 +36,14 @@ public class EfrisReceiptScheduler {
         try {
             int backfilled = receiptService.enqueueMissingSuccessfulPayins(7, 500);
             if (backfilled > 0) {
-                logger.log(Level.INFO, "EFRIS e-receipt sweep queued {0} receipt(s)", backfilled);
+                logger.info("EFRIS e-receipt sweep queued {} receipt(s)", backfilled);
             }
             int processed = receiptService.deliverDue(100);
             if (processed > 0) {
-                logger.log(Level.INFO, "EFRIS e-receipt sweep delivered {0} receipt(s)", processed);
+                logger.info("EFRIS e-receipt sweep delivered {} receipt(s)", processed);
             }
         } catch (Exception ex) {
-            logger.log(Level.WARNING, "EFRIS receipt sweep failed: " + ex.getMessage(), ex);
+            logger.warn("EFRIS receipt sweep failed: {}", ex.getMessage(), ex);
         }
     }
 }

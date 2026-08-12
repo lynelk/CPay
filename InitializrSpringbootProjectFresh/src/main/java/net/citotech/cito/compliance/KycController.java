@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -61,6 +62,37 @@ public class KycController {
     @GetMapping(path = "/merchants/{merchantId}")
     public ResponseEntity<?> summary(@PathVariable("merchantId") long merchantId) {
         return ResponseEntity.ok(kycService.merchantKycSummary(merchantId));
+    }
+
+    /**
+     * Admin KYB review workbench: approve/reject a beneficial owner or a KYC document. The
+     * underlying UPDATEs only touch records still in PENDING/IN_REVIEW, so a prior decision is
+     * never overwritten.
+     */
+    @PostMapping(path = "/owners/{ownerId}/review")
+    public ResponseEntity<?> reviewOwner(
+            @PathVariable("ownerId") long ownerId,
+            @RequestParam(name = "decision", defaultValue = "APPROVED") String decision,
+            @RequestParam(name = "reviewedBy", required = false) String reviewedBy) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "id",
+                        ownerId,
+                        "updated",
+                        kycService.reviewOwner(ownerId, decision, reviewedBy)));
+    }
+
+    @PostMapping(path = "/documents/{documentId}/review")
+    public ResponseEntity<?> reviewDocument(
+            @PathVariable("documentId") long documentId,
+            @RequestParam(name = "decision", defaultValue = "APPROVED") String decision,
+            @RequestParam(name = "reviewedBy", required = false) String reviewedBy) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "id",
+                        documentId,
+                        "updated",
+                        kycService.reviewDocument(documentId, decision, reviewedBy)));
     }
 
     private BigDecimal parseDecimal(String value) {

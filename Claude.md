@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-CPay is a payments gateway platform for mobile money collections, payouts, status checks, balances,
+CPay is an IaaS gateway platform for mobile money collections, payouts, status checks, balances,
 callbacks, reconciliation, merchant self-service, and finance/ops workflows across MTN MoMo, Airtel
-Money, Airtel OpenAPI, and Safaricom M-Pesa. It has real, unfinished production-readiness gaps — treat
+Money, Airtel OpenAPI, Safaricom M-Pesa et. al. It has real, unfinished production-readiness gaps — treat
 payment, callback, reconciliation, and finance-path changes as high-risk (see "Sensitive areas" below).
 
 Two API generations are live simultaneously: legacy `/api/v1/doMobileMoney*` (must stay stable) and
