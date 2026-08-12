@@ -4,16 +4,21 @@ These SDK files implement the merchant-facing CPay API v2 signing contract from 
 
 They are intentionally small and dependency-light so merchants can copy them into existing integrations or package them into their own build system.
 
+Use these helpers for sandbox first, then production after certification. Set
+`X-CPay-Environment: SANDBOX` or `X-CPay-Environment: PRODUCTION` when the merchant has both
+environments configured. Production calls are capped by default at 10 transactions per day until the
+admin portal raises or disables the cap.
+
 ## Files
 
 | Runtime | File | Purpose |
 |---|---|---|
-| Node.js | `node/cpay-signing.js` | Canonical request signing and idempotency headers. |
-| Node.js | `node/cpay-client.js` | Signed collect, payout, account validation, statement, and payment-link calls. |
-| Python | `python/cpay_signing.py` | Canonical request signing and webhook verification primitives. |
-| Python | `python/cpay_client.py` | Signed collect, payout, account validation, statement, and payment-link calls. |
-| PHP | `php/CPaySigning.php` | Canonical request signing for merchant integrations. |
-| PHP | `php/CPayClient.php` | Signed collect, payout, account validation, statement, and payment-link calls. |
+| Node.js | `Node/cpay-signing.js` | Canonical request signing and idempotency headers. |
+| Node.js | `Node/cpay-client.js` | Signed collect, payout, account validation, statement, and payment-link calls. |
+| Python | `Python/cpay_signing.py` | Canonical request signing and webhook verification primitives. |
+| Python | `Python/cpay_client.py` | Signed collect, payout, account validation, statement, and payment-link calls. |
+| PHP | `Php/CPaySigning.php` | Canonical request signing for merchant integrations. |
+| PHP | `Php/CPayClient.php` | Signed collect, payout, account validation, statement, and payment-link calls. |
 
 All helpers return the required v2 headers:
 
@@ -27,7 +32,7 @@ All helpers return the required v2 headers:
 ## Node.js
 
 ```js
-const { CPayClient } = require("./node/cpay-client");
+const { CPayClient } = require("./Node/cpay-client");
 
 const client = new CPayClient({
   baseUrl: "https://cpay.example.com",

@@ -1,6 +1,8 @@
 # CPay Deployment Guide
 
 This folder contains all scripts needed to deploy and update the CPay application on a CentOS or RHEL Linux server.
+For local Docker onboarding, use the root `compose.yaml`; it brings up MySQL and the backend with
+safe sandbox defaults, JDBC nonce storage, operational cleanup, and local-only secrets.
 
 ---
 
@@ -95,6 +97,9 @@ All behaviour is controlled through environment variables. Every variable has a 
 | `CPAY_ADMIN_PASSWORD` | _(auto-generated)_ | Plain-text password for the initial super-admin account. The script hashes it with bcrypt before inserting it into the database. Auto-generated if not supplied. Printed to the console and stored in the env file at the end of deployment. |
 | `CPAY_BACKEND_PORT` | `8081` / `8082` | Port the Spring Boot backend listens on. Defaults to `8081` for production and `8082` for staging. |
 | `CPAY_USER` | `cpay` | Linux system user the service runs as. |
+| `CPAY_KEY_ENCRYPTION_KEY` | _(auto-generated or supplied)_ | Dedicated key for merchant RSA private keys at rest. Do not reuse the channel-credential key in production. |
+| `CPAY_TRUSTED_PROXY_IPS` | _(empty)_ | Comma-separated reverse-proxy IPs whose forwarded IP headers may be trusted. |
+| `CPAY_SECURITY_NONCE_STORE` | `jdbc` | Shared nonce replay store. Production must not use `memory`. |
 
 ---
 
@@ -370,3 +375,4 @@ sudo journalctl -u cpay-production.service -n 100 --no-pager
 - Never commit real credentials or production secrets to the repository. All secrets are generated at deploy time and stored only on the server.
 - The Apache configuration proxies these paths to the Spring Boot backend: `/api`, `/auth`, `/admins`, `/audittrail`, `/merchants`, `/settings`, `/status`, `/transactions`, `/actuator`. All other paths are served from the React build and fall back to `index.html` for client-side routing.
 - The deployment script is idempotent for most operations but is intended for first-time setup. Use `run-update-deploy.sh` for routine code updates.
+- Before enabling production traffic, complete provider certification for each channel, including Yo! Payments where enabled, and review the merchant production transaction cap in settings.

@@ -28,10 +28,11 @@ This document is for:
 
 | Area | Main purpose |
 |---|---|
-| `Initializrspringbootprojectfresh/` | Spring Boot 4.1 backend, APIs, payment gateway services, migrations, and tests. |
+| `InitializrSpringbootProjectFresh/` | Spring Boot 4.1 backend, APIs, payment gateway services, migrations, and tests. |
 | `Clientside/` | React 18, Vite 8 admin and merchant portal with the CPay iOS-style design system. |
 | `Integrations/Citoconnect/` | JavaScript reference client and integration assets. |
 | `Docs/` | API documentation, architecture notes, readiness gates, production controls, and runbooks. |
+| `Sdk/` | Merchant signing helpers and OpenAPI client-generation guidance. |
 
 ## Before you start
 
@@ -103,7 +104,8 @@ For documentation changes:
 - write in clear language that both technical and non-technical readers can understand
 - explain what a feature does before explaining how to configure it
 - keep merchant-facing, admin-facing, and internal finance documentation clearly separated
-- update the README when a major capability, endpoint, or readiness position changes
+- update `Readme.md` and `Docs/Readme.md` when a major capability, endpoint, or readiness position changes
+- update `Docs/sandbox-guide.md` when merchant credentials, environment switching, or production-limit behavior changes
 
 ## Testing expectations
 
@@ -112,7 +114,7 @@ Run the most relevant checks before submitting a pull request.
 Backend:
 
 ```bash
-cd Initializrspringbootprojectfresh
+cd InitializrSpringbootProjectFresh
 mvn test
 mvn verify
 ```
@@ -123,7 +125,7 @@ the `HealthEndpointE2ETest` end-to-end suite would cover, run them explicitly in
 environment before submitting:
 
 ```bash
-cd Initializrspringbootprojectfresh
+cd InitializrSpringbootProjectFresh
 mvn test -Ddocker.tests.excludedGroups=
 ```
 
@@ -155,7 +157,7 @@ For documentation-only changes, a build may not be required, but the changed doc
 
 If your change requires a database update:
 
-- add a Flyway migration under `Initializrspringbootprojectfresh/src/main/resources/db/migration`
+- add a Flyway migration under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`
 - use a unique migration version number
 - avoid destructive schema changes unless there is a rollback or migration plan
 - document any data backfill, cutover, or manual verification step
@@ -191,6 +193,11 @@ Sensitive changes should include a clear explanation of the risk, the control be
 If your change affects launch readiness, update the relevant readiness or runbook documents:
 
 - `Docs/Production-code-controls.md`
+- `Docs/sandbox-guide.md`
+- `Docs/Merchant-self-service.md`
+- `Docs/Compliance-risk-controls.md`
+- `Docs/Provider-integration-roadmap.md`
+- `Docs/Vending-platform.md`
 - `Docs/Readiness/Market-readiness-gates.md`
 - `Docs/Runbooks/Production-incident-response.md`
 - `Docs/Runbooks/Provider-certification-checklist.md`

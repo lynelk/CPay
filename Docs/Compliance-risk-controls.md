@@ -10,10 +10,18 @@ This document translates the EAC-context risk findings into implementation track
 | Sensitive read audit | Merchant statement export and account validation reads write to `merchants_audit_trail`. |
 | Upload constraints | Spreadsheet uploads enforce size, MIME, extension, and row-count limits. |
 | Production safety | Production profiles reject sandbox mode and SSL-bypass settings. |
+| Risk decisioning | Legacy and v2 pay-in/pay-out paths run authorization-time risk checks before provider execution. |
+| KYC tier caps | Merchant tier limits are read from `compliance_profiles.tier` and applied to transaction/daily caps. |
+| Payer velocity | The same payer identifier is capped over a rolling window. |
+| Compliance operations | `/api/v2/admin/compliance/**` exposes summaries, reports, event review, cases, case decisions, and profiles. |
+| KYB review | `/api/v2/admin/kyc/**` supports beneficial-owner and document capture/review. |
+| Regulator reporting | `/api/v2/admin/regulator/**` can generate daily cash-flow/transaction summaries and PII inventory from internal data. |
 
 ## Required Risk Engine
 
-Authorization-time rules should run before provider calls and ledger writes:
+Authorization-time rules should run before provider calls and ledger writes. Current coverage
+includes flat caps, KYC-tier caps, payer velocity, and blocklist/screening foundations; new rules
+should continue emitting auditable decisions.
 
 - per-merchant daily amount caps
 - per-payer velocity caps
@@ -35,7 +43,7 @@ The target integration is a provider-neutral screening interface:
 
 ## KYC
 
-Self-service KYC should support tiers:
+Self-service and admin-assisted KYC should support tiers:
 
 | Tier | Requirements | Limits |
 |---|---|---|
@@ -52,4 +60,11 @@ Self-service KYC should support tiers:
 
 ## EFRIS and Regulator Reporting
 
-Successful Ugandan merchant payins should eventually trigger an e-receipt hook when configured. Regulator-facing reports should be scheduled exports sourced from the normalized ledger after the ledger roadmap lands.
+Successful Ugandan merchant payins can queue an EFRIS e-receipt record when configured, but the
+current implementation is an extension point until real EFRIS/URA credentials, schemas, and
+certification are confirmed. Do not call it a certified e-receipt integration in production
+materials.
+
+Regulator-facing reports are generated from internal transaction/ledger/read-model data. The exact
+BoU or other regulator submission schema and cadence still need compliance/legal confirmation
+before any generated report is submitted externally.

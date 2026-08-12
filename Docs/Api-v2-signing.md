@@ -51,13 +51,16 @@ The body hash is the SHA-256 hex digest of the exact request body string sent ov
 
 ## Replay protection
 
-The default local implementation stores nonces in memory. Production deployments should use shared nonce storage with:
+The default nonce store is JDBC-backed:
 
 ```text
 cpay.security.nonce-store=jdbc
 ```
 
-Clustered production deployments should use the JDBC nonce table or a Redis-backed implementation so all application instances share replay state. Portal sessions are database-backed through Spring Session JDBC and should be treated separately from API nonce replay storage.
+The in-memory store exists only for isolated local tests with `cpay.security.nonce-store=memory`.
+Clustered production deployments must use a durable shared store so all application instances share
+replay state. Portal sessions are database-backed through Spring Session JDBC and should be treated
+separately from API nonce replay storage.
 
 ## Backward compatibility
 

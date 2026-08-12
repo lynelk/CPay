@@ -4,10 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-CPay is an IaaS gateway platform for mobile money collections, payouts, status checks, balances,
-callbacks, reconciliation, merchant self-service, and finance/ops workflows across MTN MoMo, Airtel
-Money, Airtel OpenAPI, Safaricom M-Pesa et. al. It has real, unfinished production-readiness gaps — treat
-payment, callback, reconciliation, and finance-path changes as high-risk (see "Sensitive areas" below).
+CPay is an IaaS gateway platform for mobile money collections, payouts, payment links, hosted
+checkout, invoices/request-to-pay, status checks, balances, callbacks, reconciliation, merchant
+self-service, communication delivery, vending, compliance/KYB, treasury, and finance/ops workflows
+across MTN MoMo, Airtel Money, Airtel OpenAPI, Safaricom M-Pesa, and Yo! Payments. It has real,
+unfinished production-readiness gaps — treat payment, callback, reconciliation, compliance, and
+finance-path changes as high-risk (see "Sensitive areas" below).
 
 Two API generations are live simultaneously: legacy `/api/v1/doMobileMoney*` (must stay stable) and
 `/api/v2/**` (structured, signed, versioned). Do not merge or simplify them casually.
@@ -16,10 +18,10 @@ Two API generations are live simultaneously: legacy `/api/v1/doMobileMoney*` (mu
 
 ```text
 InitializrSpringbootProjectFresh/   Active Spring Boot 4.1 backend (Java 21) — build/run/test from here
-clientside/                         React 18 + Vite 8 admin/merchant portal (TypeScript)
+Clientside/                         React 18 + Vite 8 admin/merchant portal (TypeScript)
 Integrations/Citoconnect/           JS reference client / integration bundle
 Docs/                                Architecture, API contracts, ADRs, runbooks, readiness docs
-sdk/, deployment/, setup/            SDK assets, deployment scripts, local setup helpers
+Sdk/, deployment/, setup/            SDK assets, deployment scripts, local setup helpers
 ```
 
 `InitializrSpringbootProject/` (without "Fresh") is an empty legacy scaffold — not in use, ignore it.
@@ -53,7 +55,7 @@ it explicitly with `mvn gatling:test -Dgatling.simulationClass=net.citotech.cito
 against `origin/main` (`ratchetFrom`) so only files you've actually touched are enforced — existing
 legacy files are grandfathered in. Run `mvn spotless:apply` to auto-fix a flagged file.
 
-### Frontend (`clientside/`)
+### Frontend (`Clientside/`)
 
 ```bash
 npm install
@@ -152,7 +154,7 @@ Base package: `net.citotech.cito`.
   `ReconController`/`StatementCheckController` carry `@PreAuthorize("hasRole('ADMIN')")` like the
   other reconciliation controllers; `GET /api/v2/admin/reconciliation/candidate-transactions` backs
   the admin manual-match workbench's transaction search
-  (`clientside/src/components/modules/ModuleReconciliation.tsx`), which pairs unmatched provider
+  (`Clientside/src/components/modules/ModuleReconciliation.tsx`), which pairs unmatched provider
   statement rows (`GET /unmatched`) with a CPay transaction via `POST /manual-match`. Both
   `ReconController`/`StatementCheckController` file uploads go through
   `net.citotech.cito.upload.SpreadsheetUploadValidator` (shared size/extension/content-type
@@ -173,6 +175,10 @@ Base package: `net.citotech.cito`.
   platform-wide; the check only ever blocks today's postings, never a retroactive historical
   period, since neither method takes a backdating parameter.
 - **`merchant/`** — merchant self-service signup, channel configuration.
+  `MerchantEnvironmentService` stores active sandbox/production preference in
+  `merchant_environment_preferences`, builds the novice-developer sandbox guide from
+  `developer_sandbox_*` settings, and enforces the settings-backed production transaction cap
+  (`production_transaction_limit_enabled`, `production_transaction_limit_count`, default 10).
   `MerchantChannelCryptoService` (AES-256-GCM) encrypts channel credentials and, via the
   `MerchantKeyCryptoRegistry` static bridge, the legacy `hmac_secret` field for static-utility
   `Common` code; `MerchantKeyEncryptionService` is a separate, dedicated encryption path
@@ -384,8 +390,8 @@ committed snapshots still reflect `V30`/`V49` and must be regenerated before the
   `ModuleAuditTrail.tsx`/`MerchantModuleAuditTrail.tsx`/`ModuleMerchantsAccount.tsx`/
   `MerchantModuleMerchantsAccount.tsx`, and the merchant portal webhook manager
   (`MerchantModuleWebhooks.tsx` with its Endpoints/Deliveries panels at
-  `clientside/src/components/modules/merchant/`); most other modules still hand-roll `fetch`/`useState`
-  and are good candidates for the same migration (see `clientside/Migration.md`'s follow-ups).
+  `Clientside/src/components/modules/merchant/`); most other modules still hand-roll `fetch`/`useState`
+  and are good candidates for the same migration (see `Clientside/Migration.md`'s follow-ups).
   `LegacyRequestError` (carrying the original `code`) is thrown by `postLegacyJson` for any
   non-`"000"` legacy response code other than `"107"`/`"110"`.
 - `src/shared/useAuth.ts` — centralized read of the logged-in admin/merchant principal out of
@@ -423,8 +429,12 @@ destructive changes without a rollback/migration plan.
 ## Documentation map
 
 `Docs/` is extensive and split by concern — check it before large changes:
+- `Docs/Readme.md` — documentation index and maintenance rules
 - `Docs/Gateway-adapter-guide.md` — how to add a provider adapter
 - `Docs/Api-v2-signing.md`, `Docs/Api-v2-examples.md`, `Docs/Api-versioning-deprecation.md` — v2 API contract
+- `Docs/sandbox-guide.md`, `Docs/Merchant-self-service.md` — developer sandbox, environment switching, production cap, merchant signup/channel/webhook/payment-link flows
+- `Docs/Compliance-risk-controls.md`, `Docs/Provider-integration-roadmap.md` — compliance/KYB, certification, and provider migration posture
+- `Docs/Vending-platform.md`, `Docs/ChargeNow-OEM-sandbox-setup.md` — vending and ChargeNow/OEM workflows
 - `Docs/Testing-strategy.md` — money-movement test invariants (idempotent retries, deduped callbacks,
   balanced ledger debits/credits, visible parked callback failures, audited reconciliation corrections)
 - `Docs/Process-flow-controls.md`, `Docs/Money-ledger-and-orchestration-roadmap.md` — payment/ledger flow design

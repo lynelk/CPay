@@ -21,6 +21,7 @@ CPay uses several controls to support safe operation:
 - idempotency keys for safer retries, on both the legacy `/api/do*` and v2 request paths
 - required email verification before a merchant's first login
 - merchant signup rate limiting
+- explicit sandbox/production environment selection with a configurable daily production transaction cap for merchants graduating from sandbox
 - risk/fraud authorization on both the legacy and v2 pay-in/pay-out paths, including a KYC-tier-aware
   transaction/daily cap and a payer-velocity rule capping how often the same payer identifier can
   transact in a rolling window
@@ -36,6 +37,7 @@ CPay uses several controls to support safe operation:
 - restricted trusted origins for API access
 - signed callback messages
 - verified provider responses (e.g. Yo! Payments) before they are trusted
+- signed v2 payment-link and invoice/request-to-pay creation before public hosted checkout pages can be used
 - merchant-safe error messages: raw provider responses and internal exceptions are translated to a stable, generic message before reaching a merchant, never echoed back directly
 - centralized outbound provider transport with configured timeouts and no global TLS verification bypass
 - merchant self-service webhook management from the merchant portal (`Merchant Dashboard -> Webhooks`: register, rotate secret, view delivery log, replay a failed delivery), scoped so one merchant can never act on another's webhook, and gated by the portal session-authorization filter alongside the other merchant self-service routes
@@ -49,6 +51,10 @@ CPay uses several controls to support safe operation:
 - uniform upload validation (size/extension/content-type) on every multipart admin upload endpoint
 - a tightened Content-Security-Policy with no unnecessary `unsafe-inline` script allowance and no localhost carve-out in production
 - masked display values in the merchant portal
+- compliance/KYB review surfaces for merchant profiles, beneficial owners, KYC documents, screening events, and compliance cases
+- provider certification evidence review for sandbox, callback, and statement-validation proof before live enablement
+- communication-provider credentials stored as encrypted envelopes, with provider rate-limit policies and delivery logs
+- vending/ChargeNow connector setup isolated behind signed callbacks, sandbox manifests, and provider certification evidence
 - a reusable PII-masking utility applied to the highest-traffic payer-number logging call sites
 - an honest EFRIS e-receipt extension point (logs intent, does not call a real EFRIS endpoint) pending real EFRIS/URA credentials — do not treat this as a certified regulatory integration
 - disabled-by-default OpenAPI and Swagger UI endpoints
@@ -108,6 +114,8 @@ High-risk admin actions include:
 - webhook test-callback dispatch and delivery replay
 - balance synchronization
 - provider statement validation
+- provider certification approval
+- compliance/KYB owner or document review
 - reconciliation statement import and manual/auto-matching
 - operating-control review
 - finance review posting
@@ -116,6 +124,9 @@ High-risk admin actions include:
 - treasury position review
 - regulator report generation
 - KYC tier changes
+- sandbox/production limit changes
+- communication provider credentials, routing, and policy changes
+- vending connector setup and device/rental operations
 - provider configuration changes
 
 ## Callback expectations

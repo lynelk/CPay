@@ -1,6 +1,6 @@
 # CPay — Core Payments Gateway
 
-CPay is an IaaS gateway platform for managing mobile money collections, payouts, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, and operational monitoring from one central system. In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, and Safaricom M-Pesa et al. through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, and readiness controls.
+CPay is an IaaS gateway platform for managing mobile money collections, payouts, hosted checkout, payment links, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, communication delivery, compliance operations, and operational monitoring from one central system. In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, Safaricom M-Pesa, and Yo! Payments through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, treasury positions, compliance evidence, and readiness controls.
 
 ## What CPay does
 
@@ -13,8 +13,13 @@ CPay is an IaaS gateway platform for managing mobile money collections, payouts,
 | Merchant self-service | Allow merchants to register and configure their own supported channels. |
 | Provider callbacks | Receive and process updates from payment providers. |
 | Merchant callbacks | Notify merchants when a transaction changes status. |
+| Payment links and hosted checkout | Create payable links and invoices that customers can complete through hosted checkout routes. |
+| Sandbox and production controls | Let merchants test with sandbox credentials, then switch to production under configurable transaction caps. |
 | Reconciliation | Match provider statements against internal transaction records. |
 | Finance operations | Support review, adjustment, reporting, and daily close workflows. |
+| Compliance and KYB | Review merchant profiles, beneficial owners, KYC documents, screening events, and compliance cases. |
+| Communication delivery | Route SMS/email delivery through provider-aware services with delivery logs and billing usage metering. |
+| Vending and ChargeNow | Manage merchant-hosted vending locations, pricing, devices, rentals, and ChargeNow OEM sandbox setup. |
 | Operations monitoring | Track alerts, callback queues, operating controls, and readiness evidence. |
 
 ## Supported payment channels
@@ -47,9 +52,10 @@ New providers should be added through the gateway adapter pattern described in `
 
 ```text
 InitializrSpringbootProjectFresh/   Spring Boot 4.1 backend and payment gateway services
-clientside/                         React-based admin and merchant portal
-Integrations/Citoconnect/      JavaScript reference client and integration bundle
-Docs/                          API, architecture, readiness, and operations documentation
+Clientside/                         React-based admin and merchant portal
+Integrations/Citoconnect/           JavaScript reference client and integration bundle
+Docs/                               API, architecture, readiness, and operations documentation
+Sdk/                                Signing helpers and OpenAPI code-generation guidance
 ```
 
 ## API overview
@@ -77,6 +83,10 @@ The v2 API is the newer, more structured API. It introduces explicit fields for 
 | Payout | `POST /api/v2/payments/payout` |
 | Native collect | `POST /api/v2/native/payments/collect` |
 | Native payout | `POST /api/v2/native/payments/payout` |
+| Create payment link | `POST /api/v2/payment-links` |
+| Hosted checkout payment | `POST /api/v2/checkout/{token}/pay` |
+| Create invoice/request-to-pay | `POST /api/v2/invoices` |
+| Pay invoice | `POST /api/v2/invoices/pay/{token}` |
 | List channels | `GET /api/v2/channels` |
 | Transaction status | `GET /api/v2/payments/{reference}` |
 | Balance check | `GET /api/v2/balances?merchantNumber=...` |
@@ -97,7 +107,7 @@ Merchants can register through the merchant portal at:
 /signup
 ```
 
-After registration, the merchant account is created in a pending approval state. Logged-in merchants can configure supported payment channels under:
+After registration, the merchant account is created in a pending approval state and the registration email must be verified before first login. Logged-in merchants can configure supported payment channels under:
 
 ```text
 Merchant Dashboard -> Payment Channels
@@ -105,9 +115,11 @@ Merchant Dashboard -> Payment Channels
 
 Channel setup includes endpoint URLs and channel-specific setup values. Stored values are encrypted server-side and shown back to the merchant only in masked form.
 
+Merchants can use the developer sandbox guide to copy starter credentials, test numbers, request headers, idempotency guidance, and example payloads. Each merchant/user can switch the active environment between `SANDBOX` and `PRODUCTION`; production traffic is capped by default at 10 transactions per day until an administrator raises or disables the limit through settings.
+
 Merchants can also manage their own webhook endpoints from `Merchant Dashboard -> Webhooks` — register an endpoint per event type, rotate its signing secret (shown exactly once), view the delivery log with per-attempt detail, and replay a failed delivery — without needing an admin to do it on their behalf.
 
-Merchants can review the status of their own batch payouts and retry the failed rows in a batch (`GET/POST /api/v2/merchant-self-service/batches/{batchId}[/retry-failed]`) without needing an admin to intervene. New merchant signups require verifying the registration email before first login.
+Merchants can create payment links and invoices/request-to-pay objects through the signed v2 API, review the status of their own batch payouts, and retry failed rows in a batch (`GET/POST /api/v2/merchant-self-service/batches/{batchId}[/retry-failed]`) without needing an admin to intervene.
 
 See:
 
@@ -137,6 +149,13 @@ CPay includes internal administrative APIs for controlled operations. These are 
 | Operations dashboard | Track alerts, parked callbacks, and reconciliation exceptions. |
 | Operating controls | Review open operating-control event counts. |
 | Readiness dashboard | View non-manual market-readiness evidence counters, platform-wide or scoped to a single merchant. |
+| Compliance operations | Review screening summaries, compliance events/cases, and merchant compliance profiles. |
+| KYB review | Capture and review beneficial owners and merchant KYC/KYB documents. |
+| Provider certification | Review sandbox, callback, and statement evidence for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments. |
+| Treasury and balance monitoring | Review treasury positions and normalized float/balance read models. |
+| Communication operations | Configure SMS/email provider routing, templates, preferences, campaigns, delivery logs, credentials, and provider policies. |
+| Vending operations | Manage merchant-hosted vending locations, devices, rentals, and ChargeNow/OEM connector setup. |
+| Billing operations | Maintain billing tenants, usage events, price books, rated charges, invoices, and ledger traceability. |
 
 Admin routes are under `/api/v2/admin/**` and must be protected using admin credentials and operational controls.
 
@@ -146,6 +165,7 @@ The codebase now includes software controls for:
 
 - merchant self-registration
 - merchant-managed channel setup
+- merchant sandbox guidance and per-user sandbox/production environment selection
 - adapter-backed provider endpoint execution using centralized `RestClient` transport
 - database-backed signup rate limiting
 - claim-based callback processing for multiple workers
@@ -181,6 +201,8 @@ The codebase now includes software controls for:
 - KYC tier caps wired into risk decisioning, and a payer-velocity risk rule
 - maker-checker approval for reconciliation daily close, settlement batch close, and payouts above a configurable threshold
 - a treasury position read API and admin webhook test-callback/replay tooling
+- admin portal modules for compliance, KYB review, provider certification, treasury/balance monitoring, finance close, settlement close, payout approvals, webhook operations, communication routing, and vending operations
+- payment links, hosted checkout, and invoice/request-to-pay APIs
 - an EFRIS e-receipt extension point and BoU-style regulator reporting generator (both honestly scoped as pending real regulator credentials/schema confirmation, not certified integrations)
 - a PII-masking utility applied to high-traffic payer-number logging
 - a first-class communication module (`communication/`) covering SMS/email delivery with a rule-based provider router, a `{placeholder}` template catalog, consent-preserving channel preferences, batch campaigns, a channel-agnostic delivery log, encrypted provider credentials and provider rate-limit policies, and billing usage metering bridged into the existing billing engine
@@ -190,7 +212,9 @@ The codebase now includes software controls for:
 Readiness documentation is available in:
 
 - `Docs/Architecture/Overview.md`
+- `Docs/Readme.md`
 - `Docs/Production-code-controls.md`
+- `Docs/sandbox-guide.md`
 - `Docs/Observability.md`
 - `Docs/Data-retention.md`
 - `Docs/Schema/Readme.md`
@@ -199,6 +223,7 @@ Readiness documentation is available in:
 - `Docs/Pagination.md`
 - `Docs/Webhook-events.md`
 - `Docs/Developer-experience.md`
+- `Docs/Api-v2-examples.md`
 - `Docs/Provider-integration-roadmap.md`
 - `Docs/Security-authentication-roadmap.md`
 - `Docs/Testing-strategy.md`
@@ -266,7 +291,7 @@ To run the project locally, you will need:
 2. Copy `.env.example` to `.env` and provide local values.
 3. Use the Flyway migrations under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`; import legacy baseline SQL only when rebuilding an older local database that has not yet been reconciled.
 4. Start the backend from `InitializrSpringbootProjectFresh`.
-5. Start or build the frontend from `clientside`.
+5. Start or build the frontend from `Clientside`.
 
 For a local Docker database and backend, run:
 
@@ -288,7 +313,7 @@ java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 Frontend:
 
 ```bash
-cd clientside
+cd Clientside
 npm install
 npm run dev
 npm run build
@@ -319,7 +344,21 @@ npm run build
 | `ADMIN_API_PASSWORD` | Admin API password. |
 | `CALLBACK_SIGNING_SECRET` | Fallback value used for callback signing where merchant-specific values are not configured. |
 | `MERCHANT_CHANNEL_ENCRYPTION_KEY` | Encryption key used for merchant channel credentials at rest. |
+| `CPAY_KEY_ENCRYPTION_KEY` | Dedicated 256-bit key for merchant RSA private keys at rest. |
 | `CPAY_TRUSTED_PROXY_IPS` | Comma-separated IP(s) of trusted reverse proxies/load balancers. `X-Forwarded-For`/`X-Real-IP` are only honored when the direct TCP peer is one of these; empty (default) means the app always uses the raw socket address. |
+
+The developer sandbox and production transaction cap are settings-table values, not environment variables:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `developer_sandbox_base_url` | `https://sandbox.cpay.example` | Base URL displayed in the merchant developer sandbox guide. |
+| `developer_production_base_url` | `https://api.cpay.example` | Production API base URL displayed beside sandbox examples. |
+| `developer_sandbox_merchant_number` | `1000000` | Fallback example merchant number when the caller has no assigned number. |
+| `developer_sandbox_idempotency_hours` | `24` | Idempotency window shown to novice developers. |
+| `developer_sandbox_retention_days` | `7` | Sandbox evidence/example retention guidance. |
+| `production_transaction_limit_enabled` | `true` | Enables the daily production cap. |
+| `production_transaction_limit_count` | `10` | Default daily production transaction cap per merchant. |
+| `yo_payments_channel_label` | `Yo! Payments` | Display label for the Yo! Payments channel. |
 
 ## Testing and quality checks
 
@@ -338,7 +377,7 @@ separate opt-in Gatling load-testing toolchain (`mvn gatling:test -Dgatling.simu
 is never part of the default build.
 
 ```bash
-cd clientside
+cd Clientside
 npm install
 npm run typecheck
 npm test
@@ -361,6 +400,8 @@ The CI pipeline is expected to cover:
 |---|---|
 | `Docs/Api/cpay-v2-openapi.yaml` | Machine-readable v2 API contract. |
 | `Docs/Api/cpay-v2-postman-collection.json` | Starter Postman collection for v2. |
+| `Docs/Readme.md` | Documentation index for architecture, API, merchant, operations, and runbook docs. |
+| `Docs/site/index.md` | Lightweight static developer docs landing page. |
 | `Docs/Architecture/Overview.md` | End-to-end system architecture, operational flows, and core ERD. |
 | `Docs/Api-v2-signing.md` | v2 request-signing rules. |
 | `Docs/Api-v2-examples.md` | Example v2 API requests. |
@@ -370,8 +411,11 @@ The CI pipeline is expected to cover:
 | `Docs/Webhook-events.md` | Versioned webhook event registry. |
 | `Docs/Developer-experience.md` | SDK and docs portal expectations. |
 | `Docs/Merchant-self-service.md` | Merchant signup and payment-channel setup guide. |
+| `Docs/sandbox-guide.md` | Developer sandbox, environment switching, and production-limit guide. |
 | `Docs/Production-code-controls.md` | Production-control code summary. |
 | `Docs/Gateway-adapter-guide.md` | How to add or maintain provider adapters. |
+| `Docs/Vending-platform.md` | Merchant-hosted vending and ChargeNow/OEM workflow guide. |
+| `Docs/ChargeNow-OEM-sandbox-setup.md` | ChargeNow OEM sandbox setup and certification sequence. |
 | `Docs/Provider-integration-roadmap.md` | Provider adapter migration plan. |
 | `Docs/Security-authentication-roadmap.md` | Authentication and security-control roadmap. |
 | `Docs/Testing-strategy.md` | Money-movement and provider testing plan. |
@@ -389,10 +433,10 @@ The main focus areas are:
 
 1. Complete real provider sandbox certification for MTN, Airtel, Airtel OpenAPI, and Safaricom.
 2. Complete staging migration validation and balance reconciliation signoff.
-3. Expand frontend admin screens for operations, finance, callbacks, readiness, operating controls, and provider testing.
+3. Continue migrating older frontend screens to the current typed hooks, responsive table/card layouts, and page-level refresh patterns.
 4. Complete production monitoring, alerting, and support escalation setup.
 5. Complete security, compliance, and regulatory signoff before broad commercial launch.
 
 ## Final note
 
-CPay now has a stronger production-oriented software foundation: merchant self-service, channel setup, provider endpoint execution, rate limiting, callback task claims, operating-control visibility, and readiness documentation. It should still be treated as certification-ready until all provider, finance, security, and compliance gates are completed.
+CPay now has a stronger production-oriented software foundation: merchant self-service, channel setup, provider endpoint execution, sandbox controls, payment links, rate limiting, callback task claims, operating-control visibility, compliance/KYB review surfaces, treasury views, communication routing, vending workflows, and readiness documentation. It should still not be treated as production-certified until all provider, finance, security, and compliance gates are completed.

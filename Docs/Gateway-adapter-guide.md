@@ -92,7 +92,7 @@ For each new channel, add tests for:
 
 ## Migration path from legacy routing
 
-1. Create adapters for MTN, Airtel, and Safaricom that wrap the existing gateway classes.
+1. Create or keep adapters for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments that wrap the existing gateway classes while legacy code is being retired.
 2. Add read-only capability discovery using `PaymentChannelRegistry`.
 3. Add `/api/v2/native/payments/collect` and `/api/v2/native/payments/payout` using adapters.
 4. Keep `/api/v1` endpoints unchanged for backwards compatibility.
@@ -102,4 +102,11 @@ For each new channel, add tests for:
 
 ## Runtime notes
 
-`GatewayExecutionService` executes the selected adapter. In `CUSTOM_GATEWAYSTATE=PRODUCTION`, native v2 requests must load merchant channel credentials for the `PRODUCTION` environment and the channel must be active. Sandbox mode uses sandbox channel setup for controlled certification work.
+`GatewayExecutionService` executes the selected adapter. Native v2 requests can choose
+`SANDBOX` or `PRODUCTION` with `X-CPay-Environment`; if no header is present, CPay falls back to the
+merchant/user environment preference. In production mode, the selected channel must load active
+`PRODUCTION` merchant channel credentials and respect the configured production transaction cap.
+Sandbox mode uses sandbox channel setup for controlled certification work.
+
+The merchant-facing display label for the Yo channel is `Yo! Payments`; do not shorten it in UI,
+docs, or API examples.

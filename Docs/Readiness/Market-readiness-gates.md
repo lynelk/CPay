@@ -16,7 +16,7 @@ Required evidence:
 
 Required evidence:
 
-- v1.4 merchant documentation is published.
+- Current merchant documentation is published (`Docs/site/index.md`, OpenAPI, Postman, sandbox guide, and SDK readmes).
 - v2 OpenAPI contract is present.
 - v2 signing headers are documented.
 - Error response format is documented.
@@ -34,10 +34,12 @@ Required evidence:
 - New self-service merchants are created in a pending approval state.
 - Merchant signup is rate limited by client source.
 - Merchant dashboard includes a payment-channel setup page.
+- Merchant dashboard exposes sandbox/production switching and the production transaction cap.
 - Supported channels are listed for the merchant.
 - Merchant channel setup values are stored server-side and returned only as masked values.
 - Merchant channel setup requires endpoint URLs and channel-specific setup values.
 - Native v2 requests require the merchant channel to be configured and tested before use.
+- Payment links, hosted checkout, and invoices are documented and tested for merchants that enable them.
 
 Manual evidence still required:
 

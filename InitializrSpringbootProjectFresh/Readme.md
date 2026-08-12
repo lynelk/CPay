@@ -10,19 +10,21 @@ For the full cross-system architecture, operational flows, and ERD, see `../Docs
 
 ```text
 Controller layer
-  AdminsController, Api, ApiV1Controller, SettingsController, portal/*, api/v2/*
+  AdminsController, Api, ApiV1Controller, SettingsController, portal/*, api/v2/*,
+  checkout/*, communication/*, vending/*
 
 Service layer
-  PaymentOrchestrationService, callback/*, reconciliation/*, balance/*, merchant/*
+  PaymentOrchestrationService, callback/*, reconciliation/*, balance/*, merchant/*,
+  checkout/*, compliance/*, communication/*, vending/*
 
 Gateway layer
-  gateway/* adapters, provider endpoint execution, legacy gateway wrappers
+  gateway/* adapters, provider endpoint execution, legacy gateway wrappers, Yo! Payments
 
 Persistence
   NamedParameterJdbcTemplate repositories plus Flyway migrations
 
 Operations
-  scheduler/*, admin/* dashboards, metrics/*, structured logging
+  scheduler/*, admin/* dashboards, metrics/*, structured logging, audit controls
 ```
 
 Important package boundaries:
@@ -33,9 +35,13 @@ Important package boundaries:
 | `gateway` | Provider/channel adapter boundary |
 | `callback` | Merchant callback task queue, claims, signing, and delivery |
 | `webhook` | Versioned catalog, webhook endpoint/delivery management, and admin + merchant self-service webhook APIs |
+| `checkout` | Payment links, hosted checkout, one-off invoices, and tokenized payment attempts |
 | `reconciliation` | Provider statement parsing, matching, reviews, and finance close |
 | `balance` | Normalized channel balances and ledger events |
 | `admin` | Operating controls, readiness, permissions, and feature flags |
+| `compliance` | KYC tiers, caps, blocklist/screening hooks, and risk decisions |
+| `communication` | SMS/email provider routing, templates, preferences, campaigns, and billing usage relay |
+| `vending` | ChargeNow/OEM vending locations, devices, rentals, callbacks, and connector setup |
 | `security` | CSRF, replay protection, signatures, allowlists, and rate limits |
 | `scheduler` | Background retry, timeout, float alert, and cleanup jobs |
 
@@ -44,10 +50,17 @@ Important package boundaries:
 ### Collection or payout
 
 1. Merchant request enters `/api/v1`, `/api/v2/payments/*`, or `/api/v2/native/payments/*`.
-2. Request validation checks required fields, merchant status, signatures, replay protection, and rate limits.
+2. Request validation checks required fields, merchant status, environment, signatures, replay protection, production caps, and rate limits.
 3. The orchestration path selects a channel and calls the matching gateway adapter or legacy gateway wrapper.
 4. Transaction rows are written to `merchant_transactions_log` and related statement/balance tables.
 5. Final statuses enqueue merchant callback tasks where a callback URL exists.
+
+### Payment links or invoices
+
+1. Signed merchant API requests create payment links or request-to-pay invoices under `/api/v2/payment-links` and `/api/v2/invoices`.
+2. The returned tokenized checkout URL is safe to share with a customer.
+3. Public checkout routes submit payer details and call the same v2 collection orchestration path.
+4. Checkout attempts and invoice state changes are retained for merchant support and billing traceability.
 
 ### Callback delivery
 
@@ -151,7 +164,7 @@ Flyway will automatically create all tables on first startup.
 ```powershell
 $env:JAVA_HOME = "D:\joe\Software\java\openlogic-openjdk-22.0.2+9-windows-x64\openlogic-openjdk-22.0.2+9-windows-x64"
 $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-cd "D:\joe\Jose\projects\joeWork\cito\cpay\newcpay\CPay\Initializrspringbootprojectfresh"
+cd "C:\Dev\CPay\InitializrSpringbootProjectFresh"
 mvn spring-boot:run -Dspring-boot.run.profiles=local "-Dspring-boot.run.jvmArguments=-Dspring.devtools.restart.enabled=false"
 ```
 
@@ -160,7 +173,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local "-Dspring-boot.run.jvmArgum
 ```cmd
 set JAVA_HOME=D:\joe\Software\java\openlogic-openjdk-22.0.2+9-windows-x64\openlogic-openjdk-22.0.2+9-windows-x64
 set PATH=%JAVA_HOME%\bin;%PATH%
-cd D:\joe\Jose\projects\joeWork\cito\cpay\newcpay\CPay\Initializrspringbootprojectfresh
+cd C:\Dev\CPay\InitializrSpringbootProjectFresh
 mvn spring-boot:run -Dspring-boot.run.profiles=local "-Dspring-boot.run.jvmArguments=-Dspring.devtools.restart.enabled=false"
 ```
 
@@ -169,7 +182,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local "-Dspring-boot.run.jvmArgum
 ```bash
 export JAVA_HOME="D:/joe/Software/java/openlogic-openjdk-22.0.2+9-windows-x64/openlogic-openjdk-22.0.2+9-windows-x64"
 export PATH="$JAVA_HOME/bin:$PATH"
-cd "D:/joe/Jose/projects/joeWork/cito/cpay/newcpay/CPay/Initializrspringbootprojectfresh"
+cd "C:/Dev/CPay/InitializrSpringbootProjectFresh"
 mvn spring-boot:run -Dspring-boot.run.profiles=local "-Dspring-boot.run.jvmArguments=-Dspring.devtools.restart.enabled=false"
 ```
 

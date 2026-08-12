@@ -1,5 +1,7 @@
 # CPay — Codebase Status vs. 12-Workstream Prompt Pack & Cost/Speed Roadmap
 
+> Archive note (2026-08-12): This file is a point-in-time review extract, not the current source of truth. For current setup, architecture, security, sandbox, and API guidance, use `Readme.md`, `Docs/Readme.md`, `Docs/Architecture/Overview.md`, `Docs/developer-guide.md`, and `Docs/sandbox-guide.md`.
+
 > Verified against the live working tree at `c:/Dev/CPay`. This report supersedes project_info__1/2/3 where the code has moved on (Flyway V30 → V32; several audit items now closed).
 
 ---

@@ -15,6 +15,7 @@ features and hardening land.
 | — | `POST /api/v2/accounts/validate` (new) |
 | — | `GET /api/v2/statements` (new; JSON/CSV/XLSX) |
 | — | `POST /api/v2/payment-links` (new) |
+| — | `POST /api/v2/invoices` (new request-to-pay) |
 
 ## 2. Field mapping
 
@@ -37,7 +38,7 @@ features and hardening land.
 | Content | `merchant_number + payer/payee + amount + reference + description` | canonical string over headers + body (see `Docs/Api-v2-signing.md`) |
 | Key | merchant RSA private key | same, but canonicalization is explicit |
 | Nonce/timestamp | not present | `X-CPay-Nonce`, `X-CPay-Timestamp` required |
-| Merchant identity | body field | `X-CPay-Merchant` header |
+| Merchant identity | body field | `X-CPay-Merchant-Number` header |
 
 ## 4. Callback differences
 
@@ -77,12 +78,15 @@ with:
 - v2 collects/payouts post double-entry ledger entries.
 - v2 routes through provider adapters with channel capability checks and per-provider
   error translation.
+- v2 native payment requests can select sandbox or production with `X-CPay-Environment`.
+- New hosted-checkout routes create payment links and request-to-pay invoices from signed merchant
+  requests, then let customers pay with a tokenized public route.
 
 ## 8. Migration steps
 
 1. Generate a key pair; register the merchant public key.
 2. Confirm your callback receiver handles the v2 event envelope and signing headers.
-3. Run sandbox collect, payout, status, and balance scenarios.
+3. Run sandbox collect, payout, status, balance, and hosted-checkout scenarios.
 4. Switch status checks and balances first (read-only), then collections, then payouts.
 5. Keep v1 live until the provider channel is certified and go-live checks pass
-   (`Docs/developer-guide.md` section 13).
+   (`Docs/developer-guide.md` section 14).

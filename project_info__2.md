@@ -1,5 +1,7 @@
 # CPay — Codebase Overview & Open-Implementation Audit
 
+> Archive note (2026-08-12): This file is a point-in-time review extract, not the current source of truth. For current setup, architecture, security, sandbox, and API guidance, use `Readme.md`, `Docs/Readme.md`, `Docs/Architecture/Overview.md`, `Docs/developer-guide.md`, and `Docs/sandbox-guide.md`.
+
 > Cross-checked against the attached `CPay-Comprehensive-Review-Fresh (1).docx` (rev. 3 catalog, commit `da16833`). Every claim below was verified in code on this checkout.
 
 ---

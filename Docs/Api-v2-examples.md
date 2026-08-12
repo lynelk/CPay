@@ -1,5 +1,16 @@
 # API v2 Examples
 
+All signed merchant examples use the v2 signing headers from `Docs/Api-v2-signing.md`.
+When a merchant has both sandbox and production credentials, include one of:
+
+```http
+X-CPay-Environment: SANDBOX
+X-CPay-Environment: PRODUCTION
+```
+
+Production requests are capped by default at 10 transactions per day while
+`production_transaction_limit_enabled=true`; operations can change the cap in the admin portal.
+
 ## Collect
 
 Adapter-native route:
@@ -59,6 +70,77 @@ Compatibility route:
 `GET /api/v2/channels`
 
 Returns the registered adapter-backed channels and their supported capabilities.
+
+Expected merchant-facing channel labels include `MTN MoMo`, `Airtel Money`, `Airtel OpenAPI`,
+`Safaricom M-Pesa`, and `Yo! Payments`.
+
+## Payment link
+
+Create a tokenized hosted-checkout link:
+
+`POST /api/v2/payment-links`
+
+```json
+{
+  "merchantNumber": "256770000000",
+  "amount": "25000",
+  "currency": "UGX",
+  "country": "UG",
+  "reference": "LINK-001",
+  "description": "Deposit payment",
+  "channel": "yo_payments",
+  "callbackUrl": "https://merchant.example.com/webhook",
+  "expiresAt": "2026-08-13T12:00:00Z"
+}
+```
+
+The response includes a `checkoutUrl`. The public hosted checkout route accepts customer payer
+details:
+
+`POST /api/v2/checkout/{token}/pay`
+
+```json
+{
+  "payerAccount": "256770000000"
+}
+```
+
+## Invoice / request-to-pay
+
+Create an invoice:
+
+`POST /api/v2/invoices`
+
+```json
+{
+  "merchantNumber": "256770000000",
+  "reference": "INV-2026-001",
+  "customerName": "Acme Stores",
+  "customerEmail": "finance@example.com",
+  "amount": "75000",
+  "currency": "UGX",
+  "country": "UG",
+  "description": "August subscription",
+  "dueAt": "2026-08-20T17:00:00Z"
+}
+```
+
+Operational routes:
+
+- `GET /api/v2/invoices?merchantNumber=256770000000`
+- `POST /api/v2/invoices/{reference}/send`
+- `POST /api/v2/invoices/{reference}/cancel`
+
+The public pay route is token based:
+
+`POST /api/v2/invoices/pay/{token}`
+
+```json
+{
+  "payerAccount": "256770000000",
+  "channel": "mtn_momo"
+}
+```
 
 ---
 

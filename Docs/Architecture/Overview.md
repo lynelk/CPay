@@ -12,17 +12,22 @@ flows, and the core data relationships that support the admin and merchant porta
 ```mermaid
 flowchart LR
     MerchantSystem[Merchant system or checkout] -->|Signed API requests| PublicApi[CPay merchant APIs]
+    Customer[Customer] -->|Payment link or invoice token| HostedCheckout[Hosted checkout routes]
     MerchantUser[Merchant user] --> MerchantPortal[Merchant portal]
     AdminUser[Admin or operations user] --> AdminPortal[Admin portal]
 
     MerchantPortal --> Backend[Spring Boot backend]
     AdminPortal --> Backend
     PublicApi --> Backend
+    HostedCheckout --> Backend
 
     Backend --> Security[Security controls]
     Backend --> Orchestration[Payment orchestration]
     Backend --> DataStore[(MySQL cpayadmin)]
     Backend --> Scheduler[Schedulers and background workers]
+    Backend --> Communication[Communication delivery]
+    Backend --> Billing[Billing usage and invoices]
+    Backend --> Vending[Vending and ChargeNow]
 
     Orchestration --> GatewayRegistry[Payment channel registry]
     GatewayRegistry --> MTN[MTN MoMo]
@@ -44,8 +49,9 @@ flowchart LR
 | Area | Main paths | Responsibility |
 |---|---|---|
 | Admin portal | `Clientside/src/components/modules` | Admin dashboard, merchants, settings, transactions, audit trail, and operations surfaces. |
-| Merchant portal | `Clientside/src/components/modules/merchant` | Merchant dashboard, payment channels, payments, SMS, settings, and account management. |
+| Merchant portal | `Clientside/src/components/modules/merchant` | Merchant dashboard, payment channels, payments, SMS, webhooks, vending, settings, and account management. |
 | Public API | `InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/api/v2` and legacy controllers | Merchant-facing collect, payout, status, balance, signing, idempotency, and compatibility routes. |
+| Hosted checkout | `checkout` | Payment links, invoices/request-to-pay, tokenized customer payment routes, and checkout attempts. |
 | Payment orchestration | `PaymentOrchestrationService`, `api/v2`, `gateway` | Validates requests, applies risk controls, selects channels, calls providers, and records transaction state. |
 | Gateway adapters | `gateway/*Adapter.java` | Provider-specific request building, response parsing, token use, endpoint execution, and capability metadata. |
 | Callback delivery | `callback`, `scheduler/CallbackRetryScheduler.java` | Queues, signs, retries, parks, and audits merchant webhook deliveries. |
@@ -53,6 +59,9 @@ flowchart LR
 | Ledger and balances | `ledger`, `balance`, `money` | Double-entry ledger foundations, balance read models, currency-safe amounts, and trial-balance checks. |
 | Security and risk | `security`, `compliance`, `config/SecurityConfig.java` | Sessions, CSRF, MFA, rate limits, signatures, nonce replay protection, risk rules, KYC, and screening. |
 | Operations | `admin`, `metrics`, `scheduler` | Readiness dashboard, operating controls, scheduled jobs, audit evidence, health, and observability. |
+| Communication | `communication` | SMS/email delivery, provider routing, templates, preferences, campaigns, delivery logs, credentials, policies, and billing metering. |
+| Billing | `billing` | Billing tenants, usage events, outbox relay, price books, rated charges, invoices, completeness gates, and ledger trace links. |
+| Vending | `vending` | Merchant-hosted vending locations, pricing, devices, rentals, ChargeNow/OEM connector setup, and signed device callbacks. |
 | Schema | `src/main/resources/db/migration`, `Docs/Schema` | Flyway migrations, current schema snapshots, and schema operating rules. |
 
 ## Package Boundaries
@@ -68,7 +77,11 @@ net.citotech.cito
   ledger/          Double-entry ledger accounts, entries, posting, balances, trial balance
   balance/         Channel balance read models and normalized balance APIs
   merchant/        Merchant self-service signup, environment selection, channel credentials
+  checkout/        Payment links, hosted checkout, invoices, tokenized customer payment routes
   compliance/      KYC, sanctions screening, risk decisions, and compliance case evidence
+  communication/   SMS/email routing, templates, preferences, campaigns, delivery logs, metering
+  billing/         Usage events, price books, rated charges, periodic invoices, ledger traceability
+  vending/         Vending locations, devices, rentals, ChargeNow/OEM connectors and callbacks
   security/        CSRF, signatures, MFA, password reset tokens, nonce store, rate limits
   admin/           Admin permissions, readiness, audit, operating controls, feature flags
   scheduler/       Retry, timeout, cleanup, ledger, float alert, webhook, and settlement jobs
@@ -143,6 +156,29 @@ Related docs:
 - `Docs/Error-catalog.md`
 - `Docs/Money-ledger-and-orchestration-roadmap.md`
 - `Docs/Process-flow-controls.md`
+
+## Flow 2A: Payment Link or Invoice Checkout
+
+```mermaid
+sequenceDiagram
+    participant Merchant as Merchant system
+    participant API as Signed v2 API
+    participant Checkout as Hosted checkout
+    participant Customer as Customer
+    participant Orchestration as Payment orchestration
+    participant DB as MySQL
+
+    Merchant->>API: Create payment link or invoice
+    API->>DB: Store token, amount, currency, channel preferences
+    API-->>Merchant: Return checkout URL or invoice token
+    Customer->>Checkout: Open/pay tokenized route
+    Checkout->>Orchestration: Submit collect request
+    Orchestration->>DB: Record attempt, transaction, ledger/balance effects
+    Checkout-->>Customer: Accepted, rejected, or pending response
+```
+
+Creation routes are signed merchant API calls. Public checkout routes are tokenized customer routes
+and must still use the same provider, risk, idempotency, and status controls as direct API payments.
 
 ## Flow 3: Provider Callback and Status Repair
 
@@ -230,7 +266,14 @@ erDiagram
     COMPLIANCE_CASES ||--o{ COMPLIANCE_CASE_NOTES : records
     RISK_DECISIONS ||--o{ RISK_DECISION_SCORES : explains
     PAYMENT_LINKS ||--o{ HOSTED_CHECKOUT_ATTEMPTS : attempts
+    INVOICES ||--o{ INVOICE_ATTEMPTS : attempts
     MERCHANT_WEBHOOK_ENDPOINTS ||--o{ MERCHANT_WEBHOOK_DELIVERIES : logs
+    BILLING_TENANTS ||--o{ BILLING_USAGE_EVENTS : records
+    BILLING_TENANTS ||--o{ BILLING_INVOICES : bills
+    COMMUNICATION_CAMPAIGNS ||--o{ COMMUNICATION_CAMPAIGN_ITEMS : contains
+    COMMUNICATION_MESSAGE_DELIVERIES ||--o{ BILLING_USAGE_EVENTS : meters
+    VENDING_LOCATIONS ||--o{ VENDING_DEVICES : hosts
+    VENDING_DEVICES ||--o{ VENDING_RENTALS : serves
 ```
 
 The ERD above shows the target/current hybrid model. Some legacy paths still write

@@ -7,7 +7,7 @@ This guide covers a Linux service deployment for the CPay backend and the produc
 | Item | Value |
 |---|---|
 | Backend | Spring Boot 4.1, Java 21 |
-| Backend artifact | `Initializrspringbootprojectfresh/target/cito-fresh-0.0.1-SNAPSHOT.jar` |
+| Backend artifact | `InitializrSpringbootProjectFresh/target/cito-fresh-0.0.1-SNAPSHOT.jar` |
 | Default backend port | `8081` through `HTTP_PORT` |
 | Frontend | React 18, Vite 8, output in `Clientside/build` |
 | Database | MySQL 8 compatible |
@@ -28,7 +28,7 @@ instances at separate databases, or the distributed lock has nothing shared to c
 Backend:
 
 ```bash
-cd Initializrspringbootprojectfresh
+cd InitializrSpringbootProjectFresh
 mvn clean package
 ```
 
@@ -58,7 +58,7 @@ sudo chmod 755 /var/opt/cpay/locks
 Copy the backend artifact:
 
 ```bash
-sudo cp Initializrspringbootprojectfresh/target/cito-fresh-0.0.1-SNAPSHOT.jar /opt/cpay/bin/
+sudo cp InitializrSpringbootProjectFresh/target/cito-fresh-0.0.1-SNAPSHOT.jar /opt/cpay/bin/
 sudo chown cpay:cpay /opt/cpay/bin/cito-fresh-0.0.1-SNAPSHOT.jar
 ```
 
@@ -190,10 +190,13 @@ Then run functional smoke checks for:
 - merchant login and logout
 - merchant self-signup
 - merchant payment-channel save, test, and submit
+- merchant sandbox/production environment switch and production transaction cap behavior
+- payment-link and invoice/request-to-pay creation plus hosted checkout payment path
 - v1 collect, payout, status, balance, and SMS endpoints
 - v2 native collect and payout
 - callback signing and callback requeue
-- MTN, Airtel, Airtel OpenAPI, and Safaricom sandbox scenarios
+- compliance/KYB, provider certification, treasury/balance monitoring, communication, and vending admin screens
+- MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments sandbox scenarios
 
 ## Production Controls
 
@@ -208,6 +211,7 @@ Before enabling live traffic, confirm:
 - `CORS_ALLOWED_ORIGINS` contains only approved HTTPS origins.
 - Admin and actuator credentials are separate, strong, and stored outside source control.
 - Provider production endpoint URLs and credentials are configured for the correct merchant/channel environment.
+- Developer sandbox settings and production transaction-cap settings have been reviewed in the admin portal.
 - `CPAY_KEY_ENCRYPTION_KEY` is set to a dedicated random value rather than left to fall back onto `MERCHANT_CHANNEL_ENCRYPTION_KEY`.
 - Maker-checker payout and finance-close approval thresholds/roles have been reviewed with finance and operations.
 - EFRIS e-receipt delivery (`CPAY_EFRIS_DELIVER_ENABLED`) and any regulator-reporting output are not treated as certified/compliant until confirmed with real EFRIS/URA and BoU requirements — see `Claude.md`'s `efris/`/`reporting/` notes.

@@ -1,3 +1,7 @@
+# CPay — Archived Review Response
+
+> Archive note (2026-08-12): This file is a point-in-time review response, not the current source of truth. For current setup, architecture, security, sandbox, and API guidance, use `Readme.md`, `Docs/Readme.md`, `Docs/Architecture/Overview.md`, `Docs/developer-guide.md`, and `Docs/sandbox-guide.md`.
+
 **Short answer: No — nothing from the review's open list has been *implemented* by this session, because I'm in Explore Mode.** Explore Mode is read-only by design: I can analyze code, verify findings, and write the `project_info__*.md` documentation, but I am hard-blocked from modifying source files, adding migrations, writing frontend code, or running builds. The tree is unchanged from my audit (same `OperationsConsole.jsx` stub, same `Common.java`/`TransactionsLogController.java` god classes, same Flyway head at V30).
 
 What this session **did** complete is the "review" half of your task: a full audit of `C:\Dev\CPay` against the attached `CPay-Comprehensive-Review-Fresh (1).docx`, with every item verified against the actual code on this checkout. That status is saved in `project_info__1.md` (and duplicated in `project_info__2.md`).

@@ -8,6 +8,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Added
 
+- Refreshed root and `Docs/` documentation to cover the current admin and merchant surface: sandbox/production switching, production transaction caps, Yo! Payments, payment links/hosted checkout, invoices/request-to-pay, compliance/KYB review, provider certification, treasury/balance monitoring, communication operations, vending/ChargeNow, and billing traceability.
 - Added provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments statement imports with shared CSV/XLSX parsing support.
 - Added a ledger-refreshed channel-balance read model so dashboard balance views no longer need to recompute every card directly from statement rows.
 - Added request correlation IDs and structured JSON console logging for backend observability.

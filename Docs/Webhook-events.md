@@ -36,6 +36,7 @@ Webhook payloads should be versioned and event-driven instead of exposing raw st
 | `refund.pending` | Refund is accepted. |
 | `refund.succeeded` | Refund has completed successfully. |
 | `refund.failed` | Refund cannot complete. |
+| `invoice.issued` | One-off request-to-pay invoice is sent to the customer. |
 | `callback.parked` | Delivery retries are exhausted or require operator action. |
 
 ## Delivery Contract
@@ -44,3 +45,5 @@ Webhook payloads should be versioned and event-driven instead of exposing raw st
 - Payloads are signed with the merchant callback secret.
 - Retries must preserve the same `event_id`.
 - Provider callback handlers must deduplicate by provider reference plus terminal status.
+- Event schemas are registered in code by event type/version; do not add a webhook event without a
+  JSON schema and an example payload.

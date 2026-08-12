@@ -48,9 +48,10 @@ Install the following tools:
 
 ```text
 InitializrSpringbootProjectFresh/   Backend service
-clientside/                         Frontend portal
-Integrations/Citoconnect/      JavaScript integration assets
-Docs/                          API, readiness, security, and operations documentation
+Clientside/                         Frontend portal
+Integrations/Citoconnect/           JavaScript integration assets
+Docs/                               API, readiness, security, and operations documentation
+Sdk/                                Signing helpers and OpenAPI code-generation guidance
 ```
 
 ## 4. Database setup
@@ -68,7 +69,7 @@ The backend uses JDBC database configuration. The exact database user, password,
 For local development, you may need to import baseline SQL files under:
 
 ```text
-clientside/db/
+Clientside/db/
 ```
 
 Database changes are kept under Flyway migrations in:
@@ -120,7 +121,7 @@ DB_USERNAME=cpay
 DB_PASSWORD=cpay-local
 ```
 
-The React/Vite frontend is still run from `clientside/` during local development.
+The React/Vite frontend is still run from `Clientside/` during local development.
 
 ## 5. Environment variables
 
@@ -168,6 +169,19 @@ Never commit `.env` files or real access values to the repository.
 | `CPAY_KEY_REENCRYPTION_INITIAL_DELAY_MS` / `CPAY_KEY_REENCRYPTION_FIXED_DELAY_MS` | Startup delay and interval for the re-encryption sweep. Default `15000` / `3600000`. |
 | `CPAY_EFRIS_DELIVER_ENABLED` | Enables the EFRIS e-receipt outbox sweep (a logging stub pending real EFRIS credentials — see `Claude.md`). Defaults to `true`. |
 | `CPAY_EFRIS_DELIVER_FIXED_DELAY_MS` | Interval for the EFRIS outbox sweep. Defaults to `60000`. |
+
+The developer sandbox and production transaction cap are configured in the settings table and exposed through the admin settings surfaces:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `developer_sandbox_base_url` | `https://sandbox.cpay.example` | Base URL shown to merchants in the sandbox guide. |
+| `developer_production_base_url` | `https://api.cpay.example` | Production base URL shown beside sandbox examples. |
+| `developer_sandbox_merchant_number` | `1000000` | Fallback example merchant number. |
+| `developer_sandbox_idempotency_hours` | `24` | Idempotency guidance shown to novice developers. |
+| `developer_sandbox_retention_days` | `7` | Sandbox evidence retention guidance. |
+| `production_transaction_limit_enabled` | `true` | Enables the production daily cap. |
+| `production_transaction_limit_count` | `10` | Default daily production transaction cap per merchant/user. |
+| `yo_payments_channel_label` | `Yo! Payments` | Display label for the Yo! Payments channel. |
 
 Example local-only values:
 
@@ -248,7 +262,7 @@ If the backend fails to start, check:
 From the repository root:
 
 ```bash
-cd clientside
+cd Clientside
 npm install
 npm run dev
 npm run build
@@ -311,7 +325,7 @@ The reconciliation manual-match workbench (pairing unmatched provider statement 
 transaction, or triggering auto-match) is available in the admin portal, backed by
 `/api/v2/admin/reconciliation/**`.
 
-Finance close approval, payout approvals, treasury positions, and regulator reporting are available
+Finance close approval, payout approvals, treasury positions, compliance/KYB review, provider certification, communication operations, vending operations, and regulator reporting are available
 in the admin portal, backed by:
 
 ```text
@@ -319,6 +333,11 @@ in the admin portal, backed by:
 /api/v2/admin/reconciliation/settlements/close/approve|reject
 /api/v2/admin/payout-approvals
 /api/v2/admin/treasury/positions[/{currency}]
+/api/v2/admin/compliance/**
+/api/v2/admin/kyc/**
+/api/v2/admin/provider-certification/**
+/api/v2/admin/communication/**
+/api/v2/admin/vending/**
 /api/v2/admin/regulator/daily-cash-flow[/csv], /reports, /pii-inventory
 /api/v2/admin/callback-admin/secret-status
 ```
@@ -402,6 +421,7 @@ Before a release is considered ready for production:
 | Login/admin access fails | Admin username/password, trusted origins, browser origin, CSRF token fetch from `/auth/csrf`, and JDBC session tables. |
 | API request is rejected | Signature headers, timestamp, nonce, merchant number, request body. |
 | Provider call is rejected | Merchant channel setup, endpoint URLs, gateway mode, provider sandbox status. |
+| Production request is capped | `production_transaction_limit_enabled`, `production_transaction_limit_count`, merchant environment preference, and provider endpoint run count for the current day. |
 | Callback does not deliver | Callback URL, queue status, claim records, parked callbacks, merchant receiver logs. |
 | Balance looks wrong | Legacy balance sync, normalized balances, transaction history, reconciliation records. |
 | Statement validation fails | Provider format, required columns, duplicate references, file type. |
