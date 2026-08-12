@@ -1,8 +1,6 @@
 # CPay — Core Payments Gateway
 
-CPay is a IaaS gateway platform for managing mobile money collections, payouts, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, and operational monitoring from one central system.
-
-In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, and Safaricom M-Pesa et al. through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, and readiness controls.
+CPay is an IaaS gateway platform for managing mobile money collections, payouts, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, and operational monitoring from one central system. In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, and Safaricom M-Pesa et al. through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, and readiness controls.
 
 ## What CPay does
 
