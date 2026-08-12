@@ -1491,3 +1491,344 @@ export function useAdminRotateWebhookSecretMutation() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Compliance ops (audit P7) — summary, screening events, cases, profiles
+//
+// Backed by ComplianceReportingController (/api/v2/admin/compliance/**) and
+// KycController (/api/v2/admin/kyc/**). These unlock the AML/KYC backends for
+// compliance officers: risk-case counts, screening-hit review, case decisions,
+// profile status, and the KYB owner/document review workbench.
+// ---------------------------------------------------------------------------
+
+export interface ComplianceSummary {
+  openControlEvents?: number;
+  highSeverityControlEvents?: number;
+  providerEndpointRuns?: number;
+  failedProviderEndpointRuns?: number;
+  parkedCallbacks?: number;
+  pendingMerchantChannels?: number;
+  activeMerchantChannels?: number;
+  openDailyCloses?: number;
+  closedDailyCloses?: number;
+  openComplianceCases?: number;
+  highSeverityComplianceCases?: number;
+  pendingComplianceProfiles?: number;
+  approvedProviderEvidence?: number;
+  capturedProviderEvidence?: number;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/compliance/summary` — the AML/KYC dashboard counts. */
+export function useComplianceSummary() {
+  return useQuery({
+    queryKey: ['compliance', 'summary'],
+    queryFn: () => request<ComplianceSummary>('/api/v2/admin/compliance/summary'),
+    refetchInterval: 120_000,
+  });
+}
+
+export interface ComplianceCaseRow {
+  id?: number;
+  case_reference?: string;
+  case_type?: string;
+  entity_type?: string;
+  entity_id?: number | string;
+  source_reference?: string;
+  severity?: string;
+  case_status?: string;
+  decision?: string;
+  decision_reason?: string;
+  created_at?: string;
+  closed_at?: string | null;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/compliance/cases` — open compliance cases. */
+export function useOpenComplianceCases() {
+  return useQuery({
+    queryKey: ['compliance', 'cases'],
+    queryFn: () => request<ComplianceCaseRow[]>('/api/v2/admin/compliance/cases'),
+    refetchInterval: 120_000,
+  });
+}
+
+/** `/api/v2/admin/compliance/events/{id}/review` — mark a screening/control event reviewed. */
+export function useReviewComplianceEventMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reviewedBy }: { id: number; reviewedBy?: string }) => {
+      const params = new URLSearchParams();
+      if (reviewedBy?.trim()) params.set('reviewedBy', reviewedBy.trim());
+      const query = params.toString();
+      return request<{ updated?: number; id?: number }>(
+        `/api/v2/admin/compliance/events/${id}/review${query ? `?${query}` : ''}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compliance'] });
+    },
+  });
+}
+
+export interface ComplianceCaseDecisionPayload {
+  id: number;
+  decision: string;
+  reason?: string;
+  actor?: string;
+}
+
+/** `/api/v2/admin/compliance/cases/{id}/decision` — decide/review a compliance case. */
+export function useComplianceCaseDecisionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision, reason, actor }: ComplianceCaseDecisionPayload) => {
+      const params = new URLSearchParams({ decision });
+      if (reason?.trim()) params.set('reason', reason.trim());
+      if (actor?.trim()) params.set('actor', actor.trim());
+      return request<{ id?: number; updated?: number }>(
+        `/api/v2/admin/compliance/cases/${id}/decision?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compliance'] });
+    },
+  });
+}
+
+export interface ComplianceProfileRow {
+  id?: number;
+  entity_type?: string;
+  entity_id?: number | string;
+  profile_type?: string;
+  tier?: string;
+  status?: string;
+  risk_rating?: string;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/compliance/profiles?status=` — compliance profiles (optionally filtered). */
+export function useComplianceProfiles(status = '') {
+  const params = new URLSearchParams();
+  if (status.trim()) params.set('status', status.trim());
+  const query = params.toString();
+  return useQuery({
+    queryKey: ['compliance', 'profiles', status],
+    queryFn: () =>
+      request<ComplianceProfileRow[]>(
+        `/api/v2/admin/compliance/profiles${query ? `?${query}` : ''}`,
+      ),
+    refetchInterval: 120_000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// KYB review workbench (audit P7) — owner/document review + merchant summary
+//
+// Reading the summary requires no extra endpoints
+// (/api/v2/admin/kyc/merchants/{id} exists); the approve/reject actions POST
+// to the new /owners/{id}/review and /documents/{id}/review routes.
+// ---------------------------------------------------------------------------
+
+export interface KybRecordRow {
+  id?: number | string;
+  record_type?: 'OWNER' | 'DOCUMENT' | string;
+  label?: string;
+  status?: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/kyc/merchants/{id}` — a merchant's owners + documents. */
+export function useKycMerchantSummary(merchantId: number | undefined) {
+  return useQuery({
+    queryKey: ['kyb', 'merchant', merchantId ?? 'none'],
+    queryFn: () => request<KybRecordRow[]>(`/api/v2/admin/kyc/merchants/${merchantId}`),
+    enabled: Boolean(merchantId && merchantId > 0),
+    staleTime: 30_000,
+  });
+}
+
+/** `POST /api/v2/admin/kyc/owners/{id}/review?decision=&reviewedBy=` — approve/reject an owner. */
+export function useKycOwnerReviewMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      decision,
+      reviewedBy,
+    }: {
+      id: number | string;
+      decision: string;
+      reviewedBy?: string;
+    }) => {
+      const params = new URLSearchParams({ decision });
+      if (reviewedBy?.trim()) params.set('reviewedBy', reviewedBy.trim());
+      return request<{ id?: number | string; updated?: number }>(
+        `/api/v2/admin/kyc/owners/${id}/review?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kyb'] });
+    },
+  });
+}
+
+/** `POST /api/v2/admin/kyc/documents/{id}/review?decision=&reviewedBy=` — approve/reject a document. */
+export function useKycDocumentReviewMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      decision,
+      reviewedBy,
+    }: {
+      id: number | string;
+      decision: string;
+      reviewedBy?: string;
+    }) => {
+      const params = new URLSearchParams({ decision });
+      if (reviewedBy?.trim()) params.set('reviewedBy', reviewedBy.trim());
+      return request<{ id?: number | string; updated?: number }>(
+        `/api/v2/admin/kyc/documents/${id}/review?${params.toString()}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kyb'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Provider certification (audit P4) — summary + evidence approval
+//
+// Backed by ProviderCertificationController (/api/v2/admin/provider-certification/**).
+// Unlocks the certification backends for the ops surface.
+// ---------------------------------------------------------------------------
+
+export interface CertificationEvidenceRow {
+  id?: number;
+  provider_code?: string;
+  channel_code?: string;
+  scenario_name?: string;
+  evidence_type?: string;
+  run_id?: number | null;
+  statement_run_id?: number | null;
+  evidence_status?: string;
+  evidence_summary?: string | null;
+  storage_ref?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface CertificationCoverageRow {
+  provider_code?: string;
+  channel_code?: string;
+  scenario_name?: string;
+  latest_evidence_at?: string | null;
+  approved?: number;
+  [key: string]: unknown;
+}
+
+export interface CertificationSummary {
+  evidenceByStatus?: CertificationEvidenceRow[];
+  coverage?: CertificationCoverageRow[];
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/provider-certification/summary` — evidence counts + scenario coverage. */
+export function useCertificationSummary() {
+  return useQuery({
+    queryKey: ['certification', 'summary'],
+    queryFn: () => request<CertificationSummary>('/api/v2/admin/provider-certification/summary'),
+    refetchInterval: 120_000,
+  });
+}
+
+/** `/api/v2/admin/provider-certification/evidence?provider=&channel=` — evidence rows. */
+export function useCertificationEvidence(provider = '', channel = '') {
+  const params = new URLSearchParams();
+  if (provider.trim()) params.set('provider', provider.trim());
+  if (channel.trim()) params.set('channel', channel.trim());
+  const query = params.toString();
+  return useQuery({
+    queryKey: ['certification', 'evidence', provider, channel],
+    queryFn: () =>
+      request<CertificationEvidenceRow[]>(
+        `/api/v2/admin/provider-certification/evidence${query ? `?${query}` : ''}`,
+      ),
+    staleTime: 30_000,
+  });
+}
+
+/** `POST /api/v2/admin/provider-certification/evidence/{id}/approve` — approve CAPTURED evidence. */
+export function useApproveCertificationEvidenceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, approvedBy }: { id: number; approvedBy?: string }) => {
+      const params = new URLSearchParams();
+      if (approvedBy?.trim()) params.set('approvedBy', approvedBy.trim());
+      const query = params.toString();
+      return request<{ id?: number; updated?: number }>(
+        `/api/v2/admin/provider-certification/evidence/${id}/approve${query ? `?${query}` : ''}`,
+        { method: 'POST' },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['certification'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Treasury positions (audit V12) — channel/currency balance oversight
+//
+// Backed by TreasuryPositionController (/api/v2/admin/treasury/positions).
+// ---------------------------------------------------------------------------
+
+export interface TreasuryPositionRow {
+  currency?: string;
+  availableBalance?: number | string;
+  reservedBalance?: number | string;
+  netAvailable?: number | string;
+  status?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+/** `/api/v2/admin/treasury/positions` — available/reserved/net per currency. */
+export function useTreasuryPositions() {
+  return useQuery({
+    queryKey: ['treasury', 'positions'],
+    queryFn: () => request<TreasuryPositionRow[]>('/api/v2/admin/treasury/positions'),
+    refetchInterval: 120_000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Balance monitoring (S5 pilot) — combined float/treasury/snapshot view
+//
+// Backed by BalanceMonitoringController (/api/v2/admin/balance-monitoring/overview),
+// gated by the `balance-monitoring` feature flag.
+// ---------------------------------------------------------------------------
+
+/** `/api/v2/admin/balance-monitoring/overview` — float balances + treasury + latest snapshots. */
+export function useBalanceMonitoringOverview(option: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ['balance-monitoring', 'overview'],
+    queryFn: () => request<Record<string, unknown>>('/api/v2/admin/balance-monitoring/overview'),
+    enabled: option.enabled !== false,
+    refetchInterval: 180_000,
+    // The endpoint 400s with BALANCE_MONITORING_DISABLED when the flag is off —
+    // treat that as an empty view rather than a hard error so ops sees "disabled".
+    retry: false,
+  });
+}

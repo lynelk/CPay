@@ -19,6 +19,15 @@ const navGroups = [
     ],
   },
   {
+    title: 'Oversight',
+    items: [
+      { value: 'compliance', text: 'Compliance', Icon: Icons.ShieldIcon },
+      { value: 'kybreview', text: 'KYB Review', Icon: Icons.UsersIcon },
+      { value: 'certification', text: 'Certification', Icon: Icons.CheckIcon },
+      { value: 'treasury', text: 'Treasury', Icon: Icons.BarChartIcon },
+    ],
+  },
+  {
     title: 'Administration',
     items: [
       { value: 'admins', text: 'Administrators', Icon: Icons.UsersIcon },

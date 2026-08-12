@@ -24,6 +24,10 @@ import ModulePayoutControls from './modules/ModulePayoutControls';
 import ModuleSettlementClose from './modules/ModuleSettlementClose';
 import ModuleWebhookOps from './modules/ModuleWebhookOps';
 import ModuleCommunicationRouting from './modules/ModuleCommunicationRouting';
+import ModuleCompliance from './modules/ModuleCompliance';
+import ModuleKybReview from './modules/ModuleKybReview';
+import ModuleCertification from './modules/ModuleCertification';
+import ModuleTreasury from './modules/ModuleTreasury';
 
 import { apiFetch } from '../shared/api/httpClient';
 import { apiUrl } from '../shared/config';
@@ -41,6 +45,10 @@ const menuTitles = {
   settlementclose: { title: 'Settlement Close', subtitle: 'Maker-checker settlement batch close' },
   webhookops: { title: 'Webhook Ops', subtitle: 'Merchant callback verification and test events' },
   communicationrouting: { title: 'Communication Routing', subtitle: 'SMS provider selection and routing rules' },
+  compliance: { title: 'Compliance', subtitle: 'AML/KYC cases, screening events and compliance profiles' },
+  kybreview: { title: 'KYB Review', subtitle: 'Approve or reject beneficial owners and KYC documents' },
+  certification: { title: 'Certification', subtitle: 'Provider sandbox/statement evidence and approvals' },
+  treasury: { title: 'Treasury', subtitle: 'Channel/currency positions and balance monitoring' },
   admins: { title: strings.menu_admins, subtitle: strings.menu_admins_subtitle_admin },
   audittrail: { title: strings.menu_audittrail, subtitle: strings.menu_audittrail_subtitle_admin },
   settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_admin },
@@ -101,6 +109,10 @@ class LayoutWithOutRouter extends React.Component {
       case 'settlementclose': return <ModuleSettlementClose {...moduleProps} />;
       case 'webhookops': return <ModuleWebhookOps {...moduleProps} />;
       case 'communicationrouting': return <ModuleCommunicationRouting {...moduleProps} />;
+      case 'compliance': return <ModuleCompliance {...moduleProps} />;
+      case 'kybreview': return <ModuleKybReview {...moduleProps} />;
+      case 'certification': return <ModuleCertification {...moduleProps} />;
+      case 'treasury': return <ModuleTreasury {...moduleProps} />;
       case 'audittrail': return <ModuleAuditTrail {...moduleProps} />;
       case 'settings': return <ModuleSettings {...moduleProps} />;
       case 'dashboard':
