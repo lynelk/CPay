@@ -325,6 +325,85 @@ class DoubleEntryLedgerServiceTest {
         assertThat(available).isEqualByComparingTo("75000.0000");
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationLocksMerchantCurrencyScopeAndChecksAvailableBalanceBeforeInsert() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForMap(
+                        contains("active_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        java.util.Map.of(
+                                "posted_balance",
+                                new BigDecimal("100000.0000"),
+                                "active_reservations",
+                                new BigDecimal("0.0000")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        service.reserve("RES-ATOMIC-1", 10L, "PAY-1", new BigDecimal("80000"), "ugx");
+
+        verify(jdbcTemplate)
+                .update(
+                        contains("INSERT INTO ledger_reservation_controls"),
+                        any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .query(
+                        contains("FOR UPDATE"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class));
+        verify(jdbcTemplate)
+                .queryForMap(contains("active_reservations"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationRejectsInsufficientLedgerDerivedBalanceWithoutInsertingReservation() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForMap(
+                        contains("active_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        java.util.Map.of(
+                                "posted_balance",
+                                new BigDecimal("100000.0000"),
+                                "active_reservations",
+                                new BigDecimal("25000.0000")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        assertThatThrownBy(
+                        () ->
+                                service.reserve(
+                                        "RES-ATOMIC-2",
+                                        10L,
+                                        "PAY-2",
+                                        new BigDecimal("80000"),
+                                        "UGX"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("Insufficient ledger-derived available balance");
+
+        verify(jdbcTemplate)
+                .update(
+                        contains("INSERT INTO ledger_reservation_controls"),
+                        any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .query(
+                        contains("FOR UPDATE"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class));
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
     private java.util.Map<String, Object> existingReservation(
             long merchantId,
             String sourceReference,

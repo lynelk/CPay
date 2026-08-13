@@ -23,7 +23,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V62__product_polish_developer_experience_foundation.sql",
                     "V63__production_maturity_execution_automation.sql",
                     "V64__kyb_decision_audit_controls.sql",
-                    "V65__payment_state_transition_audit.sql");
+                    "V65__payment_state_transition_audit.sql",
+                    "V66__ledger_reservation_funds_controls.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -63,7 +64,8 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("settlement_posting_runs")
                 .contains("production_maturity_validation_runs")
                 .contains("kyb_review_decisions")
-                .contains("payment_state_transitions");
+                .contains("payment_state_transitions")
+                .contains("ledger_reservation_controls");
     }
 
     @Test
@@ -110,6 +112,20 @@ class ProductionMaturityMigrationValidationTest {
         assertRoute(FinanceOperationsController.class, "/api/v2/admin/finance-operations");
         assertRoute(ProductDeveloperExperienceController.class, "/api/v2/product-experience");
         assertRoute(ProductionMaturityAutomationController.class, "/api/v2/production-maturity");
+    }
+
+    @Test
+    void openApiDoesNotDefaultKybReviewDecisionsToApproval() throws IOException {
+        String mainContract = Files.readString(API_DIR.resolve("cpay-v2-openapi.yaml"));
+
+        assertThat(mainContract)
+                .doesNotContain("default: APPROVED")
+                .contains("operationId: reviewBeneficialOwner")
+                .contains("operationId: reviewKycDocument")
+                .contains("- APPROVE")
+                .contains("- REJECT")
+                .contains("reviewerRole")
+                .contains("reason");
     }
 
     @Test

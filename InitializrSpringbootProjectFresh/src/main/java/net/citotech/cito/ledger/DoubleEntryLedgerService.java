@@ -169,6 +169,13 @@ public class DoubleEntryLedgerService {
                     "Ledger reservation reference already exists with different attributes");
         }
 
+        lockReservationScope(merchantId, normalizedCurrency);
+        BigDecimal availableBalance = availableMerchantBalance(merchantId, normalizedCurrency);
+        if (availableBalance.compareTo(normalizedAmount) < 0) {
+            throw new PaymentGatewayException(
+                    "Insufficient ledger-derived available balance for reservation");
+        }
+
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("reservation_reference", reservationReference);
         p.addValue("merchant_id", merchantId);
@@ -235,6 +242,23 @@ public class DoubleEntryLedgerService {
                 "UPDATE ledger_reservations SET reservation_status=:status "
                         + "WHERE reservation_reference=:reservation_reference AND reservation_status='RESERVED'",
                 p);
+    }
+
+    private void lockReservationScope(long merchantId, String currency) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("merchant_id", merchantId);
+        p.addValue("currency", currency);
+        jdbcTemplate.update(
+                "INSERT INTO ledger_reservation_controls "
+                        + "(merchant_id, currency, control_status) "
+                        + "VALUES (:merchant_id, :currency, 'ACTIVE') "
+                        + "ON DUPLICATE KEY UPDATE updated_at=CURRENT_TIMESTAMP",
+                p);
+        jdbcTemplate.query(
+                "SELECT id FROM ledger_reservation_controls "
+                        + "WHERE merchant_id=:merchant_id AND currency=:currency FOR UPDATE",
+                p,
+                (rs, rowNum) -> rs.getLong("id"));
     }
 
     private void validateEntries(List<LedgerEntryCommand> entries) {

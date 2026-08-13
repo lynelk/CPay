@@ -24,6 +24,8 @@ These controls improve the software posture of CPay. They do not replace legal r
 | Operating oversight | Admin users can review open operating-control counts through `/api/v2/admin/operating-controls/summary`. |
 | Webhook self-service | Merchants manage webhook endpoints, signing secrets, and delivery replay from `Merchant Dashboard -> Webhooks`, scoped to their own `merchant_id` and gated by the portal session-authorization filter. |
 | Compliance and KYB | Admin users can review compliance summaries, cases, profiles, beneficial owners, and KYC/KYB documents. |
+| KYB review safety | Owner and document review decisions fail closed, require reviewer attribution, and write `kyb_review_decisions` audit evidence. |
+| Ledger funds control | Payout, refund, and batch reservations lock `ledger_reservation_controls` by merchant/currency and check ledger-derived available balance before inserting a reservation. |
 | Provider certification | Admin users can review and approve provider sandbox/callback/statement evidence before live enablement. |
 | Treasury and balance monitoring | Admin users can review treasury positions, normalized channel balances, and balance-monitoring summaries. |
 | Communication operations | SMS/email delivery, routing, credentials, provider policies, templates, preferences, campaigns, delivery logs, and billing usage metering are first-class modules. |
