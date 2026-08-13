@@ -262,6 +262,88 @@ class DoubleEntryLedgerServiceTest {
                 .hasMessageContaining("has no entries");
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationReplayWithSameAttributesDoesNotMutateExistingReservation() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        List.of(
+                                existingReservation(
+                                        10L, "PAY-1", "80000.0000", "UGX", "RESERVED")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        service.reserve("RES-1", 10L, "PAY-1", new BigDecimal("80000"), "ugx");
+
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationReplayWithDifferentAttributesIsRejectedBeforeMutation() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        List.of(
+                                existingReservation(
+                                        10L, "PAY-1", "80000.0000", "UGX", "RESERVED")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        assertThatThrownBy(
+                        () ->
+                                service.reserve(
+                                        "RES-1", 10L, "PAY-2", new BigDecimal("80000"), "UGX"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("already exists with different attributes");
+
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    void availableMerchantBalanceSubtractsActiveReservationsFromPostedLedgerBalance() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForMap(
+                        contains("active_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        java.util.Map.of(
+                                "posted_balance",
+                                new BigDecimal("100000.0000"),
+                                "active_reservations",
+                                new BigDecimal("25000.0000")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        BigDecimal available = service.availableMerchantBalance(10L, "ugx");
+
+        assertThat(available).isEqualByComparingTo("75000.0000");
+    }
+
+    private java.util.Map<String, Object> existingReservation(
+            long merchantId,
+            String sourceReference,
+            String amount,
+            String currency,
+            String status) {
+        return java.util.Map.of(
+                "merchant_id",
+                merchantId,
+                "source_reference",
+                sourceReference,
+                "amount",
+                new BigDecimal(amount),
+                "currency",
+                currency,
+                "reservation_status",
+                status);
+    }
+
     private LedgerEntryCommand entry(String account, String direction, String amount) {
         return new LedgerEntryCommand(
                 account,
