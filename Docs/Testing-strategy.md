@@ -28,6 +28,7 @@ The backend test suite includes controller, security, SQL safety, settings, sign
 ## Money-Movement Invariants
 
 - Idempotent retries must not double-disburse.
+- Concurrent payout reservations must serialize by merchant/currency so only one UGX 80,000 reservation can consume a UGX 100,000 available balance; the Docker-tagged MySQL Testcontainers ledger test proves this opt-in path.
 - Provider callbacks must be deduplicated.
 - Ledger debits and credits must balance per account and currency.
 - Callback retry failures must park work visibly.
