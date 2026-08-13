@@ -1,0 +1,746 @@
+openapi: 3.0.3
+info:
+  title: CPay API v2 P1/P4 Addendum
+  version: 0.1.0
+  description: >-
+    Addendum for P1 Finance and Operations and P4 Product Polish / Developer Experience
+    foundations. These routes complement the main CPay v2 OpenAPI contract and describe
+    the database-backed workflow envelopes added for settlement, treasury, reconciliation,
+    daily close, reporting, incident management, onboarding UX, developer portal, payment
+    links, hosted checkout, invoices, channel journeys, dashboards, sandbox guides and
+    go-live checklists.
+servers:
+  - url: /api/v2
+security:
+  - AdminSession: []
+paths:
+  /admin/finance-operations/settlements:
+    get:
+      summary: List settlement batches
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: merchantId
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Settlement batches returned }
+    post:
+      summary: Create a settlement batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettlementBatchRequest' }
+      responses:
+        '200': { description: Settlement batch created }
+  /admin/finance-operations/settlements/{id}:
+    get:
+      summary: Read settlement batch with items
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { description: Settlement batch returned }
+        '404': { description: Settlement batch not found }
+  /admin/finance-operations/settlements/{id}/items:
+    post:
+      summary: Add a settlement item
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettlementItemRequest' }
+      responses:
+        '200': { description: Settlement item recorded }
+  /admin/finance-operations/settlements/{id}/transition:
+    post:
+      summary: Transition settlement lifecycle state
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [OPEN, CALCULATED, REVIEW_PENDING, APPROVED, PAID, RECONCILED, EXCEPTION, CLOSED]
+                actor: { type: string }
+      responses:
+        '200': { description: Settlement transition recorded }
+  /admin/finance-operations/treasury/positions:
+    get:
+      summary: List treasury positions
+      parameters:
+        - in: query
+          name: merchantId
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Treasury positions returned }
+    post:
+      summary: Record treasury position snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TreasuryPositionRequest' }
+      responses:
+        '200': { description: Treasury position recorded }
+  /admin/finance-operations/reconciliation/exceptions:
+    get:
+      summary: List reconciliation exceptions
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Reconciliation exceptions returned }
+    post:
+      summary: Create reconciliation exception
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReconciliationExceptionRequest' }
+      responses:
+        '200': { description: Reconciliation exception created }
+  /admin/finance-operations/reconciliation/exceptions/{id}/resolve:
+    post:
+      summary: Resolve reconciliation exception
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolutionReason]
+              properties:
+                status: { type: string, default: RESOLVED }
+                resolutionReason: { type: string }
+                resolvedBy: { type: string }
+      responses:
+        '200': { description: Exception resolution recorded }
+  /admin/finance-operations/daily-close:
+    post:
+      summary: Open daily close record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessDate]
+              properties:
+                businessDate: { type: string, format: date }
+                openedBy: { type: string }
+      responses:
+        '200': { description: Daily close opened }
+  /admin/finance-operations/daily-close/{businessDate}:
+    get:
+      summary: Read daily close by business date
+      parameters:
+        - in: path
+          name: businessDate
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: Daily close returned }
+        '404': { description: Daily close record not found }
+  /admin/finance-operations/daily-close/{id}/decision:
+    post:
+      summary: Record daily close decision or closure gate status
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DailyCloseDecisionRequest' }
+      responses:
+        '200': { description: Daily close decision recorded }
+  /admin/finance-operations/reports/exports:
+    get:
+      summary: List report export requests
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Report exports returned }
+    post:
+      summary: Request finance or operations report export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportExportRequest' }
+      responses:
+        '200': { description: Report export requested }
+  /admin/finance-operations/incidents:
+    get:
+      summary: List operations incidents
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Incidents returned }
+    post:
+      summary: Create operations incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentRequest' }
+      responses:
+        '200': { description: Incident created }
+  /admin/finance-operations/incidents/{id}/events:
+    post:
+      summary: Add incident timeline event
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentEventRequest' }
+      responses:
+        '200': { description: Incident event recorded }
+  /product-experience/merchant/{merchantId}/onboarding:
+    get:
+      summary: Read merchant onboarding workflow and steps
+      parameters:
+        - $ref: '#/components/parameters/MerchantIdPath'
+      responses:
+        '200': { description: Onboarding workflow returned }
+        '404': { description: Onboarding workflow not found }
+    post:
+      summary: Create or update merchant onboarding workflow
+      parameters:
+        - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OnboardingWorkflowRequest' }
+      responses:
+        '200': { description: Onboarding workflow upserted }
+  /product-experience/merchant/{merchantId}/onboarding/steps:
+    post:
+      summary: Create or update onboarding step
+      parameters:
+        - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OnboardingStepRequest' }
+      responses:
+        '200': { description: Onboarding step recorded }
+  /product-experience/developer/applications:
+    get:
+      summary: List developer portal applications
+      parameters:
+        - in: query
+          name: merchantId
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Developer applications returned }
+    post:
+      summary: Create developer portal application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeveloperApplicationRequest' }
+      responses:
+        '200': { description: Developer application created }
+  /product-experience/developer/applications/{applicationId}/api-keys:
+    post:
+      summary: Register developer API key metadata
+      parameters:
+        - in: path
+          name: applicationId
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeveloperApiKeyRequest' }
+      responses:
+        '200': { description: API key metadata recorded }
+  /product-experience/payment-links:
+    get:
+      summary: List payment links
+      parameters:
+        - in: query
+          name: merchantId
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Payment links returned }
+    post:
+      summary: Create payment link lifecycle record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentLinkRequest' }
+      responses:
+        '200': { description: Payment link created }
+  /product-experience/checkout/sessions:
+    post:
+      summary: Create hosted checkout session record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckoutSessionRequest' }
+      responses:
+        '200': { description: Checkout session created }
+  /product-experience/invoices:
+    get:
+      summary: List invoices
+      parameters:
+        - in: query
+          name: merchantId
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Invoices returned }
+    post:
+      summary: Create invoice lifecycle record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvoiceRequest' }
+      responses:
+        '200': { description: Invoice created }
+  /product-experience/invoices/{invoiceId}/line-items:
+    post:
+      summary: Add invoice line item
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvoiceLineItemRequest' }
+      responses:
+        '200': { description: Invoice line item recorded }
+  /product-experience/channel-journeys:
+    get:
+      summary: List channel journey guides
+      parameters:
+        - in: query
+          name: channelCode
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: Channel journey guides returned }
+    post:
+      summary: Create channel journey guide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChannelJourneyGuideRequest' }
+      responses:
+        '200': { description: Channel journey guide created }
+  /product-experience/dashboard/widgets:
+    get:
+      summary: List dashboard widgets
+      parameters:
+        - in: query
+          name: audience
+          schema: { type: string }
+      responses:
+        '200': { description: Dashboard widgets returned }
+    post:
+      summary: Create or update dashboard widget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DashboardWidgetRequest' }
+      responses:
+        '200': { description: Dashboard widget recorded }
+  /product-experience/sandbox-guides:
+    get:
+      summary: List sandbox guides
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+      responses:
+        '200': { description: Sandbox guides returned }
+    post:
+      summary: Create sandbox guide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SandboxGuideRequest' }
+      responses:
+        '200': { description: Sandbox guide created }
+  /product-experience/go-live/{merchantId}:
+    get:
+      summary: Read merchant go-live checklist and items
+      parameters:
+        - $ref: '#/components/parameters/MerchantIdPath'
+      responses:
+        '200': { description: Go-live checklist returned }
+    post:
+      summary: Create or update merchant go-live checklist
+      parameters:
+        - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoLiveChecklistRequest' }
+      responses:
+        '200': { description: Go-live checklist upserted }
+  /product-experience/go-live/{merchantId}/items:
+    post:
+      summary: Create or update go-live checklist item
+      parameters:
+        - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoLiveChecklistItemRequest' }
+      responses:
+        '200': { description: Go-live checklist item recorded }
+components:
+  securitySchemes:
+    AdminSession:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+  parameters:
+    IdPath:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer, format: int64 }
+    MerchantIdPath:
+      in: path
+      name: merchantId
+      required: true
+      schema: { type: integer, format: int64 }
+  schemas:
+    SettlementBatchRequest:
+      type: object
+      required: [currencyCode, businessDate]
+      properties:
+        merchantId: { type: integer, format: int64 }
+        providerCode: { type: string }
+        channelCode: { type: string }
+        countryCode: { type: string }
+        currencyCode: { type: string }
+        businessDate: { type: string, format: date }
+        settlementCycle: { type: string, default: DAILY }
+        status: { type: string }
+        grossAmount: { type: number }
+        feeAmount: { type: number }
+        taxAmount: { type: number }
+        adjustmentAmount: { type: number }
+        netAmount: { type: number }
+        varianceAmount: { type: number }
+        itemCount: { type: integer }
+        createdBy: { type: string }
+        financeOwner: { type: string }
+        notes: { type: string }
+    SettlementItemRequest:
+      type: object
+      required: [transactionReference, transactionType]
+      properties:
+        transactionReference: { type: string }
+        providerReference: { type: string }
+        merchantReference: { type: string }
+        transactionType: { type: string }
+        status: { type: string }
+        amount: { type: number }
+        feeAmount: { type: number }
+        taxAmount: { type: number }
+        netAmount: { type: number }
+        varianceAmount: { type: number }
+    TreasuryPositionRequest:
+      type: object
+      required: [currencyCode, positionDate]
+      properties:
+        merchantId: { type: integer, format: int64 }
+        providerCode: { type: string }
+        channelCode: { type: string }
+        countryCode: { type: string }
+        currencyCode: { type: string }
+        positionDate: { type: string, format: date }
+        availableBalance: { type: number }
+        reservedBalance: { type: number }
+        pendingPayoutExposure: { type: number }
+        unsettledReceivable: { type: number }
+        unsettledPayable: { type: number }
+        unreconciledExposure: { type: number }
+        source: { type: string }
+        capturedBy: { type: string }
+    ReconciliationExceptionRequest:
+      type: object
+      required: [exceptionType]
+      properties:
+        settlementBatchId: { type: integer, format: int64 }
+        transactionReference: { type: string }
+        providerReference: { type: string }
+        merchantId: { type: integer, format: int64 }
+        providerCode: { type: string }
+        channelCode: { type: string }
+        currencyCode: { type: string }
+        exceptionType: { type: string }
+        severity: { type: string }
+        status: { type: string }
+        internalAmount: { type: number }
+        providerAmount: { type: number }
+        varianceAmount: { type: number }
+        assignedTo: { type: string }
+    DailyCloseDecisionRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+        providerStatementsReceived: { type: boolean }
+        reconciliationImportCompleted: { type: boolean }
+        unmatchedItemsReviewed: { type: boolean }
+        highSeverityControlsResolved: { type: boolean }
+        makerCheckerApprovalsComplete: { type: boolean }
+        financeOwnerSignedOff: { type: boolean }
+        blockedReason: { type: string }
+        actor: { type: string }
+    ReportExportRequest:
+      type: object
+      required: [reportType]
+      properties:
+        reportType: { type: string }
+        requestedBy: { type: string }
+        format: { type: string, enum: [CSV, XLSX, PDF, JSON] }
+        dateFrom: { type: string, format: date }
+        dateTo: { type: string, format: date }
+        merchantId: { type: integer, format: int64 }
+        providerCode: { type: string }
+        channelCode: { type: string }
+        countryCode: { type: string }
+        currencyCode: { type: string }
+    IncidentRequest:
+      type: object
+      required: [title, incidentType]
+      properties:
+        title: { type: string }
+        severity: { type: string, enum: [SEV1, SEV2, SEV3, SEV4] }
+        status: { type: string }
+        incidentType: { type: string }
+        providerCode: { type: string }
+        channelCode: { type: string }
+        merchantId: { type: integer, format: int64 }
+        businessImpact: { type: string }
+        owner: { type: string }
+        rootCause: { type: string }
+        correctiveAction: { type: string }
+    IncidentEventRequest:
+      type: object
+      required: [eventType]
+      properties:
+        eventType: { type: string }
+        actor: { type: string }
+        message: { type: string }
+        evidenceUrl: { type: string }
+    OnboardingWorkflowRequest:
+      type: object
+      properties:
+        currentStep: { type: string }
+        status: { type: string }
+        completionPercentage: { type: number }
+        blockedReason: { type: string }
+        assignedOwner: { type: string }
+    OnboardingStepRequest:
+      type: object
+      required: [stepCode, stepName]
+      properties:
+        stepCode: { type: string }
+        stepName: { type: string }
+        status: { type: string }
+        requiredForGoLive: { type: boolean }
+        completedBy: { type: string }
+        evidenceUrl: { type: string }
+        notes: { type: string }
+        sortOrder: { type: integer }
+    DeveloperApplicationRequest:
+      type: object
+      required: [merchantId, name]
+      properties:
+        merchantId: { type: integer, format: int64 }
+        name: { type: string }
+        environment: { type: string, enum: [SANDBOX, PRODUCTION] }
+        status: { type: string }
+        callbackUrl: { type: string }
+        allowedOrigins: { type: string }
+        createdBy: { type: string }
+    DeveloperApiKeyRequest:
+      type: object
+      properties:
+        keyLabel: { type: string }
+        publicKeyPem: { type: string }
+        status: { type: string }
+        expiresAt: { type: string, format: date-time }
+        rotatedFromKeyReference: { type: string }
+        createdBy: { type: string }
+    PaymentLinkRequest:
+      type: object
+      required: [merchantId, tokenHash, currencyCode]
+      properties:
+        merchantId: { type: integer, format: int64 }
+        tokenHash: { type: string }
+        title: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        currencyCode: { type: string }
+        countryCode: { type: string }
+        status: { type: string }
+        reusable: { type: boolean }
+        partialPaymentAllowed: { type: boolean }
+        maxUses: { type: integer }
+        expiresAt: { type: string, format: date-time }
+        createdBy: { type: string }
+    CheckoutSessionRequest:
+      type: object
+      required: [merchantId, tokenHash, amount, currencyCode, expiresAt]
+      properties:
+        merchantId: { type: integer, format: int64 }
+        paymentLinkId: { type: integer, format: int64 }
+        invoiceId: { type: integer, format: int64 }
+        tokenHash: { type: string }
+        customerMsisdn: { type: string }
+        customerEmail: { type: string }
+        amount: { type: number }
+        currencyCode: { type: string }
+        countryCode: { type: string }
+        selectedChannel: { type: string }
+        status: { type: string }
+        expiresAt: { type: string, format: date-time }
+        paidTransactionReference: { type: string }
+    InvoiceRequest:
+      type: object
+      required: [merchantId, invoiceNumber, currencyCode]
+      properties:
+        merchantId: { type: integer, format: int64 }
+        invoiceNumber: { type: string }
+        customerName: { type: string }
+        customerEmail: { type: string }
+        customerMsisdn: { type: string }
+        currencyCode: { type: string }
+        subtotalAmount: { type: number }
+        taxAmount: { type: number }
+        totalAmount: { type: number }
+        amountPaid: { type: number }
+        status: { type: string }
+        dueDate: { type: string, format: date }
+        partialPaymentAllowed: { type: boolean }
+        paymentTokenHash: { type: string }
+        createdBy: { type: string }
+    InvoiceLineItemRequest:
+      type: object
+      required: [description]
+      properties:
+        description: { type: string }
+        quantity: { type: number }
+        unitAmount: { type: number }
+        taxAmount: { type: number }
+        lineTotal: { type: number }
+        sortOrder: { type: integer }
+    ChannelJourneyGuideRequest:
+      type: object
+      required: [channelCode, title]
+      properties:
+        channelCode: { type: string }
+        countryCode: { type: string }
+        environment: { type: string }
+        title: { type: string }
+        status: { type: string }
+        publishedBy: { type: string }
+        journey: { type: object, additionalProperties: true }
+    DashboardWidgetRequest:
+      type: object
+      required: [audience, widgetCode, title]
+      properties:
+        audience: { type: string }
+        widgetCode: { type: string }
+        title: { type: string }
+        status: { type: string }
+        sortOrder: { type: integer }
+        config: { type: object, additionalProperties: true }
+    SandboxGuideRequest:
+      type: object
+      required: [title, contentMarkdown]
+      properties:
+        title: { type: string }
+        audience: { type: string }
+        status: { type: string }
+        contentMarkdown: { type: string }
+        publishedBy: { type: string }
+        samplePayload: { type: object, additionalProperties: true }
+    GoLiveChecklistRequest:
+      type: object
+      properties:
+        status: { type: string }
+        requestedBy: { type: string }
+        reviewedBy: { type: string }
+        approvedBy: { type: string }
+        blockedReason: { type: string }
+    GoLiveChecklistItemRequest:
+      type: object
+      required: [itemCode, itemName]
+      properties:
+        itemCode: { type: string }
+        itemName: { type: string }
+        status: { type: string }
+        required: { type: boolean }
+        evidenceUrl: { type: string }
+        completedBy: { type: string }
+        notes: { type: string }
+        sortOrder: { type: integer }
