@@ -1,17 +1,18 @@
 openapi: 3.0.3
 info:
   title: CPay Gateway API
-  version: 1.8.0
-  description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay.
+  version: 1.9.0
+  description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay. Includes
+    P1-P4 production maturity finance, compliance, cross-border, developer-experience, and automation surfaces.
 security:
-  - CPayV2Signature: []
+- CPayV2Signature: []
 paths:
   /api/v2/native/payments/collect:
     post:
       summary: Submit an adapter-native mobile money collection request
       operationId: nativeCollect
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -34,7 +35,7 @@ paths:
       summary: Submit an adapter-native mobile money payout request
       operationId: nativePayout
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -119,16 +120,16 @@ paths:
       summary: Check transaction status
       operationId: transactionStatus
       parameters:
-        - name: reference
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: merchantNumber
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: reference
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: merchantNumber
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Transaction status
@@ -182,11 +183,11 @@ paths:
       operationId: payHostedCheckout
       security: []
       parameters:
-        - name: token
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -210,37 +211,39 @@ paths:
       summary: Export merchant statement rows
       operationId: exportMerchantStatements
       parameters:
-        - name: merchantNumber
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: startDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: endDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: format
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [json, csv]
-            default: json
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 5000
+      - name: merchantNumber
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: startDate
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: endDate
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: format
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - json
+          - csv
+          default: json
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5000
       responses:
         '200':
           description: Merchant statement export
@@ -260,7 +263,7 @@ paths:
       summary: Backfill normalized balances from legacy balances
       operationId: syncLegacyBalances
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Backfill result
@@ -269,14 +272,14 @@ paths:
       summary: Requeue one parked callback task
       operationId: retryCallbackTask
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: taskId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: taskId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Updated count
@@ -285,13 +288,13 @@ paths:
       summary: Record and run a provider sandbox scenario
       operationId: providerSandboxRun
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: channel
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: channel
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Sandbox run id
@@ -300,13 +303,13 @@ paths:
       summary: Validate a provider statement file before import
       operationId: validateProviderStatement
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: provider
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: provider
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Statement validation run id
@@ -315,44 +318,44 @@ paths:
       summary: Request a reconciliation review (maker step)
       operationId: requestReconciliationReview
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: recordId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: transactionId
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: type
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: amount
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: currency
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: reason
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: requestedBy
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: recordId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: transactionId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: amount
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: currency
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: reason
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: requestedBy
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Review requested
@@ -361,14 +364,14 @@ paths:
       summary: List pending reconciliation reviews
       operationId: pendingReconciliationReviews
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 100
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
       responses:
         '200':
           description: Pending reconciliation reviews
@@ -377,24 +380,24 @@ paths:
       summary: Approve a reconciliation review (checker step)
       operationId: approveReconciliationReview
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: reviewedBy
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: note
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: id
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: reviewedBy
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: note
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Review approved
@@ -405,24 +408,24 @@ paths:
       summary: Reject a reconciliation review (checker step)
       operationId: rejectReconciliationReview
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: reviewedBy
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: note
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: id
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: reviewedBy
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: note
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Review rejected
@@ -433,26 +436,27 @@ paths:
       summary: Import a provider statement file (CSV or XLSX)
       operationId: importProviderStatement
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: provider
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: importedBy
-          in: query
-          required: false
-          schema:
-            type: string
-            default: system
+      - name: provider
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: importedBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: system
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required:
+              - file
               properties:
                 file:
                   type: string
@@ -465,7 +469,7 @@ paths:
       summary: Run automatic reconciliation matching
       operationId: autoMatchReconciliation
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Number of records matched
@@ -474,14 +478,14 @@ paths:
       summary: List unmatched reconciliation records
       operationId: unmatchedReconciliationRecords
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 100
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
       responses:
         '200':
           description: Unmatched reconciliation records
@@ -490,24 +494,24 @@ paths:
       summary: Manually match a reconciliation record to a transaction
       operationId: manualMatchReconciliation
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: recordId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: transactionId
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: reason
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: recordId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: transactionId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: reason
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Match recorded
@@ -518,41 +522,41 @@ paths:
       summary: Search candidate CPay transactions for the manual-match workbench
       operationId: candidateTransactions
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reference
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: amount
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: currency
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: from
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: to
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 25
+      - name: reference
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: amount
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: currency
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 25
       responses:
         '200':
           description: Candidate transactions
@@ -561,20 +565,20 @@ paths:
       summary: Post approved reconciliation reviews into the ledger
       operationId: postApprovedReconciliationReviews
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reviewId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: postedBy
-          in: query
-          required: false
-          schema:
-            type: string
-            default: system
+      - name: reviewId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: postedBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: system
       responses:
         '200':
           description: Posting result
@@ -585,39 +589,39 @@ paths:
       summary: Open a settlement batch
       operationId: openSettlementBatch
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reference
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: provider
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: channel
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: currency
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: expectedAmount
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: openedBy
-          in: query
-          required: false
-          schema:
-            type: string
-            default: system
+      - name: reference
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: provider
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: channel
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: currency
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: expectedAmount
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: openedBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: system
       responses:
         '200':
           description: Batch opened
@@ -626,24 +630,24 @@ paths:
       summary: Flag a settlement record for follow-up
       operationId: flagSettlementRecord
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: recordId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: category
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: batchReference
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: recordId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: category
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: batchReference
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Flag update result
@@ -652,7 +656,7 @@ paths:
       summary: Get reconciliation finance summary
       operationId: reconciliationFinanceSummary
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Finance summary
@@ -661,26 +665,26 @@ paths:
       summary: Submit a reconciliation daily close for maker-checker approval (maker step)
       operationId: reconciliationDailyClose
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: date
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: currency
-          in: query
-          required: false
-          schema:
-            type: string
-            default: UGX
-        - name: submittedBy
-          in: query
-          required: false
-          schema:
-            type: string
-            default: system
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: currency
+        in: query
+        required: false
+        schema:
+          type: string
+          default: UGX
+      - name: submittedBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: system
       responses:
         '200':
           description: Daily close row id in PENDING_APPROVAL
@@ -689,25 +693,25 @@ paths:
       summary: Checker approval for a submitted daily close
       operationId: approveReconciliationDailyClose
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: date
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: currency
-          in: query
-          required: false
-          schema:
-            type: string
-            default: UGX
-        - name: approvedBy
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: currency
+        in: query
+        required: false
+        schema:
+          type: string
+          default: UGX
+      - name: approvedBy
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Daily close approved and closed
@@ -718,30 +722,30 @@ paths:
       summary: Checker rejection for a submitted daily close
       operationId: rejectReconciliationDailyClose
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: date
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: currency
-          in: query
-          required: false
-          schema:
-            type: string
-            default: UGX
-        - name: rejectedBy
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: reason
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: currency
+        in: query
+        required: false
+        schema:
+          type: string
+          default: UGX
+      - name: rejectedBy
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: reason
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Daily close marked rejected and left pending for re-submit
@@ -752,18 +756,18 @@ paths:
       summary: Checker approval for a submitted settlement batch close
       operationId: approveSettlementBatchClose
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reference
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: approvedBy
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: reference
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: approvedBy
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Settlement batch closed
@@ -774,23 +778,23 @@ paths:
       summary: Checker rejection for a submitted settlement batch close
       operationId: rejectSettlementBatchClose
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reference
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: rejectedBy
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: reason
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: reference
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: rejectedBy
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: reason
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Settlement batch marked rejected and left pending
@@ -801,21 +805,23 @@ paths:
       summary: Register a merchant webhook endpoint
       operationId: registerMerchantWebhook
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: merchantId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [eventType, endpointUrl]
+              required:
+              - eventType
+              - endpointUrl
               properties:
                 eventType:
                   type: string
@@ -832,14 +838,14 @@ paths:
       summary: List a merchant's webhook endpoints
       operationId: listMerchantWebhooks
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: merchantId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Registered webhook endpoints
@@ -848,14 +854,14 @@ paths:
       summary: Rotate a merchant webhook signing secret
       operationId: rotateWebhookSecret
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: endpointId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: endpointId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: New signing secret
@@ -866,20 +872,20 @@ paths:
       summary: Replay a webhook delivery
       operationId: replayWebhookDelivery
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: deliveryId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: actor
-          in: query
-          required: false
-          schema:
-            type: string
-            default: system
+      - name: deliveryId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: actor
+        in: query
+        required: false
+        schema:
+          type: string
+          default: system
       responses:
         '200':
           description: Replay updated count
@@ -888,14 +894,14 @@ paths:
       summary: Generate or fetch the Bank of Uganda daily cash-flow report
       operationId: regulatorDailyCashFlow
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reportDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
+      - name: reportDate
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
       responses:
         '200':
           description: Daily cash-flow report
@@ -906,14 +912,14 @@ paths:
       summary: Download the daily cash-flow report as CSV
       operationId: regulatorDailyCashFlowCsv
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reportDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
+      - name: reportDate
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
       responses:
         '200':
           description: CSV download
@@ -928,19 +934,19 @@ paths:
       summary: List stored regulator reports
       operationId: listRegulatorReports
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reportType
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 50
+      - name: reportType
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
       responses:
         '200':
           description: Stored regulator reports
@@ -949,7 +955,7 @@ paths:
       summary: List the PII data classes CPay holds (metadata only, never personal data)
       operationId: regulatorPiiInventory
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: PII data-class inventory
@@ -958,31 +964,31 @@ paths:
       summary: Pre-aggregated per-day transaction counts and amounts
       operationId: reportingTransactionStats
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: from
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: to
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: merchantId
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-        - name: gatewayId
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: merchantId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: gatewayId
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Transaction stats rows
@@ -991,25 +997,25 @@ paths:
       summary: Aggregate failure reasons annotated via the error catalog
       operationId: reportingFailureReasons
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: from
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: to
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: gatewayId
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: gatewayId
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Failure-reason aggregates
@@ -1018,14 +1024,14 @@ paths:
       summary: Per float/stock account balance history, burn rate, and top-up log
       operationId: floatDashboard
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: windowDays
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 7
+      - name: windowDays
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 7
       responses:
         '200':
           description: Float dashboard
@@ -1034,29 +1040,29 @@ paths:
       summary: Record a float/stock top-up event
       operationId: recordFloatTopup
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: account
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: amount
-          in: query
-          required: true
-          schema:
-            type: number
-        - name: recordedBy
-          in: query
-          required: false
-          schema:
-            type: string
-            default: admin
-        - name: note
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: account
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: amount
+        in: query
+        required: true
+        schema:
+          type: number
+      - name: recordedBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: admin
+      - name: note
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Top-up recorded
@@ -1065,14 +1071,14 @@ paths:
       summary: List payouts awaiting maker-checker approval
       operationId: listPendingPayoutApprovals
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 100
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
       responses:
         '200':
           description: Pending payout approvals
@@ -1081,19 +1087,19 @@ paths:
       summary: Checker approval for a queued payout; re-executes the payout through the normal path
       operationId: approveQueuedPayout
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: queueId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: approvedBy
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: queueId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: approvedBy
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '202':
           description: Payout approved and submitted through the existing payment executor
@@ -1104,24 +1110,24 @@ paths:
       summary: Checker rejection for a queued payout
       operationId: rejectQueuedPayout
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: queueId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: rejectedBy
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: reason
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: queueId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: rejectedBy
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: reason
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Payout rejected
@@ -1132,19 +1138,19 @@ paths:
       summary: Cancel a queued payout before decision
       operationId: cancelQueuedPayout
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: queueId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: cancelledBy
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: queueId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: cancelledBy
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Payout cancelled
@@ -1155,26 +1161,26 @@ paths:
       summary: Queue a synthetic webhook event so a merchant callback URL can be verified
       operationId: testMerchantWebhookCallback
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: eventType
-          in: query
-          required: false
-          schema:
-            type: string
-            default: payment.completed
-        - name: actor
-          in: query
-          required: false
-          schema:
-            type: string
-            default: system
+      - name: merchantId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: eventType
+        in: query
+        required: false
+        schema:
+          type: string
+          default: payment.completed
+      - name: actor
+        in: query
+        required: false
+        schema:
+          type: string
+          default: system
       responses:
         '200':
           description: Test event queued for the merchant's active endpoint(s)
@@ -1185,41 +1191,41 @@ paths:
       summary: Configure settlement sweep schedule
       operationId: scheduleSettlementSweep
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: provider
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: channel
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: currency
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: minimumRetainedBalance
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: sweepHour
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 0
-            maximum: 23
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: provider
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: channel
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: currency
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: minimumRetainedBalance
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sweepHour
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 23
       responses:
         '200':
           description: Settlement schedule saved
@@ -1228,19 +1234,19 @@ paths:
       summary: Run due settlement sweeps
       operationId: runDueSettlementSweeps
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: date
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: hour
-          in: query
-          required: false
-          schema:
-            type: integer
+      - name: date
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: hour
+        in: query
+        required: false
+        schema:
+          type: integer
       responses:
         '200':
           description: Sweep results
@@ -1249,14 +1255,17 @@ paths:
       summary: Store an encrypted provider access token
       operationId: saveProviderToken
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [provider, segment, token]
+              required:
+              - provider
+              - segment
+              - token
               properties:
                 provider:
                   type: string
@@ -1279,13 +1288,13 @@ paths:
       summary: Begin admin TOTP MFA enrollment
       operationId: enrollAdminTotp
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: email
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: email
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Enrollment secret and otpauth URL
@@ -1294,18 +1303,18 @@ paths:
       summary: Confirm admin TOTP MFA enrollment
       operationId: confirmAdminTotp
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: email
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: code
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: email
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: MFA verification result
@@ -1314,7 +1323,7 @@ paths:
       summary: Get operations dashboard summary
       operationId: opsDashboardSummary
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Operations dashboard metrics
@@ -1323,7 +1332,7 @@ paths:
       summary: Get compliance and operational control counters
       operationId: complianceSummary
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Compliance summary
@@ -1332,28 +1341,39 @@ paths:
       summary: List open compliance cases
       operationId: listComplianceCases
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Open compliance cases
+    post:
+      summary: Open a compliance case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceCaseRequest'
+      responses:
+        '200':
+          description: Case opened
   /api/v2/admin/compliance/cases/{id}/decision:
     post:
       summary: Close a compliance case with a decision
       operationId: decideComplianceCase
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: decision
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: decision
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Decision result
@@ -1362,7 +1382,7 @@ paths:
       summary: Get provider certification evidence coverage
       operationId: providerCertificationSummary
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Provider certification coverage
@@ -1371,18 +1391,18 @@ paths:
       summary: List provider certification evidence
       operationId: listProviderCertificationEvidence
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: provider
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: channel
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: provider
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: channel
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Provider certification evidence records
@@ -1391,14 +1411,14 @@ paths:
       summary: Approve captured provider certification evidence
       operationId: approveProviderCertificationEvidence
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Approval result
@@ -1407,7 +1427,7 @@ paths:
       summary: Get non-manual readiness evidence summary
       operationId: readinessSummary
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Readiness evidence counters
@@ -1416,7 +1436,7 @@ paths:
       summary: List active treasury positions with net-available balances
       operationId: listTreasuryPositions
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Active treasury positions (available, reserved, net-available)
@@ -1425,14 +1445,14 @@ paths:
       summary: Get one treasury position by ISO currency code
       operationId: getTreasuryPosition
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: currency
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: '^[A-Z]{3}$'
+      - name: currency
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Z]{3}$
       responses:
         '200':
           description: Treasury position for the currency
@@ -1445,7 +1465,7 @@ paths:
       summary: Submit a mobile money collection request (compat orchestration path)
       operationId: collectPayment
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -1468,7 +1488,7 @@ paths:
       summary: Submit a mobile money payout request (compat orchestration path)
       operationId: payoutPayment
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -1491,11 +1511,11 @@ paths:
       summary: List a merchant's available channel balances
       operationId: merchantBalances
       parameters:
-        - name: merchantNumber
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: merchantNumber
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Channel balances
@@ -1508,7 +1528,7 @@ paths:
       summary: Submit a refund request (full or partial via MoneyAmount)
       operationId: createRefund
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -1526,17 +1546,17 @@ paths:
       summary: List refunds for a merchant
       operationId: listRefunds
       parameters:
-        - name: merchantNumber
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 100
+      - name: merchantNumber
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
       responses:
         '200':
           description: Refund records
@@ -1547,16 +1567,16 @@ paths:
       summary: Check a refund status by refund reference
       operationId: refundStatus
       parameters:
-        - name: reference
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: merchantNumber
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: reference
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: merchantNumber
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Refund status
@@ -1567,17 +1587,17 @@ paths:
       summary: Get batch payout aggregate status
       operationId: batchPayoutStatus
       parameters:
-        - name: batchId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: merchantNumber
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: merchantNumber
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Batch payout status
@@ -1590,17 +1610,17 @@ paths:
       summary: Retry only the failed rows of a batch payout
       operationId: retryFailedBatchPayout
       parameters:
-        - name: batchId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: merchantNumber
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: merchantNumber
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Number of rows retried
@@ -1626,7 +1646,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [eventType, endpointUrl]
+              required:
+              - eventType
+              - endpointUrl
               properties:
                 eventType:
                   type: string
@@ -1643,12 +1665,12 @@ paths:
       operationId: rotateMerchantSelfServiceWebhookSecret
       security: []
       parameters:
-        - name: endpointId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: endpointId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: New signing secret (shown once)
@@ -1660,12 +1682,12 @@ paths:
       operationId: merchantSelfServiceWebhookDeliveries
       security: []
       parameters:
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 50
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
       responses:
         '200':
           description: Delivery log entries
@@ -1675,12 +1697,12 @@ paths:
       operationId: replayMerchantSelfServiceWebhookDelivery
       security: []
       parameters:
-        - name: deliveryId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: deliveryId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Replay updated count
@@ -1690,12 +1712,12 @@ paths:
       operationId: merchantSelfServiceBatchStatus
       security: []
       parameters:
-        - name: batchId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Batch payout status
@@ -1707,12 +1729,12 @@ paths:
       operationId: merchantSelfServiceBatchRetryFailed
       security: []
       parameters:
-        - name: batchId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Number of rows retried
@@ -1723,14 +1745,14 @@ paths:
       summary: Get a merchant's beneficial owners and KYC documents summary
       operationId: merchantKycSummary
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: merchantId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: KYB records (owners + documents)
@@ -1739,21 +1761,22 @@ paths:
       summary: Record a beneficial owner for a merchant
       operationId: addBeneficialOwner
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: merchantId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [fullName]
+              required:
+              - fullName
               properties:
                 fullName:
                   type: string
@@ -1774,21 +1797,23 @@ paths:
       summary: Record a KYC document for a merchant
       operationId: addKycDocument
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: merchantId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [documentType, storageRef]
+              required:
+              - documentType
+              - storageRef
               properties:
                 documentType:
                   type: string
@@ -1806,26 +1831,28 @@ paths:
       summary: Approve or reject a beneficial owner pending review
       operationId: reviewBeneficialOwner
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: ownerId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: decision
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [APPROVED, REJECTED]
-            default: APPROVED
-        - name: reviewedBy
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: ownerId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: decision
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+          default: APPROVED
+      - name: reviewedBy
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Review result (updated count)
@@ -1834,26 +1861,28 @@ paths:
       summary: Approve or reject a KYC document pending verification
       operationId: reviewKycDocument
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: documentId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: decision
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [APPROVED, REJECTED]
-            default: APPROVED
-        - name: reviewedBy
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: decision
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+          default: APPROVED
+      - name: reviewedBy
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Review result (updated count)
@@ -1862,19 +1891,19 @@ paths:
       summary: Mark an operating-control/screening event as reviewed
       operationId: reviewComplianceEvent
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: reviewedBy
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: reviewedBy
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Updated count
@@ -1883,20 +1912,20 @@ paths:
       summary: List daily-close history with maker/checker/rejection fields
       operationId: reconciliationFinanceHistory
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: currency
-          in: query
-          required: false
-          schema:
-            type: string
-            default: UGX
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 100
+      - name: currency
+        in: query
+        required: false
+        schema:
+          type: string
+          default: UGX
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
       responses:
         '200':
           description: Daily-close history rows
@@ -1905,18 +1934,18 @@ paths:
       summary: Submit a settlement batch close for maker-checker approval (maker step)
       operationId: submitSettlementBatchClose
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: reference
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: closedBy
-          in: query
-          required: false
-          schema:
-            type: string
+      - name: reference
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: closedBy
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Close row id (plain text "closed=N")
@@ -1927,14 +1956,14 @@ paths:
       summary: List configured payout control (limit) rows
       operationId: listPayoutControls
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
+      - name: merchantId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Payout control rows
@@ -1942,7 +1971,7 @@ paths:
       summary: Upsert a payout control row (limits and approval-required flag)
       operationId: upsertPayoutControl
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       requestBody:
         required: true
         content:
@@ -1959,14 +1988,14 @@ paths:
       summary: Delete a payout control row
       operationId: deletePayoutControl
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: controlId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: controlId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Deleted count
@@ -1975,7 +2004,7 @@ paths:
       summary: Combined gateway float, treasury, and nightly snapshot overview (feature-flagged)
       operationId: balanceMonitoringOverview
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Balance monitoring overview
@@ -1986,7 +2015,7 @@ paths:
       summary: List the communication provider catalog
       operationId: listCommunicationProviders
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Provider catalog entries
@@ -1995,7 +2024,7 @@ paths:
       summary: List communication routing rules
       operationId: listCommunicationRoutingRules
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Routing rules
@@ -2003,14 +2032,18 @@ paths:
       summary: Upsert a communication routing rule
       operationId: upsertCommunicationRoutingRule
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [channel, priority, providerCode, enabledFlag]
+              required:
+              - channel
+              - priority
+              - providerCode
+              - enabledFlag
               properties:
                 id:
                   type: integer
@@ -2034,14 +2067,14 @@ paths:
       summary: Delete a communication routing rule
       operationId: deleteCommunicationRoutingRule
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: ruleId
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: Deleted count
@@ -2050,20 +2083,20 @@ paths:
       summary: Preview which routing rule and provider would win for a merchant/channel
       operationId: effectiveCommunicationRoutingRule
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       parameters:
-        - name: merchantId
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-        - name: channel
-          in: query
-          required: false
-          schema:
-            type: string
-            default: SMS
+      - name: merchantId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: channel
+        in: query
+        required: false
+        schema:
+          type: string
+          default: SMS
       responses:
         '200':
           description: Effective rule and provider (or fallback to LEGACY_SETTINGS)
@@ -2072,10 +2105,917 @@ paths:
       summary: Count merchants still on the shared fallback callback-signing secret
       operationId: callbackSecretStatus
       security:
-        - AdminBasicAuth: []
+      - AdminBasicAuth: []
       responses:
         '200':
           description: Secret rotation status
+  /api/v2/admin/finance-operations/settlements:
+    get:
+      summary: List settlement batches
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: merchantId
+        schema:
+          type: integer
+          format: int64
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Settlement batches returned
+    post:
+      summary: Create a settlement batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettlementBatchRequest'
+      responses:
+        '200':
+          description: Settlement batch created
+  /api/v2/admin/finance-operations/settlements/{id}:
+    get:
+      summary: Read settlement batch with items
+      parameters:
+      - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Settlement batch returned
+        '404':
+          description: Settlement batch not found
+  /api/v2/admin/finance-operations/settlements/{id}/items:
+    post:
+      summary: Add a settlement item
+      parameters:
+      - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettlementItemRequest'
+      responses:
+        '200':
+          description: Settlement item recorded
+  /api/v2/admin/finance-operations/settlements/{id}/transition:
+    post:
+      summary: Transition settlement lifecycle state
+      parameters:
+      - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - OPEN
+                  - CALCULATED
+                  - REVIEW_PENDING
+                  - APPROVED
+                  - PAID
+                  - RECONCILED
+                  - EXCEPTION
+                  - CLOSED
+                actor:
+                  type: string
+      responses:
+        '200':
+          description: Settlement transition recorded
+  /api/v2/admin/finance-operations/treasury/positions:
+    get:
+      summary: List treasury positions
+      parameters:
+      - in: query
+        name: merchantId
+        schema:
+          type: integer
+          format: int64
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Treasury positions returned
+    post:
+      summary: Record treasury position snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreasuryPositionRequest'
+      responses:
+        '200':
+          description: Treasury position recorded
+  /api/v2/admin/finance-operations/reconciliation/exceptions:
+    get:
+      summary: List reconciliation exceptions
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Reconciliation exceptions returned
+    post:
+      summary: Create reconciliation exception
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconciliationExceptionRequest'
+      responses:
+        '200':
+          description: Reconciliation exception created
+  /api/v2/admin/finance-operations/reconciliation/exceptions/{id}/resolve:
+    post:
+      summary: Resolve reconciliation exception
+      parameters:
+      - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - resolutionReason
+              properties:
+                status:
+                  type: string
+                  default: RESOLVED
+                resolutionReason:
+                  type: string
+                resolvedBy:
+                  type: string
+      responses:
+        '200':
+          description: Exception resolution recorded
+  /api/v2/admin/finance-operations/daily-close:
+    post:
+      summary: Open daily close record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - businessDate
+              properties:
+                businessDate:
+                  type: string
+                  format: date
+                openedBy:
+                  type: string
+      responses:
+        '200':
+          description: Daily close opened
+  /api/v2/admin/finance-operations/daily-close/{businessDate}:
+    get:
+      summary: Read daily close by business date
+      parameters:
+      - in: path
+        name: businessDate
+        required: true
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Daily close returned
+        '404':
+          description: Daily close record not found
+  /api/v2/admin/finance-operations/daily-close/{id}/decision:
+    post:
+      summary: Record daily close decision or closure gate status
+      parameters:
+      - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DailyCloseDecisionRequest'
+      responses:
+        '200':
+          description: Daily close decision recorded
+  /api/v2/admin/finance-operations/reports/exports:
+    get:
+      summary: List report export requests
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Report exports returned
+    post:
+      summary: Request finance or operations report export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportExportRequest'
+      responses:
+        '200':
+          description: Report export requested
+  /api/v2/admin/finance-operations/incidents:
+    get:
+      summary: List operations incidents
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Incidents returned
+    post:
+      summary: Create operations incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentRequest'
+      responses:
+        '200':
+          description: Incident created
+  /api/v2/admin/finance-operations/incidents/{id}/events:
+    post:
+      summary: Add incident timeline event
+      parameters:
+      - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentEventRequest'
+      responses:
+        '200':
+          description: Incident event recorded
+  /api/v2/product-experience/merchant/{merchantId}/onboarding:
+    get:
+      summary: Read merchant onboarding workflow and steps
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+      responses:
+        '200':
+          description: Onboarding workflow returned
+        '404':
+          description: Onboarding workflow not found
+    post:
+      summary: Create or update merchant onboarding workflow
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingWorkflowRequest'
+      responses:
+        '200':
+          description: Onboarding workflow upserted
+  /api/v2/product-experience/merchant/{merchantId}/onboarding/steps:
+    post:
+      summary: Create or update onboarding step
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingStepRequest'
+      responses:
+        '200':
+          description: Onboarding step recorded
+  /api/v2/product-experience/developer/applications:
+    get:
+      summary: List developer portal applications
+      parameters:
+      - in: query
+        name: merchantId
+        schema:
+          type: integer
+          format: int64
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Developer applications returned
+    post:
+      summary: Create developer portal application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeveloperApplicationRequest'
+      responses:
+        '200':
+          description: Developer application created
+  /api/v2/product-experience/developer/applications/{applicationId}/api-keys:
+    post:
+      summary: Register developer API key metadata
+      parameters:
+      - in: path
+        name: applicationId
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeveloperApiKeyRequest'
+      responses:
+        '200':
+          description: API key metadata recorded
+  /api/v2/product-experience/payment-links:
+    get:
+      summary: List payment links
+      parameters:
+      - in: query
+        name: merchantId
+        schema:
+          type: integer
+          format: int64
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Payment links returned
+    post:
+      summary: Create payment link lifecycle record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentLinkRequest'
+      responses:
+        '200':
+          description: Payment link created
+  /api/v2/product-experience/checkout/sessions:
+    post:
+      summary: Create hosted checkout session record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutSessionRequest'
+      responses:
+        '200':
+          description: Checkout session created
+  /api/v2/product-experience/invoices:
+    get:
+      summary: List invoices
+      parameters:
+      - in: query
+        name: merchantId
+        schema:
+          type: integer
+          format: int64
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Invoices returned
+    post:
+      summary: Create invoice lifecycle record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceRequest'
+      responses:
+        '200':
+          description: Invoice created
+  /api/v2/product-experience/invoices/{invoiceId}/line-items:
+    post:
+      summary: Add invoice line item
+      parameters:
+      - in: path
+        name: invoiceId
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceLineItemRequest'
+      responses:
+        '200':
+          description: Invoice line item recorded
+  /api/v2/product-experience/channel-journeys:
+    get:
+      summary: List channel journey guides
+      parameters:
+      - in: query
+        name: channelCode
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Channel journey guides returned
+    post:
+      summary: Create channel journey guide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelJourneyGuideRequest'
+      responses:
+        '200':
+          description: Channel journey guide created
+  /api/v2/product-experience/dashboard/widgets:
+    get:
+      summary: List dashboard widgets
+      parameters:
+      - in: query
+        name: audience
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Dashboard widgets returned
+    post:
+      summary: Create or update dashboard widget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DashboardWidgetRequest'
+      responses:
+        '200':
+          description: Dashboard widget recorded
+  /api/v2/product-experience/sandbox-guides:
+    get:
+      summary: List sandbox guides
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Sandbox guides returned
+    post:
+      summary: Create sandbox guide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SandboxGuideRequest'
+      responses:
+        '200':
+          description: Sandbox guide created
+  /api/v2/product-experience/go-live/{merchantId}:
+    get:
+      summary: Read merchant go-live checklist and items
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+      responses:
+        '200':
+          description: Go-live checklist returned
+    post:
+      summary: Create or update merchant go-live checklist
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoLiveChecklistRequest'
+      responses:
+        '200':
+          description: Go-live checklist upserted
+  /api/v2/product-experience/go-live/{merchantId}/items:
+    post:
+      summary: Create or update go-live checklist item
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoLiveChecklistItemRequest'
+      responses:
+        '200':
+          description: Go-live checklist item recorded
+  /api/v2/admin/kyb/profiles:
+    get:
+      summary: List merchant KYB profiles for admin review
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: KYB profile list
+    post:
+      summary: Create or update a merchant KYB profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KybProfileRequest'
+      responses:
+        '200':
+          description: KYB profile accepted
+  /api/v2/admin/kyb/profiles/{merchantNumber}/decision:
+    post:
+      summary: Record an admin KYB decision
+      parameters:
+      - name: merchantNumber
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Decision recorded
+  /api/v2/admin/compliance/cases/{caseReference}:
+    get:
+      summary: Read a compliance case and event timeline
+      parameters:
+      - name: caseReference
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Compliance case detail
+  /api/v2/admin/compliance/cases/{caseReference}/decision:
+    post:
+      summary: Record a compliance case decision or hold/release transition
+      parameters:
+      - name: caseReference
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Decision recorded
+  /api/v2/admin/compliance/screening-results:
+    post:
+      summary: Record an external or internal screening result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreeningResultRequest'
+      responses:
+        '200':
+          description: Screening result recorded
+  /api/v2/admin/compliance/monitoring-alerts:
+    post:
+      summary: Record a transaction monitoring alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MonitoringAlertRequest'
+      responses:
+        '200':
+          description: Alert recorded
+  /api/v2/admin/regulatory/evidence-exports:
+    post:
+      summary: Request a regulatory evidence export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegulatoryExportRequest'
+      responses:
+        '200':
+          description: Export requested
+  /api/v2/cross-border/corridors:
+    get:
+      summary: List configured cross-border corridors
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Corridor list
+  /api/v2/admin/cross-border/corridors:
+    post:
+      summary: Create or update a corridor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorRequest'
+      responses:
+        '200':
+          description: Corridor upserted
+  /api/v2/admin/cross-border/corridor-routes:
+    post:
+      summary: Create or update a corridor route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorRouteRequest'
+      responses:
+        '200':
+          description: Corridor route upserted
+  /api/v2/beneficiaries:
+    post:
+      summary: Create or update a beneficiary and optional instrument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeneficiaryRequest'
+      responses:
+        '200':
+          description: Beneficiary accepted
+  /api/v2/beneficiaries/{beneficiaryReference}:
+    get:
+      summary: Read beneficiary details and instruments
+      parameters:
+      - name: beneficiaryReference
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Beneficiary detail
+  /api/v2/beneficiaries/{beneficiaryReference}/instruments:
+    post:
+      summary: Add a payout instrument to a beneficiary
+      parameters:
+      - name: beneficiaryReference
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeneficiaryInstrumentRequest'
+      responses:
+        '200':
+          description: Instrument accepted
+  /api/v2/fx/quotes/{quoteReference}:
+    get:
+      summary: Read an FX quote
+      parameters:
+      - name: quoteReference
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Quote detail
+  /api/v2/cross-border/transfers/{transferReference}:
+    get:
+      summary: Read a cross-border transfer and event timeline
+      parameters:
+      - name: transferReference
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Transfer detail
+  /api/v2/admin/cross-border/transfers/{transferReference}/transition:
+    post:
+      summary: Move a cross-border transfer through its lifecycle
+      parameters:
+      - name: transferReference
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTransitionRequest'
+      responses:
+        '200':
+          description: Transfer transitioned
+  /api/v2/admin/cross-border/settlement-batches:
+    post:
+      summary: Create a corridor settlement batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorSettlementBatchRequest'
+      responses:
+        '200':
+          description: Settlement batch created
+  /api/v2/admin/cross-border/treasury-exposure:
+    post:
+      summary: Record a treasury exposure snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreasuryExposureRequest'
+      responses:
+        '200':
+          description: Exposure snapshot recorded
+  /api/v2/admin/cross-border/reports:
+    post:
+      summary: Request a cross-border reporting run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrossBorderReportRequest'
+      responses:
+        '200':
+          description: Report requested
+  /api/v2/production-maturity/screening/providers:
+    post:
+      summary: Register or update a screening provider adapter configuration
+      operationId: registerScreeningProviderAdapter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreeningProviderConfigRequest'
+      responses:
+        '200':
+          description: Screening provider registered
+  /api/v2/production-maturity/screening/requests:
+    post:
+      summary: Submit a provider-neutral compliance screening request
+      operationId: submitScreeningRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreeningRequest'
+      responses:
+        '200':
+          description: Screening request recorded or submitted
+  /api/v2/production-maturity/cross-border/transfers/{transferId}/dispatch:
+    post:
+      summary: Create an idempotent payout-rail dispatch envelope for an approved cross-border transfer
+      operationId: dispatchCrossBorderTransferToPayoutRail
+      parameters:
+      - $ref: '#/components/parameters/TransferId'
+      responses:
+        '200':
+          description: Transfer dispatch created
+  /api/v2/production-maturity/cross-border/dispatches/pending:
+    get:
+      summary: List payout-rail dispatches ready for provider submission
+      operationId: listPendingCrossBorderDispatches
+      responses:
+        '200':
+          description: Pending dispatches
+  /api/v2/production-maturity/cross-border/dispatches/{dispatchId}/provider-submitted:
+    post:
+      summary: Mark a payout-rail dispatch as submitted to the provider
+      operationId: markCrossBorderDispatchProviderSubmitted
+      parameters:
+      - name: dispatchId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Dispatch status updated
+  /api/v2/production-maturity/settlements/finance/{settlementBatchId}/post:
+    post:
+      summary: Post a finance settlement batch into balanced settlement entries
+      operationId: postFinanceSettlementBatch
+      parameters:
+      - $ref: '#/components/parameters/SettlementBatchId'
+      responses:
+        '200':
+          description: Settlement batch posted
+  /api/v2/production-maturity/settlements/corridor/{settlementBatchId}/post:
+    post:
+      summary: Post a corridor settlement batch into balanced settlement entries
+      operationId: postCorridorSettlementBatch
+      parameters:
+      - $ref: '#/components/parameters/SettlementBatchId'
+      responses:
+        '200':
+          description: Corridor settlement batch posted
+  /api/v2/production-maturity/validation/runs:
+    get:
+      summary: List migration/controller/OpenAPI validation runs
+      operationId: listProductionMaturityValidationRuns
+      responses:
+        '200':
+          description: Validation runs
+    post:
+      summary: Create a migration/controller/OpenAPI validation run
+      operationId: createProductionMaturityValidationRun
+      responses:
+        '201':
+          description: Validation run created
 components:
   securitySchemes:
     CPayV2Signature:
@@ -2085,6 +3025,10 @@ components:
     AdminBasicAuth:
       type: http
       scheme: basic
+    AdminSession:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
   parameters:
     IdempotencyKey:
       name: X-CPay-Idempotency-Key
@@ -2092,6 +3036,68 @@ components:
       required: false
       schema:
         type: string
+    IdPath:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+    MerchantIdPath:
+      in: path
+      name: merchantId
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SettlementBatchId:
+      name: settlementBatchId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ExceptionId:
+      name: exceptionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    CorridorCode:
+      name: corridorCode
+      in: path
+      required: true
+      schema:
+        type: string
+    BeneficiaryId:
+      name: beneficiaryId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TransferId:
+      name: transferId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
   schemas:
     PaymentParty:
       type: object
@@ -2102,7 +3108,14 @@ components:
           type: string
     PaymentRequest:
       type: object
-      required: [merchantNumber, country, currency, amount, reference, description, callbackUrl]
+      required:
+      - merchantNumber
+      - country
+      - currency
+      - amount
+      - reference
+      - description
+      - callbackUrl
       properties:
         merchantNumber:
           type: string
@@ -2143,7 +3156,11 @@ components:
           type: string
     FxQuoteRequest:
       type: object
-      required: [merchantNumber, sourceCurrency, targetCurrency, sourceAmount]
+      required:
+      - merchantNumber
+      - sourceCurrency
+      - targetCurrency
+      - sourceAmount
       properties:
         merchantNumber:
           type: string
@@ -2173,7 +3190,15 @@ components:
           format: date-time
     TransferIntentRequest:
       type: object
-      required: [quoteReference, sourceCountry, targetCountry, sourceCurrency, targetCurrency, sourceAmount, beneficiaryAccount, beneficiaryName]
+      required:
+      - quoteReference
+      - sourceCountry
+      - targetCountry
+      - sourceCurrency
+      - targetCurrency
+      - sourceAmount
+      - beneficiaryAccount
+      - beneficiaryName
       properties:
         merchantNumber:
           type: string
@@ -2219,7 +3244,9 @@ components:
           type: object
     AccountValidationRequest:
       type: object
-      required: [merchantNumber, msisdn]
+      required:
+      - merchantNumber
+      - msisdn
       properties:
         merchantNumber:
           type: string
@@ -2240,7 +3267,11 @@ components:
           type: string
     PaymentLinkCreateRequest:
       type: object
-      required: [merchantNumber, amount, currency, description]
+      required:
+      - merchantNumber
+      - amount
+      - currency
+      - description
       properties:
         merchantNumber:
           type: string
@@ -2279,7 +3310,8 @@ components:
           format: date-time
     HostedCheckoutPayRequest:
       type: object
-      required: [payerAccount]
+      required:
+      - payerAccount
       properties:
         payerAccount:
           type: string
@@ -2337,7 +3369,11 @@ components:
           type: string
     RefundRequest:
       type: object
-      required: [merchantNumber, originalReference, amount, currency]
+      required:
+      - merchantNumber
+      - originalReference
+      - amount
+      - currency
       properties:
         merchantNumber:
           type: string
@@ -2353,7 +3389,10 @@ components:
           type: string
     PayoutControlPayload:
       type: object
-      required: [merchantId, channelCode, currency]
+      required:
+      - merchantId
+      - channelCode
+      - currency
       properties:
         merchantId:
           type: integer
@@ -2377,6 +3416,1029 @@ components:
         enabledFlag:
           type: string
         changedBy:
+          type: string
+    SettlementBatchRequest:
+      type: object
+      required:
+      - currencyCode
+      - businessDate
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        providerCode:
+          type: string
+        channelCode:
+          type: string
+        countryCode:
+          type: string
+        currencyCode:
+          type: string
+        businessDate:
+          type: string
+          format: date
+        settlementCycle:
+          type: string
+          default: DAILY
+        status:
+          type: string
+        grossAmount:
+          type: number
+        feeAmount:
+          type: number
+        taxAmount:
+          type: number
+        adjustmentAmount:
+          type: number
+        netAmount:
+          type: number
+        varianceAmount:
+          type: number
+        itemCount:
+          type: integer
+        createdBy:
+          type: string
+        financeOwner:
+          type: string
+        notes:
+          type: string
+    SettlementItemRequest:
+      type: object
+      required:
+      - transactionReference
+      - transactionType
+      properties:
+        transactionReference:
+          type: string
+        providerReference:
+          type: string
+        merchantReference:
+          type: string
+        transactionType:
+          type: string
+        status:
+          type: string
+        amount:
+          type: number
+        feeAmount:
+          type: number
+        taxAmount:
+          type: number
+        netAmount:
+          type: number
+        varianceAmount:
+          type: number
+    TreasuryPositionRequest:
+      type: object
+      required:
+      - currencyCode
+      - positionDate
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        providerCode:
+          type: string
+        channelCode:
+          type: string
+        countryCode:
+          type: string
+        currencyCode:
+          type: string
+        positionDate:
+          type: string
+          format: date
+        availableBalance:
+          type: number
+        reservedBalance:
+          type: number
+        pendingPayoutExposure:
+          type: number
+        unsettledReceivable:
+          type: number
+        unsettledPayable:
+          type: number
+        unreconciledExposure:
+          type: number
+        source:
+          type: string
+        capturedBy:
+          type: string
+    ReconciliationExceptionRequest:
+      type: object
+      required:
+      - exceptionType
+      properties:
+        settlementBatchId:
+          type: integer
+          format: int64
+        transactionReference:
+          type: string
+        providerReference:
+          type: string
+        merchantId:
+          type: integer
+          format: int64
+        providerCode:
+          type: string
+        channelCode:
+          type: string
+        currencyCode:
+          type: string
+        exceptionType:
+          type: string
+        severity:
+          type: string
+        status:
+          type: string
+        internalAmount:
+          type: number
+        providerAmount:
+          type: number
+        varianceAmount:
+          type: number
+        assignedTo:
+          type: string
+    DailyCloseDecisionRequest:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+        providerStatementsReceived:
+          type: boolean
+        reconciliationImportCompleted:
+          type: boolean
+        unmatchedItemsReviewed:
+          type: boolean
+        highSeverityControlsResolved:
+          type: boolean
+        makerCheckerApprovalsComplete:
+          type: boolean
+        financeOwnerSignedOff:
+          type: boolean
+        blockedReason:
+          type: string
+        actor:
+          type: string
+    ReportExportRequest:
+      type: object
+      required:
+      - reportType
+      properties:
+        reportType:
+          type: string
+        requestedBy:
+          type: string
+        format:
+          type: string
+          enum:
+          - CSV
+          - XLSX
+          - PDF
+          - JSON
+        dateFrom:
+          type: string
+          format: date
+        dateTo:
+          type: string
+          format: date
+        merchantId:
+          type: integer
+          format: int64
+        providerCode:
+          type: string
+        channelCode:
+          type: string
+        countryCode:
+          type: string
+        currencyCode:
+          type: string
+    IncidentRequest:
+      type: object
+      required:
+      - title
+      - incidentType
+      properties:
+        title:
+          type: string
+        severity:
+          type: string
+          enum:
+          - SEV1
+          - SEV2
+          - SEV3
+          - SEV4
+        status:
+          type: string
+        incidentType:
+          type: string
+        providerCode:
+          type: string
+        channelCode:
+          type: string
+        merchantId:
+          type: integer
+          format: int64
+        businessImpact:
+          type: string
+        owner:
+          type: string
+        rootCause:
+          type: string
+        correctiveAction:
+          type: string
+    IncidentEventRequest:
+      type: object
+      required:
+      - eventType
+      properties:
+        eventType:
+          type: string
+        actor:
+          type: string
+        message:
+          type: string
+        evidenceUrl:
+          type: string
+    OnboardingWorkflowRequest:
+      type: object
+      properties:
+        currentStep:
+          type: string
+        status:
+          type: string
+        completionPercentage:
+          type: number
+        blockedReason:
+          type: string
+        assignedOwner:
+          type: string
+    OnboardingStepRequest:
+      type: object
+      required:
+      - stepCode
+      - stepName
+      properties:
+        stepCode:
+          type: string
+        stepName:
+          type: string
+        status:
+          type: string
+        requiredForGoLive:
+          type: boolean
+        completedBy:
+          type: string
+        evidenceUrl:
+          type: string
+        notes:
+          type: string
+        sortOrder:
+          type: integer
+    DeveloperApplicationRequest:
+      type: object
+      required:
+      - merchantId
+      - name
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        environment:
+          type: string
+          enum:
+          - SANDBOX
+          - PRODUCTION
+        status:
+          type: string
+        callbackUrl:
+          type: string
+        allowedOrigins:
+          type: string
+        createdBy:
+          type: string
+    DeveloperApiKeyRequest:
+      type: object
+      properties:
+        keyLabel:
+          type: string
+        publicKeyPem:
+          type: string
+        status:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        rotatedFromKeyReference:
+          type: string
+        createdBy:
+          type: string
+    PaymentLinkRequest:
+      type: object
+      required:
+      - merchantId
+      - tokenHash
+      - currencyCode
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        tokenHash:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        currencyCode:
+          type: string
+        countryCode:
+          type: string
+        status:
+          type: string
+        reusable:
+          type: boolean
+        partialPaymentAllowed:
+          type: boolean
+        maxUses:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+    CheckoutSessionRequest:
+      type: object
+      required:
+      - merchantId
+      - tokenHash
+      - amount
+      - currencyCode
+      - expiresAt
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        paymentLinkId:
+          type: integer
+          format: int64
+        invoiceId:
+          type: integer
+          format: int64
+        tokenHash:
+          type: string
+        customerMsisdn:
+          type: string
+        customerEmail:
+          type: string
+        amount:
+          type: number
+        currencyCode:
+          type: string
+        countryCode:
+          type: string
+        selectedChannel:
+          type: string
+        status:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        paidTransactionReference:
+          type: string
+    InvoiceRequest:
+      type: object
+      required:
+      - merchantId
+      - invoiceNumber
+      - currencyCode
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        invoiceNumber:
+          type: string
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+        customerMsisdn:
+          type: string
+        currencyCode:
+          type: string
+        subtotalAmount:
+          type: number
+        taxAmount:
+          type: number
+        totalAmount:
+          type: number
+        amountPaid:
+          type: number
+        status:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        partialPaymentAllowed:
+          type: boolean
+        paymentTokenHash:
+          type: string
+        createdBy:
+          type: string
+    InvoiceLineItemRequest:
+      type: object
+      required:
+      - description
+      properties:
+        description:
+          type: string
+        quantity:
+          type: number
+        unitAmount:
+          type: number
+        taxAmount:
+          type: number
+        lineTotal:
+          type: number
+        sortOrder:
+          type: integer
+    ChannelJourneyGuideRequest:
+      type: object
+      required:
+      - channelCode
+      - title
+      properties:
+        channelCode:
+          type: string
+        countryCode:
+          type: string
+        environment:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        publishedBy:
+          type: string
+        journey:
+          type: object
+          additionalProperties: true
+    DashboardWidgetRequest:
+      type: object
+      required:
+      - audience
+      - widgetCode
+      - title
+      properties:
+        audience:
+          type: string
+        widgetCode:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        sortOrder:
+          type: integer
+        config:
+          type: object
+          additionalProperties: true
+    SandboxGuideRequest:
+      type: object
+      required:
+      - title
+      - contentMarkdown
+      properties:
+        title:
+          type: string
+        audience:
+          type: string
+        status:
+          type: string
+        contentMarkdown:
+          type: string
+        publishedBy:
+          type: string
+        samplePayload:
+          type: object
+          additionalProperties: true
+    GoLiveChecklistRequest:
+      type: object
+      properties:
+        status:
+          type: string
+        requestedBy:
+          type: string
+        reviewedBy:
+          type: string
+        approvedBy:
+          type: string
+        blockedReason:
+          type: string
+    GoLiveChecklistItemRequest:
+      type: object
+      required:
+      - itemCode
+      - itemName
+      properties:
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        status:
+          type: string
+        required:
+          type: boolean
+        evidenceUrl:
+          type: string
+        completedBy:
+          type: string
+        notes:
+          type: string
+        sortOrder:
+          type: integer
+    KybProfileRequest:
+      type: object
+      required:
+      - merchantId
+      - merchantNumber
+      - registeredBusinessName
+      - countryCode
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        merchantNumber:
+          type: string
+        registeredBusinessName:
+          type: string
+        tradingName:
+          type: string
+        registrationNumber:
+          type: string
+        taxIdentificationNumber:
+          type: string
+        businessType:
+          type: string
+        countryCode:
+          type: string
+        physicalAddress:
+          type: string
+        expectedMonthlyVolume:
+          type: number
+        expectedMonthlyPayoutVolume:
+          type: number
+        primaryUseCase:
+          type: string
+        riskRating:
+          type: string
+        status:
+          type: string
+    DecisionRequest:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+        decision:
+          type: string
+        reason:
+          type: string
+        reviewedBy:
+          type: string
+        decidedBy:
+          type: string
+        holdActive:
+          type: boolean
+        evidenceReference:
+          type: string
+    ComplianceCaseRequest:
+      type: object
+      required:
+      - caseType
+      - subjectType
+      - subjectReference
+      - title
+      properties:
+        caseType:
+          type: string
+        severity:
+          type: string
+        subjectType:
+          type: string
+        subjectReference:
+          type: string
+        merchantId:
+          type: integer
+          format: int64
+        merchantNumber:
+          type: string
+        transactionReference:
+          type: string
+        relatedResourceType:
+          type: string
+        relatedResourceId:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        holdScope:
+          type: string
+        holdActive:
+          type: boolean
+        assignedTo:
+          type: string
+        openedBy:
+          type: string
+    ScreeningResultRequest:
+      type: object
+      required:
+      - providerCode
+      - screeningType
+      - subjectType
+      - subjectReference
+      properties:
+        providerCode:
+          type: string
+        screeningType:
+          type: string
+        subjectType:
+          type: string
+        subjectReference:
+          type: string
+        riskScore:
+          type: number
+        resultStatus:
+          type: string
+        matchCount:
+          type: integer
+        rawResultReference:
+          type: string
+        caseReference:
+          type: string
+    MonitoringAlertRequest:
+      type: object
+      required:
+      - ruleCode
+      - subjectType
+      - subjectReference
+      properties:
+        ruleCode:
+          type: string
+        severity:
+          type: string
+        subjectType:
+          type: string
+        subjectReference:
+          type: string
+        merchantId:
+          type: integer
+          format: int64
+        transactionReference:
+          type: string
+        caseReference:
+          type: string
+        assignedTo:
+          type: string
+    RegulatoryExportRequest:
+      type: object
+      required:
+      - exportType
+      - jurisdiction
+      - periodStart
+      - periodEnd
+      properties:
+        exportType:
+          type: string
+        jurisdiction:
+          type: string
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        requestedBy:
+          type: string
+    CorridorRequest:
+      type: object
+      required:
+      - corridorCode
+      - sourceCountryCode
+      - destinationCountryCode
+      - sourceCurrencyCode
+      - destinationCurrencyCode
+      - displayName
+      properties:
+        corridorCode:
+          type: string
+        sourceCountryCode:
+          type: string
+        destinationCountryCode:
+          type: string
+        sourceCurrencyCode:
+          type: string
+        destinationCurrencyCode:
+          type: string
+        displayName:
+          type: string
+        status:
+          type: string
+        riskLevel:
+          type: string
+        settlementModel:
+          type: string
+        compliancePolicyCode:
+          type: string
+    CorridorRouteRequest:
+      type: object
+      required:
+      - corridorCode
+      - routeCode
+      - providerCode
+      - deliveryMethod
+      properties:
+        corridorCode:
+          type: string
+        routeCode:
+          type: string
+        providerCode:
+          type: string
+        partnerCode:
+          type: string
+        deliveryMethod:
+          type: string
+        priority:
+          type: integer
+        enabled:
+          type: boolean
+        minAmount:
+          type: number
+        maxAmount:
+          type: number
+    BeneficiaryRequest:
+      allOf:
+      - $ref: '#/components/schemas/BeneficiaryInstrumentRequest'
+      - type: object
+        required:
+        - beneficiaryType
+        - displayName
+        - countryCode
+        properties:
+          beneficiaryReference:
+            type: string
+          merchantId:
+            type: integer
+            format: int64
+          beneficiaryType:
+            type: string
+          displayName:
+            type: string
+          legalName:
+            type: string
+          countryCode:
+            type: string
+          phoneHash:
+            type: string
+          emailHash:
+            type: string
+          addressText:
+            type: string
+          riskRating:
+            type: string
+          status:
+            type: string
+    BeneficiaryInstrumentRequest:
+      type: object
+      properties:
+        instrumentReference:
+          type: string
+        instrumentType:
+          type: string
+        providerCode:
+          type: string
+        countryCode:
+          type: string
+        currencyCode:
+          type: string
+        accountIdentifierHash:
+          type: string
+        accountIdentifierMask:
+          type: string
+        accountName:
+          type: string
+        validationStatus:
+          type: string
+    CrossBorderTransferRequest:
+      type: object
+      required:
+      - corridorCode
+      - beneficiaryReference
+      - instrumentReference
+      - sourceAmount
+      - destinationAmount
+      - purposeCode
+      properties:
+        corridorCode:
+          type: string
+        routeCode:
+          type: string
+        beneficiaryReference:
+          type: string
+        instrumentReference:
+          type: string
+        quoteReference:
+          type: string
+        complianceCaseReference:
+          type: string
+        merchantId:
+          type: integer
+          format: int64
+        merchantNumber:
+          type: string
+        sourceAmount:
+          type: number
+        destinationAmount:
+          type: number
+        purposeCode:
+          type: string
+        status:
+          type: string
+        createdBy:
+          type: string
+    TransferTransitionRequest:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+        providerReference:
+          type: string
+        partnerReference:
+          type: string
+        failureCode:
+          type: string
+        failureMessage:
+          type: string
+        complianceHoldActive:
+          type: boolean
+        actor:
+          type: string
+        notes:
+          type: string
+    CorridorSettlementBatchRequest:
+      type: object
+      required:
+      - corridorCode
+      - settlementCurrencyCode
+      - businessDate
+      properties:
+        corridorCode:
+          type: string
+        partnerCode:
+          type: string
+        settlementCurrencyCode:
+          type: string
+        businessDate:
+          type: string
+          format: date
+        grossAmount:
+          type: number
+        feeAmount:
+          type: number
+        netAmount:
+          type: number
+        varianceAmount:
+          type: number
+    TreasuryExposureRequest:
+      type: object
+      required:
+      - currencyCode
+      properties:
+        corridorCode:
+          type: string
+        partnerCode:
+          type: string
+        currencyCode:
+          type: string
+        availableBalance:
+          type: number
+        reservedBalance:
+          type: number
+        pendingDeliveryExposure:
+          type: number
+        unsettledExposure:
+          type: number
+        varianceExposure:
+          type: number
+        capturedBy:
+          type: string
+    CrossBorderReportRequest:
+      type: object
+      required:
+      - reportType
+      - periodStart
+      - periodEnd
+      properties:
+        reportType:
+          type: string
+        corridorCode:
+          type: string
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        requestedBy:
+          type: string
+    SettlementBatchCreateRequest:
+      type: object
+      required:
+      - batchReference
+      - merchantId
+      - currency
+      - expectedSettlementAmount
+      properties:
+        batchReference:
+          type: string
+        merchantId:
+          type: integer
+          format: int64
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        expectedSettlementAmount:
+          type: string
+    ScreeningProviderConfigRequest:
+      type: object
+      required:
+      - providerCode
+      properties:
+        providerCode:
+          type: string
+        displayName:
+          type: string
+        environment:
+          type: string
+          enum:
+          - SANDBOX
+          - PRODUCTION
+        baseUrl:
+          type: string
+        authMode:
+          type: string
+        enabled:
+          type: boolean
+        supportsSanctions:
+          type: boolean
+        supportsPep:
+          type: boolean
+        supportsDocumentVerification:
+          type: boolean
+        supportsBeneficiaryScreening:
+          type: boolean
+        supportsMerchantScreening:
+          type: boolean
+    ScreeningRequest:
+      type: object
+      required:
+      - providerCode
+      - subjectType
+      - subjectReference
+      - screeningType
+      properties:
+        providerCode:
+          type: string
+        subjectType:
+          type: string
+          enum:
+          - MERCHANT
+          - INDIVIDUAL
+          - BENEFICIARY
+          - TRANSFER
+        subjectReference:
+          type: string
+        screeningType:
+          type: string
+          enum:
+          - SANCTIONS
+          - PEP
+          - DOCUMENT
+          - BENEFICIARY
+          - MERCHANT
+        payload:
+          type: string
+        requestedBy:
           type: string
   responses:
     BadRequest:
