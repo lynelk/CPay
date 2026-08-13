@@ -1841,14 +1841,26 @@ paths:
           format: int64
       - name: decision
         in: query
-        required: false
+        required: true
+        description: Explicit review decision. Approval is never implied by default.
         schema:
           type: string
           enum:
+          - APPROVE
           - APPROVED
+          - REJECT
           - REJECTED
-          default: APPROVED
       - name: reviewedBy
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: reviewerRole
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: reason
         in: query
         required: false
         schema:
@@ -1856,6 +1868,8 @@ paths:
       responses:
         '200':
           description: Review result (updated count)
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v2/admin/kyc/documents/{documentId}/review:
     post:
       summary: Approve or reject a KYC document pending verification
@@ -1871,14 +1885,26 @@ paths:
           format: int64
       - name: decision
         in: query
-        required: false
+        required: true
+        description: Explicit review decision. Approval is never implied by default.
         schema:
           type: string
           enum:
+          - APPROVE
           - APPROVED
+          - REJECT
           - REJECTED
-          default: APPROVED
       - name: reviewedBy
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: reviewerRole
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: reason
         in: query
         required: false
         schema:
@@ -1886,6 +1912,8 @@ paths:
       responses:
         '200':
           description: Review result (updated count)
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v2/admin/compliance/events/{id}/review:
     post:
       summary: Mark an operating-control/screening event as reviewed
