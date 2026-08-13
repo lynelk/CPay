@@ -57,7 +57,7 @@ function LoadingGrid(): React.ReactElement {
 
 export default function ProductionMaturityDashboard(): React.ReactElement {
   const summary = useProductionMaturitySummary();
-  const cards = summary.data ?? [];
+  const cards = useMemo(() => summary.data ?? [], [summary.data]);
   const totals = useMemo(() => {
     const live = cards.length;
     const owners = new Set(cards.map((card) => card.owner)).size;
