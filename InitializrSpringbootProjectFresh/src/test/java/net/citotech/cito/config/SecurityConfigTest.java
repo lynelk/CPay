@@ -46,6 +46,23 @@ class SecurityConfigTest {
                 .contains("X-Request-ID", "Deprecation", "Sunset", "Link");
     }
 
+    @Test
+    void apiAuthorizationMatchersAreExplicitAndDoNotPermitEveryApiRoute() {
+        assertThat(SecurityConfig.PUBLIC_SIGNED_API_PATTERNS).doesNotContain("/api/**");
+        assertThat(SecurityConfig.PUBLIC_SESSION_API_PATTERNS).doesNotContain("/api/**");
+        assertThat(SecurityConfig.PUBLIC_PAGE_AND_LEGACY_PORTAL_PATTERNS).doesNotContain("/api/**");
+        assertThat(SecurityConfig.PUBLIC_SESSION_API_PATTERNS).contains("/api/v2/session/me");
+        assertThat(SecurityConfig.ADMIN_API_PATTERNS)
+                .contains("/api/v2/product-experience/**", "/api/v2/cross-border/**");
+    }
+
+    @Test
+    void csrfExemptionsDoNotIncludeSessionAuthenticatedPortalApis() {
+        assertThat(SecurityConfig.CSRF_EXEMPT_API_PATTERNS)
+                .doesNotContain("/api/**", "/api/v2/merchant/**", "/api/v2/portal/**")
+                .contains("/api/v2/native/**", "/api/v2/payments/**");
+    }
+
     /**
      * Audit E10: the local Vite dev server target is only a default - production
      * (application-production.properties) overrides {@code csp.connect-src.extra} to blank so the
