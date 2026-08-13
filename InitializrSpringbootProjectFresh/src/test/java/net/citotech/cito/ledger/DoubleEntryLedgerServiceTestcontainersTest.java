@@ -8,6 +8,11 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import javax.sql.DataSource;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.flywaydb.core.Flyway;
@@ -16,6 +21,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -28,7 +36,8 @@ import org.testcontainers.mysql.MySQLContainer;
  * DUPLICATE KEY UPDATE} semantics, a real unique constraint enforcing idempotency). This runs the
  * full Flyway migration history (V1..current head) against a real MySQL 8 container and exercises
  * the ledger's core documented invariant (see {@code Docs/Testing-strategy.md}: "balanced ledger
- * debits/credits") plus its idempotent-post guarantee end to end.
+ * debits/credits"), idempotent-post guarantee, and serialized funds-reservation behavior end to
+ * end.
  *
  * <p>Requires a running Docker daemon, so it is tagged {@code "docker"} and excluded from the
  * default {@code mvn test}/{@code mvn verify} run (see the {@code docker.tests.excludedGroups}
@@ -247,6 +256,139 @@ class DoubleEntryLedgerServiceTestcontainersTest {
         assertThat(txId).isPositive();
     }
 
+    @Test
+    void concurrentReservationsCannotOverspendTheSameMerchantCurrencyBalance() throws Exception {
+        NamedParameterJdbcTemplate jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+        DataSourceTransactionManager transactionManager =
+                new DataSourceTransactionManager(dataSource);
+
+        service.post(
+                "TX-K1-CONCURRENT-SEED",
+                "PAYMENT",
+                "PAY-K1-CONCURRENT-SEED",
+                "seed merchant liability for reservation concurrency",
+                List.of(
+                        entry(
+                                "merchant:2001:UGX:merchant_liability",
+                                "MERCHANT_LIABILITY",
+                                "MERCHANT",
+                                2001L,
+                                "CR",
+                                "100000",
+                                "UGX"),
+                        entry(
+                                "provider:mtn_momo:UGX:float:reservation_seed",
+                                "CONTROL",
+                                "PROVIDER",
+                                9001L,
+                                "DR",
+                                "100000",
+                                "UGX")));
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Boolean> first =
+                    executor.submit(
+                            reserveWhenReleased(
+                                    service,
+                                    transactionManager,
+                                    ready,
+                                    start,
+                                    "RES-K1-CONCURRENT-A"));
+            Future<Boolean> second =
+                    executor.submit(
+                            reserveWhenReleased(
+                                    service,
+                                    transactionManager,
+                                    ready,
+                                    start,
+                                    "RES-K1-CONCURRENT-B"));
+
+            ready.await();
+            start.countDown();
+
+            assertThat(List.of(first.get(), second.get())).containsExactlyInAnyOrder(true, false);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        Integer reservedCount =
+                jdbcTemplate
+                        .getJdbcTemplate()
+                        .queryForObject(
+                                "SELECT COUNT(*) FROM ledger_reservations "
+                                        + "WHERE merchant_id = 2001 "
+                                        + "AND currency = 'UGX' "
+                                        + "AND reservation_status = 'RESERVED'",
+                                Integer.class);
+        BigDecimal reservedAmount =
+                jdbcTemplate
+                        .getJdbcTemplate()
+                        .queryForObject(
+                                "SELECT COALESCE(SUM(amount), 0) FROM ledger_reservations "
+                                        + "WHERE merchant_id = 2001 "
+                                        + "AND currency = 'UGX' "
+                                        + "AND reservation_status = 'RESERVED'",
+                                BigDecimal.class);
+
+        assertThat(reservedCount).isEqualTo(1);
+        assertThat(reservedAmount).isEqualByComparingTo("80000.0000");
+        assertThat(service.availableMerchantBalance(2001L, "UGX"))
+                .isEqualByComparingTo("20000.0000");
+    }
+
+    private Callable<Boolean> reserveWhenReleased(
+            DoubleEntryLedgerService service,
+            DataSourceTransactionManager transactionManager,
+            CountDownLatch ready,
+            CountDownLatch start,
+            String reservationReference) {
+        return () -> {
+            ready.countDown();
+            start.await();
+            TransactionTemplate template = new TransactionTemplate(transactionManager);
+            template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            try {
+                template.executeWithoutResult(
+                        status ->
+                                service.reserve(
+                                        reservationReference,
+                                        2001L,
+                                        reservationReference.replace("RES", "PAY"),
+                                        new BigDecimal("80000"),
+                                        "UGX"));
+                return true;
+            } catch (PaymentGatewayException ex) {
+                assertThat(ex)
+                        .hasMessageContaining("Insufficient ledger-derived available balance");
+                return false;
+            }
+        };
+    }
+
+    private LedgerEntryCommand entry(
+            String account,
+            String accountType,
+            String ownerType,
+            Long ownerId,
+            String direction,
+            String amount,
+            String currency) {
+        return new LedgerEntryCommand(
+                account,
+                account,
+                accountType,
+                ownerType,
+                ownerId,
+                direction,
+                new BigDecimal(amount),
+                currency,
+                "testcontainers K1 test");
+    }
+
     private LedgerEntryCommand entry(String account, String direction, String amount) {
         return new LedgerEntryCommand(
                 account,
@@ -256,7 +398,7 @@ class DoubleEntryLedgerServiceTestcontainersTest {
                 null,
                 direction,
                 new BigDecimal(amount),
-                "UGX",
+                account.split(":")[2],
                 "testcontainers K1 test");
     }
 }
