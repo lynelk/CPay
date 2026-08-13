@@ -2834,6 +2834,11 @@ public class Common {
             if (previousStatus != null
                     && nextStatus != null
                     && !previousStatus.canTransitionTo(nextStatus)) {
+                String reason =
+                        "Invalid transaction status transition: "
+                                + previousStatus
+                                + " -> "
+                                + nextStatus;
                 Logger.getLogger(Common.class.getName())
                         .log(
                                 Level.WARNING,
@@ -2842,9 +2847,11 @@ public class Common {
                                         + ": "
                                         + previousStatus
                                         + " -> "
-                                        + nextStatus
-                                        + " (terminal statuses cannot transition again)",
+                                        + nextStatus,
                                 "");
+                recordPaymentStateTransition(
+                        tx, previousStatusValue, tx.getStatus(), jdbcTemplate, "REJECTED", reason);
+                return "success";
             }
 
             if (nextStatus != null
@@ -2881,7 +2888,17 @@ public class Common {
                                     try {
                                         int rowsUpdated =
                                                 jdbcTemplate.update(sql_update_final, parameters_);
-                                        return rowsUpdated > 0 ? "success" : "duplicate";
+                                        if (rowsUpdated > 0) {
+                                            recordPaymentStateTransition(
+                                                    tx,
+                                                    previousStatusValue,
+                                                    tx.getStatus(),
+                                                    jdbcTemplate,
+                                                    "APPLIED",
+                                                    null);
+                                            return "success";
+                                        }
+                                        return "duplicate";
                                     } catch (Exception e) {
                                         // transactionManager.rollback(status);
                                         status.setRollbackOnly();
@@ -3203,6 +3220,37 @@ public class Common {
             }
         }
         return "error";
+    }
+
+    private static void recordPaymentStateTransition(
+            Transaction tx,
+            String previousStatus,
+            String nextStatus,
+            NamedParameterJdbcTemplate jdbcTemplate,
+            String transitionResult,
+            String reason) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("transaction_log_id", tx.getId());
+        p.addValue("transaction_reference", tx.getTx_unique_id());
+        String merchantId = tx.getMerchant_id();
+        Long merchantIdValue = null;
+        try {
+            merchantIdValue = merchantId == null ? null : Long.valueOf(merchantId);
+        } catch (NumberFormatException ignored) {
+            merchantIdValue = null;
+        }
+        p.addValue("merchant_id", merchantIdValue);
+        p.addValue("previous_status", previousStatus);
+        p.addValue("next_status", nextStatus);
+        p.addValue("provider_reference", tx.getTx_gateway_ref());
+        p.addValue("update_trace", tx.getTx_update_trace());
+        p.addValue("transition_result", transitionResult);
+        p.addValue("reason", reason);
+        jdbcTemplate.update(
+                "INSERT INTO payment_state_transitions "
+                        + "(transaction_log_id, transaction_reference, merchant_id, previous_status, next_status, provider_reference, update_trace, transition_result, reason) "
+                        + "VALUES (:transaction_log_id, :transaction_reference, :merchant_id, :previous_status, :next_status, :provider_reference, :update_trace, :transition_result, :reason)",
+                p);
     }
 
     private static boolean providerReferenceAlreadyApplied(

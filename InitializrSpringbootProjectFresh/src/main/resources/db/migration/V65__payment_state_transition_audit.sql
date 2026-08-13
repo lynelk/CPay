@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS payment_state_transitions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    transaction_log_id BIGINT UNSIGNED NOT NULL,
+    transaction_reference VARCHAR(255) NULL,
+    merchant_id BIGINT UNSIGNED NULL,
+    previous_status VARCHAR(40) NULL,
+    next_status VARCHAR(40) NOT NULL,
+    provider_reference VARCHAR(255) NULL,
+    update_trace VARCHAR(255) NULL,
+    event_source VARCHAR(80) NOT NULL DEFAULT 'PROVIDER_CALLBACK',
+    transition_result VARCHAR(40) NOT NULL DEFAULT 'APPLIED',
+    reason TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_payment_state_transition_tx (transaction_log_id, created_at),
+    KEY idx_payment_state_transition_ref (transaction_reference, created_at),
+    KEY idx_payment_state_transition_merchant (merchant_id, created_at),
+    KEY idx_payment_state_transition_status (next_status, created_at),
+    KEY idx_payment_state_transition_result (transition_result, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

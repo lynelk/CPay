@@ -21,7 +21,9 @@ class ProductionMaturityMigrationValidationTest {
                     "V55__regional_cross_border_foundation.sql",
                     "V61__finance_operations_foundation.sql",
                     "V62__product_polish_developer_experience_foundation.sql",
-                    "V63__production_maturity_execution_automation.sql");
+                    "V63__production_maturity_execution_automation.sql",
+                    "V64__kyb_decision_audit_controls.sql",
+                    "V65__payment_state_transition_audit.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -59,7 +61,9 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("screening_provider_configs")
                 .contains("cross_border_payout_rail_dispatches")
                 .contains("settlement_posting_runs")
-                .contains("production_maturity_validation_runs");
+                .contains("production_maturity_validation_runs")
+                .contains("kyb_review_decisions")
+                .contains("payment_state_transitions");
     }
 
     @Test
@@ -80,7 +84,9 @@ class ProductionMaturityMigrationValidationTest {
                 .doesNotContain("::json")
                 .doesNotContain("on conflict")
                 .doesNotContain("returning")
-                .doesNotContain("create index if not exists");
+                .doesNotContain("create index if not exists")
+                .doesNotContain("identity")
+                .doesNotContain("generated always");
     }
 
     @Test
