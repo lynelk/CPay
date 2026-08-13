@@ -87,6 +87,7 @@ public class SecurityConfig {
                                                 "/api/v2/merchant-self-service/signup",
                                                 "/api/v2/native/**",
                                                 "/api/v2/payments/**",
+                                                "/api/v2/production-maturity/**",
                                                 "/api/v2/vending/**",
                                                 "/actuator/**",
                                                 "/status/**"))
@@ -122,7 +123,7 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
-                                        .requestMatchers("/api/v2/admin/**")
+                                        .requestMatchers("/api/v2/admin/**", "/api/v2/production-maturity/**")
                                         .hasRole("ADMIN")
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ACTUATOR")

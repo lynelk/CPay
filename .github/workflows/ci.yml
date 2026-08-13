@@ -88,6 +88,10 @@ jobs:
             echo "Duplicate Flyway versions found: $dupes" >&2
             exit 1
           fi
+          for migration in V54__compliance_kyb_kyc_foundation.sql V55__regional_cross_border_foundation.sql V61__finance_operations_foundation.sql V62__product_polish_developer_experience_foundation.sql V63__production_maturity_execution_automation.sql; do
+            test -s "InitializrSpringbootProjectFresh/src/main/resources/db/migration/$migration"
+          done
+          ! grep -R -Ei 'BIGSERIAL|JSONB|::jsonb|ON CONFLICT|RETURNING|CREATE INDEX IF NOT EXISTS'             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V54__compliance_kyb_kyc_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V55__regional_cross_border_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V61__finance_operations_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V62__product_polish_developer_experience_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V63__production_maturity_execution_automation.sql
 
   api-contract:
     name: API Contract Assets
@@ -117,6 +121,18 @@ jobs:
           grep -q "/api/v2/admin/communication/campaigns" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/vending/overview" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/billing/price-books" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/finance-operations/settlements" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/cross-border/transfers" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/production-maturity/screening/requests" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/production-maturity/settlements/finance/{settlementBatchId}/post" Docs/Api/cpay-v2-openapi.yaml
+          python - <<'PY'
+          import yaml
+          with open('Docs/Api/cpay-v2-openapi.yaml', encoding='utf-8') as fh:
+              spec = yaml.safe_load(fh)
+          assert spec.get('openapi')
+          assert '/api/v2/native/payments/collect' in spec['paths']
+          assert '/api/v2/production-maturity/screening/requests' in spec['paths']
+          PY
 
   owasp:
     name: OWASP Dependency-Check

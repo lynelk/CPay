@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +30,7 @@ import java.util.UUID;
  * maker-checker policy enforcement can be layered behind this contract without changing the URL shape.
  */
 @RestController
+@PreAuthorize("hasRole('ADMIN')")
 @RequestMapping(path = "/api/v2/admin/finance-operations", produces = MediaType.APPLICATION_JSON_VALUE)
 public class FinanceOperationsController {
 
@@ -58,19 +61,19 @@ public class FinanceOperationsController {
         return ok("settlements", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/settlements")
     public Map<String, Object> createSettlement(@RequestBody Map<String, Object> body) {
         String reference = reference("SETTLE");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO finance_settlement_batches (
                     settlement_reference, merchant_id, provider_code, channel_code, country_code, currency_code,
                     business_date, settlement_cycle, status, gross_amount, fee_amount, tax_amount,
                     adjustment_amount, net_amount, variance_amount, item_count, created_by, finance_owner, notes, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, CAST(? AS date), COALESCE(?, 'DAILY'), COALESCE(?, 'OPEN'),
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'DAILY'), COALESCE(?, 'OPEN'),
                           COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0),
-                          COALESCE(?, 0), COALESCE(?, 0), ?, ?, ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                          COALESCE(?, 0), COALESCE(?, 0), ?, ?, ?, ?)
+                """,
                 reference,
                 optionalLong(body, "merchantId"),
                 optionalString(body, "providerCode"),
@@ -91,7 +94,7 @@ public class FinanceOperationsController {
                 optionalString(body, "financeOwner"),
                 optionalString(body, "notes"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/settlements/{id}")
@@ -109,6 +112,7 @@ public class FinanceOperationsController {
         return result;
     }
 
+    @Transactional
     @PostMapping("/settlements/{id}/items")
     public Map<String, Object> addSettlementItem(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         jdbcTemplate.update("""
@@ -116,7 +120,7 @@ public class FinanceOperationsController {
                     settlement_batch_id, transaction_reference, provider_reference, merchant_reference, transaction_type,
                     status, amount, fee_amount, tax_amount, net_amount, variance_amount, metadata
                 ) VALUES (?, ?, ?, ?, ?, COALESCE(?, 'INCLUDED'), COALESCE(?, 0), COALESCE(?, 0),
-                          COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), CAST(? AS jsonb))
+                          COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), ?)
                 """,
                 id,
                 requiredString(body, "transactionReference"),
@@ -133,6 +137,7 @@ public class FinanceOperationsController {
         return accepted("settlement_item_recorded", id);
     }
 
+    @Transactional
     @PostMapping("/settlements/{id}/transition")
     public Map<String, Object> transitionSettlement(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String status = requiredString(body, "status");
@@ -167,18 +172,18 @@ public class FinanceOperationsController {
         return ok("treasuryPositions", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/treasury/positions")
     public Map<String, Object> recordTreasuryPosition(@RequestBody Map<String, Object> body) {
         String reference = reference("TREASURY");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO treasury_positions (
                     position_reference, merchant_id, provider_code, channel_code, country_code, currency_code, position_date,
                     available_balance, reserved_balance, pending_payout_exposure, unsettled_receivable, unsettled_payable,
                     unreconciled_exposure, source, captured_by, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, CAST(? AS date), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0),
-                          COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 'INTERNAL'), ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0),
+                          COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 'INTERNAL'), ?, ?)
+                """,
                 reference,
                 optionalLong(body, "merchantId"),
                 optionalString(body, "providerCode"),
@@ -195,7 +200,7 @@ public class FinanceOperationsController {
                 optionalString(body, "source"),
                 optionalString(body, "capturedBy"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/reconciliation/exceptions")
@@ -212,17 +217,17 @@ public class FinanceOperationsController {
         return ok("reconciliationExceptions", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/reconciliation/exceptions")
     public Map<String, Object> createReconciliationException(@RequestBody Map<String, Object> body) {
         String reference = reference("RECON");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO reconciliation_exceptions (
                     exception_reference, settlement_batch_id, transaction_reference, provider_reference, merchant_id,
                     provider_code, channel_code, currency_code, exception_type, severity, status, internal_amount,
                     provider_amount, variance_amount, assigned_to, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'MEDIUM'), COALESCE(?, 'OPEN'), ?, ?, ?, ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'MEDIUM'), COALESCE(?, 'OPEN'), ?, ?, ?, ?, ?)
+                """,
                 reference,
                 optionalLong(body, "settlementBatchId"),
                 optionalString(body, "transactionReference"),
@@ -239,9 +244,10 @@ public class FinanceOperationsController {
                 body.get("varianceAmount"),
                 optionalString(body, "assignedTo"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
+    @Transactional
     @PostMapping("/reconciliation/exceptions/{id}/resolve")
     public Map<String, Object> resolveReconciliationException(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         jdbcTemplate.update("""
@@ -260,28 +266,29 @@ public class FinanceOperationsController {
     @GetMapping("/daily-close/{businessDate}")
     public Map<String, Object> getDailyClose(@PathVariable String businessDate) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT * FROM finance_daily_close_records WHERE business_date = CAST(? AS date)", businessDate);
+                "SELECT * FROM finance_daily_close_records WHERE business_date = ?", businessDate);
         if (rows.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Daily close record not found");
         }
         return ok("dailyClose", rows.getFirst());
     }
 
+    @Transactional
     @PostMapping("/daily-close")
     public Map<String, Object> openDailyClose(@RequestBody Map<String, Object> body) {
         String reference = reference("CLOSE");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO finance_daily_close_records (close_reference, business_date, opened_by, metadata)
-                VALUES (?, CAST(? AS date), ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                VALUES (?, ?, ?, ?)
+                """,
                 reference,
                 requiredString(body, "businessDate"),
                 optionalString(body, "openedBy"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
+    @Transactional
     @PostMapping("/daily-close/{id}/decision")
     public Map<String, Object> decideDailyClose(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String status = requiredString(body, "status");
@@ -315,16 +322,16 @@ public class FinanceOperationsController {
         return accepted("daily_close_decision_recorded", id);
     }
 
+    @Transactional
     @PostMapping("/reports/exports")
     public Map<String, Object> requestReportExport(@RequestBody Map<String, Object> body) {
         String reference = reference("EXPORT");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO finance_report_exports (
                     export_reference, report_type, requested_by, format, date_from, date_to, merchant_id,
                     provider_code, channel_code, country_code, currency_code, filter_json
-                ) VALUES (?, ?, ?, COALESCE(?, 'CSV'), CAST(? AS date), CAST(? AS date), ?, ?, ?, ?, ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, ?, COALESCE(?, 'CSV'), ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 reference,
                 requiredString(body, "reportType"),
                 optionalString(body, "requestedBy"),
@@ -337,7 +344,7 @@ public class FinanceOperationsController {
                 optionalString(body, "countryCode"),
                 optionalString(body, "currencyCode"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/reports/exports")
@@ -354,16 +361,16 @@ public class FinanceOperationsController {
         return ok("reportExports", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/incidents")
     public Map<String, Object> createIncident(@RequestBody Map<String, Object> body) {
         String reference = reference("INC");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO operations_incidents (
                     incident_reference, title, severity, status, incident_type, provider_code, channel_code,
                     merchant_id, business_impact, owner, root_cause, corrective_action, metadata
-                ) VALUES (?, ?, COALESCE(?, 'SEV3'), COALESCE(?, 'OPEN'), ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, COALESCE(?, 'SEV3'), COALESCE(?, 'OPEN'), ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 reference,
                 requiredString(body, "title"),
                 optionalString(body, "severity"),
@@ -377,7 +384,7 @@ public class FinanceOperationsController {
                 optionalString(body, "rootCause"),
                 optionalString(body, "correctiveAction"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/incidents")
@@ -394,11 +401,12 @@ public class FinanceOperationsController {
         return ok("incidents", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/incidents/{id}/events")
     public Map<String, Object> addIncidentEvent(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         jdbcTemplate.update("""
                 INSERT INTO operations_incident_events (incident_id, event_type, actor, message, evidence_url, metadata)
-                VALUES (?, ?, ?, ?, ?, CAST(? AS jsonb))
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 id,
                 requiredString(body, "eventType"),
@@ -407,6 +415,11 @@ public class FinanceOperationsController {
                 optionalString(body, "evidenceUrl"),
                 json(body));
         return accepted("incident_event_recorded", id);
+    }
+
+    private Long lastInsertId() {
+        Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        return id == null ? 0L : id;
     }
 
     private Map<String, Object> ok(String key, Object value) {

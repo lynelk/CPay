@@ -1,213 +1,203 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
+import { useProductionMaturitySummary, type ProductionMaturityEndpointSummary } from '../../shared/api/hooks';
 
-type EndpointState<T> = {
-  loading: boolean;
-  error: string | null;
-  data: T | null;
+type CardStatus = 'ready' | 'loading' | 'blocked';
+
+const ownerTone: Record<ProductionMaturityEndpointSummary['owner'], string> = {
+  Merchant: 'pm-chip--merchant',
+  Finance: 'pm-chip--finance',
+  Compliance: 'pm-chip--compliance',
+  Operations: 'pm-chip--operations',
+  Developer: 'pm-chip--developer',
 };
 
-type DashboardSection = {
-  title: string;
-  description: string;
-  endpoint: string;
-  owner: 'Merchant' | 'Finance' | 'Compliance' | 'Operations' | 'Developer';
-};
-
-const sections: DashboardSection[] = [
-  {
-    title: 'Merchant onboarding',
-    description: 'Tracks onboarding steps, KYB blockers, channel setup, sandbox readiness and go-live checklist status.',
-    endpoint: '/api/v2/product/onboarding/progress',
-    owner: 'Merchant',
-  },
-  {
-    title: 'Developer portal',
-    description: 'Surfaces developer apps, API key metadata, sandbox guides, channel journeys and go-live guidance.',
-    endpoint: '/api/v2/product/developer/apps',
-    owner: 'Developer',
-  },
-  {
-    title: 'Payment links and checkout',
-    description: 'Reviews payment link lifecycle, checkout sessions, invoice records and customer payment journeys.',
-    endpoint: '/api/v2/product/payment-links',
-    owner: 'Merchant',
-  },
-  {
-    title: 'Finance operations',
-    description: 'Reviews settlement batches, reconciliation exceptions, treasury positions, daily close and report exports.',
-    endpoint: '/api/v2/finance/settlement-batches',
-    owner: 'Finance',
-  },
-  {
-    title: 'Compliance operations',
-    description: 'Reviews KYB/KYC profiles, beneficial ownership, compliance cases, screening results and evidence exports.',
-    endpoint: '/api/v2/compliance/cases',
-    owner: 'Compliance',
-  },
-  {
-    title: 'Cross-border readiness',
-    description: 'Reviews corridors, beneficiaries, FX quotes, transfer lifecycle, treasury exposure and corridor settlement.',
-    endpoint: '/api/v2/cross-border/corridors',
-    owner: 'Operations',
-  },
-];
-
-function useEndpoint<T>(endpoint: string): EndpointState<T> {
-  const [state, setState] = useState<EndpointState<T>>({ loading: false, error: null, data: null });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ loading: true, error: null, data: null });
-
-    fetch(endpoint, {
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`${response.status} ${response.statusText}`);
-        }
-        return response.json() as Promise<T>;
-      })
-      .then((data) => setState({ loading: false, error: null, data }))
-      .catch((error: Error) => {
-        if (controller.signal.aborted) return;
-        setState({ loading: false, error: error.message, data: null });
-      });
-
-    return () => controller.abort();
-  }, [endpoint]);
-
-  return state;
+function payloadCount(data: unknown): string {
+  if (Array.isArray(data)) return `${data.length} records`;
+  if (data && typeof data === 'object') {
+    const values = Object.values(data as Record<string, unknown>);
+    const firstArray = values.find(Array.isArray);
+    if (Array.isArray(firstArray)) return `${firstArray.length} records`;
+    return `${Object.keys(data as Record<string, unknown>).length} fields`;
+  }
+  return 'No payload';
 }
 
-function StatusBadge({ state }: { state: EndpointState<unknown> }): React.ReactElement {
-  if (state.loading) {
-    return <span className="pm-badge pm-badge-muted">Checking</span>;
-  }
-  if (state.error) {
-    return <span className="pm-badge pm-badge-warn">Needs wiring</span>;
-  }
-  return <span className="pm-badge pm-badge-ok">Reachable</span>;
+function StatusPill({ status }: { status: CardStatus }): React.ReactElement {
+  const label = status === 'ready' ? 'Live' : status === 'loading' ? 'Loading' : 'Needs attention';
+  return <span className={`pm-status pm-status--${status}`}>{label}</span>;
 }
 
-function SectionCard({ section }: { section: DashboardSection }): React.ReactElement {
-  const state = useEndpoint<unknown>(section.endpoint);
-  const detail = useMemo(() => {
-    if (state.loading) return 'Loading endpoint status…';
-    if (state.error) return `Endpoint did not return usable JSON yet: ${state.error}`;
-    if (Array.isArray(state.data)) return `${state.data.length} records returned.`;
-    if (state.data && typeof state.data === 'object') return 'Endpoint returned a workflow payload.';
-    return 'Endpoint returned no payload.';
-  }, [state]);
-
+function WorkflowCard({ item }: { item: ProductionMaturityEndpointSummary }): React.ReactElement {
   return (
     <article className="pm-card">
-      <div className="pm-card-header">
-        <div>
-          <p className="pm-owner">{section.owner}</p>
-          <h2>{section.title}</h2>
-        </div>
-        <StatusBadge state={state} />
+      <div className="pm-card__top">
+        <span className={`pm-chip ${ownerTone[item.owner]}`}>{item.owner}</span>
+        <StatusPill status="ready" />
       </div>
-      <p>{section.description}</p>
-      <code>{section.endpoint}</code>
-      <p className="pm-detail">{detail}</p>
+      <h3>{item.label}</h3>
+      <div className="pm-card__metric">{payloadCount(item.data)}</div>
+      <code>{item.endpoint}</code>
     </article>
   );
 }
 
+function LoadingGrid(): React.ReactElement {
+  return (
+    <section className="pm-grid" aria-label="Production maturity loading state">
+      {Array.from({ length: 6 }, (_, index) => (
+        <article className="pm-card pm-card--skeleton" key={index}>
+          <div />
+          <span />
+          <p />
+        </article>
+      ))}
+    </section>
+  );
+}
+
 export default function ProductionMaturityDashboard(): React.ReactElement {
+  const summary = useProductionMaturitySummary();
+  const cards = summary.data ?? [];
+  const totals = useMemo(() => {
+    const live = cards.length;
+    const owners = new Set(cards.map((card) => card.owner)).size;
+    return { live, owners };
+  }, [cards]);
+
   return (
     <main className="pm-shell">
       <style>{`
         .pm-shell {
-          padding: 32px;
-          color: #172033;
-          background: #f7f9fc;
-          min-height: 100vh;
-        }
-        .pm-hero {
-          max-width: 1120px;
-          margin: 0 auto 24px auto;
-        }
-        .pm-hero h1 {
-          margin: 0 0 8px 0;
-          font-size: 2rem;
-        }
-        .pm-hero p {
-          max-width: 820px;
-          color: #526071;
-          line-height: 1.55;
-        }
-        .pm-grid {
-          max-width: 1120px;
-          margin: 0 auto;
+          color: var(--ios-text, #0f172a);
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
           gap: 16px;
         }
-        .pm-card {
-          background: #fff;
-          border: 1px solid #d9e2ef;
-          border-radius: 16px;
-          padding: 18px;
-          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        .pm-hero {
+          background: rgba(255, 255, 255, 0.82);
+          border: 1px solid rgba(148, 163, 184, 0.26);
+          border-radius: 24px;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 20px;
+          padding: 22px;
         }
-        .pm-card-header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 12px;
+        .pm-hero h2 {
+          font-size: clamp(1.55rem, 2.5vw, 2.25rem);
+          margin: 0 0 6px 0;
         }
-        .pm-card h2 {
-          margin: 0 0 8px 0;
-          font-size: 1.125rem;
+        .pm-hero p {
+          color: var(--ios-text-muted, #64748b);
+          margin: 0;
+          max-width: 760px;
         }
-        .pm-card p {
-          color: #526071;
-          line-height: 1.5;
+        .pm-kpis {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(110px, 1fr));
+          gap: 10px;
         }
-        .pm-card code {
+        .pm-kpi {
+          background: linear-gradient(180deg, rgba(245, 249, 255, 0.96), rgba(255, 255, 255, 0.96));
+          border: 1px solid rgba(148, 163, 184, 0.22);
+          border-radius: 18px;
+          padding: 14px;
+          min-width: 120px;
+        }
+        .pm-kpi strong {
           display: block;
-          padding: 10px;
-          border-radius: 10px;
-          background: #f2f5f9;
-          color: #2d3b4f;
+          font-size: 1.45rem;
+          line-height: 1;
+        }
+        .pm-kpi span { color: var(--ios-text-muted, #64748b); font-size: 0.82rem; }
+        .pm-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+          gap: 14px;
+        }
+        .pm-card {
+          background: rgba(255, 255, 255, 0.88);
+          border: 1px solid rgba(148, 163, 184, 0.22);
+          border-radius: 20px;
+          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          min-height: 190px;
+          overflow: hidden;
+          padding: 16px;
+        }
+        .pm-card__top { align-items: center; display: flex; justify-content: space-between; gap: 10px; }
+        .pm-card h3 { font-size: 1.05rem; margin: 0; }
+        .pm-card__metric { font-size: 1.75rem; font-weight: 800; letter-spacing: 0; }
+        .pm-card code {
+          background: rgba(241, 245, 249, 0.85);
+          border-radius: 12px;
+          color: #475569;
+          display: block;
+          font-size: 0.78rem;
+          line-height: 1.35;
+          margin-top: auto;
           overflow-wrap: anywhere;
+          padding: 10px;
         }
-        .pm-owner {
-          margin: 0 0 4px 0;
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          color: #6b7788;
-        }
-        .pm-badge {
+        .pm-chip, .pm-status {
           border-radius: 999px;
-          padding: 6px 10px;
           font-size: 0.75rem;
+          font-weight: 700;
+          padding: 6px 10px;
           white-space: nowrap;
         }
-        .pm-badge-ok { background: #e8f7ed; color: #176b36; }
-        .pm-badge-warn { background: #fff3df; color: #8a5200; }
-        .pm-badge-muted { background: #eef2f7; color: #536274; }
-        .pm-detail { font-size: 0.875rem; }
+        .pm-chip--merchant { background: #e0f2fe; color: #075985; }
+        .pm-chip--finance { background: #ecfdf5; color: #047857; }
+        .pm-chip--compliance { background: #fef3c7; color: #92400e; }
+        .pm-chip--operations { background: #ede9fe; color: #5b21b6; }
+        .pm-chip--developer { background: #fce7f3; color: #9d174d; }
+        .pm-status--ready { background: #dcfce7; color: #166534; }
+        .pm-status--loading { background: #e2e8f0; color: #475569; }
+        .pm-status--blocked { background: #fee2e2; color: #991b1b; }
+        .pm-error {
+          background: #fff7ed;
+          border: 1px solid #fed7aa;
+          border-radius: 18px;
+          color: #9a3412;
+          padding: 16px;
+        }
+        .pm-card--skeleton div, .pm-card--skeleton span, .pm-card--skeleton p {
+          background: linear-gradient(90deg, #e2e8f0, #f8fafc, #e2e8f0);
+          border-radius: 999px;
+          min-height: 18px;
+        }
+        .pm-card--skeleton div { width: 45%; }
+        .pm-card--skeleton span { width: 70%; min-height: 28px; }
+        .pm-card--skeleton p { width: 100%; min-height: 64px; margin-top: auto; }
+        @media (max-width: 720px) {
+          .pm-hero { grid-template-columns: 1fr; }
+          .pm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .pm-grid { grid-template-columns: 1fr; }
+        }
       `}</style>
       <section className="pm-hero">
-        <h1>Production maturity dashboard</h1>
-        <p>
-          This dashboard wires the new finance, compliance, cross-border and product-experience endpoint
-          surfaces into the portal shell. It is intentionally status-driven so teams can see which workflow
-          APIs are live, which need routing, and which still require backend orchestration or UI-specific follow-up.
-        </p>
+        <div>
+          <h2>Production maturity</h2>
+          <p>Finance, compliance, cross-border, developer-experience and automation readiness in one operations view.</p>
+        </div>
+        <div className="pm-kpis" aria-label="Production maturity summary">
+          <div className="pm-kpi"><strong>{summary.isLoading ? '...' : totals.live}</strong><span>live surfaces</span></div>
+          <div className="pm-kpi"><strong>{summary.isLoading ? '...' : totals.owners}</strong><span>teams covered</span></div>
+        </div>
       </section>
-      <section className="pm-grid" aria-label="Production maturity workflow endpoint status">
-        {sections.map((section) => (
-          <SectionCard key={section.endpoint} section={section} />
-        ))}
-      </section>
+
+      {summary.isLoading ? <LoadingGrid /> : null}
+      {summary.error ? (
+        <section className="pm-error" role="alert">
+          Production maturity APIs could not be loaded: {(summary.error as Error).message}
+        </section>
+      ) : null}
+      {!summary.isLoading && !summary.error ? (
+        <section className="pm-grid" aria-label="Production maturity workflow endpoint status">
+          {cards.map((item) => <WorkflowCard key={item.key} item={item} />)}
+        </section>
+      ) : null}
     </main>
   );
 }

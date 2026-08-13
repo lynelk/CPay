@@ -1832,3 +1832,77 @@ export function useBalanceMonitoringOverview(option: { enabled?: boolean } = {})
     retry: false,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Production maturity dashboard (P1-P4) — finance, compliance, cross-border,
+// developer experience and automation readiness.
+// ---------------------------------------------------------------------------
+
+export interface ProductionMaturityEndpointSummary {
+  key: string;
+  label: string;
+  owner: 'Merchant' | 'Finance' | 'Compliance' | 'Operations' | 'Developer';
+  endpoint: string;
+  data: unknown;
+}
+
+const productionMaturityEndpoints: Array<Omit<ProductionMaturityEndpointSummary, 'data'>> = [
+  {
+    key: 'merchant-onboarding',
+    label: 'Merchant onboarding',
+    owner: 'Merchant',
+    endpoint: '/api/v2/product-experience/dashboard/widgets?audience=ADMIN',
+  },
+  {
+    key: 'developer-portal',
+    label: 'Developer portal',
+    owner: 'Developer',
+    endpoint: '/api/v2/product-experience/developer/applications?limit=10',
+  },
+  {
+    key: 'payment-links',
+    label: 'Payment links and checkout',
+    owner: 'Merchant',
+    endpoint: '/api/v2/product-experience/payment-links?limit=10',
+  },
+  {
+    key: 'finance-operations',
+    label: 'Finance operations',
+    owner: 'Finance',
+    endpoint: '/api/v2/admin/finance-operations/settlements?limit=10',
+  },
+  {
+    key: 'compliance-operations',
+    label: 'Compliance operations',
+    owner: 'Compliance',
+    endpoint: '/api/v2/admin/compliance/cases',
+  },
+  {
+    key: 'cross-border-readiness',
+    label: 'Cross-border readiness',
+    owner: 'Operations',
+    endpoint: '/api/v2/cross-border/corridors',
+  },
+  {
+    key: 'automation-validation',
+    label: 'Automation validation',
+    owner: 'Operations',
+    endpoint: '/api/v2/production-maturity/validation/runs?limit=10',
+  },
+];
+
+export function useProductionMaturitySummary() {
+  return useQuery({
+    queryKey: ['production-maturity', 'summary'],
+    queryFn: async (): Promise<ProductionMaturityEndpointSummary[]> => {
+      const results = await Promise.all(
+        productionMaturityEndpoints.map(async (endpoint) => ({
+          ...endpoint,
+          data: await request<unknown>(endpoint.endpoint),
+        })),
+      );
+      return results;
+    },
+    retry: false,
+  });
+}

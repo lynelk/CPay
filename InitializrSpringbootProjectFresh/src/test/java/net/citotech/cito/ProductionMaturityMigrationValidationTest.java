@@ -15,84 +15,114 @@ class ProductionMaturityMigrationValidationTest {
 
     private static final Path MIGRATION_DIR = Path.of("src/main/resources/db/migration");
     private static final Path API_DIR = Path.of("../Docs/Api");
-
-    @Test
-    void productionMaturityMigrationVersionsArePresent() throws IOException {
-        List<String> migrations = Files.list(MIGRATION_DIR)
-            .map(path -> path.getFileName().toString())
-            .filter(name -> name.matches("V5[4-8]__.*\\.sql"))
-            .sorted()
-            .toList();
-
-        assertThat(migrations).containsExactly(
+    private static final List<String> PRODUCTION_MATURITY_MIGRATIONS = List.of(
             "V54__compliance_kyb_kyc_foundation.sql",
             "V55__regional_cross_border_foundation.sql",
-            "V56__finance_operations_foundation.sql",
-            "V57__product_polish_developer_experience_foundation.sql",
-            "V58__production_maturity_execution_automation.sql"
-        );
+            "V61__finance_operations_foundation.sql",
+            "V62__product_polish_developer_experience_foundation.sql",
+            "V63__production_maturity_execution_automation.sql");
+
+    @Test
+    void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations() throws IOException {
+        List<String> migrations = Files.list(MIGRATION_DIR)
+                .map(path -> path.getFileName().toString())
+                .filter(PRODUCTION_MATURITY_MIGRATIONS::contains)
+                .sorted()
+                .toList();
+
+        assertThat(migrations).containsExactlyElementsOf(PRODUCTION_MATURITY_MIGRATIONS);
     }
 
     @Test
     void productionMaturityMigrationsDefineRequiredWorkflowTables() throws IOException {
-        String joinedSql = String.join("\n", List.of(
-            readMigration("V54__compliance_kyb_kyc_foundation.sql"),
-            readMigration("V55__regional_cross_border_foundation.sql"),
-            readMigration("V56__finance_operations_foundation.sql"),
-            readMigration("V57__product_polish_developer_experience_foundation.sql"),
-            readMigration("V58__production_maturity_execution_automation.sql")
-        ));
+        String joinedSql = String.join("\n", PRODUCTION_MATURITY_MIGRATIONS.stream()
+                .map(ProductionMaturityMigrationValidationTest::readMigrationUnchecked)
+                .toList());
 
         assertThat(joinedSql)
-            .contains("merchant_kyb_profiles")
-            .contains("compliance_cases")
-            .contains("corridors")
-            .contains("cross_border_transfers")
-            .contains("finance_settlement_batches")
-            .contains("reconciliation_exceptions")
-            .contains("merchant_onboarding_workflows")
-            .contains("developer_portal_apps")
-            .contains("screening_provider_configs")
-            .contains("cross_border_payout_rail_dispatches")
-            .contains("settlement_posting_runs")
-            .contains("production_maturity_validation_runs");
+                .contains("kyb_profiles")
+                .contains("compliance_cases")
+                .contains("corridors")
+                .contains("cross_border_transfers")
+                .contains("finance_settlement_batches")
+                .contains("reconciliation_exceptions")
+                .contains("merchant_onboarding_workflows")
+                .contains("developer_portal_applications")
+                .contains("screening_provider_configs")
+                .contains("cross_border_payout_rail_dispatches")
+                .contains("settlement_posting_runs")
+                .contains("production_maturity_validation_runs");
+    }
+
+    @Test
+    void productionMaturityMigrationsStayMySqlCompatible() throws IOException {
+        String joinedSql = String.join("\n", PRODUCTION_MATURITY_MIGRATIONS.stream()
+                .map(ProductionMaturityMigrationValidationTest::readMigrationUnchecked)
+                .toList()).toLowerCase();
+
+        assertThat(joinedSql)
+                .doesNotContain("bigserial")
+                .doesNotContain("jsonb")
+                .doesNotContain("::json")
+                .doesNotContain("on conflict")
+                .doesNotContain("returning")
+                .doesNotContain("create index if not exists");
     }
 
     @Test
     void migrationVersionsRemainUnique() throws IOException {
         Pattern versionPattern = Pattern.compile("^V(\\d+)__.*\\.sql$");
         List<String> versions = Files.list(MIGRATION_DIR)
-            .map(path -> path.getFileName().toString())
-            .map(versionPattern::matcher)
-            .filter(Matcher::matches)
-            .map(matcher -> matcher.group(1))
-            .toList();
+                .map(path -> path.getFileName().toString())
+                .map(versionPattern::matcher)
+                .filter(Matcher::matches)
+                .map(matcher -> matcher.group(1))
+                .toList();
 
         assertThat(versions).doesNotHaveDuplicates();
     }
 
     @Test
     void productionMaturityControllersExposeExpectedRouteRoots() {
-        assertRoute(ComplianceKybKycController.class, "/api/v2/compliance");
-        assertRoute(CrossBorderController.class, "/api/v2/cross-border");
-        assertRoute(FinanceOperationsController.class, "/api/v2/finance");
-        assertRoute(ProductDeveloperExperienceController.class, "/api/v2/product");
+        assertRoute(ComplianceKybKycController.class, "/api/v2");
+        assertRoute(CrossBorderController.class, "/api/v2");
+        assertRoute(FinanceOperationsController.class, "/api/v2/admin/finance-operations");
+        assertRoute(ProductDeveloperExperienceController.class, "/api/v2/product-experience");
         assertRoute(ProductionMaturityAutomationController.class, "/api/v2/production-maturity");
     }
 
     @Test
-    void openApiContractsMentionMergedProductionMaturitySurfaces() throws IOException {
+    void openApiContractsMentionProductionMaturitySurfaces() throws IOException {
         String p1p4 = Files.readString(API_DIR.resolve("cpay-v2-p1-p4-openapi-addendum.yaml"));
         String p2p3 = Files.readString(API_DIR.resolve("cpay-v2-p2-p3-openapi-addendum.yaml"));
-        String merged = Files.readString(API_DIR.resolve("cpay-v2-openapi-production-maturity-merged.yaml"));
+        String mergedReference = Files.readString(API_DIR.resolve("cpay-v2-openapi-production-maturity-merged.yaml"));
+        String mainContract = Files.readString(API_DIR.resolve("cpay-v2-openapi.yaml"));
 
-        assertThat(p1p4).contains("/api/v2/finance/settlement-batches");
-        assertThat(p2p3).contains("/api/v2/cross-border/transfers");
-        assertThat(merged)
-            .contains("/api/v2/production-maturity/screening/requests")
-            .contains("/api/v2/production-maturity/cross-border/transfers/{transferId}/dispatch")
-            .contains("/api/v2/production-maturity/settlements/finance/{settlementBatchId}/post")
-            .contains("/api/v2/product/onboarding/progress");
+        assertThat(p1p4)
+                .contains("/admin/finance-operations/settlements")
+                .contains("/product-experience/merchant/{merchantId}/onboarding");
+        assertThat(p2p3)
+                .contains("/cross-border/transfers")
+                .contains("/admin/compliance/cases");
+        assertThat(mergedReference)
+                .contains("/api/v2/production-maturity/screening/requests")
+                .contains("/api/v2/product/onboarding/progress");
+        assertThat(mainContract)
+                .contains("/api/v2/native/payments/collect")
+                .contains("/api/v2/admin/finance-operations/settlements")
+                .contains("/api/v2/admin/compliance/cases")
+                .contains("/api/v2/cross-border/transfers")
+                .contains("/api/v2/production-maturity/screening/requests")
+                .contains("/api/v2/production-maturity/cross-border/transfers/{transferId}/dispatch")
+                .contains("/api/v2/production-maturity/settlements/finance/{settlementBatchId}/post");
+    }
+
+    private static String readMigrationUnchecked(String name) {
+        try {
+            return readMigration(name);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to read migration " + name, e);
+        }
     }
 
     private static String readMigration(String name) throws IOException {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -55,24 +56,25 @@ public class ProductDeveloperExperienceController {
         return result;
     }
 
+    @Transactional
     @PostMapping("/merchant/{merchantId}/onboarding")
     public Map<String, Object> openOnboarding(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         String reference = reference("ONBOARD");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO merchant_onboarding_workflows (
                     workflow_reference, merchant_id, current_step, status, completion_percentage,
                     blocked_reason, assigned_owner, metadata
-                ) VALUES (?, ?, COALESCE(?, 'ACCOUNT_CREATED'), COALESCE(?, 'IN_PROGRESS'), COALESCE(?, 0), ?, ?, CAST(? AS jsonb))
-                ON CONFLICT (merchant_id) DO UPDATE SET
-                    current_step = EXCLUDED.current_step,
-                    status = EXCLUDED.status,
-                    completion_percentage = EXCLUDED.completion_percentage,
-                    blocked_reason = EXCLUDED.blocked_reason,
-                    assigned_owner = EXCLUDED.assigned_owner,
-                    metadata = EXCLUDED.metadata,
-                    updated_at = CURRENT_TIMESTAMP
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, COALESCE(?, 'ACCOUNT_CREATED'), COALESCE(?, 'IN_PROGRESS'), COALESCE(?, 0), ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    current_step = VALUES(current_step),
+                    status = VALUES(status),
+                    completion_percentage = VALUES(completion_percentage),
+                    blocked_reason = VALUES(blocked_reason),
+                    assigned_owner = VALUES(assigned_owner),
+                    metadata = VALUES(metadata),
+                    updated_at = CURRENT_TIMESTAMP,
+                    id = LAST_INSERT_ID(id)
+                """,
                 reference,
                 merchantId,
                 optionalString(body, "currentStep"),
@@ -81,9 +83,10 @@ public class ProductDeveloperExperienceController {
                 optionalString(body, "blockedReason"),
                 optionalString(body, "assignedOwner"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
+    @Transactional
     @PostMapping("/merchant/{merchantId}/onboarding/steps")
     public Map<String, Object> upsertOnboardingStep(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         Long workflowId = ensureWorkflow(merchantId);
@@ -92,17 +95,17 @@ public class ProductDeveloperExperienceController {
                     workflow_id, step_code, step_name, status, required_for_go_live, completed_by,
                     completed_at, evidence_url, notes, sort_order, metadata
                 ) VALUES (?, ?, ?, COALESCE(?, 'PENDING'), COALESCE(?, TRUE), ?,
-                          CASE WHEN ? = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE NULL END, ?, ?, COALESCE(?, 0), CAST(? AS jsonb))
-                ON CONFLICT (workflow_id, step_code) DO UPDATE SET
-                    step_name = EXCLUDED.step_name,
-                    status = EXCLUDED.status,
-                    required_for_go_live = EXCLUDED.required_for_go_live,
-                    completed_by = EXCLUDED.completed_by,
-                    completed_at = CASE WHEN EXCLUDED.status = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE merchant_onboarding_steps.completed_at END,
-                    evidence_url = EXCLUDED.evidence_url,
-                    notes = EXCLUDED.notes,
-                    sort_order = EXCLUDED.sort_order,
-                    metadata = EXCLUDED.metadata,
+                          CASE WHEN ? = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE NULL END, ?, ?, COALESCE(?, 0), ?)
+                ON DUPLICATE KEY UPDATE
+                    step_name = VALUES(step_name),
+                    status = VALUES(status),
+                    required_for_go_live = VALUES(required_for_go_live),
+                    completed_by = VALUES(completed_by),
+                    completed_at = CASE WHEN VALUES(status) = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE completed_at END,
+                    evidence_url = VALUES(evidence_url),
+                    notes = VALUES(notes),
+                    sort_order = VALUES(sort_order),
+                    metadata = VALUES(metadata),
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 workflowId,
@@ -119,16 +122,16 @@ public class ProductDeveloperExperienceController {
         return accepted("onboarding_step_recorded", merchantId);
     }
 
+    @Transactional
     @PostMapping("/developer/applications")
     public Map<String, Object> createDeveloperApplication(@RequestBody Map<String, Object> body) {
         String reference = reference("APP");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO developer_portal_applications (
                     application_reference, merchant_id, name, environment, status, callback_url,
                     allowed_origins, created_by, metadata
-                ) VALUES (?, ?, ?, COALESCE(?, 'SANDBOX'), COALESCE(?, 'ACTIVE'), ?, ?, ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, ?, COALESCE(?, 'SANDBOX'), COALESCE(?, 'ACTIVE'), ?, ?, ?, ?)
+                """,
                 reference,
                 requiredLong(body, "merchantId"),
                 requiredString(body, "name"),
@@ -138,7 +141,7 @@ public class ProductDeveloperExperienceController {
                 optionalString(body, "allowedOrigins"),
                 optionalString(body, "createdBy"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/developer/applications")
@@ -155,16 +158,16 @@ public class ProductDeveloperExperienceController {
         return ok("applications", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/developer/applications/{applicationId}/api-keys")
     public Map<String, Object> createApiKeyRecord(@PathVariable Long applicationId, @RequestBody Map<String, Object> body) {
         String reference = reference("KEY");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO developer_portal_api_keys (
                     application_id, key_reference, key_label, public_key_pem, status, expires_at,
                     rotated_from_key_reference, created_by
-                ) VALUES (?, ?, ?, ?, COALESCE(?, 'ACTIVE'), CAST(? AS timestamp), ?, ?)
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, ?, ?, COALESCE(?, 'ACTIVE'), ?, ?, ?)
+                """,
                 applicationId,
                 reference,
                 optionalString(body, "keyLabel"),
@@ -173,20 +176,20 @@ public class ProductDeveloperExperienceController {
                 optionalString(body, "expiresAt"),
                 optionalString(body, "rotatedFromKeyReference"),
                 optionalString(body, "createdBy"));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
+    @Transactional
     @PostMapping("/payment-links")
     public Map<String, Object> createPaymentLink(@RequestBody Map<String, Object> body) {
         String reference = reference("PLINK");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO payment_links_v2 (
                     payment_link_reference, merchant_id, token_hash, title, description, amount, currency_code,
                     country_code, status, reusable, partial_payment_allowed, max_uses, expires_at, created_by, metadata
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'ACTIVE'), COALESCE(?, FALSE), COALESCE(?, FALSE),
-                          ?, CAST(? AS timestamp), ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                          ?, ?, ?, ?)
+                """,
                 reference,
                 requiredLong(body, "merchantId"),
                 requiredString(body, "tokenHash"),
@@ -202,7 +205,7 @@ public class ProductDeveloperExperienceController {
                 optionalString(body, "expiresAt"),
                 optionalString(body, "createdBy"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/payment-links")
@@ -219,17 +222,17 @@ public class ProductDeveloperExperienceController {
         return ok("paymentLinks", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/checkout/sessions")
     public Map<String, Object> createCheckoutSession(@RequestBody Map<String, Object> body) {
         String reference = reference("CHECKOUT");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO hosted_checkout_sessions (
                     checkout_reference, merchant_id, payment_link_id, invoice_id, token_hash, customer_msisdn,
                     customer_email, amount, currency_code, country_code, selected_channel, status, expires_at,
                     paid_transaction_reference, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'CREATED'), CAST(? AS timestamp), ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'CREATED'), ?, ?, ?)
+                """,
                 reference,
                 requiredLong(body, "merchantId"),
                 optionalLong(body, "paymentLinkId"),
@@ -245,21 +248,21 @@ public class ProductDeveloperExperienceController {
                 requiredString(body, "expiresAt"),
                 optionalString(body, "paidTransactionReference"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
+    @Transactional
     @PostMapping("/invoices")
     public Map<String, Object> createInvoice(@RequestBody Map<String, Object> body) {
         String reference = reference("INV");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO merchant_invoices_v2 (
                     invoice_reference, merchant_id, invoice_number, customer_name, customer_email, customer_msisdn,
                     currency_code, subtotal_amount, tax_amount, total_amount, amount_paid, status, due_date,
                     partial_payment_allowed, payment_token_hash, created_by, metadata
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0),
-                          COALESCE(?, 'DRAFT'), CAST(? AS date), COALESCE(?, FALSE), ?, ?, CAST(? AS jsonb))
-                RETURNING id
-                """, Long.class,
+                          COALESCE(?, 'DRAFT'), ?, COALESCE(?, FALSE), ?, ?, ?)
+                """,
                 reference,
                 requiredLong(body, "merchantId"),
                 requiredString(body, "invoiceNumber"),
@@ -277,15 +280,16 @@ public class ProductDeveloperExperienceController {
                 optionalString(body, "paymentTokenHash"),
                 optionalString(body, "createdBy"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
+    @Transactional
     @PostMapping("/invoices/{invoiceId}/line-items")
     public Map<String, Object> addInvoiceLineItem(@PathVariable Long invoiceId, @RequestBody Map<String, Object> body) {
         jdbcTemplate.update("""
                 INSERT INTO merchant_invoice_line_items (
                     invoice_id, description, quantity, unit_amount, tax_amount, line_total, sort_order, metadata
-                ) VALUES (?, ?, COALESCE(?, 1), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), CAST(? AS jsonb))
+                ) VALUES (?, ?, COALESCE(?, 1), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), ?)
                 """,
                 invoiceId,
                 requiredString(body, "description"),
@@ -312,17 +316,17 @@ public class ProductDeveloperExperienceController {
         return ok("invoices", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/channel-journeys")
     public Map<String, Object> publishChannelJourney(@RequestBody Map<String, Object> body) {
         String reference = reference("JOURNEY");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO channel_journey_guides (
                     guide_reference, channel_code, country_code, environment, title, status, journey_json, published_by,
                     published_at
-                ) VALUES (?, ?, ?, COALESCE(?, 'SANDBOX'), ?, COALESCE(?, 'DRAFT'), CAST(? AS jsonb), ?,
+                ) VALUES (?, ?, ?, COALESCE(?, 'SANDBOX'), ?, COALESCE(?, 'DRAFT'), ?, ?,
                           CASE WHEN COALESCE(?, 'DRAFT') = 'PUBLISHED' THEN CURRENT_TIMESTAMP ELSE NULL END)
-                RETURNING id
-                """, Long.class,
+                """,
                 reference,
                 requiredString(body, "channelCode"),
                 optionalString(body, "countryCode"),
@@ -332,7 +336,7 @@ public class ProductDeveloperExperienceController {
                 jsonBodyField(body, "journey"),
                 optionalString(body, "publishedBy"),
                 optionalString(body, "status"));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/channel-journeys")
@@ -349,17 +353,18 @@ public class ProductDeveloperExperienceController {
         return ok("channelJourneys", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
+    @Transactional
     @PostMapping("/dashboard/widgets")
     public Map<String, Object> upsertDashboardWidget(@RequestBody Map<String, Object> body) {
         String reference = reference("WIDGET");
         jdbcTemplate.update("""
                 INSERT INTO dashboard_widgets (widget_reference, audience, widget_code, title, status, config_json, sort_order)
-                VALUES (?, ?, ?, ?, COALESCE(?, 'ACTIVE'), CAST(? AS jsonb), COALESCE(?, 0))
-                ON CONFLICT (audience, widget_code) DO UPDATE SET
-                    title = EXCLUDED.title,
-                    status = EXCLUDED.status,
-                    config_json = EXCLUDED.config_json,
-                    sort_order = EXCLUDED.sort_order,
+                VALUES (?, ?, ?, ?, COALESCE(?, 'ACTIVE'), ?, COALESCE(?, 0))
+                ON DUPLICATE KEY UPDATE
+                    title = VALUES(title),
+                    status = VALUES(status),
+                    config_json = VALUES(config_json),
+                    sort_order = VALUES(sort_order),
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 reference,
@@ -381,17 +386,17 @@ public class ProductDeveloperExperienceController {
                 "SELECT * FROM dashboard_widgets WHERE audience = ? ORDER BY sort_order, widget_code", audience));
     }
 
+    @Transactional
     @PostMapping("/sandbox-guides")
     public Map<String, Object> createSandboxGuide(@RequestBody Map<String, Object> body) {
         String reference = reference("SANDBOX");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO sandbox_guides (
                     guide_reference, title, audience, status, content_markdown, sample_payload_json, published_by,
                     published_at
-                ) VALUES (?, ?, COALESCE(?, 'DEVELOPER'), COALESCE(?, 'DRAFT'), ?, CAST(? AS jsonb), ?,
+                ) VALUES (?, ?, COALESCE(?, 'DEVELOPER'), COALESCE(?, 'DRAFT'), ?, ?, ?,
                           CASE WHEN COALESCE(?, 'DRAFT') = 'PUBLISHED' THEN CURRENT_TIMESTAMP ELSE NULL END)
-                RETURNING id
-                """, Long.class,
+                """,
                 reference,
                 requiredString(body, "title"),
                 optionalString(body, "audience"),
@@ -400,7 +405,7 @@ public class ProductDeveloperExperienceController {
                 jsonBodyField(body, "samplePayload"),
                 optionalString(body, "publishedBy"),
                 optionalString(body, "status"));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
     @GetMapping("/sandbox-guides")
@@ -412,23 +417,24 @@ public class ProductDeveloperExperienceController {
                 "SELECT * FROM sandbox_guides WHERE status = ? ORDER BY updated_at DESC", status));
     }
 
+    @Transactional
     @PostMapping("/go-live/{merchantId}")
     public Map<String, Object> openGoLiveChecklist(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         String reference = reference("GOLIVE");
-        Long id = jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO go_live_checklists (
                     checklist_reference, merchant_id, status, requested_by, reviewed_by, approved_by, blocked_reason, metadata
-                ) VALUES (?, ?, COALESCE(?, 'OPEN'), ?, ?, ?, ?, CAST(? AS jsonb))
-                ON CONFLICT (merchant_id) DO UPDATE SET
-                    status = EXCLUDED.status,
-                    requested_by = EXCLUDED.requested_by,
-                    reviewed_by = EXCLUDED.reviewed_by,
-                    approved_by = EXCLUDED.approved_by,
-                    blocked_reason = EXCLUDED.blocked_reason,
-                    metadata = EXCLUDED.metadata,
-                    updated_at = CURRENT_TIMESTAMP
-                RETURNING id
-                """, Long.class,
+                ) VALUES (?, ?, COALESCE(?, 'OPEN'), ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    status = VALUES(status),
+                    requested_by = VALUES(requested_by),
+                    reviewed_by = VALUES(reviewed_by),
+                    approved_by = VALUES(approved_by),
+                    blocked_reason = VALUES(blocked_reason),
+                    metadata = VALUES(metadata),
+                    updated_at = CURRENT_TIMESTAMP,
+                    id = LAST_INSERT_ID(id)
+                """,
                 reference,
                 merchantId,
                 optionalString(body, "status"),
@@ -437,9 +443,10 @@ public class ProductDeveloperExperienceController {
                 optionalString(body, "approvedBy"),
                 optionalString(body, "blockedReason"),
                 json(body));
-        return created(reference, id);
+        return created(reference, lastInsertId());
     }
 
+    @Transactional
     @PostMapping("/go-live/{merchantId}/items")
     public Map<String, Object> upsertGoLiveItem(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         Long checklistId = ensureGoLiveChecklist(merchantId);
@@ -448,17 +455,17 @@ public class ProductDeveloperExperienceController {
                     checklist_id, item_code, item_name, status, required, evidence_url, completed_by,
                     completed_at, notes, sort_order, metadata
                 ) VALUES (?, ?, ?, COALESCE(?, 'PENDING'), COALESCE(?, TRUE), ?, ?,
-                          CASE WHEN ? = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE NULL END, ?, COALESCE(?, 0), CAST(? AS jsonb))
-                ON CONFLICT (checklist_id, item_code) DO UPDATE SET
-                    item_name = EXCLUDED.item_name,
-                    status = EXCLUDED.status,
-                    required = EXCLUDED.required,
-                    evidence_url = EXCLUDED.evidence_url,
-                    completed_by = EXCLUDED.completed_by,
-                    completed_at = CASE WHEN EXCLUDED.status = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE go_live_checklist_items.completed_at END,
-                    notes = EXCLUDED.notes,
-                    sort_order = EXCLUDED.sort_order,
-                    metadata = EXCLUDED.metadata
+                          CASE WHEN ? = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE NULL END, ?, COALESCE(?, 0), ?)
+                ON DUPLICATE KEY UPDATE
+                    item_name = VALUES(item_name),
+                    status = VALUES(status),
+                    required = VALUES(required),
+                    evidence_url = VALUES(evidence_url),
+                    completed_by = VALUES(completed_by),
+                    completed_at = CASE WHEN VALUES(status) = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE completed_at END,
+                    notes = VALUES(notes),
+                    sort_order = VALUES(sort_order),
+                    metadata = VALUES(metadata)
                 """,
                 checklistId,
                 requiredString(body, "itemCode"),
@@ -490,6 +497,11 @@ public class ProductDeveloperExperienceController {
         return result;
     }
 
+    private Long lastInsertId() {
+        Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        return id == null ? 0L : id;
+    }
+
     private Long ensureWorkflow(Long merchantId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT id FROM merchant_onboarding_workflows WHERE merchant_id = ?", merchantId);
@@ -497,11 +509,11 @@ public class ProductDeveloperExperienceController {
             return ((Number) rows.getFirst().get("id")).longValue();
         }
         String reference = reference("ONBOARD");
-        return jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO merchant_onboarding_workflows (workflow_reference, merchant_id)
                 VALUES (?, ?)
-                RETURNING id
-                """, Long.class, reference, merchantId);
+                """, reference, merchantId);
+        return lastInsertId();
     }
 
     private Long ensureGoLiveChecklist(Long merchantId) {
@@ -511,11 +523,11 @@ public class ProductDeveloperExperienceController {
             return ((Number) rows.getFirst().get("id")).longValue();
         }
         String reference = reference("GOLIVE");
-        return jdbcTemplate.queryForObject("""
+        jdbcTemplate.update("""
                 INSERT INTO go_live_checklists (checklist_reference, merchant_id)
                 VALUES (?, ?)
-                RETURNING id
-                """, Long.class, reference, merchantId);
+                """, reference, merchantId);
+        return lastInsertId();
     }
 
     private Map<String, Object> ok(String key, Object value) {
