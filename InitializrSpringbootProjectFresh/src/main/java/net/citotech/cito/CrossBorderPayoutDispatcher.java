@@ -11,8 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Bridges approved cross-border transfer records into payout-rail dispatch envelopes.
  *
- * This service never submits live money movement itself. It creates an idempotent dispatch envelope
- * that a certified payout adapter/execution worker can pick up after provider gates are satisfied.
+ * <p>This service never submits live money movement itself. It creates an idempotent dispatch
+ * envelope that a certified payout adapter/execution worker can pick up after provider gates are
+ * satisfied.
  */
 @Service
 public class CrossBorderPayoutDispatcher {
@@ -25,23 +26,26 @@ public class CrossBorderPayoutDispatcher {
 
     @Transactional
     public Map<String, Object> dispatch(Long transferId, String requestedBy) {
-        Map<String, Object> transfer = fetchOne(
-                "select xbt.id, xbt.transfer_reference, xbt.merchant_id, xbt.corridor_id, c.corridor_code, "
-                        + "xbt.route_id, xbt.status, xbt.source_amount, xbt.destination_amount, "
-                        + "xbt.destination_currency_code, c.destination_country_code, xbt.beneficiary_id, "
-                        + "xbt.beneficiary_instrument_id "
-                        + "from cross_border_transfers xbt join corridors c on c.id = xbt.corridor_id where xbt.id = ?",
-                transferId);
+        Map<String, Object> transfer =
+                fetchOne(
+                        "select xbt.id, xbt.transfer_reference, xbt.merchant_id, xbt.corridor_id, c.corridor_code, "
+                                + "xbt.route_id, xbt.status, xbt.source_amount, xbt.destination_amount, "
+                                + "xbt.destination_currency_code, c.destination_country_code, xbt.beneficiary_id, "
+                                + "xbt.beneficiary_instrument_id "
+                                + "from cross_border_transfers xbt join corridors c on c.id = xbt.corridor_id where xbt.id = ?",
+                        transferId);
 
         String status = value(transfer, "status");
         if (!"APPROVED".equalsIgnoreCase(status)) {
-            throw new IllegalStateException("Transfer must be APPROVED before dispatch; found " + status);
+            throw new IllegalStateException(
+                    "Transfer must be APPROVED before dispatch; found " + status);
         }
 
         Map<String, Object> route = resolveRoute(transfer);
         String idempotencyKey = "XFER-" + transferId + "-" + value(route, "route_code");
         if (dispatchExists(idempotencyKey)) {
-            throw new IllegalStateException("Transfer dispatch already exists for idempotency key " + idempotencyKey);
+            throw new IllegalStateException(
+                    "Transfer dispatch already exists for idempotency key " + idempotencyKey);
         }
 
         String payload = dispatchPayload(transfer, route);
@@ -97,21 +101,26 @@ public class CrossBorderPayoutDispatcher {
     }
 
     @Transactional
-    public Map<String, Object> markProviderSubmitted(Long dispatchId, String providerReference, String responsePayload) {
-        Map<String, Object> dispatch = fetchOne(
-                "select id, transfer_id, dispatch_status from cross_border_payout_rail_dispatches where id = ?",
-                dispatchId);
+    public Map<String, Object> markProviderSubmitted(
+            Long dispatchId, String providerReference, String responsePayload) {
+        Map<String, Object> dispatch =
+                fetchOne(
+                        "select id, transfer_id, dispatch_status from cross_border_payout_rail_dispatches where id = ?",
+                        dispatchId);
         String status = value(dispatch, "dispatch_status");
-        if (!"READY_FOR_PROVIDER".equalsIgnoreCase(status) && !"RETRY_READY".equalsIgnoreCase(status)) {
-            throw new IllegalStateException("Dispatch is not ready for provider submission; found " + status);
+        if (!"READY_FOR_PROVIDER".equalsIgnoreCase(status)
+                && !"RETRY_READY".equalsIgnoreCase(status)) {
+            throw new IllegalStateException(
+                    "Dispatch is not ready for provider submission; found " + status);
         }
-        int updated = jdbcTemplate.update(
-                "update cross_border_payout_rail_dispatches set dispatch_status = 'SUBMITTED', provider_reference = ?, "
-                        + "response_payload = ?, dispatched_at = current_timestamp where id = ? "
-                        + "and dispatch_status in ('READY_FOR_PROVIDER', 'RETRY_READY')",
-                providerReference,
-                responsePayload,
-                dispatchId);
+        int updated =
+                jdbcTemplate.update(
+                        "update cross_border_payout_rail_dispatches set dispatch_status = 'SUBMITTED', provider_reference = ?, "
+                                + "response_payload = ?, dispatched_at = current_timestamp where id = ? "
+                                + "and dispatch_status in ('READY_FOR_PROVIDER', 'RETRY_READY')",
+                        providerReference,
+                        responsePayload,
+                        dispatchId);
         if (updated != 1) {
             throw new IllegalStateException("Dispatch could not be marked submitted");
         }
@@ -144,10 +153,11 @@ public class CrossBorderPayoutDispatcher {
     }
 
     private boolean dispatchExists(String idempotencyKey) {
-        Integer count = jdbcTemplate.queryForObject(
-                "select count(*) from cross_border_payout_rail_dispatches where idempotency_key = ?",
-                Integer.class,
-                idempotencyKey);
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        "select count(*) from cross_border_payout_rail_dispatches where idempotency_key = ?",
+                        Integer.class,
+                        idempotencyKey);
         return count != null && count > 0;
     }
 
@@ -170,15 +180,33 @@ public class CrossBorderPayoutDispatcher {
 
     private static String dispatchPayload(Map<String, Object> transfer, Map<String, Object> route) {
         return "{"
-                + "\"transferId\":" + transfer.get("id") + ","
-                + "\"merchantId\":" + transfer.get("merchant_id") + ","
-                + "\"corridorCode\":\"" + value(transfer, "corridor_code") + "\","
-                + "\"routeCode\":\"" + value(route, "route_code") + "\","
-                + "\"channel\":\"" + value(route, "delivery_method") + "\","
-                + "\"country\":\"" + value(transfer, "destination_country_code") + "\","
-                + "\"currency\":\"" + value(transfer, "destination_currency_code") + "\","
-                + "\"destinationAmount\":\"" + transfer.get("destination_amount") + "\","
-                + "\"merchantReference\":\"" + value(transfer, "transfer_reference") + "\""
+                + "\"transferId\":"
+                + transfer.get("id")
+                + ","
+                + "\"merchantId\":"
+                + transfer.get("merchant_id")
+                + ","
+                + "\"corridorCode\":\""
+                + value(transfer, "corridor_code")
+                + "\","
+                + "\"routeCode\":\""
+                + value(route, "route_code")
+                + "\","
+                + "\"channel\":\""
+                + value(route, "delivery_method")
+                + "\","
+                + "\"country\":\""
+                + value(transfer, "destination_country_code")
+                + "\","
+                + "\"currency\":\""
+                + value(transfer, "destination_currency_code")
+                + "\","
+                + "\"destinationAmount\":\""
+                + transfer.get("destination_amount")
+                + "\","
+                + "\"merchantReference\":\""
+                + value(transfer, "transfer_reference")
+                + "\""
                 + "}";
     }
 

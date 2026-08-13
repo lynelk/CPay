@@ -14,9 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Provider-neutral compliance screening service.
  *
- * The registry persists provider configuration and records every screening request before returning
- * an adapter result. A local adapter is always available for tests and sandbox environments; live
- * vendors require explicit configuration and adapter registration.
+ * <p>The registry persists provider configuration and records every screening request before
+ * returning an adapter result. A local adapter is always available for tests and sandbox
+ * environments; live vendors require explicit configuration and adapter registration.
  */
 @Service
 public class ScreeningProviderAdapterRegistry {
@@ -24,19 +24,27 @@ public class ScreeningProviderAdapterRegistry {
     private final JdbcTemplate jdbcTemplate;
     private final Map<String, ScreeningProviderAdapter> adapters;
 
-    public ScreeningProviderAdapterRegistry(JdbcTemplate jdbcTemplate, List<ScreeningProviderAdapter> adapters) {
+    public ScreeningProviderAdapterRegistry(
+            JdbcTemplate jdbcTemplate, List<ScreeningProviderAdapter> adapters) {
         this.jdbcTemplate = jdbcTemplate;
-        this.adapters = adapters.stream()
-                .collect(Collectors.toUnmodifiableMap(adapter -> normalize(adapter.providerCode()), Function.identity()));
+        this.adapters =
+                adapters.stream()
+                        .collect(
+                                Collectors.toUnmodifiableMap(
+                                        adapter -> normalize(adapter.providerCode()),
+                                        Function.identity()));
     }
 
     @Transactional
     public ScreeningResult screen(ScreeningRequest request) {
         ScreeningRequest validated = request.validate();
-        ProviderConfig config = findProvider(validated.providerCode())
-                .orElseGet(() -> defaultProvider(validated.providerCode()));
-        ScreeningProviderAdapter adapter = adapters.getOrDefault(
-                normalize(config.providerCode()), adapters.get(normalize(LocalScreeningProviderAdapter.PROVIDER_CODE)));
+        ProviderConfig config =
+                findProvider(validated.providerCode())
+                        .orElseGet(() -> defaultProvider(validated.providerCode()));
+        ScreeningProviderAdapter adapter =
+                adapters.getOrDefault(
+                        normalize(config.providerCode()),
+                        adapters.get(normalize(LocalScreeningProviderAdapter.PROVIDER_CODE)));
         if (adapter == null) {
             throw new IllegalStateException("No local screening adapter is registered");
         }
@@ -69,20 +77,22 @@ public class ScreeningProviderAdapterRegistry {
     }
 
     public Optional<ProviderConfig> findProvider(String providerCode) {
-        return jdbcTemplate.query(
+        return jdbcTemplate
+                .query(
                         "select provider_code, display_name, environment, enabled, supports_sanctions, supports_pep, "
                                 + "supports_document_verification, supports_beneficiary_screening, supports_merchant_screening "
                                 + "from screening_provider_configs where provider_code = ?",
-                        (rs, rowNum) -> new ProviderConfig(
-                                rs.getString("provider_code"),
-                                rs.getString("display_name"),
-                                rs.getString("environment"),
-                                rs.getBoolean("enabled"),
-                                rs.getBoolean("supports_sanctions"),
-                                rs.getBoolean("supports_pep"),
-                                rs.getBoolean("supports_document_verification"),
-                                rs.getBoolean("supports_beneficiary_screening"),
-                                rs.getBoolean("supports_merchant_screening")),
+                        (rs, rowNum) ->
+                                new ProviderConfig(
+                                        rs.getString("provider_code"),
+                                        rs.getString("display_name"),
+                                        rs.getString("environment"),
+                                        rs.getBoolean("enabled"),
+                                        rs.getBoolean("supports_sanctions"),
+                                        rs.getBoolean("supports_pep"),
+                                        rs.getBoolean("supports_document_verification"),
+                                        rs.getBoolean("supports_beneficiary_screening"),
+                                        rs.getBoolean("supports_merchant_screening")),
                         normalize(providerCode))
                 .stream()
                 .findFirst();
@@ -135,7 +145,8 @@ public class ScreeningProviderAdapterRegistry {
                         + "on duplicate key update provider_code = provider_code",
                 normalized,
                 normalized);
-        return new ProviderConfig(normalized, normalized, "SANDBOX", false, false, false, false, false, false);
+        return new ProviderConfig(
+                normalized, normalized, "SANDBOX", false, false, false, false, false, false);
     }
 
     private Long lastInsertId() {
@@ -200,7 +211,12 @@ public class ScreeningProviderAdapterRegistry {
             int matchCount,
             String externalReference,
             String responsePayload) {
-        public ScreeningResult(Long requestId, String status, String riskLevel, int matchCount, String externalReference) {
+        public ScreeningResult(
+                Long requestId,
+                String status,
+                String riskLevel,
+                int matchCount,
+                String externalReference) {
             this(requestId, status, riskLevel, matchCount, externalReference, "{}");
         }
     }

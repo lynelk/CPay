@@ -2,6 +2,11 @@ package net.citotech.cito;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,18 +20,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 /**
  * P4 product polish and developer-experience foundation endpoints.
  *
- * These endpoints provide durable UX state and API surfaces for onboarding, developer portal,
- * payment links, hosted checkout, invoices, channel journey guides, dashboards, sandbox guides,
- * and go-live checklists. Portal screens can consume these contracts directly.
+ * <p>These endpoints provide durable UX state and API surfaces for onboarding, developer portal,
+ * payment links, hosted checkout, invoices, channel journey guides, dashboards, sandbox guides, and
+ * go-live checklists. Portal screens can consume these contracts directly.
  */
 @RestController
 @RequestMapping(path = "/api/v2/product-experience", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -35,21 +34,27 @@ public class ProductDeveloperExperienceController {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    public ProductDeveloperExperienceController(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    public ProductDeveloperExperienceController(
+            JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
     }
 
     @GetMapping("/merchant/{merchantId}/onboarding")
     public Map<String, Object> getOnboarding(@PathVariable Long merchantId) {
-        List<Map<String, Object>> workflows = jdbcTemplate.queryForList(
-                "SELECT * FROM merchant_onboarding_workflows WHERE merchant_id = ?", merchantId);
+        List<Map<String, Object>> workflows =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM merchant_onboarding_workflows WHERE merchant_id = ?",
+                        merchantId);
         if (workflows.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Merchant onboarding workflow not found");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Merchant onboarding workflow not found");
         }
         Long workflowId = ((Number) workflows.getFirst().get("id")).longValue();
-        List<Map<String, Object>> steps = jdbcTemplate.queryForList(
-                "SELECT * FROM merchant_onboarding_steps WHERE workflow_id = ? ORDER BY sort_order, id", workflowId);
+        List<Map<String, Object>> steps =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM merchant_onboarding_steps WHERE workflow_id = ? ORDER BY sort_order, id",
+                        workflowId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("workflow", workflows.getFirst());
         result.put("steps", steps);
@@ -58,9 +63,11 @@ public class ProductDeveloperExperienceController {
 
     @Transactional
     @PostMapping("/merchant/{merchantId}/onboarding")
-    public Map<String, Object> openOnboarding(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> openOnboarding(
+            @PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         String reference = reference("ONBOARD");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO merchant_onboarding_workflows (
                     workflow_reference, merchant_id, current_step, status, completion_percentage,
                     blocked_reason, assigned_owner, metadata
@@ -88,9 +95,11 @@ public class ProductDeveloperExperienceController {
 
     @Transactional
     @PostMapping("/merchant/{merchantId}/onboarding/steps")
-    public Map<String, Object> upsertOnboardingStep(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> upsertOnboardingStep(
+            @PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         Long workflowId = ensureWorkflow(merchantId);
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO merchant_onboarding_steps (
                     workflow_id, step_code, step_name, status, required_for_go_live, completed_by,
                     completed_at, evidence_url, notes, sort_order, metadata
@@ -126,7 +135,8 @@ public class ProductDeveloperExperienceController {
     @PostMapping("/developer/applications")
     public Map<String, Object> createDeveloperApplication(@RequestBody Map<String, Object> body) {
         String reference = reference("APP");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO developer_portal_applications (
                     application_reference, merchant_id, name, environment, status, callback_url,
                     allowed_origins, created_by, metadata
@@ -145,9 +155,11 @@ public class ProductDeveloperExperienceController {
     }
 
     @GetMapping("/developer/applications")
-    public Map<String, Object> listDeveloperApplications(@RequestParam(name = "merchantId", required = false) Long merchantId,
-                                                         @RequestParam(name = "limit", defaultValue = "50") int limit) {
-        StringBuilder sql = new StringBuilder("SELECT * FROM developer_portal_applications WHERE 1=1");
+    public Map<String, Object> listDeveloperApplications(
+            @RequestParam(name = "merchantId", required = false) Long merchantId,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
+        StringBuilder sql =
+                new StringBuilder("SELECT * FROM developer_portal_applications WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (merchantId != null) {
             sql.append(" AND merchant_id = ?");
@@ -160,9 +172,11 @@ public class ProductDeveloperExperienceController {
 
     @Transactional
     @PostMapping("/developer/applications/{applicationId}/api-keys")
-    public Map<String, Object> createApiKeyRecord(@PathVariable Long applicationId, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> createApiKeyRecord(
+            @PathVariable Long applicationId, @RequestBody Map<String, Object> body) {
         String reference = reference("KEY");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO developer_portal_api_keys (
                     application_id, key_reference, key_label, public_key_pem, status, expires_at,
                     rotated_from_key_reference, created_by
@@ -183,7 +197,8 @@ public class ProductDeveloperExperienceController {
     @PostMapping("/payment-links")
     public Map<String, Object> createPaymentLink(@RequestBody Map<String, Object> body) {
         String reference = reference("PLINK");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO payment_links_v2 (
                     payment_link_reference, merchant_id, token_hash, title, description, amount, currency_code,
                     country_code, status, reusable, partial_payment_allowed, max_uses, expires_at, created_by, metadata
@@ -209,8 +224,9 @@ public class ProductDeveloperExperienceController {
     }
 
     @GetMapping("/payment-links")
-    public Map<String, Object> listPaymentLinks(@RequestParam(name = "merchantId", required = false) Long merchantId,
-                                                @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listPaymentLinks(
+            @RequestParam(name = "merchantId", required = false) Long merchantId,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM payment_links_v2 WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (merchantId != null) {
@@ -226,7 +242,8 @@ public class ProductDeveloperExperienceController {
     @PostMapping("/checkout/sessions")
     public Map<String, Object> createCheckoutSession(@RequestBody Map<String, Object> body) {
         String reference = reference("CHECKOUT");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO hosted_checkout_sessions (
                     checkout_reference, merchant_id, payment_link_id, invoice_id, token_hash, customer_msisdn,
                     customer_email, amount, currency_code, country_code, selected_channel, status, expires_at,
@@ -255,7 +272,8 @@ public class ProductDeveloperExperienceController {
     @PostMapping("/invoices")
     public Map<String, Object> createInvoice(@RequestBody Map<String, Object> body) {
         String reference = reference("INV");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO merchant_invoices_v2 (
                     invoice_reference, merchant_id, invoice_number, customer_name, customer_email, customer_msisdn,
                     currency_code, subtotal_amount, tax_amount, total_amount, amount_paid, status, due_date,
@@ -285,8 +303,10 @@ public class ProductDeveloperExperienceController {
 
     @Transactional
     @PostMapping("/invoices/{invoiceId}/line-items")
-    public Map<String, Object> addInvoiceLineItem(@PathVariable Long invoiceId, @RequestBody Map<String, Object> body) {
-        jdbcTemplate.update("""
+    public Map<String, Object> addInvoiceLineItem(
+            @PathVariable Long invoiceId, @RequestBody Map<String, Object> body) {
+        jdbcTemplate.update(
+                """
                 INSERT INTO merchant_invoice_line_items (
                     invoice_id, description, quantity, unit_amount, tax_amount, line_total, sort_order, metadata
                 ) VALUES (?, ?, COALESCE(?, 1), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), COALESCE(?, 0), ?)
@@ -303,8 +323,9 @@ public class ProductDeveloperExperienceController {
     }
 
     @GetMapping("/invoices")
-    public Map<String, Object> listInvoices(@RequestParam(name = "merchantId", required = false) Long merchantId,
-                                            @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listInvoices(
+            @RequestParam(name = "merchantId", required = false) Long merchantId,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM merchant_invoices_v2 WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (merchantId != null) {
@@ -320,7 +341,8 @@ public class ProductDeveloperExperienceController {
     @PostMapping("/channel-journeys")
     public Map<String, Object> publishChannelJourney(@RequestBody Map<String, Object> body) {
         String reference = reference("JOURNEY");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO channel_journey_guides (
                     guide_reference, channel_code, country_code, environment, title, status, journey_json, published_by,
                     published_at
@@ -340,8 +362,9 @@ public class ProductDeveloperExperienceController {
     }
 
     @GetMapping("/channel-journeys")
-    public Map<String, Object> listChannelJourneys(@RequestParam(name = "channelCode", required = false) String channelCode,
-                                                   @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listChannelJourneys(
+            @RequestParam(name = "channelCode", required = false) String channelCode,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM channel_journey_guides WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (channelCode != null && !channelCode.isBlank()) {
@@ -357,7 +380,8 @@ public class ProductDeveloperExperienceController {
     @PostMapping("/dashboard/widgets")
     public Map<String, Object> upsertDashboardWidget(@RequestBody Map<String, Object> body) {
         String reference = reference("WIDGET");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO dashboard_widgets (widget_reference, audience, widget_code, title, status, config_json, sort_order)
                 VALUES (?, ?, ?, ?, COALESCE(?, 'ACTIVE'), ?, COALESCE(?, 0))
                 ON DUPLICATE KEY UPDATE
@@ -378,19 +402,27 @@ public class ProductDeveloperExperienceController {
     }
 
     @GetMapping("/dashboard/widgets")
-    public Map<String, Object> listDashboardWidgets(@RequestParam(name = "audience", required = false) String audience) {
+    public Map<String, Object> listDashboardWidgets(
+            @RequestParam(name = "audience", required = false) String audience) {
         if (audience == null || audience.isBlank()) {
-            return ok("widgets", jdbcTemplate.queryForList("SELECT * FROM dashboard_widgets ORDER BY audience, sort_order, widget_code"));
+            return ok(
+                    "widgets",
+                    jdbcTemplate.queryForList(
+                            "SELECT * FROM dashboard_widgets ORDER BY audience, sort_order, widget_code"));
         }
-        return ok("widgets", jdbcTemplate.queryForList(
-                "SELECT * FROM dashboard_widgets WHERE audience = ? ORDER BY sort_order, widget_code", audience));
+        return ok(
+                "widgets",
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM dashboard_widgets WHERE audience = ? ORDER BY sort_order, widget_code",
+                        audience));
     }
 
     @Transactional
     @PostMapping("/sandbox-guides")
     public Map<String, Object> createSandboxGuide(@RequestBody Map<String, Object> body) {
         String reference = reference("SANDBOX");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO sandbox_guides (
                     guide_reference, title, audience, status, content_markdown, sample_payload_json, published_by,
                     published_at
@@ -409,19 +441,28 @@ public class ProductDeveloperExperienceController {
     }
 
     @GetMapping("/sandbox-guides")
-    public Map<String, Object> listSandboxGuides(@RequestParam(name = "status", required = false) String status) {
+    public Map<String, Object> listSandboxGuides(
+            @RequestParam(name = "status", required = false) String status) {
         if (status == null || status.isBlank()) {
-            return ok("sandboxGuides", jdbcTemplate.queryForList("SELECT * FROM sandbox_guides ORDER BY updated_at DESC"));
+            return ok(
+                    "sandboxGuides",
+                    jdbcTemplate.queryForList(
+                            "SELECT * FROM sandbox_guides ORDER BY updated_at DESC"));
         }
-        return ok("sandboxGuides", jdbcTemplate.queryForList(
-                "SELECT * FROM sandbox_guides WHERE status = ? ORDER BY updated_at DESC", status));
+        return ok(
+                "sandboxGuides",
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM sandbox_guides WHERE status = ? ORDER BY updated_at DESC",
+                        status));
     }
 
     @Transactional
     @PostMapping("/go-live/{merchantId}")
-    public Map<String, Object> openGoLiveChecklist(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> openGoLiveChecklist(
+            @PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         String reference = reference("GOLIVE");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO go_live_checklists (
                     checklist_reference, merchant_id, status, requested_by, reviewed_by, approved_by, blocked_reason, metadata
                 ) VALUES (?, ?, COALESCE(?, 'OPEN'), ?, ?, ?, ?, ?)
@@ -448,9 +489,11 @@ public class ProductDeveloperExperienceController {
 
     @Transactional
     @PostMapping("/go-live/{merchantId}/items")
-    public Map<String, Object> upsertGoLiveItem(@PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> upsertGoLiveItem(
+            @PathVariable Long merchantId, @RequestBody Map<String, Object> body) {
         Long checklistId = ensureGoLiveChecklist(merchantId);
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO go_live_checklist_items (
                     checklist_id, item_code, item_name, status, required, evidence_url, completed_by,
                     completed_at, notes, sort_order, metadata
@@ -483,14 +526,17 @@ public class ProductDeveloperExperienceController {
 
     @GetMapping("/go-live/{merchantId}")
     public Map<String, Object> getGoLiveChecklist(@PathVariable Long merchantId) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT * FROM go_live_checklists WHERE merchant_id = ?", merchantId);
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM go_live_checklists WHERE merchant_id = ?", merchantId);
         if (rows.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Go-live checklist not found");
         }
         Long checklistId = ((Number) rows.getFirst().get("id")).longValue();
-        List<Map<String, Object>> items = jdbcTemplate.queryForList(
-                "SELECT * FROM go_live_checklist_items WHERE checklist_id = ? ORDER BY sort_order, id", checklistId);
+        List<Map<String, Object>> items =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM go_live_checklist_items WHERE checklist_id = ? ORDER BY sort_order, id",
+                        checklistId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("checklist", rows.getFirst());
         result.put("items", items);
@@ -503,30 +549,39 @@ public class ProductDeveloperExperienceController {
     }
 
     private Long ensureWorkflow(Long merchantId) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT id FROM merchant_onboarding_workflows WHERE merchant_id = ?", merchantId);
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT id FROM merchant_onboarding_workflows WHERE merchant_id = ?",
+                        merchantId);
         if (!rows.isEmpty()) {
             return ((Number) rows.getFirst().get("id")).longValue();
         }
         String reference = reference("ONBOARD");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO merchant_onboarding_workflows (workflow_reference, merchant_id)
                 VALUES (?, ?)
-                """, reference, merchantId);
+                """,
+                reference,
+                merchantId);
         return lastInsertId();
     }
 
     private Long ensureGoLiveChecklist(Long merchantId) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT id FROM go_live_checklists WHERE merchant_id = ?", merchantId);
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT id FROM go_live_checklists WHERE merchant_id = ?", merchantId);
         if (!rows.isEmpty()) {
             return ((Number) rows.getFirst().get("id")).longValue();
         }
         String reference = reference("GOLIVE");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO go_live_checklists (checklist_reference, merchant_id)
                 VALUES (?, ?)
-                """, reference, merchantId);
+                """,
+                reference,
+                merchantId);
         return lastInsertId();
     }
 
@@ -554,7 +609,9 @@ public class ProductDeveloperExperienceController {
     }
 
     private String reference(String prefix) {
-        return prefix + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+        return prefix
+                + "-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
 
     private int safeLimit(int limit) {
@@ -564,7 +621,8 @@ public class ProductDeveloperExperienceController {
     private String requiredString(Map<String, Object> body, String field) {
         Object value = body.get(field);
         if (value == null || value.toString().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required field: " + field);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Missing required field: " + field);
         }
         return value.toString();
     }
@@ -580,7 +638,8 @@ public class ProductDeveloperExperienceController {
     private Long requiredLong(Map<String, Object> body, String field) {
         Long value = optionalLong(body, field);
         if (value == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required field: " + field);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Missing required field: " + field);
         }
         return value;
     }
@@ -609,7 +668,8 @@ public class ProductDeveloperExperienceController {
         try {
             return objectMapper.writeValueAsString(nested == null ? Map.of() : nested);
         } catch (JsonProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid JSON payload for field: " + field, e);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid JSON payload for field: " + field, e);
         }
     }
 }

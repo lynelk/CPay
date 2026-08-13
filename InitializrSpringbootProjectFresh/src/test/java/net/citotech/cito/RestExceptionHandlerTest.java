@@ -10,13 +10,13 @@ import org.springframework.security.access.AccessDeniedException;
 
 class RestExceptionHandlerTest {
 
-
     @Test
     void validationExceptionsReturnBadRequestJson() {
         RestExceptionHandler handler = new RestExceptionHandler();
 
         ResponseEntity<String> response =
-                handler.requestValidationException(new IllegalArgumentException("providerCode is required"));
+                handler.requestValidationException(
+                        new IllegalArgumentException("providerCode is required"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
@@ -31,14 +31,17 @@ class RestExceptionHandlerTest {
         RestExceptionHandler handler = new RestExceptionHandler();
 
         ResponseEntity<String> response =
-                handler.requestStateConflict(new IllegalStateException("Transfer must be APPROVED before dispatch; found CREATED"));
+                handler.requestStateConflict(
+                        new IllegalStateException(
+                                "Transfer must be APPROVED before dispatch; found CREATED"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 
         JSONObject body = new JSONObject(response.getBody());
         assertThat(body.getString("state")).isEqualTo("ERROR");
         assertThat(body.getString("code")).isEqualTo("130");
-        assertThat(body.getString("message")).isEqualTo("Transfer must be APPROVED before dispatch; found CREATED");
+        assertThat(body.getString("message"))
+                .isEqualTo("Transfer must be APPROVED before dispatch; found CREATED");
     }
 
     @Test

@@ -123,7 +123,9 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
-                                        .requestMatchers("/api/v2/admin/**", "/api/v2/production-maturity/**")
+                                        .requestMatchers(
+                                                "/api/v2/admin/**",
+                                                "/api/v2/production-maturity/**")
                                         .hasRole("ADMIN")
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ACTUATOR")

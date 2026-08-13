@@ -17,23 +17,26 @@ public class SettlementPostingAutomationService {
     private final JdbcTemplate jdbcTemplate;
     private final DoubleEntryLedgerService ledgerService;
 
-    public SettlementPostingAutomationService(JdbcTemplate jdbcTemplate, DoubleEntryLedgerService ledgerService) {
+    public SettlementPostingAutomationService(
+            JdbcTemplate jdbcTemplate, DoubleEntryLedgerService ledgerService) {
         this.jdbcTemplate = jdbcTemplate;
         this.ledgerService = ledgerService;
     }
 
     @Transactional
     public Map<String, Object> postFinanceSettlement(Long settlementBatchId, String postedBy) {
-        Map<String, Object> batch = fetchOne(
-                "select id, settlement_reference, currency_code, net_amount, status "
-                        + "from finance_settlement_batches where id = ?",
-                settlementBatchId);
+        Map<String, Object> batch =
+                fetchOne(
+                        "select id, settlement_reference, currency_code, net_amount, status "
+                                + "from finance_settlement_batches where id = ?",
+                        settlementBatchId);
         requireApproved(value(batch, "status"), "finance settlement batch");
         rejectDuplicatePosting("FINANCE", settlementBatchId);
 
-        List<Map<String, Object>> items = jdbcTemplate.queryForList(
-                "select id, transaction_reference, net_amount from finance_settlement_items where settlement_batch_id = ?",
-                settlementBatchId);
+        List<Map<String, Object>> items =
+                jdbcTemplate.queryForList(
+                        "select id, transaction_reference, net_amount from finance_settlement_items where settlement_batch_id = ?",
+                        settlementBatchId);
         PostingTotals totals = totals(items, "net_amount", numeric(batch.get("net_amount")));
         String currency = value(batch, "currency_code");
         Long runId = createPostingRun(settlementBatchId, "FINANCE", currency, totals, postedBy);
@@ -41,11 +44,32 @@ public class SettlementPostingAutomationService {
         for (Map<String, Object> item : items) {
             BigDecimal amount = numeric(item.get("net_amount"));
             String reference = value(item, "transaction_reference");
-            insertPostingEntry(runId, longValue(item.get("id")), "SETTLEMENT_CLEARING", "DEBIT", amount, currency, reference);
-            insertPostingEntry(runId, longValue(item.get("id")), "MERCHANT_PAYABLE", "CREDIT", amount, currency, reference);
+            insertPostingEntry(
+                    runId,
+                    longValue(item.get("id")),
+                    "SETTLEMENT_CLEARING",
+                    "DEBIT",
+                    amount,
+                    currency,
+                    reference);
+            insertPostingEntry(
+                    runId,
+                    longValue(item.get("id")),
+                    "MERCHANT_PAYABLE",
+                    "CREDIT",
+                    amount,
+                    currency,
+                    reference);
         }
-        postLedger("settlement:finance:" + settlementBatchId, "FINANCE_SETTLEMENT", value(batch, "settlement_reference"),
-                "Automated finance settlement posting", "SETTLEMENT_CLEARING", "MERCHANT_PAYABLE", totals.postedTotal(), currency);
+        postLedger(
+                "settlement:finance:" + settlementBatchId,
+                "FINANCE_SETTLEMENT",
+                value(batch, "settlement_reference"),
+                "Automated finance settlement posting",
+                "SETTLEMENT_CLEARING",
+                "MERCHANT_PAYABLE",
+                totals.postedTotal(),
+                currency);
         jdbcTemplate.update(
                 "update finance_settlement_batches set status = 'PAID', paid_at = current_timestamp, updated_at = current_timestamp where id = ?",
                 settlementBatchId);
@@ -53,29 +77,54 @@ public class SettlementPostingAutomationService {
     }
 
     @Transactional
-    public Map<String, Object> postCorridorSettlement(Long corridorSettlementBatchId, String postedBy) {
-        Map<String, Object> batch = fetchOne(
-                "select id, settlement_reference, settlement_currency_code, net_amount, status "
-                        + "from corridor_settlement_batches where id = ?",
-                corridorSettlementBatchId);
+    public Map<String, Object> postCorridorSettlement(
+            Long corridorSettlementBatchId, String postedBy) {
+        Map<String, Object> batch =
+                fetchOne(
+                        "select id, settlement_reference, settlement_currency_code, net_amount, status "
+                                + "from corridor_settlement_batches where id = ?",
+                        corridorSettlementBatchId);
         requireApproved(value(batch, "status"), "corridor settlement batch");
         rejectDuplicatePosting("CORRIDOR", corridorSettlementBatchId);
 
-        List<Map<String, Object>> items = jdbcTemplate.queryForList(
-                "select id, transfer_id, settlement_amount from corridor_settlement_items where settlement_batch_id = ?",
-                corridorSettlementBatchId);
+        List<Map<String, Object>> items =
+                jdbcTemplate.queryForList(
+                        "select id, transfer_id, settlement_amount from corridor_settlement_items where settlement_batch_id = ?",
+                        corridorSettlementBatchId);
         PostingTotals totals = totals(items, "settlement_amount", numeric(batch.get("net_amount")));
         String currency = value(batch, "settlement_currency_code");
-        Long runId = createPostingRun(corridorSettlementBatchId, "CORRIDOR", currency, totals, postedBy);
+        Long runId =
+                createPostingRun(corridorSettlementBatchId, "CORRIDOR", currency, totals, postedBy);
 
         for (Map<String, Object> item : items) {
             BigDecimal amount = numeric(item.get("settlement_amount"));
             String reference = "TRANSFER-" + item.get("transfer_id");
-            insertPostingEntry(runId, longValue(item.get("id")), "CORRIDOR_CLEARING", "DEBIT", amount, currency, reference);
-            insertPostingEntry(runId, longValue(item.get("id")), "PARTNER_PAYABLE", "CREDIT", amount, currency, reference);
+            insertPostingEntry(
+                    runId,
+                    longValue(item.get("id")),
+                    "CORRIDOR_CLEARING",
+                    "DEBIT",
+                    amount,
+                    currency,
+                    reference);
+            insertPostingEntry(
+                    runId,
+                    longValue(item.get("id")),
+                    "PARTNER_PAYABLE",
+                    "CREDIT",
+                    amount,
+                    currency,
+                    reference);
         }
-        postLedger("settlement:corridor:" + corridorSettlementBatchId, "CORRIDOR_SETTLEMENT", value(batch, "settlement_reference"),
-                "Automated corridor settlement posting", "CORRIDOR_CLEARING", "PARTNER_PAYABLE", totals.postedTotal(), currency);
+        postLedger(
+                "settlement:corridor:" + corridorSettlementBatchId,
+                "CORRIDOR_SETTLEMENT",
+                value(batch, "settlement_reference"),
+                "Automated corridor settlement posting",
+                "CORRIDOR_CLEARING",
+                "PARTNER_PAYABLE",
+                totals.postedTotal(),
+                currency);
         jdbcTemplate.update(
                 "update corridor_settlement_batches set status = 'PAID', paid_at = current_timestamp, updated_at = current_timestamp where id = ?",
                 corridorSettlementBatchId);
@@ -89,7 +138,12 @@ public class SettlementPostingAutomationService {
                 safeLimit(limit));
     }
 
-    private Long createPostingRun(Long settlementBatchId, String type, String currency, PostingTotals totals, String postedBy) {
+    private Long createPostingRun(
+            Long settlementBatchId,
+            String type,
+            String currency,
+            PostingTotals totals,
+            String postedBy) {
         jdbcTemplate.update(
                 "insert into settlement_posting_runs "
                         + "(settlement_batch_id, settlement_batch_type, run_status, currency, expected_total, posted_total, "
@@ -107,7 +161,14 @@ public class SettlementPostingAutomationService {
         return lastInsertId();
     }
 
-    private void insertPostingEntry(Long runId, Long itemId, String accountCode, String side, BigDecimal amount, String currency, String reference) {
+    private void insertPostingEntry(
+            Long runId,
+            Long itemId,
+            String accountCode,
+            String side,
+            BigDecimal amount,
+            String currency,
+            String reference) {
         jdbcTemplate.update(
                 "insert into settlement_posting_entries "
                         + "(posting_run_id, settlement_item_id, account_code, entry_side, amount, currency, reference, memo) "
@@ -122,8 +183,15 @@ public class SettlementPostingAutomationService {
                 "Automated settlement posting");
     }
 
-    private void postLedger(String transactionReference, String sourceType, String sourceReference, String description,
-                            String debitAccount, String creditAccount, BigDecimal amount, String currency) {
+    private void postLedger(
+            String transactionReference,
+            String sourceType,
+            String sourceReference,
+            String description,
+            String debitAccount,
+            String creditAccount,
+            BigDecimal amount,
+            String currency) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalStateException("Settlement posting amount must be greater than zero");
         }
@@ -133,42 +201,67 @@ public class SettlementPostingAutomationService {
                 sourceReference,
                 description,
                 List.of(
-                        new LedgerEntryCommand(debitAccount, debitAccount, "ASSET", "SYSTEM", null, "DR", amount, currency, description),
-                        new LedgerEntryCommand(creditAccount, creditAccount, "LIABILITY", "SYSTEM", null, "CR", amount, currency, description)));
+                        new LedgerEntryCommand(
+                                debitAccount,
+                                debitAccount,
+                                "ASSET",
+                                "SYSTEM",
+                                null,
+                                "DR",
+                                amount,
+                                currency,
+                                description),
+                        new LedgerEntryCommand(
+                                creditAccount,
+                                creditAccount,
+                                "LIABILITY",
+                                "SYSTEM",
+                                null,
+                                "CR",
+                                amount,
+                                currency,
+                                description)));
     }
 
-    private PostingTotals totals(List<Map<String, Object>> items, String amountField, BigDecimal expectedTotal) {
+    private PostingTotals totals(
+            List<Map<String, Object>> items, String amountField, BigDecimal expectedTotal) {
         if (items.isEmpty()) {
             throw new IllegalStateException("Settlement batch has no items to post");
         }
-        BigDecimal postedTotal = items.stream()
-                .map(item -> numeric(item.get(amountField)))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal postedTotal =
+                items.stream()
+                        .map(item -> numeric(item.get(amountField)))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal variance = postedTotal.subtract(expectedTotal);
         if (variance.compareTo(BigDecimal.ZERO) != 0) {
-            throw new IllegalStateException("Settlement posting is not balanced against expected total; variance " + variance);
+            throw new IllegalStateException(
+                    "Settlement posting is not balanced against expected total; variance "
+                            + variance);
         }
         return new PostingTotals(expectedTotal, postedTotal, items.size() * 2, variance);
     }
 
     private void requireApproved(String status, String description) {
         if (!"APPROVED".equalsIgnoreCase(status)) {
-            throw new IllegalStateException(description + " must be APPROVED before posting; found " + status);
+            throw new IllegalStateException(
+                    description + " must be APPROVED before posting; found " + status);
         }
     }
 
     private void rejectDuplicatePosting(String type, Long settlementBatchId) {
-        Integer count = jdbcTemplate.queryForObject(
-                "select count(*) from settlement_posting_runs where settlement_batch_type = ? and settlement_batch_id = ?",
-                Integer.class,
-                type,
-                settlementBatchId);
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        "select count(*) from settlement_posting_runs where settlement_batch_type = ? and settlement_batch_id = ?",
+                        Integer.class,
+                        type,
+                        settlementBatchId);
         if (count != null && count > 0) {
             throw new IllegalStateException("Settlement batch has already been posted");
         }
     }
 
-    private Map<String, Object> result(Long runId, Long settlementBatchId, String type, PostingTotals totals) {
+    private Map<String, Object> result(
+            Long runId, Long settlementBatchId, String type, PostingTotals totals) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("postingRunId", runId);
         result.put("settlementBatchId", settlementBatchId);
@@ -220,5 +313,9 @@ public class SettlementPostingAutomationService {
         return value == null ? "" : value.toString();
     }
 
-    private record PostingTotals(BigDecimal expectedTotal, BigDecimal postedTotal, int entryCount, BigDecimal variance) {}
+    private record PostingTotals(
+            BigDecimal expectedTotal,
+            BigDecimal postedTotal,
+            int entryCount,
+            BigDecimal variance) {}
 }

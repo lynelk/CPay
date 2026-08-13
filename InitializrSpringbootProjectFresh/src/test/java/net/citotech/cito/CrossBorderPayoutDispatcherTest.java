@@ -18,12 +18,19 @@ class CrossBorderPayoutDispatcherTest {
     @Test
     void approvedTransferCreatesDispatchEnvelopeAndMarksTransferSubmitted() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), org.mockito.ArgumentMatchers.<Object[]>any()))
+        when(jdbcTemplate.queryForObject(
+                        anyString(),
+                        org.mockito.ArgumentMatchers.eq(Integer.class),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
                 .thenReturn(0);
         when(jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class)).thenReturn(77L);
-        when(jdbcTemplate.queryForList(org.mockito.ArgumentMatchers.contains("from cross_border_transfers"), org.mockito.ArgumentMatchers.<Object[]>any()))
+        when(jdbcTemplate.queryForList(
+                        org.mockito.ArgumentMatchers.contains("from cross_border_transfers"),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
                 .thenReturn(List.of(transfer("APPROVED")));
-        when(jdbcTemplate.queryForList(org.mockito.ArgumentMatchers.contains("from corridor_routes"), org.mockito.ArgumentMatchers.<Object[]>any()))
+        when(jdbcTemplate.queryForList(
+                        org.mockito.ArgumentMatchers.contains("from corridor_routes"),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
                 .thenReturn(List.of(route()));
         CrossBorderPayoutDispatcher dispatcher = new CrossBorderPayoutDispatcher(jdbcTemplate);
 
@@ -34,21 +41,32 @@ class CrossBorderPayoutDispatcherTest {
                 .containsEntry("dispatchId", 77L)
                 .containsEntry("dispatchStatus", "READY_FOR_PROVIDER")
                 .containsEntry("idempotencyKey", "XFER-42-UGKE-MTN");
-        verify(jdbcTemplate).queryForObject(org.mockito.ArgumentMatchers.contains("idempotency_key"),
-                org.mockito.ArgumentMatchers.eq(Integer.class),
-                org.mockito.ArgumentMatchers.eq("XFER-42-UGKE-MTN"));
-        verify(jdbcTemplate).update(org.mockito.ArgumentMatchers.contains("status = 'SUBMITTED_TO_PARTNER'"),
-                org.mockito.ArgumentMatchers.eq(42L));
+        verify(jdbcTemplate)
+                .queryForObject(
+                        org.mockito.ArgumentMatchers.contains("idempotency_key"),
+                        org.mockito.ArgumentMatchers.eq(Integer.class),
+                        org.mockito.ArgumentMatchers.eq("XFER-42-UGKE-MTN"));
+        verify(jdbcTemplate)
+                .update(
+                        org.mockito.ArgumentMatchers.contains("status = 'SUBMITTED_TO_PARTNER'"),
+                        org.mockito.ArgumentMatchers.eq(42L));
     }
 
     @Test
     void duplicateDispatchIsRejectedBeforeInsert() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Integer.class), org.mockito.ArgumentMatchers.<Object[]>any()))
+        when(jdbcTemplate.queryForObject(
+                        anyString(),
+                        org.mockito.ArgumentMatchers.eq(Integer.class),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
                 .thenReturn(1);
-        when(jdbcTemplate.queryForList(org.mockito.ArgumentMatchers.contains("from cross_border_transfers"), org.mockito.ArgumentMatchers.<Object[]>any()))
+        when(jdbcTemplate.queryForList(
+                        org.mockito.ArgumentMatchers.contains("from cross_border_transfers"),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
                 .thenReturn(List.of(transfer("APPROVED")));
-        when(jdbcTemplate.queryForList(org.mockito.ArgumentMatchers.contains("from corridor_routes"), org.mockito.ArgumentMatchers.<Object[]>any()))
+        when(jdbcTemplate.queryForList(
+                        org.mockito.ArgumentMatchers.contains("from corridor_routes"),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
                 .thenReturn(List.of(route()));
         CrossBorderPayoutDispatcher dispatcher = new CrossBorderPayoutDispatcher(jdbcTemplate);
 
@@ -60,7 +78,9 @@ class CrossBorderPayoutDispatcherTest {
     @Test
     void invalidTransferStateIsRejected() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForList(org.mockito.ArgumentMatchers.contains("from cross_border_transfers"), org.mockito.ArgumentMatchers.<Object[]>any()))
+        when(jdbcTemplate.queryForList(
+                        org.mockito.ArgumentMatchers.contains("from cross_border_transfers"),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
                 .thenReturn(List.of(transfer("CREATED")));
         CrossBorderPayoutDispatcher dispatcher = new CrossBorderPayoutDispatcher(jdbcTemplate);
 
@@ -72,20 +92,35 @@ class CrossBorderPayoutDispatcherTest {
     @Test
     void providerSubmissionOnlyMarksReadyDispatches() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForList(org.mockito.ArgumentMatchers.contains("cross_border_payout_rail_dispatches"), org.mockito.ArgumentMatchers.<Object[]>any()))
-                .thenReturn(List.of(Map.of("id", 5L, "transfer_id", 42L, "dispatch_status", "READY_FOR_PROVIDER")));
-        when(jdbcTemplate.update(org.mockito.ArgumentMatchers.contains("dispatch_status = 'SUBMITTED'"),
-                org.mockito.ArgumentMatchers.eq("PROV-1"),
-                org.mockito.ArgumentMatchers.eq("{}"),
-                org.mockito.ArgumentMatchers.eq(5L))).thenReturn(1);
+        when(jdbcTemplate.queryForList(
+                        org.mockito.ArgumentMatchers.contains(
+                                "cross_border_payout_rail_dispatches"),
+                        org.mockito.ArgumentMatchers.<Object[]>any()))
+                .thenReturn(
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        5L,
+                                        "transfer_id",
+                                        42L,
+                                        "dispatch_status",
+                                        "READY_FOR_PROVIDER")));
+        when(jdbcTemplate.update(
+                        org.mockito.ArgumentMatchers.contains("dispatch_status = 'SUBMITTED'"),
+                        org.mockito.ArgumentMatchers.eq("PROV-1"),
+                        org.mockito.ArgumentMatchers.eq("{}"),
+                        org.mockito.ArgumentMatchers.eq(5L)))
+                .thenReturn(1);
         CrossBorderPayoutDispatcher dispatcher = new CrossBorderPayoutDispatcher(jdbcTemplate);
 
         Map<String, Object> result = dispatcher.markProviderSubmitted(5L, "PROV-1", "{}");
 
         assertThat(result).containsEntry("status", "SUBMITTED");
-        verify(jdbcTemplate).update(org.mockito.ArgumentMatchers.contains("provider_reference = coalesce"),
-                org.mockito.ArgumentMatchers.eq("PROV-1"),
-                org.mockito.ArgumentMatchers.eq(42L));
+        verify(jdbcTemplate)
+                .update(
+                        org.mockito.ArgumentMatchers.contains("provider_reference = coalesce"),
+                        org.mockito.ArgumentMatchers.eq("PROV-1"),
+                        org.mockito.ArgumentMatchers.eq(42L));
     }
 
     private Map<String, Object> transfer(String status) {
@@ -107,6 +142,12 @@ class CrossBorderPayoutDispatcherTest {
     }
 
     private Map<String, Object> route() {
-        return Map.of("route_code", "UGKE-MTN", "provider_code", "MTN", "delivery_method", "MOBILE_MONEY");
+        return Map.of(
+                "route_code",
+                "UGKE-MTN",
+                "provider_code",
+                "MTN",
+                "delivery_method",
+                "MOBILE_MONEY");
     }
 }
