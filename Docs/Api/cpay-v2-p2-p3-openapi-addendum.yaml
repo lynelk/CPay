@@ -1,0 +1,546 @@
+openapi: 3.0.3
+info:
+  title: CPay P2/P3 Compliance and Cross-Border API Addendum
+  version: 0.1.0
+  description: |
+    Addendum for the P2 compliance/KYB/KYC and P3 regional cross-border foundations.
+    These paths complement the main CPay v2 OpenAPI contract and are intended to be
+    folded into Docs/Api/cpay-v2-openapi.yaml once the implementation graduates from
+    foundation endpoints to full workflow orchestration.
+servers:
+  - url: /api/v2
+security:
+  - CPayV2Signature: []
+paths:
+  /admin/kyb/profiles:
+    get:
+      summary: List merchant KYB profiles for admin review
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: KYB profile list
+    post:
+      summary: Create or update a merchant KYB profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KybProfileRequest'
+      responses:
+        '200':
+          description: KYB profile accepted
+  /admin/kyb/profiles/{merchantNumber}/decision:
+    post:
+      summary: Record an admin KYB decision
+      parameters:
+        - name: merchantNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Decision recorded
+  /admin/compliance/cases:
+    get:
+      summary: List compliance cases
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: subjectReference
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compliance case list
+    post:
+      summary: Open a compliance case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceCaseRequest'
+      responses:
+        '200':
+          description: Case opened
+  /admin/compliance/cases/{caseReference}:
+    get:
+      summary: Read a compliance case and event timeline
+      parameters:
+        - name: caseReference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compliance case detail
+  /admin/compliance/cases/{caseReference}/decision:
+    post:
+      summary: Record a compliance case decision or hold/release transition
+      parameters:
+        - name: caseReference
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Decision recorded
+  /admin/compliance/screening-results:
+    post:
+      summary: Record an external or internal screening result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreeningResultRequest'
+      responses:
+        '200':
+          description: Screening result recorded
+  /admin/compliance/monitoring-alerts:
+    post:
+      summary: Record a transaction monitoring alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MonitoringAlertRequest'
+      responses:
+        '200':
+          description: Alert recorded
+  /admin/regulatory/evidence-exports:
+    post:
+      summary: Request a regulatory evidence export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegulatoryExportRequest'
+      responses:
+        '200':
+          description: Export requested
+  /cross-border/corridors:
+    get:
+      summary: List configured cross-border corridors
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Corridor list
+  /admin/cross-border/corridors:
+    post:
+      summary: Create or update a corridor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorRequest'
+      responses:
+        '200':
+          description: Corridor upserted
+  /admin/cross-border/corridor-routes:
+    post:
+      summary: Create or update a corridor route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorRouteRequest'
+      responses:
+        '200':
+          description: Corridor route upserted
+  /beneficiaries:
+    post:
+      summary: Create or update a beneficiary and optional instrument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeneficiaryRequest'
+      responses:
+        '200':
+          description: Beneficiary accepted
+  /beneficiaries/{beneficiaryReference}:
+    get:
+      summary: Read beneficiary details and instruments
+      parameters:
+        - name: beneficiaryReference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Beneficiary detail
+  /beneficiaries/{beneficiaryReference}/instruments:
+    post:
+      summary: Add a payout instrument to a beneficiary
+      parameters:
+        - name: beneficiaryReference
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeneficiaryInstrumentRequest'
+      responses:
+        '200':
+          description: Instrument accepted
+  /fx/quotes:
+    post:
+      summary: Create an FX quote for a corridor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FxQuoteRequest'
+      responses:
+        '200':
+          description: Quote created
+  /fx/quotes/{quoteReference}:
+    get:
+      summary: Read an FX quote
+      parameters:
+        - name: quoteReference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Quote detail
+  /cross-border/transfers:
+    post:
+      summary: Create a cross-border transfer envelope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrossBorderTransferRequest'
+      responses:
+        '200':
+          description: Transfer created
+  /cross-border/transfers/{transferReference}:
+    get:
+      summary: Read a cross-border transfer and event timeline
+      parameters:
+        - name: transferReference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transfer detail
+  /admin/cross-border/transfers/{transferReference}/transition:
+    post:
+      summary: Move a cross-border transfer through its lifecycle
+      parameters:
+        - name: transferReference
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTransitionRequest'
+      responses:
+        '200':
+          description: Transfer transitioned
+  /admin/cross-border/settlement-batches:
+    post:
+      summary: Create a corridor settlement batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorSettlementBatchRequest'
+      responses:
+        '200':
+          description: Settlement batch created
+  /admin/cross-border/treasury-exposure:
+    post:
+      summary: Record a treasury exposure snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreasuryExposureRequest'
+      responses:
+        '200':
+          description: Exposure snapshot recorded
+  /admin/cross-border/reports:
+    post:
+      summary: Request a cross-border reporting run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrossBorderReportRequest'
+      responses:
+        '200':
+          description: Report requested
+components:
+  securitySchemes:
+    CPayV2Signature:
+      type: apiKey
+      in: header
+      name: X-CPay-Signature
+  schemas:
+    KybProfileRequest:
+      type: object
+      required: [merchantId, merchantNumber, registeredBusinessName, countryCode]
+      properties:
+        merchantId: { type: integer, format: int64 }
+        merchantNumber: { type: string }
+        registeredBusinessName: { type: string }
+        tradingName: { type: string }
+        registrationNumber: { type: string }
+        taxIdentificationNumber: { type: string }
+        businessType: { type: string }
+        countryCode: { type: string }
+        physicalAddress: { type: string }
+        expectedMonthlyVolume: { type: number }
+        expectedMonthlyPayoutVolume: { type: number }
+        primaryUseCase: { type: string }
+        riskRating: { type: string }
+        status: { type: string }
+    DecisionRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+        decision: { type: string }
+        reason: { type: string }
+        reviewedBy: { type: string }
+        decidedBy: { type: string }
+        holdActive: { type: boolean }
+        evidenceReference: { type: string }
+    ComplianceCaseRequest:
+      type: object
+      required: [caseType, subjectType, subjectReference, title]
+      properties:
+        caseType: { type: string }
+        severity: { type: string }
+        subjectType: { type: string }
+        subjectReference: { type: string }
+        merchantId: { type: integer, format: int64 }
+        merchantNumber: { type: string }
+        transactionReference: { type: string }
+        relatedResourceType: { type: string }
+        relatedResourceId: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        holdScope: { type: string }
+        holdActive: { type: boolean }
+        assignedTo: { type: string }
+        openedBy: { type: string }
+    ScreeningResultRequest:
+      type: object
+      required: [providerCode, screeningType, subjectType, subjectReference]
+      properties:
+        providerCode: { type: string }
+        screeningType: { type: string }
+        subjectType: { type: string }
+        subjectReference: { type: string }
+        riskScore: { type: number }
+        resultStatus: { type: string }
+        matchCount: { type: integer }
+        rawResultReference: { type: string }
+        caseReference: { type: string }
+    MonitoringAlertRequest:
+      type: object
+      required: [ruleCode, subjectType, subjectReference]
+      properties:
+        ruleCode: { type: string }
+        severity: { type: string }
+        subjectType: { type: string }
+        subjectReference: { type: string }
+        merchantId: { type: integer, format: int64 }
+        transactionReference: { type: string }
+        caseReference: { type: string }
+        assignedTo: { type: string }
+    RegulatoryExportRequest:
+      type: object
+      required: [exportType, jurisdiction, periodStart, periodEnd]
+      properties:
+        exportType: { type: string }
+        jurisdiction: { type: string }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        requestedBy: { type: string }
+    CorridorRequest:
+      type: object
+      required: [corridorCode, sourceCountryCode, destinationCountryCode, sourceCurrencyCode, destinationCurrencyCode, displayName]
+      properties:
+        corridorCode: { type: string }
+        sourceCountryCode: { type: string }
+        destinationCountryCode: { type: string }
+        sourceCurrencyCode: { type: string }
+        destinationCurrencyCode: { type: string }
+        displayName: { type: string }
+        status: { type: string }
+        riskLevel: { type: string }
+        settlementModel: { type: string }
+        compliancePolicyCode: { type: string }
+    CorridorRouteRequest:
+      type: object
+      required: [corridorCode, routeCode, providerCode, deliveryMethod]
+      properties:
+        corridorCode: { type: string }
+        routeCode: { type: string }
+        providerCode: { type: string }
+        partnerCode: { type: string }
+        deliveryMethod: { type: string }
+        priority: { type: integer }
+        enabled: { type: boolean }
+        minAmount: { type: number }
+        maxAmount: { type: number }
+    BeneficiaryRequest:
+      allOf:
+        - $ref: '#/components/schemas/BeneficiaryInstrumentRequest'
+        - type: object
+          required: [beneficiaryType, displayName, countryCode]
+          properties:
+            beneficiaryReference: { type: string }
+            merchantId: { type: integer, format: int64 }
+            beneficiaryType: { type: string }
+            displayName: { type: string }
+            legalName: { type: string }
+            countryCode: { type: string }
+            phoneHash: { type: string }
+            emailHash: { type: string }
+            addressText: { type: string }
+            riskRating: { type: string }
+            status: { type: string }
+    BeneficiaryInstrumentRequest:
+      type: object
+      properties:
+        instrumentReference: { type: string }
+        instrumentType: { type: string }
+        providerCode: { type: string }
+        countryCode: { type: string }
+        currencyCode: { type: string }
+        accountIdentifierHash: { type: string }
+        accountIdentifierMask: { type: string }
+        accountName: { type: string }
+        validationStatus: { type: string }
+    FxQuoteRequest:
+      type: object
+      required: [corridorCode, sourceAmount, destinationAmount, rate, expiresAt]
+      properties:
+        corridorCode: { type: string }
+        merchantId: { type: integer, format: int64 }
+        sourceAmount: { type: number }
+        destinationAmount: { type: number }
+        rate: { type: number }
+        spreadAmount: { type: number }
+        feeAmount: { type: number }
+        rateSource: { type: string }
+        expiresAt: { type: string, format: date-time }
+    CrossBorderTransferRequest:
+      type: object
+      required: [corridorCode, beneficiaryReference, instrumentReference, sourceAmount, destinationAmount, purposeCode]
+      properties:
+        corridorCode: { type: string }
+        routeCode: { type: string }
+        beneficiaryReference: { type: string }
+        instrumentReference: { type: string }
+        quoteReference: { type: string }
+        complianceCaseReference: { type: string }
+        merchantId: { type: integer, format: int64 }
+        merchantNumber: { type: string }
+        sourceAmount: { type: number }
+        destinationAmount: { type: number }
+        purposeCode: { type: string }
+        status: { type: string }
+        createdBy: { type: string }
+    TransferTransitionRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+        providerReference: { type: string }
+        partnerReference: { type: string }
+        failureCode: { type: string }
+        failureMessage: { type: string }
+        complianceHoldActive: { type: boolean }
+        actor: { type: string }
+        notes: { type: string }
+    CorridorSettlementBatchRequest:
+      type: object
+      required: [corridorCode, settlementCurrencyCode, businessDate]
+      properties:
+        corridorCode: { type: string }
+        partnerCode: { type: string }
+        settlementCurrencyCode: { type: string }
+        businessDate: { type: string, format: date }
+        grossAmount: { type: number }
+        feeAmount: { type: number }
+        netAmount: { type: number }
+        varianceAmount: { type: number }
+    TreasuryExposureRequest:
+      type: object
+      required: [currencyCode]
+      properties:
+        corridorCode: { type: string }
+        partnerCode: { type: string }
+        currencyCode: { type: string }
+        availableBalance: { type: number }
+        reservedBalance: { type: number }
+        pendingDeliveryExposure: { type: number }
+        unsettledExposure: { type: number }
+        varianceExposure: { type: number }
+        capturedBy: { type: string }
+    CrossBorderReportRequest:
+      type: object
+      required: [reportType, periodStart, periodEnd]
+      properties:
+        reportType: { type: string }
+        corridorCode: { type: string }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        requestedBy: { type: string }
