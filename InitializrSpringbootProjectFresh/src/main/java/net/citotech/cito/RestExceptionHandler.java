@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 /**
  * @author josephtabajjwa
@@ -76,7 +76,6 @@ public class RestExceptionHandler {
                 .body(GeneralException.getError(code, message));
     }
 
-
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseBody
     protected ResponseEntity<String> requestValidationException(IllegalArgumentException ex) {
@@ -104,6 +103,7 @@ public class RestExceptionHandler {
                 .header("Content-Type", "application/json")
                 .body(GeneralException.getError(code, message));
     }
+
     @ExceptionHandler(Exception.class)
     @ResponseBody
     protected ResponseEntity<String> requestUnhandledException(Exception ex) {

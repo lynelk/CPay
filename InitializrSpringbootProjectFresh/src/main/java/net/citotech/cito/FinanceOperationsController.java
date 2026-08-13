@@ -2,6 +2,11 @@ package net.citotech.cito;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,22 +21,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 /**
  * P1 finance and operations foundation endpoints.
  *
- * These endpoints intentionally expose workflow envelopes and persistence boundaries for settlement,
- * treasury, reconciliation, daily close, exports and incident management. Domain orchestration and
- * maker-checker policy enforcement can be layered behind this contract without changing the URL shape.
+ * <p>These endpoints intentionally expose workflow envelopes and persistence boundaries for
+ * settlement, treasury, reconciliation, daily close, exports and incident management. Domain
+ * orchestration and maker-checker policy enforcement can be layered behind this contract without
+ * changing the URL shape.
  */
 @RestController
 @PreAuthorize("hasRole('ADMIN')")
-@RequestMapping(path = "/api/v2/admin/finance-operations", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(
+        path = "/api/v2/admin/finance-operations",
+        produces = MediaType.APPLICATION_JSON_VALUE)
 public class FinanceOperationsController {
 
     private final JdbcTemplate jdbcTemplate;
@@ -43,9 +45,10 @@ public class FinanceOperationsController {
     }
 
     @GetMapping("/settlements")
-    public Map<String, Object> listSettlements(@RequestParam(name = "status", required = false) String status,
-                                               @RequestParam(name = "merchantId", required = false) Long merchantId,
-                                               @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listSettlements(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "merchantId", required = false) Long merchantId,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM finance_settlement_batches WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (status != null && !status.isBlank()) {
@@ -65,7 +68,8 @@ public class FinanceOperationsController {
     @PostMapping("/settlements")
     public Map<String, Object> createSettlement(@RequestBody Map<String, Object> body) {
         String reference = reference("SETTLE");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO finance_settlement_batches (
                     settlement_reference, merchant_id, provider_code, channel_code, country_code, currency_code,
                     business_date, settlement_cycle, status, gross_amount, fee_amount, tax_amount,
@@ -99,13 +103,16 @@ public class FinanceOperationsController {
 
     @GetMapping("/settlements/{id}")
     public Map<String, Object> getSettlement(@PathVariable Long id) {
-        List<Map<String, Object>> settlement = jdbcTemplate.queryForList(
-                "SELECT * FROM finance_settlement_batches WHERE id = ?", id);
+        List<Map<String, Object>> settlement =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM finance_settlement_batches WHERE id = ?", id);
         if (settlement.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Settlement batch not found");
         }
-        List<Map<String, Object>> items = jdbcTemplate.queryForList(
-                "SELECT * FROM finance_settlement_items WHERE settlement_batch_id = ? ORDER BY id", id);
+        List<Map<String, Object>> items =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM finance_settlement_items WHERE settlement_batch_id = ? ORDER BY id",
+                        id);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("settlement", settlement.getFirst());
         result.put("items", items);
@@ -114,8 +121,10 @@ public class FinanceOperationsController {
 
     @Transactional
     @PostMapping("/settlements/{id}/items")
-    public Map<String, Object> addSettlementItem(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        jdbcTemplate.update("""
+    public Map<String, Object> addSettlementItem(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        jdbcTemplate.update(
+                """
                 INSERT INTO finance_settlement_items (
                     settlement_batch_id, transaction_reference, provider_reference, merchant_reference, transaction_type,
                     status, amount, fee_amount, tax_amount, net_amount, variance_amount, metadata
@@ -139,10 +148,12 @@ public class FinanceOperationsController {
 
     @Transactional
     @PostMapping("/settlements/{id}/transition")
-    public Map<String, Object> transitionSettlement(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> transitionSettlement(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
         String status = requiredString(body, "status");
         String actor = optionalString(body, "actor");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 UPDATE finance_settlement_batches
                    SET status = ?,
                        calculated_at = CASE WHEN ? = 'CALCULATED' THEN CURRENT_TIMESTAMP ELSE calculated_at END,
@@ -154,13 +165,24 @@ public class FinanceOperationsController {
                        approved_by = CASE WHEN ? = 'APPROVED' THEN ? ELSE approved_by END,
                        updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?
-                """, status, status, status, status, status, status, status, status, actor, id);
+                """,
+                status,
+                status,
+                status,
+                status,
+                status,
+                status,
+                status,
+                status,
+                actor,
+                id);
         return accepted("settlement_transition_recorded", id);
     }
 
     @GetMapping("/treasury/positions")
-    public Map<String, Object> listTreasuryPositions(@RequestParam(name = "merchantId", required = false) Long merchantId,
-                                                     @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listTreasuryPositions(
+            @RequestParam(name = "merchantId", required = false) Long merchantId,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM treasury_positions WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (merchantId != null) {
@@ -176,7 +198,8 @@ public class FinanceOperationsController {
     @PostMapping("/treasury/positions")
     public Map<String, Object> recordTreasuryPosition(@RequestBody Map<String, Object> body) {
         String reference = reference("TREASURY");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO treasury_positions (
                     position_reference, merchant_id, provider_code, channel_code, country_code, currency_code, position_date,
                     available_balance, reserved_balance, pending_payout_exposure, unsettled_receivable, unsettled_payable,
@@ -204,8 +227,9 @@ public class FinanceOperationsController {
     }
 
     @GetMapping("/reconciliation/exceptions")
-    public Map<String, Object> listReconciliationExceptions(@RequestParam(name = "status", required = false) String status,
-                                                            @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listReconciliationExceptions(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM reconciliation_exceptions WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (status != null && !status.isBlank()) {
@@ -214,14 +238,18 @@ public class FinanceOperationsController {
         }
         sql.append(" ORDER BY created_at DESC LIMIT ?");
         params.add(safeLimit(limit));
-        return ok("reconciliationExceptions", jdbcTemplate.queryForList(sql.toString(), params.toArray()));
+        return ok(
+                "reconciliationExceptions",
+                jdbcTemplate.queryForList(sql.toString(), params.toArray()));
     }
 
     @Transactional
     @PostMapping("/reconciliation/exceptions")
-    public Map<String, Object> createReconciliationException(@RequestBody Map<String, Object> body) {
+    public Map<String, Object> createReconciliationException(
+            @RequestBody Map<String, Object> body) {
         String reference = reference("RECON");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO reconciliation_exceptions (
                     exception_reference, settlement_batch_id, transaction_reference, provider_reference, merchant_id,
                     provider_code, channel_code, currency_code, exception_type, severity, status, internal_amount,
@@ -249,8 +277,10 @@ public class FinanceOperationsController {
 
     @Transactional
     @PostMapping("/reconciliation/exceptions/{id}/resolve")
-    public Map<String, Object> resolveReconciliationException(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        jdbcTemplate.update("""
+    public Map<String, Object> resolveReconciliationException(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        jdbcTemplate.update(
+                """
                 UPDATE reconciliation_exceptions
                    SET status = COALESCE(?, 'RESOLVED'), resolution_reason = ?, resolved_by = ?, resolved_at = CURRENT_TIMESTAMP,
                        updated_at = CURRENT_TIMESTAMP
@@ -265,8 +295,10 @@ public class FinanceOperationsController {
 
     @GetMapping("/daily-close/{businessDate}")
     public Map<String, Object> getDailyClose(@PathVariable String businessDate) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT * FROM finance_daily_close_records WHERE business_date = ?", businessDate);
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM finance_daily_close_records WHERE business_date = ?",
+                        businessDate);
         if (rows.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Daily close record not found");
         }
@@ -277,7 +309,8 @@ public class FinanceOperationsController {
     @PostMapping("/daily-close")
     public Map<String, Object> openDailyClose(@RequestBody Map<String, Object> body) {
         String reference = reference("CLOSE");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO finance_daily_close_records (close_reference, business_date, opened_by, metadata)
                 VALUES (?, ?, ?, ?)
                 """,
@@ -290,9 +323,11 @@ public class FinanceOperationsController {
 
     @Transactional
     @PostMapping("/daily-close/{id}/decision")
-    public Map<String, Object> decideDailyClose(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> decideDailyClose(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
         String status = requiredString(body, "status");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 UPDATE finance_daily_close_records
                    SET status = ?, provider_statements_received = COALESCE(?, provider_statements_received),
                        reconciliation_import_completed = COALESCE(?, reconciliation_import_completed),
@@ -326,7 +361,8 @@ public class FinanceOperationsController {
     @PostMapping("/reports/exports")
     public Map<String, Object> requestReportExport(@RequestBody Map<String, Object> body) {
         String reference = reference("EXPORT");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO finance_report_exports (
                     export_reference, report_type, requested_by, format, date_from, date_to, merchant_id,
                     provider_code, channel_code, country_code, currency_code, filter_json
@@ -348,8 +384,9 @@ public class FinanceOperationsController {
     }
 
     @GetMapping("/reports/exports")
-    public Map<String, Object> listReportExports(@RequestParam(name = "status", required = false) String status,
-                                                 @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listReportExports(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM finance_report_exports WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (status != null && !status.isBlank()) {
@@ -365,7 +402,8 @@ public class FinanceOperationsController {
     @PostMapping("/incidents")
     public Map<String, Object> createIncident(@RequestBody Map<String, Object> body) {
         String reference = reference("INC");
-        jdbcTemplate.update("""
+        jdbcTemplate.update(
+                """
                 INSERT INTO operations_incidents (
                     incident_reference, title, severity, status, incident_type, provider_code, channel_code,
                     merchant_id, business_impact, owner, root_cause, corrective_action, metadata
@@ -388,8 +426,9 @@ public class FinanceOperationsController {
     }
 
     @GetMapping("/incidents")
-    public Map<String, Object> listIncidents(@RequestParam(name = "status", required = false) String status,
-                                             @RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Map<String, Object> listIncidents(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         StringBuilder sql = new StringBuilder("SELECT * FROM operations_incidents WHERE 1=1");
         java.util.ArrayList<Object> params = new java.util.ArrayList<>();
         if (status != null && !status.isBlank()) {
@@ -403,8 +442,10 @@ public class FinanceOperationsController {
 
     @Transactional
     @PostMapping("/incidents/{id}/events")
-    public Map<String, Object> addIncidentEvent(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        jdbcTemplate.update("""
+    public Map<String, Object> addIncidentEvent(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        jdbcTemplate.update(
+                """
                 INSERT INTO operations_incident_events (incident_id, event_type, actor, message, evidence_url, metadata)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
@@ -446,7 +487,9 @@ public class FinanceOperationsController {
     }
 
     private String reference(String prefix) {
-        return prefix + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+        return prefix
+                + "-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
 
     private int safeLimit(int limit) {
@@ -456,7 +499,8 @@ public class FinanceOperationsController {
     private String requiredString(Map<String, Object> body, String field) {
         Object value = body.get(field);
         if (value == null || value.toString().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required field: " + field);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Missing required field: " + field);
         }
         return value.toString();
     }

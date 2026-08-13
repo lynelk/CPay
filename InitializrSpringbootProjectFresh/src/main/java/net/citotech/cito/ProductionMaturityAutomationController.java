@@ -43,7 +43,8 @@ public class ProductionMaturityAutomationController {
     }
 
     @PostMapping("/screening/requests")
-    public ScreeningProviderAdapterRegistry.ScreeningResult requestScreening(@RequestBody Map<String, Object> payload) {
+    public ScreeningProviderAdapterRegistry.ScreeningResult requestScreening(
+            @RequestBody Map<String, Object> payload) {
         return screeningProviderAdapterRegistry.screen(
                 new ScreeningProviderAdapterRegistry.ScreeningRequest(
                         required(payload, "providerCode"),
@@ -62,14 +63,14 @@ public class ProductionMaturityAutomationController {
     }
 
     @GetMapping("/cross-border/dispatches/pending")
-    public List<Map<String, Object>> pendingCrossBorderDispatches(@RequestParam(defaultValue = "50") int limit) {
+    public List<Map<String, Object>> pendingCrossBorderDispatches(
+            @RequestParam(defaultValue = "50") int limit) {
         return crossBorderPayoutDispatcher.pendingDispatches(limit);
     }
 
     @PostMapping("/cross-border/dispatches/{dispatchId}/provider-submitted")
     public Map<String, Object> markCrossBorderProviderSubmitted(
-            @PathVariable Long dispatchId,
-            @RequestBody Map<String, Object> payload) {
+            @PathVariable Long dispatchId, @RequestBody Map<String, Object> payload) {
         return crossBorderPayoutDispatcher.markProviderSubmitted(
                 dispatchId,
                 required(payload, "providerReference"),
@@ -80,14 +81,16 @@ public class ProductionMaturityAutomationController {
     public Map<String, Object> postFinanceSettlement(
             @PathVariable Long settlementBatchId,
             @RequestParam(defaultValue = "system") String postedBy) {
-        return settlementPostingAutomationService.postFinanceSettlement(settlementBatchId, postedBy);
+        return settlementPostingAutomationService.postFinanceSettlement(
+                settlementBatchId, postedBy);
     }
 
     @PostMapping("/settlements/corridor/{settlementBatchId}/post")
     public Map<String, Object> postCorridorSettlement(
             @PathVariable Long settlementBatchId,
             @RequestParam(defaultValue = "system") String postedBy) {
-        return settlementPostingAutomationService.postCorridorSettlement(settlementBatchId, postedBy);
+        return settlementPostingAutomationService.postCorridorSettlement(
+                settlementBatchId, postedBy);
     }
 
     @GetMapping("/settlements/posting-runs")
@@ -115,7 +118,8 @@ public class ProductionMaturityAutomationController {
 
     @Transactional
     @PostMapping("/validation/runs/{runId}/results")
-    public Map<String, Object> addValidationResult(@PathVariable Long runId, @RequestBody Map<String, Object> payload) {
+    public Map<String, Object> addValidationResult(
+            @PathVariable Long runId, @RequestBody Map<String, Object> payload) {
         jdbcTemplate.update(
                 "insert into production_maturity_validation_results "
                         + "(run_id, check_code, check_name, check_status, severity, details, evidence_ref) "
@@ -137,7 +141,8 @@ public class ProductionMaturityAutomationController {
 
     @Transactional
     @PostMapping("/validation/runs/{runId}/complete")
-    public Map<String, Object> completeValidationRun(@PathVariable Long runId, @RequestBody Map<String, Object> payload) {
+    public Map<String, Object> completeValidationRun(
+            @PathVariable Long runId, @RequestBody Map<String, Object> payload) {
         String status = string(payload, "runStatus", "COMPLETED");
         jdbcTemplate.update(
                 "update production_maturity_validation_runs set run_status = ?, summary = coalesce(?, summary), "
