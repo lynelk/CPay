@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: CPay Gateway API - Production Maturity Surface
+  version: 1.9.0-production-maturity
+  description: >-
+    Consolidated P1-P4 production-maturity contract for CPay. This file merges the finance,
+    product/developer experience, compliance/KYB/KYC, regional cross-border and automation
+    endpoint surfaces into one reviewable OpenAPI contract. The existing cpay-v2-openapi.yaml
+    remains the historical main contract; this file is the merge-ready production-maturity
+    contract used by CI and reviewers before replacing or regenerating the main contract.
+servers:
+  - url: /
+security:
+  - AdminBasicAuth: []
+paths:
+  /api/v2/finance/settlement-batches:
+    get:
+      summary: List finance settlement batches
+      operationId: listFinanceSettlementBatches
+      responses:
+        '200': { description: Settlement batches }
+    post:
+      summary: Create a finance settlement batch
+      operationId: createFinanceSettlementBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettlementBatchCreateRequest' }
+      responses:
+        '201': { description: Settlement batch created }
+  /api/v2/finance/settlement-batches/{settlementBatchId}/items:
+    post:
+      summary: Add an item to a finance settlement batch
+      operationId: addFinanceSettlementItem
+      parameters:
+        - $ref: '#/components/parameters/SettlementBatchId'
+      responses:
+        '201': { description: Settlement item created }
+  /api/v2/finance/settlement-batches/{settlementBatchId}/transition:
+    post:
+      summary: Move a finance settlement batch through its lifecycle
+      operationId: transitionFinanceSettlementBatch
+      parameters:
+        - $ref: '#/components/parameters/SettlementBatchId'
+      responses:
+        '200': { description: Settlement batch transitioned }
+  /api/v2/finance/treasury-positions:
+    get:
+      summary: List treasury positions
+      operationId: listTreasuryPositions
+      responses:
+        '200': { description: Treasury positions }
+    post:
+      summary: Record a treasury position snapshot
+      operationId: recordTreasuryPosition
+      responses:
+        '201': { description: Treasury position recorded }
+  /api/v2/finance/reconciliation-exceptions:
+    get:
+      summary: List reconciliation exceptions
+      operationId: listReconciliationExceptions
+      responses:
+        '200': { description: Reconciliation exceptions }
+    post:
+      summary: Create a reconciliation exception
+      operationId: createReconciliationException
+      responses:
+        '201': { description: Reconciliation exception created }
+  /api/v2/finance/reconciliation-exceptions/{exceptionId}/resolve:
+    post:
+      summary: Resolve a reconciliation exception
+      operationId: resolveReconciliationException
+      parameters:
+        - $ref: '#/components/parameters/ExceptionId'
+      responses:
+        '200': { description: Reconciliation exception resolved }
+  /api/v2/finance/daily-close:
+    get:
+      summary: List daily close records
+      operationId: listDailyCloseRecords
+      responses:
+        '200': { description: Daily close records }
+    post:
+      summary: Open or record a daily close enforcement record
+      operationId: createDailyCloseRecord
+      responses:
+        '201': { description: Daily close record created }
+  /api/v2/finance/reports:
+    get:
+      summary: List finance report/export requests
+      operationId: listFinanceReports
+      responses:
+        '200': { description: Finance reports }
+    post:
+      summary: Request a finance report/export
+      operationId: requestFinanceReport
+      responses:
+        '201': { description: Finance report requested }
+  /api/v2/finance/incidents:
+    get:
+      summary: List operations incidents
+      operationId: listOperationsIncidents
+      responses:
+        '200': { description: Operations incidents }
+    post:
+      summary: Create an operations incident
+      operationId: createOperationsIncident
+      responses:
+        '201': { description: Operations incident created }
+  /api/v2/compliance/kyb-profiles:
+    get:
+      summary: List merchant KYB profiles
+      operationId: listKybProfiles
+      responses:
+        '200': { description: KYB profiles }
+    post:
+      summary: Create or update a merchant KYB profile
+      operationId: upsertKybProfile
+      responses:
+        '201': { description: KYB profile created }
+  /api/v2/compliance/kyb-profiles/{profileId}/decision:
+    post:
+      summary: Record a KYB decision
+      operationId: recordKybDecision
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '200': { description: KYB decision recorded }
+  /api/v2/compliance/cases:
+    get:
+      summary: List compliance cases
+      operationId: listComplianceCases
+      responses:
+        '200': { description: Compliance cases }
+    post:
+      summary: Open a compliance case
+      operationId: openComplianceCase
+      responses:
+        '201': { description: Compliance case opened }
+  /api/v2/compliance/cases/{caseId}/decision:
+    post:
+      summary: Record a compliance case decision
+      operationId: recordComplianceCaseDecision
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+      responses:
+        '200': { description: Compliance decision recorded }
+  /api/v2/compliance/screening-results:
+    post:
+      summary: Record a compliance screening result
+      operationId: recordComplianceScreeningResult
+      responses:
+        '201': { description: Screening result recorded }
+  /api/v2/compliance/monitoring-alerts:
+    post:
+      summary: Create a transaction monitoring alert
+      operationId: createTransactionMonitoringAlert
+      responses:
+        '201': { description: Monitoring alert created }
+  /api/v2/compliance/regulatory-evidence-exports:
+    post:
+      summary: Request a regulatory evidence export
+      operationId: requestRegulatoryEvidenceExport
+      responses:
+        '201': { description: Evidence export requested }
+  /api/v2/cross-border/corridors:
+    get:
+      summary: List configured corridors
+      operationId: listCorridors
+      responses:
+        '200': { description: Corridors }
+    post:
+      summary: Configure a corridor
+      operationId: createCorridor
+      responses:
+        '201': { description: Corridor created }
+  /api/v2/cross-border/corridors/{corridorCode}/routes:
+    post:
+      summary: Configure a corridor route
+      operationId: createCorridorRoute
+      parameters:
+        - $ref: '#/components/parameters/CorridorCode'
+      responses:
+        '201': { description: Corridor route created }
+  /api/v2/cross-border/beneficiaries:
+    post:
+      summary: Create a cross-border beneficiary
+      operationId: createBeneficiary
+      responses:
+        '201': { description: Beneficiary created }
+  /api/v2/cross-border/beneficiaries/{beneficiaryId}/instruments:
+    post:
+      summary: Add a beneficiary payout instrument
+      operationId: addBeneficiaryInstrument
+      parameters:
+        - $ref: '#/components/parameters/BeneficiaryId'
+      responses:
+        '201': { description: Beneficiary instrument created }
+  /api/v2/cross-border/fx-quotes:
+    post:
+      summary: Create an FX quote
+      operationId: createCrossBorderFxQuote
+      responses:
+        '201': { description: FX quote created }
+  /api/v2/cross-border/transfers:
+    post:
+      summary: Create a cross-border transfer
+      operationId: createCrossBorderTransferV2
+      responses:
+        '201': { description: Transfer created }
+  /api/v2/cross-border/transfers/{transferId}/transition:
+    post:
+      summary: Transition a cross-border transfer lifecycle state
+      operationId: transitionCrossBorderTransfer
+      parameters:
+        - $ref: '#/components/parameters/TransferId'
+      responses:
+        '200': { description: Transfer transitioned }
+  /api/v2/cross-border/settlements:
+    post:
+      summary: Create a corridor settlement batch
+      operationId: createCorridorSettlementBatch
+      responses:
+        '201': { description: Corridor settlement batch created }
+  /api/v2/cross-border/treasury-exposures:
+    post:
+      summary: Record corridor treasury exposure
+      operationId: recordCorridorTreasuryExposure
+      responses:
+        '201': { description: Treasury exposure recorded }
+  /api/v2/product/onboarding/progress:
+    get:
+      summary: Read merchant onboarding progress
+      operationId: getMerchantOnboardingProgress
+      responses:
+        '200': { description: Merchant onboarding progress }
+    post:
+      summary: Create or update merchant onboarding progress
+      operationId: upsertMerchantOnboardingProgress
+      responses:
+        '201': { description: Onboarding progress recorded }
+  /api/v2/product/developer/apps:
+    get:
+      summary: List developer portal applications
+      operationId: listDeveloperPortalApps
+      responses:
+        '200': { description: Developer apps }
+    post:
+      summary: Create a developer portal application
+      operationId: createDeveloperPortalApp
+      responses:
+        '201': { description: Developer app created }
+  /api/v2/product/payment-links:
+    get:
+      summary: List payment links
+      operationId: listProductPaymentLinks
+      responses:
+        '200': { description: Payment links }
+    post:
+      summary: Create a payment link lifecycle record
+      operationId: createProductPaymentLink
+      responses:
+        '201': { description: Payment link created }
+  /api/v2/product/checkout-sessions:
+    post:
+      summary: Create a hosted checkout session record
+      operationId: createHostedCheckoutSessionRecord
+      responses:
+        '201': { description: Checkout session created }
+  /api/v2/product/invoices:
+    get:
+      summary: List merchant invoices
+      operationId: listMerchantInvoices
+      responses:
+        '200': { description: Merchant invoices }
+    post:
+      summary: Create a merchant invoice
+      operationId: createMerchantInvoice
+      responses:
+        '201': { description: Merchant invoice created }
+  /api/v2/product/channel-journeys:
+    get:
+      summary: List channel journey guides
+      operationId: listChannelJourneyGuides
+      responses:
+        '200': { description: Channel journey guides }
+  /api/v2/product/dashboard-widgets:
+    get:
+      summary: List dashboard widgets
+      operationId: listDashboardWidgets
+      responses:
+        '200': { description: Dashboard widgets }
+  /api/v2/product/sandbox-guides:
+    get:
+      summary: List sandbox guides
+      operationId: listSandboxGuides
+      responses:
+        '200': { description: Sandbox guides }
+  /api/v2/product/go-live-checklists:
+    get:
+      summary: List go-live checklists
+      operationId: listGoLiveChecklists
+      responses:
+        '200': { description: Go-live checklists }
+    post:
+      summary: Create a go-live checklist
+      operationId: createGoLiveChecklist
+      responses:
+        '201': { description: Go-live checklist created }
+  /api/v2/production-maturity/screening/providers:
+    post:
+      summary: Register or update a screening provider adapter configuration
+      operationId: registerScreeningProviderAdapter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScreeningProviderConfigRequest' }
+      responses:
+        '200': { description: Screening provider registered }
+  /api/v2/production-maturity/screening/requests:
+    post:
+      summary: Submit a provider-neutral compliance screening request
+      operationId: submitScreeningRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScreeningRequest' }
+      responses:
+        '200': { description: Screening request recorded or submitted }
+  /api/v2/production-maturity/cross-border/transfers/{transferId}/dispatch:
+    post:
+      summary: Create an idempotent payout-rail dispatch envelope for an approved cross-border transfer
+      operationId: dispatchCrossBorderTransferToPayoutRail
+      parameters:
+        - $ref: '#/components/parameters/TransferId'
+      responses:
+        '200': { description: Transfer dispatch created }
+  /api/v2/production-maturity/cross-border/dispatches/pending:
+    get:
+      summary: List payout-rail dispatches ready for provider submission
+      operationId: listPendingCrossBorderDispatches
+      responses:
+        '200': { description: Pending dispatches }
+  /api/v2/production-maturity/cross-border/dispatches/{dispatchId}/provider-submitted:
+    post:
+      summary: Mark a payout-rail dispatch as submitted to the provider
+      operationId: markCrossBorderDispatchProviderSubmitted
+      parameters:
+        - name: dispatchId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: Dispatch status updated }
+  /api/v2/production-maturity/settlements/finance/{settlementBatchId}/post:
+    post:
+      summary: Post a finance settlement batch into balanced settlement entries
+      operationId: postFinanceSettlementBatch
+      parameters:
+        - $ref: '#/components/parameters/SettlementBatchId'
+      responses:
+        '200': { description: Settlement batch posted }
+  /api/v2/production-maturity/settlements/corridor/{settlementBatchId}/post:
+    post:
+      summary: Post a corridor settlement batch into balanced settlement entries
+      operationId: postCorridorSettlementBatch
+      parameters:
+        - $ref: '#/components/parameters/SettlementBatchId'
+      responses:
+        '200': { description: Corridor settlement batch posted }
+  /api/v2/production-maturity/validation/runs:
+    get:
+      summary: List migration/controller/OpenAPI validation runs
+      operationId: listProductionMaturityValidationRuns
+      responses:
+        '200': { description: Validation runs }
+    post:
+      summary: Create a migration/controller/OpenAPI validation run
+      operationId: createProductionMaturityValidationRun
+      responses:
+        '201': { description: Validation run created }
+components:
+  securitySchemes:
+    AdminBasicAuth:
+      type: http
+      scheme: basic
+  parameters:
+    SettlementBatchId:
+      name: settlementBatchId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    ExceptionId:
+      name: exceptionId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    CorridorCode:
+      name: corridorCode
+      in: path
+      required: true
+      schema: { type: string }
+    BeneficiaryId:
+      name: beneficiaryId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    TransferId:
+      name: transferId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+  schemas:
+    SettlementBatchCreateRequest:
+      type: object
+      required: [batchReference, merchantId, currency, expectedSettlementAmount]
+      properties:
+        batchReference: { type: string }
+        merchantId: { type: integer, format: int64 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        expectedSettlementAmount: { type: string }
+    ScreeningProviderConfigRequest:
+      type: object
+      required: [providerCode]
+      properties:
+        providerCode: { type: string }
+        displayName: { type: string }
+        environment: { type: string, enum: [SANDBOX, PRODUCTION] }
+        baseUrl: { type: string }
+        authMode: { type: string }
+        enabled: { type: boolean }
+        supportsSanctions: { type: boolean }
+        supportsPep: { type: boolean }
+        supportsDocumentVerification: { type: boolean }
+        supportsBeneficiaryScreening: { type: boolean }
+        supportsMerchantScreening: { type: boolean }
+    ScreeningRequest:
+      type: object
+      required: [providerCode, subjectType, subjectReference, screeningType]
+      properties:
+        providerCode: { type: string }
+        subjectType: { type: string, enum: [MERCHANT, INDIVIDUAL, BENEFICIARY, TRANSFER] }
+        subjectReference: { type: string }
+        screeningType: { type: string, enum: [SANCTIONS, PEP, DOCUMENT, BENEFICIARY, MERCHANT] }
+        payload: { type: string }
+        requestedBy: { type: string }
