@@ -89,6 +89,82 @@ class DoubleEntryLedgerServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void postScopesLedgerAccountsByOwnerCurrencyAndCode() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_transactions"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_period_locks"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForObject(
+                        eq("SELECT LAST_INSERT_ID()"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
+                .thenReturn(700L);
+        when(jdbcTemplate.queryForObject(
+                        contains("owner_scope_id=:owner_scope_id"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
+                .thenReturn(901L);
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        service.post(
+                "TX-SCOPED-ACCOUNT",
+                "PAYMENT",
+                "PAY-SCOPED-ACCOUNT",
+                "scoped account identity",
+                List.of(
+                        entry(
+                                "shared:UGX:liability",
+                                "MERCHANT_LIABILITY",
+                                "MERCHANT",
+                                101L,
+                                "CR",
+                                "1000",
+                                "UGX"),
+                        entry(
+                                "shared:UGX:liability",
+                                "MERCHANT_LIABILITY",
+                                "MERCHANT",
+                                202L,
+                                "DR",
+                                "1000",
+                                "UGX")));
+
+        verify(jdbcTemplate)
+                .update(
+                        contains("owner_id, owner_scope_id, currency"),
+                        org.mockito.ArgumentMatchers.<MapSqlParameterSource>argThat(
+                                params ->
+                                        params.hasValue("owner_scope_id")
+                                                && Long.valueOf(101L)
+                                                        .equals(
+                                                                params.getValue(
+                                                                        "owner_scope_id"))));
+        verify(jdbcTemplate)
+                .update(
+                        contains("owner_id, owner_scope_id, currency"),
+                        org.mockito.ArgumentMatchers.<MapSqlParameterSource>argThat(
+                                params ->
+                                        params.hasValue("owner_scope_id")
+                                                && Long.valueOf(202L)
+                                                        .equals(
+                                                                params.getValue(
+                                                                        "owner_scope_id"))));
+        verify(jdbcTemplate, org.mockito.Mockito.times(2))
+                .queryForObject(
+                        contains("owner_scope_id=:owner_scope_id"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void postThrowsWhenTheCurrencyIsLockedForTheCurrentPeriod() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         when(jdbcTemplate.query(
@@ -421,6 +497,26 @@ class DoubleEntryLedgerServiceTest {
                 currency,
                 "reservation_status",
                 status);
+    }
+
+    private LedgerEntryCommand entry(
+            String account,
+            String accountType,
+            String ownerType,
+            Long ownerId,
+            String direction,
+            String amount,
+            String currency) {
+        return new LedgerEntryCommand(
+                account,
+                account,
+                accountType,
+                ownerType,
+                ownerId,
+                direction,
+                new BigDecimal(amount),
+                currency,
+                "test");
     }
 
     private LedgerEntryCommand entry(String account, String direction, String amount) {

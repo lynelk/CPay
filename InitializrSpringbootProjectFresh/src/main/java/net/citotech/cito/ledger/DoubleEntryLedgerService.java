@@ -416,18 +416,19 @@ public class DoubleEntryLedgerService {
         p.addValue("account_type", blank(entry.accountType()) ? "CONTROL" : entry.accountType());
         p.addValue("owner_type", blank(entry.ownerType()) ? "SYSTEM" : entry.ownerType());
         p.addValue("owner_id", entry.ownerId());
+        p.addValue("owner_scope_id", entry.ownerId() == null ? 0L : entry.ownerId());
         p.addValue("currency", entry.currency().trim().toUpperCase());
         jdbcTemplate.update(
                 "INSERT INTO ledger_accounts "
-                        + "(account_code, account_name, account_type, owner_type, owner_id, currency) "
-                        + "VALUES (:account_code, :account_name, :account_type, :owner_type, :owner_id, :currency) "
+                        + "(account_code, account_name, account_type, owner_type, owner_id, owner_scope_id, currency) "
+                        + "VALUES (:account_code, :account_name, :account_type, :owner_type, :owner_id, :owner_scope_id, :currency) "
                         + "ON DUPLICATE KEY UPDATE account_name=:account_name, account_status='ACTIVE'",
                 p);
         Long id =
                 jdbcTemplate.queryForObject(
                         "SELECT id FROM ledger_accounts WHERE account_code=:account_code "
                                 + "AND owner_type=:owner_type "
-                                + "AND ((owner_id IS NULL AND :owner_id IS NULL) OR owner_id=:owner_id) "
+                                + "AND owner_scope_id=:owner_scope_id "
                                 + "AND currency=:currency",
                         p,
                         Long.class);

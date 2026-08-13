@@ -24,7 +24,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V63__production_maturity_execution_automation.sql",
                     "V64__kyb_decision_audit_controls.sql",
                     "V65__payment_state_transition_audit.sql",
-                    "V66__ledger_reservation_funds_controls.sql");
+                    "V66__ledger_reservation_funds_controls.sql",
+                    "V67__ledger_account_scoped_identity.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -65,7 +66,9 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("production_maturity_validation_runs")
                 .contains("kyb_review_decisions")
                 .contains("payment_state_transitions")
-                .contains("ledger_reservation_controls");
+                .contains("ledger_reservation_controls")
+                .contains("owner_scope_id")
+                .contains("uk_ledger_account_scope");
     }
 
     @Test
