@@ -1,0 +1,250 @@
+-- P2: Compliance, KYB and KYC foundation
+-- Adds regulated onboarding, screening, case-management, monitoring and export evidence tables.
+
+CREATE TABLE IF NOT EXISTS kyb_profiles (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    merchant_id BIGINT NOT NULL,
+    merchant_number VARCHAR(64) NOT NULL,
+    registered_business_name VARCHAR(255) NOT NULL,
+    trading_name VARCHAR(255) NULL,
+    registration_number VARCHAR(128) NULL,
+    tax_identification_number VARCHAR(128) NULL,
+    business_type VARCHAR(80) NULL,
+    country_code CHAR(2) NOT NULL,
+    physical_address TEXT NULL,
+    expected_monthly_volume DECIMAL(19,4) NULL,
+    expected_monthly_payout_volume DECIMAL(19,4) NULL,
+    primary_use_case VARCHAR(255) NULL,
+    risk_rating VARCHAR(32) NOT NULL DEFAULT 'UNRATED',
+    status VARCHAR(40) NOT NULL DEFAULT 'DRAFT',
+    submitted_at TIMESTAMP NULL,
+    reviewed_at TIMESTAMP NULL,
+    reviewed_by VARCHAR(128) NULL,
+    review_reason TEXT NULL,
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_kyb_profiles_merchant UNIQUE (merchant_id),
+    INDEX idx_kyb_profiles_status (status),
+    INDEX idx_kyb_profiles_merchant_number (merchant_number),
+    INDEX idx_kyb_profiles_risk_rating (risk_rating)
+);
+
+CREATE TABLE IF NOT EXISTS kyb_beneficial_owners (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    kyb_profile_id BIGINT NOT NULL,
+    owner_type VARCHAR(32) NOT NULL DEFAULT 'INDIVIDUAL',
+    full_name VARCHAR(255) NOT NULL,
+    nationality_country_code CHAR(2) NULL,
+    identification_type VARCHAR(64) NULL,
+    identification_number_hash VARCHAR(128) NULL,
+    ownership_percent DECIMAL(9,4) NULL,
+    is_director BOOLEAN NOT NULL DEFAULT FALSE,
+    is_authorized_signatory BOOLEAN NOT NULL DEFAULT FALSE,
+    screening_status VARCHAR(40) NOT NULL DEFAULT 'NOT_SCREENED',
+    risk_rating VARCHAR(32) NOT NULL DEFAULT 'UNRATED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_kyb_owner_profile FOREIGN KEY (kyb_profile_id) REFERENCES kyb_profiles(id),
+    INDEX idx_kyb_owner_profile (kyb_profile_id),
+    INDEX idx_kyb_owner_screening (screening_status)
+);
+
+CREATE TABLE IF NOT EXISTS kyb_documents (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    kyb_profile_id BIGINT NOT NULL,
+    document_type VARCHAR(80) NOT NULL,
+    document_reference VARCHAR(255) NOT NULL,
+    file_name VARCHAR(255) NULL,
+    content_hash VARCHAR(128) NULL,
+    verification_status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
+    verified_by VARCHAR(128) NULL,
+    verified_at TIMESTAMP NULL,
+    rejection_reason TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_kyb_document_profile FOREIGN KEY (kyb_profile_id) REFERENCES kyb_profiles(id),
+    INDEX idx_kyb_documents_profile (kyb_profile_id),
+    INDEX idx_kyb_documents_status (verification_status)
+);
+
+CREATE TABLE IF NOT EXISTS kyc_profiles (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    subject_type VARCHAR(40) NOT NULL DEFAULT 'INDIVIDUAL',
+    subject_reference VARCHAR(128) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    phone_hash VARCHAR(128) NULL,
+    email_hash VARCHAR(128) NULL,
+    date_of_birth DATE NULL,
+    nationality_country_code CHAR(2) NULL,
+    residence_country_code CHAR(2) NULL,
+    identification_type VARCHAR(64) NULL,
+    identification_number_hash VARCHAR(128) NULL,
+    address_text TEXT NULL,
+    risk_rating VARCHAR(32) NOT NULL DEFAULT 'UNRATED',
+    status VARCHAR(40) NOT NULL DEFAULT 'DRAFT',
+    submitted_at TIMESTAMP NULL,
+    reviewed_at TIMESTAMP NULL,
+    reviewed_by VARCHAR(128) NULL,
+    review_reason TEXT NULL,
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_kyc_profiles_subject UNIQUE (subject_type, subject_reference),
+    INDEX idx_kyc_profiles_status (status),
+    INDEX idx_kyc_profiles_risk (risk_rating)
+);
+
+CREATE TABLE IF NOT EXISTS compliance_cases (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    case_reference VARCHAR(80) NOT NULL,
+    case_type VARCHAR(80) NOT NULL,
+    severity VARCHAR(32) NOT NULL DEFAULT 'MEDIUM',
+    status VARCHAR(40) NOT NULL DEFAULT 'OPEN',
+    subject_type VARCHAR(40) NOT NULL,
+    subject_reference VARCHAR(128) NOT NULL,
+    merchant_id BIGINT NULL,
+    merchant_number VARCHAR(64) NULL,
+    transaction_reference VARCHAR(128) NULL,
+    related_resource_type VARCHAR(80) NULL,
+    related_resource_id VARCHAR(128) NULL,
+    title VARCHAR(255) NOT NULL,
+    summary TEXT NULL,
+    hold_scope VARCHAR(80) NULL,
+    hold_active BOOLEAN NOT NULL DEFAULT FALSE,
+    assigned_to VARCHAR(128) NULL,
+    opened_by VARCHAR(128) NULL,
+    opened_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    due_at TIMESTAMP NULL,
+    closed_at TIMESTAMP NULL,
+    closed_by VARCHAR(128) NULL,
+    decision VARCHAR(40) NULL,
+    decision_reason TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_compliance_cases_reference UNIQUE (case_reference),
+    INDEX idx_compliance_cases_status (status),
+    INDEX idx_compliance_cases_subject (subject_type, subject_reference),
+    INDEX idx_compliance_cases_merchant (merchant_id),
+    INDEX idx_compliance_cases_hold (hold_active),
+    INDEX idx_compliance_cases_due (due_at)
+);
+
+CREATE TABLE IF NOT EXISTS compliance_case_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    case_id BIGINT NOT NULL,
+    event_type VARCHAR(80) NOT NULL,
+    actor VARCHAR(128) NULL,
+    from_status VARCHAR(40) NULL,
+    to_status VARCHAR(40) NULL,
+    notes TEXT NULL,
+    evidence_reference VARCHAR(255) NULL,
+    event_payload JSON NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_compliance_event_case FOREIGN KEY (case_id) REFERENCES compliance_cases(id),
+    INDEX idx_compliance_case_events_case (case_id),
+    INDEX idx_compliance_case_events_type (event_type)
+);
+
+CREATE TABLE IF NOT EXISTS compliance_screening_results (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    screening_reference VARCHAR(80) NOT NULL,
+    provider_code VARCHAR(80) NOT NULL,
+    screening_type VARCHAR(80) NOT NULL,
+    subject_type VARCHAR(40) NOT NULL,
+    subject_reference VARCHAR(128) NOT NULL,
+    risk_score DECIMAL(9,4) NULL,
+    result_status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
+    match_count INT NOT NULL DEFAULT 0,
+    raw_result_reference VARCHAR(255) NULL,
+    normalized_result JSON NULL,
+    case_id BIGINT NULL,
+    screened_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_screening_results_reference UNIQUE (screening_reference),
+    CONSTRAINT fk_screening_result_case FOREIGN KEY (case_id) REFERENCES compliance_cases(id),
+    INDEX idx_screening_results_subject (subject_type, subject_reference),
+    INDEX idx_screening_results_status (result_status),
+    INDEX idx_screening_results_provider (provider_code)
+);
+
+CREATE TABLE IF NOT EXISTS transaction_monitoring_rules (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    rule_code VARCHAR(80) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    rule_type VARCHAR(80) NOT NULL,
+    severity VARCHAR(32) NOT NULL DEFAULT 'MEDIUM',
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    applies_to VARCHAR(80) NOT NULL DEFAULT 'ALL',
+    country_code CHAR(2) NULL,
+    currency_code CHAR(3) NULL,
+    threshold_amount DECIMAL(19,4) NULL,
+    threshold_count INT NULL,
+    window_minutes INT NULL,
+    configuration JSON NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_transaction_monitoring_rule_code UNIQUE (rule_code),
+    INDEX idx_transaction_monitoring_rules_enabled (enabled),
+    INDEX idx_transaction_monitoring_rules_type (rule_type)
+);
+
+CREATE TABLE IF NOT EXISTS transaction_monitoring_alerts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    alert_reference VARCHAR(80) NOT NULL,
+    rule_id BIGINT NOT NULL,
+    severity VARCHAR(32) NOT NULL,
+    status VARCHAR(40) NOT NULL DEFAULT 'OPEN',
+    subject_type VARCHAR(40) NOT NULL,
+    subject_reference VARCHAR(128) NOT NULL,
+    merchant_id BIGINT NULL,
+    transaction_reference VARCHAR(128) NULL,
+    triggering_payload JSON NULL,
+    case_id BIGINT NULL,
+    assigned_to VARCHAR(128) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP NULL,
+    resolved_by VARCHAR(128) NULL,
+    resolution_notes TEXT NULL,
+    CONSTRAINT uk_transaction_monitoring_alert_reference UNIQUE (alert_reference),
+    CONSTRAINT fk_monitoring_alert_rule FOREIGN KEY (rule_id) REFERENCES transaction_monitoring_rules(id),
+    CONSTRAINT fk_monitoring_alert_case FOREIGN KEY (case_id) REFERENCES compliance_cases(id),
+    INDEX idx_monitoring_alerts_status (status),
+    INDEX idx_monitoring_alerts_subject (subject_type, subject_reference),
+    INDEX idx_monitoring_alerts_case (case_id)
+);
+
+CREATE TABLE IF NOT EXISTS regulatory_evidence_exports (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    export_reference VARCHAR(80) NOT NULL,
+    export_type VARCHAR(80) NOT NULL,
+    jurisdiction VARCHAR(80) NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    status VARCHAR(40) NOT NULL DEFAULT 'REQUESTED',
+    requested_by VARCHAR(128) NULL,
+    generated_by VARCHAR(128) NULL,
+    generated_at TIMESTAMP NULL,
+    file_reference VARCHAR(255) NULL,
+    record_count INT NOT NULL DEFAULT 0,
+    filters JSON NULL,
+    checksum VARCHAR(128) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_regulatory_evidence_export_ref UNIQUE (export_reference),
+    INDEX idx_regulatory_exports_type (export_type),
+    INDEX idx_regulatory_exports_period (period_start, period_end),
+    INDEX idx_regulatory_exports_status (status)
+);
+
+INSERT INTO transaction_monitoring_rules
+(rule_code, display_name, rule_type, severity, applies_to, threshold_amount, threshold_count, window_minutes, configuration)
+VALUES
+('HIGH_VALUE_PAYOUT', 'High-value payout review', 'AMOUNT_THRESHOLD', 'HIGH', 'PAYOUT', 5000000.0000, NULL, NULL, JSON_OBJECT('action', 'OPEN_CASE', 'caseType', 'HIGH_VALUE_TRANSACTION')),
+('VELOCITY_SPIKE_24H', 'Velocity spike in 24 hours', 'COUNT_WINDOW', 'MEDIUM', 'ALL', NULL, 20, 1440, JSON_OBJECT('action', 'OPEN_CASE', 'caseType', 'VELOCITY_LIMIT_BREACH')),
+('REPEATED_FAILED_PAYOUTS', 'Repeated failed payouts', 'COUNT_WINDOW', 'MEDIUM', 'PAYOUT', NULL, 5, 60, JSON_OBJECT('action', 'OPEN_CASE', 'caseType', 'SUSPICIOUS_ACTIVITY_REVIEW')),
+('CROSS_BORDER_REVIEW', 'Cross-border transfer review', 'CORRIDOR_REVIEW', 'HIGH', 'CROSS_BORDER', NULL, NULL, NULL, JSON_OBJECT('action', 'HOLD_AND_REVIEW', 'caseType', 'CROSS_BORDER_REVIEW'))
+ON DUPLICATE KEY UPDATE
+    display_name = VALUES(display_name),
+    rule_type = VALUES(rule_type),
+    severity = VALUES(severity),
+    applies_to = VALUES(applies_to),
+    configuration = VALUES(configuration);
