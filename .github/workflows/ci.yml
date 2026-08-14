@@ -5,6 +5,7 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -29,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Initializrspringbootprojectfresh
+        working-directory: InitializrSpringbootProjectFresh
     steps:
       - uses: actions/checkout@v7
         with:
@@ -46,6 +47,15 @@ jobs:
           cache: maven
       - name: Compile, test and verify
         run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
+      - name: Verify packaged jar contains its startup dependencies
+        run: |
+          set -euo pipefail
+          # Regression guard: the production jar must boot, but sliced-context tests never
+          # load the full logback-spring.xml. This check fails the build if the structured
+          # JSON-logging encoder (referenced by logback-spring.xml) is missing from the jar.
+          # In a Spring Boot fat jar third-party jars live as nested BOOT-INF/lib entries,
+          # so we match the nested library name, not a loose class file.
+          unzip -l target/cito-fresh-*.jar | grep -q "BOOT-INF/lib/logstash-logback-encoder-"
       - name: Generate backend SBOM
         run: mvn -B org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom --no-transfer-progress -DskipTests
       - name: Upload test reports
@@ -53,14 +63,14 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: backend-surefire-reports
-          path: Initializrspringbootprojectfresh/target/surefire-reports/
+          path: InitializrSpringbootProjectFresh/target/surefire-reports/
       - name: Upload backend SBOM
         uses: actions/upload-artifact@v7
         with:
           name: backend-sbom
           path: |
-            Initializrspringbootprojectfresh/target/bom.json
-            Initializrspringbootprojectfresh/target/bom.xml
+            InitializrSpringbootProjectFresh/target/bom.json
+            InitializrSpringbootProjectFresh/target/bom.xml
 
   migration-smoke:
     name: Migration Naming and Duplicate Check
@@ -70,7 +80,7 @@ jobs:
       - name: Check Flyway migration versions are unique
         run: |
           set -euo pipefail
-          files=$(find Initializrspringbootprojectfresh/src/main/resources/db/migration -type f -name 'V*.sql' -printf '%f\n' | sort)
+          files=$(find InitializrSpringbootProjectFresh/src/main/resources/db/migration -type f -name 'V*.sql' -printf '%f\n' | sort)
           echo "$files"
           versions=$(echo "$files" | sed -E 's/^V([0-9]+)__.*/\1/')
           dupes=$(echo "$versions" | sort | uniq -d)
@@ -88,9 +98,25 @@ jobs:
         run: |
           test -s Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/native/payments/collect" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/payments/payout" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/payment-links" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/checkout/{token}/pay" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/invoices" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/invoices/pay/{token}" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/channels" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/payments/{reference}" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/balances" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/merchant-self-service/batches/{batchId}" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/merchant-self-service/webhooks" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/recon-finance/summary" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/compliance/cases" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/provider-certification/evidence" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/readiness/summary" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/treasury/positions" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/payout-approvals" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/communication/campaigns" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/vending/overview" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/billing/price-books" Docs/Api/cpay-v2-openapi.yaml
 
   owasp:
     name: OWASP Dependency-Check
@@ -98,7 +124,7 @@ jobs:
     needs: backend
     defaults:
       run:
-        working-directory: Initializrspringbootprojectfresh
+        working-directory: InitializrSpringbootProjectFresh
     steps:
       - uses: actions/checkout@v7
       - name: Set up JDK 21
@@ -118,7 +144,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: owasp-dependency-check-report
-          path: Initializrspringbootprojectfresh/target/dependency-check-report.html
+          path: InitializrSpringbootProjectFresh/target/dependency-check-report.html
 
   codeql:
     name: CodeQL Security Analysis
@@ -138,7 +164,7 @@ jobs:
           distribution: "temurin"
           cache: maven
       - name: Build for CodeQL
-        working-directory: Initializrspringbootprojectfresh
+        working-directory: InitializrSpringbootProjectFresh
         run: mvn -B compile --no-transfer-progress -DskipTests
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
@@ -150,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Clientside
+        working-directory: clientside
     steps:
       - uses: actions/checkout@v7
       - name: Set up Node.js
@@ -158,7 +184,7 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: Clientside/package-lock.json
+          cache-dependency-path: clientside/package-lock.json
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
       - name: Run linter
@@ -189,3 +215,9 @@ jobs:
           test -s Docs/Readiness/Market-readiness-gates.md
           test -s Docs/Runbooks/Production-incident-response.md
           test -s Docs/Runbooks/Provider-certification-checklist.md
+          test -s Docs/Runbooks/Operations-alerts.md
+          test -s Docs/Runbooks/Callback-security-and-requeue.md
+          test -s Docs/Runbooks/Reconciliation-finance-daily-close.md
+          test -s Docs/Architecture/Overview.md
+          test -s Docs/Production-code-controls.md
+          test -s Docs/Readiness/Market-readiness-tracker.md

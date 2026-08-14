@@ -123,6 +123,15 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
+        <!-- Structured JSON console logging (logback-spring.xml CONSOLE_JSON appender).
+             Without this the packaged jar fails at startup with ClassNotFoundException:
+             net.logstash.logback.encoder.LogstashEncoder. Sliced-context tests never boot
+             the full logback config, so `mvn verify` alone does not catch a missing encoder. -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.1</version>
+        </dependency>
         <!-- Audit G1: distributed locking for crons that are both @Scheduled and directly
              HTTP-triggerable (TransactionsLogController.testCheckstatusCron / .paymentsPayCron),
              so a multi-instance/HA deployment can't run the same money-movement batch on two
