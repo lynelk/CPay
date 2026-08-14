@@ -15,14 +15,15 @@ The legacy XML runner is gated by `CPAY_LEGACY_DBCHANGES_ENABLED=false` by defau
 ## Current snapshot
 
 Flyway is currently at `V60` (through `V60__communication_billing_meters.sql`).
-`Docs/Schema/snapshots/2026-07-28-cpayadmin.sql` is the latest committed snapshot, but it predates
-later migrations (`V19` through `V60`). Unlike the July 16 snapshot below, no live migrated
-database was available when it was written, so it was hand-reconstructed by reading the migration
-DDL rather than produced with `mysqldump`. Treat it as a review aid, not the release baseline.
-Regenerate a real no-data snapshot against a freshly migrated database before tagging a release so
-the snapshot catches drift between authored migrations and applied schema.
+`Docs/Schema/snapshots/2026-08-14-cpayadmin.sql` is the latest committed snapshot: a real no-data
+`mysqldump` taken from a freshly migrated MySQL 8.4 database (backend booted from the packaged jar,
+Flyway applied all 58 migrations V1–V60). It replaces the hand-reconstructed 2026-07-28 snapshot.
 
-`Docs/Schema/snapshots/2026-07-16-cpayadmin.sql` is the previous real `mysqldump` snapshot, generated from the local migrated `cpayadmin` database on July 16, 2026. It reflects schema state through V1, V2, and V5 only (the 19 baseline tables, plus the 24 tables added by V2, plus `feature_flags` from V5) — it predates V3's `merchant_transactions_log.currency` widening and everything from V7 onward, so it is missing 40 tables (ledger, risk, compliance, FX/treasury, payment links/checkout, webhooks, sandbox/environment controls, channel routing, fee schedules, and the payout compensation saga). Kept for history; prefer the 2026-07-28 snapshot.
+`Docs/Schema/snapshots/2026-07-28-cpayadmin.sql` was a hand-reconstructed review aid written by
+reading migration DDL when no migrated database was available; it predated V19–V60. Kept for
+history; prefer the 2026-08-14 snapshot.
+
+`Docs/Schema/snapshots/2026-07-16-cpayadmin.sql` is the previous real `mysqldump` snapshot, generated from the local migrated `cpayadmin` database on July 16, 2026. It reflects schema state through V1, V2, and V5 only (the 19 baseline tables, plus the 24 tables added by V2, plus `feature_flags` from V5) — it predates V3's `merchant_transactions_log.currency` widening and everything from V7 onward, so it is missing 40 tables (ledger, risk, compliance, FX/treasury, payment links/checkout, webhooks, sandbox/environment controls, channel routing, fee schedules, and the payout compensation saga). Kept for history; prefer the 2026-08-14 snapshot.
 
 Regenerate a snapshot after migrations change:
 
@@ -116,7 +117,7 @@ merchants_audit_trail
 ```
 
 Tables added since the original 19-table V1 baseline are grouped by the migration that introduced
-them in the header comment of `Docs/Schema/snapshots/2026-07-28-cpayadmin.sql`; update that snapshot
+them in the header comment of `Docs/Schema/snapshots/2026-08-14-cpayadmin.sql`; update that snapshot
 after generating a real migrated-database dump for the next release.
 
 ## Migration rules

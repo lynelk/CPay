@@ -29,7 +29,7 @@ This document is for:
 | Area | Main purpose |
 |---|---|
 | `InitializrSpringbootProjectFresh/` | Spring Boot 4.1 backend, APIs, payment gateway services, migrations, and tests. |
-| `Clientside/` | React 18, Vite 8 admin and merchant portal with the CPay iOS-style design system. |
+| `clientside/` | React 18, Vite 8 admin and merchant portal with the CPay iOS-style design system. |
 | `Integrations/Citoconnect/` | JavaScript reference client and integration assets. |
 | `Docs/` | API documentation, architecture notes, readiness gates, production controls, and runbooks. |
 | `Sdk/` | Merchant signing helpers and OpenAPI client-generation guidance. |
@@ -144,7 +144,7 @@ fails, run `mvn spotless:apply` to auto-fix.
 Frontend:
 
 ```bash
-cd Clientside
+cd clientside
 npm install
 npm run typecheck
 npm test

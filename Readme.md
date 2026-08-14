@@ -52,7 +52,7 @@ New providers should be added through the gateway adapter pattern described in `
 
 ```text
 InitializrSpringbootProjectFresh/   Spring Boot 4.1 backend and payment gateway services
-Clientside/                         React-based admin and merchant portal
+clientside/                         React-based admin and merchant portal
 Integrations/Citoconnect/           JavaScript reference client and integration bundle
 Docs/                               API, architecture, readiness, and operations documentation
 Sdk/                                Signing helpers and OpenAPI code-generation guidance
@@ -291,7 +291,7 @@ To run the project locally, you will need:
 2. Copy `.env.example` to `.env` and provide local values.
 3. Use the Flyway migrations under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`; import legacy baseline SQL only when rebuilding an older local database that has not yet been reconciled.
 4. Start the backend from `InitializrSpringbootProjectFresh`.
-5. Start or build the frontend from `Clientside`.
+5. Start or build the frontend from `clientside`.
 
 For a local Docker database and backend, run:
 
@@ -313,7 +313,7 @@ java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 Frontend:
 
 ```bash
-cd Clientside
+cd clientside
 npm install
 npm run dev
 npm run build
@@ -377,7 +377,7 @@ separate opt-in Gatling load-testing toolchain (`mvn gatling:test -Dgatling.simu
 is never part of the default build.
 
 ```bash
-cd Clientside
+cd clientside
 npm install
 npm run typecheck
 npm test
