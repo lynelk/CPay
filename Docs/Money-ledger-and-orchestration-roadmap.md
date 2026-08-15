@@ -17,7 +17,9 @@ The current code stores balances and movement state across merchant transaction 
 - Total debits equal total credits for each transaction group.
 - Trial balance runs daily by account and currency.
 - Provider statement imports cannot mutate ledger entries directly; they propose matched corrections.
-- Insufficient-funds checks reserve funds before provider calls and release on failure.
+- Insufficient-funds checks use ledger-derived available balance (`posted merchant liability - active reservations`) before provider calls and release on failure.
+- Reservation creation serializes by merchant and currency through `ledger_reservation_controls` so concurrent payouts cannot both consume the same available balance.
+- Ledger account identity is scoped by owner type, owner scope id, currency, and account code rather than by globally unique account code alone.
 
 ## Orchestration State Machine
 
@@ -30,7 +32,7 @@ Target states:
 | `SENT_TO_PROVIDER` | Provider call attempted. |
 | `SUCCESSFUL` | Provider confirmed success and ledger is complete. |
 | `FAILED` | Provider or validation failure; reservations released. |
-| `UNDERMINED` | State requires operator or reconciliation resolution. |
+| `UNDETERMINED` | State requires operator or reconciliation resolution. |
 
 Transitions should be explicit and rejected when invalid.
 
@@ -39,6 +41,9 @@ Transitions should be explicit and rejected when invalid.
 1. `V7__audit_roadmap_production_features.sql` introduces `ledger_accounts`, `ledger_transactions`, `ledger_entries`, reservations, and trial-balance run records.
 2. `DoubleEntryLedgerService` rejects unbalanced ledger groups and preserves idempotency by transaction reference.
 3. Risk authorization now runs before v2 orchestration provider calls.
+4. `V66__ledger_reservation_funds_controls.sql` adds merchant/currency reservation control rows and lookup indexes for serialized funds checks.
+5. `DoubleEntryLedgerService.reserve` locks the merchant/currency reservation scope, checks ledger-derived available balance, then inserts the reservation in one transaction.
+6. `V67__ledger_account_scoped_identity.sql` replaces global ledger account-code uniqueness with owner/currency-scoped uniqueness.
 
 ## Remaining Migration Steps
 

@@ -22,6 +22,7 @@ Billing does not build a second ledger. It extends the existing one:
 - `owner_type` gains a new accepted value, `BILLING_TENANT` (alongside the existing `MERCHANT`/
   `PROVIDER`/`SYSTEM`), with `owner_id` = `billing_tenant_id`. This is a free-form string column
   already, so no migration is needed to add the value.
+- Ledger account uniqueness is owner/currency scoped (`owner_type`, normalized `owner_scope_id`, `currency`, `account_code`), so two tenants or merchants can safely use the same local account code without colliding in the chart of accounts.
 - Account codes follow the existing `merchant:{id}:{ccy}:{purpose}` / `provider:{gatewayId}:{ccy}:
   {purpose}` / `cpay:{ccy}:{purpose}` convention, extended with a `billing:{tenantId}:{ccy}:
   {purpose}` namespace (`ar`, `stored_value_liability`, `tax_payable`) plus `cpay:{ccy}:

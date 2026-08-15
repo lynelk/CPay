@@ -37,6 +37,75 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 // the path rule drifting or being bypassed by an internal forward/include.
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    static final List<String> CSRF_EXEMPT_API_PATTERNS =
+            List.of(
+                    "/api/v1/**",
+                    "/api/do*",
+                    "/api/test*",
+                    "/api/v2/admin/**",
+                    "/api/v2/balances",
+                    "/api/v2/channels",
+                    "/api/v2/health",
+                    "/api/v2/native/**",
+                    "/api/v2/payments/**",
+                    "/api/v2/production-maturity/**",
+                    "/api/v2/vending/**",
+                    "/actuator/**",
+                    "/status/**");
+
+    static final List<String> ADMIN_API_PATTERNS =
+            List.of(
+                    "/api/v2/admin/**",
+                    "/api/v2/production-maturity/**",
+                    "/api/v2/product-experience/**",
+                    "/api/v2/cross-border/**",
+                    "/api/v2/beneficiaries/**",
+                    "/api/v2/fx/**");
+
+    static final List<String> PUBLIC_SIGNED_API_PATTERNS =
+            List.of(
+                    "/api/v1/**",
+                    "/api/do*",
+                    "/api/test*",
+                    "/api/v2/health",
+                    "/api/v2/balances",
+                    "/api/v2/channels",
+                    "/api/v2/payments/**",
+                    "/api/v2/native/**",
+                    "/api/v2/refunds/**",
+                    "/api/v2/batch-payouts/**",
+                    "/api/v2/accounts/**",
+                    "/api/v2/statements",
+                    "/api/v2/payment-links",
+                    "/api/v2/invoices/**",
+                    "/api/v2/fees/**",
+                    "/api/v2/webhooks/events",
+                    "/api/v2/vending/**");
+
+    static final List<String> PUBLIC_SESSION_API_PATTERNS =
+            List.of(
+                    "/api/v2/session/me",
+                    "/api/v2/merchant/**",
+                    "/api/v2/merchant-self-service/**",
+                    "/api/v2/portal/**");
+
+    static final List<String> PUBLIC_PAGE_AND_LEGACY_PORTAL_PATTERNS =
+            List.of(
+                    "/",
+                    "/dashboard",
+                    "/dashboardMerchant",
+                    "/portal",
+                    "/checkout/**",
+                    "/vending/rent/**",
+                    "/auth/**",
+                    "/admins/**",
+                    "/audittrail/**",
+                    "/merchants/**",
+                    "/settings/**",
+                    "/status/**",
+                    "/transactions/**");
+
     @Value(
             "${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000,http://[::1]:3000,http://localhost:2019,http://127.0.0.1:2019,http://[::1]:2019}")
     private String[] allowedOrigins;
@@ -76,20 +145,7 @@ public class SecurityConfig {
                                                 CookieCsrfTokenRepository.withHttpOnlyFalse())
                                         .csrfTokenRequestHandler(csrfRequestHandler)
                                         .ignoringRequestMatchers(
-                                                "/api/v1/**",
-                                                "/api/do*",
-                                                "/api/test*",
-                                                "/api/v2/admin/**",
-                                                "/api/v2/balances",
-                                                "/api/v2/channels",
-                                                "/api/v2/health",
-                                                "/api/v2/merchant/**",
-                                                "/api/v2/merchant-self-service/signup",
-                                                "/api/v2/native/**",
-                                                "/api/v2/payments/**",
-                                                "/api/v2/vending/**",
-                                                "/actuator/**",
-                                                "/status/**"))
+                                                CSRF_EXEMPT_API_PATTERNS.toArray(String[]::new)))
                 .headers(
                         headers ->
                                 headers.contentTypeOptions(contentType -> {})
@@ -122,24 +178,19 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
-                                        .requestMatchers("/api/v2/admin/**")
+                                        .requestMatchers(ADMIN_API_PATTERNS.toArray(String[]::new))
                                         .hasRole("ADMIN")
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ACTUATOR")
                                         .requestMatchers(
-                                                "/",
-                                                "/dashboard",
-                                                "/dashboardMerchant",
-                                                "/portal",
-                                                "/vending/rent/**",
-                                                "/api/**",
-                                                "/auth/**",
-                                                "/admins/**",
-                                                "/audittrail/**",
-                                                "/merchants/**",
-                                                "/settings/**",
-                                                "/status/**",
-                                                "/transactions/**")
+                                                PUBLIC_SIGNED_API_PATTERNS.toArray(String[]::new))
+                                        .permitAll()
+                                        .requestMatchers(
+                                                PUBLIC_SESSION_API_PATTERNS.toArray(String[]::new))
+                                        .permitAll()
+                                        .requestMatchers(
+                                                PUBLIC_PAGE_AND_LEGACY_PORTAL_PATTERNS.toArray(
+                                                        String[]::new))
                                         .permitAll()
                                         .anyRequest()
                                         .denyAll())

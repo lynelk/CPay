@@ -72,27 +72,41 @@ public class KycController {
     @PostMapping(path = "/owners/{ownerId}/review")
     public ResponseEntity<?> reviewOwner(
             @PathVariable("ownerId") long ownerId,
-            @RequestParam(name = "decision", defaultValue = "APPROVED") String decision,
-            @RequestParam(name = "reviewedBy", required = false) String reviewedBy) {
-        return ResponseEntity.ok(
-                Map.of(
-                        "id",
-                        ownerId,
-                        "updated",
-                        kycService.reviewOwner(ownerId, decision, reviewedBy)));
+            @RequestParam(name = "decision", required = false) String decision,
+            @RequestParam(name = "reviewedBy", required = false) String reviewedBy,
+            @RequestParam(name = "reviewerRole", required = false) String reviewerRole,
+            @RequestParam(name = "reason", required = false) String reason) {
+        try {
+            return ResponseEntity.ok(
+                    Map.of(
+                            "id",
+                            ownerId,
+                            "updated",
+                            kycService.reviewOwner(
+                                    ownerId, decision, reviewedBy, reviewerRole, reason)));
+        } catch (PaymentGatewayException e) {
+            return error(HttpStatus.BAD_REQUEST, "KYC_OWNER_REVIEW_REJECTED", e.getMessage());
+        }
     }
 
     @PostMapping(path = "/documents/{documentId}/review")
     public ResponseEntity<?> reviewDocument(
             @PathVariable("documentId") long documentId,
-            @RequestParam(name = "decision", defaultValue = "APPROVED") String decision,
-            @RequestParam(name = "reviewedBy", required = false) String reviewedBy) {
-        return ResponseEntity.ok(
-                Map.of(
-                        "id",
-                        documentId,
-                        "updated",
-                        kycService.reviewDocument(documentId, decision, reviewedBy)));
+            @RequestParam(name = "decision", required = false) String decision,
+            @RequestParam(name = "reviewedBy", required = false) String reviewedBy,
+            @RequestParam(name = "reviewerRole", required = false) String reviewerRole,
+            @RequestParam(name = "reason", required = false) String reason) {
+        try {
+            return ResponseEntity.ok(
+                    Map.of(
+                            "id",
+                            documentId,
+                            "updated",
+                            kycService.reviewDocument(
+                                    documentId, decision, reviewedBy, reviewerRole, reason)));
+        } catch (PaymentGatewayException e) {
+            return error(HttpStatus.BAD_REQUEST, "KYC_DOCUMENT_REVIEW_REJECTED", e.getMessage());
+        }
     }
 
     private BigDecimal parseDecimal(String value) {

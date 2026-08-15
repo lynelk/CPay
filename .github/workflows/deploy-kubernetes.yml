@@ -1,0 +1,474 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      image-backend:
+        description: Backend image tag (e.g., ghcr.io/owner/repo/backend:latest)
+        required: true
+      image-frontend:
+        description: Frontend image tag (e.g., ghcr.io/owner/repo/frontend:latest)
+        required: true
+      environment:
+        description: Environment (staging/production)
+        type: choice
+        options:
+          - staging
+          - production
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  prepare-deployment:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      backend-image: ${{ steps.images.outputs.backend }}
+      frontend-image: ${{ steps.images.outputs.frontend }}
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - name: Determine images
+        id: images
+        run: |
+          if [ -n "${{ github.event.inputs.image-backend }}" ]; then
+            echo "backend=${{ github.event.inputs.image-backend }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ github.event.inputs.image-frontend }}" >> $GITHUB_OUTPUT
+          else
+            echo "backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ -n "${{ github.event.inputs.environment }}" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=production" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    environment: ${{ needs.prepare-deployment.outputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "latest"
+
+      - name: Configure kubectl context
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+          KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+        run: |
+          mkdir -p $HOME/.kube
+          echo "$KUBE_CONFIG" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace ${{ vars.KUBE_NAMESPACE || 'cpay' }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create image pull secret
+        env:
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ env.DOCKER_USERNAME }} \
+            --docker-password=${{ env.DOCKER_PASSWORD }} \
+            -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy MySQL
+        run: |
+          kubectl apply -f - <<'EOF'
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: mysql-secret
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          type: Opaque
+          stringData:
+            root-password: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+            username: cpay
+            password: ${{ secrets.MYSQL_PASSWORD }}
+          ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: mysql-pvc
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: mysql
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: mysql
+            template:
+              metadata:
+                labels:
+                  app: mysql
+              spec:
+                containers:
+                - name: mysql
+                  image: mysql:8.4-alpine
+                  ports:
+                  - containerPort: 3306
+                  env:
+                  - name: MYSQL_ROOT_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: mysql-secret
+                        key: root-password
+                  - name: MYSQL_DATABASE
+                    value: cpayadmin
+                  - name: MYSQL_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: mysql-secret
+                        key: username
+                  - name: MYSQL_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: mysql-secret
+                        key: password
+                  volumeMounts:
+                  - name: mysql-storage
+                    mountPath: /var/lib/mysql
+                  livenessProbe:
+                    exec:
+                      command:
+                      - mysqladmin
+                      - ping
+                      - -h127.0.0.1
+                    initialDelaySeconds: 30
+                    periodSeconds: 10
+                  readinessProbe:
+                    exec:
+                      command:
+                      - mysqladmin
+                      - ping
+                      - -h127.0.0.1
+                    initialDelaySeconds: 5
+                    periodSeconds: 10
+                volumes:
+                - name: mysql-storage
+                  persistentVolumeClaim:
+                    claimName: mysql-pvc
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: mysql
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          spec:
+            selector:
+              app: mysql
+            ports:
+            - port: 3306
+              targetPort: 3306
+          EOF
+
+      - name: Deploy Backend
+        run: |
+          kubectl apply -f - <<'EOF'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: backend
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          spec:
+            replicas: ${{ vars.BACKEND_REPLICAS || 2 }}
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxSurge: 1
+                maxUnavailable: 0
+            selector:
+              matchLabels:
+                app: backend
+            template:
+              metadata:
+                labels:
+                  app: backend
+              spec:
+                imagePullSecrets:
+                - name: ghcr-secret
+                containers:
+                - name: backend
+                  image: ${{ needs.prepare-deployment.outputs.backend-image }}
+                  imagePullPolicy: Always
+                  ports:
+                  - containerPort: 8081
+                  env:
+                  - name: HTTP_PORT
+                    value: "8081"
+                  - name: DB_URL
+                    value: "jdbc:mysql://mysql:3306/cpayadmin"
+                  - name: DB_USERNAME
+                    valueFrom:
+                      secretKeyRef:
+                        name: mysql-secret
+                        key: username
+                  - name: DB_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: mysql-secret
+                        key: password
+                  - name: ACTUATOR_USERNAME
+                    valueFrom:
+                      secretKeyRef:
+                        name: app-secrets
+                        key: actuator-username
+                  - name: ACTUATOR_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: app-secrets
+                        key: actuator-password
+                  - name: ADMIN_API_USERNAME
+                    valueFrom:
+                      secretKeyRef:
+                        name: app-secrets
+                        key: admin-api-username
+                  - name: ADMIN_API_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: app-secrets
+                        key: admin-api-password
+                  - name: CALLBACK_SIGNING_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: app-secrets
+                        key: callback-signing-secret
+                  - name: MERCHANT_CHANNEL_ENCRYPTION_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: app-secrets
+                        key: merchant-channel-encryption-key
+                  - name: CPAY_KEY_ENCRYPTION_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: app-secrets
+                        key: cpay-key-encryption-key
+                  - name: CUSTOM_GATEWAYSTATE
+                    value: PRODUCTION
+                  - name: CORS_ALLOWED_ORIGINS
+                    value: "${{ vars.CORS_ALLOWED_ORIGINS }}"
+                  - name: APP_BASE_URL
+                    value: "${{ vars.APP_BASE_URL }}"
+                  resources:
+                    requests:
+                      memory: "512Mi"
+                      cpu: "500m"
+                    limits:
+                      memory: "1Gi"
+                      cpu: "1000m"
+                  livenessProbe:
+                    httpGet:
+                      path: /actuator/health
+                      port: 8081
+                    initialDelaySeconds: 60
+                    periodSeconds: 10
+                    failureThreshold: 3
+                  readinessProbe:
+                    httpGet:
+                      path: /actuator/health
+                      port: 8081
+                    initialDelaySeconds: 10
+                    periodSeconds: 5
+                    failureThreshold: 3
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: backend
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          spec:
+            selector:
+              app: backend
+            ports:
+            - port: 8081
+              targetPort: 8081
+            type: ClusterIP
+          EOF
+
+      - name: Deploy Frontend
+        run: |
+          kubectl apply -f - <<'EOF'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: frontend
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          spec:
+            replicas: ${{ vars.FRONTEND_REPLICAS || 2 }}
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxSurge: 1
+                maxUnavailable: 0
+            selector:
+              matchLabels:
+                app: frontend
+            template:
+              metadata:
+                labels:
+                  app: frontend
+              spec:
+                imagePullSecrets:
+                - name: ghcr-secret
+                containers:
+                - name: frontend
+                  image: ${{ needs.prepare-deployment.outputs.frontend-image }}
+                  imagePullPolicy: Always
+                  ports:
+                  - containerPort: 3000
+                  env:
+                  - name: VITE_API_BASE_URL
+                    value: "${{ vars.API_BASE_URL }}"
+                  resources:
+                    requests:
+                      memory: "256Mi"
+                      cpu: "250m"
+                    limits:
+                      memory: "512Mi"
+                      cpu: "500m"
+                  livenessProbe:
+                    httpGet:
+                      path: /
+                      port: 3000
+                    initialDelaySeconds: 30
+                    periodSeconds: 10
+                    failureThreshold: 3
+                  readinessProbe:
+                    httpGet:
+                      path: /
+                      port: 3000
+                    initialDelaySeconds: 10
+                    periodSeconds: 5
+                    failureThreshold: 3
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: frontend
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+          spec:
+            selector:
+              app: frontend
+            ports:
+            - port: 3000
+              targetPort: 3000
+            type: ClusterIP
+          ---
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: cpay-ingress
+            namespace: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          spec:
+            ingressClassName: nginx
+            tls:
+            - hosts:
+              - ${{ vars.INGRESS_HOST }}
+              secretName: cpay-tls
+            rules:
+            - host: ${{ vars.INGRESS_HOST }}
+              http:
+                paths:
+                - path: /api
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: backend
+                      port:
+                        number: 8081
+                - path: /auth
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: backend
+                      port:
+                        number: 8081
+                - path: /transactions
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: backend
+                      port:
+                        number: 8081
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: frontend
+                      port:
+                        number: 3000
+          EOF
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/backend -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} --timeout=5m
+          kubectl rollout status deployment/frontend -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} --timeout=5m
+
+      - name: Run smoke tests
+        run: |
+          FRONTEND_POD=$(kubectl get pod -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} -l app=frontend -o jsonpath='{.items[0].metadata.name}')
+          BACKEND_POD=$(kubectl get pod -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} -l app=backend -o jsonpath='{.items[0].metadata.name}')
+          
+          echo "Testing backend health..."
+          kubectl exec -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} $BACKEND_POD -- \
+            wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1
+          
+          echo "Testing frontend..."
+          kubectl exec -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} $FRONTEND_POD -- \
+            wget --quiet --tries=1 --spider http://localhost:3000 || exit 1
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Deployment to ${{ needs.prepare-deployment.outputs.environment }} successful!"
+          echo "Backend: ${{ needs.prepare-deployment.outputs.backend-image }}"
+          echo "Frontend: ${{ needs.prepare-deployment.outputs.frontend-image }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Deployment to ${{ needs.prepare-deployment.outputs.environment }} failed!"
+          exit 1

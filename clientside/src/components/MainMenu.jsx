@@ -25,6 +25,7 @@ const navGroups = [
       { value: 'kybreview', text: 'KYB Review', Icon: Icons.UsersIcon },
       { value: 'certification', text: 'Certification', Icon: Icons.CheckIcon },
       { value: 'treasury', text: 'Treasury', Icon: Icons.BarChartIcon },
+      { value: 'productionmaturity', text: 'Maturity', Icon: Icons.LightningIcon },
     ],
   },
   {

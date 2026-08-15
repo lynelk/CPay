@@ -9,6 +9,7 @@ const VerifyEmail = lazy(() => import('./components/VerifyEmail'));
 const Layout = lazy(() => import('./components/Layout'));
 const LayoutMerchant = lazy(() => import('./components/LayoutMerchant'));
 const OperationsConsole = lazy(() => import('./features/OperationsConsole'));
+const ProductionMaturityDashboard = lazy(() => import('./features/productionMaturity/ProductionMaturityDashboard'));
 
 function RouteFallback(): React.ReactElement {
   return <div style={{ padding: 24 }}>Loading…</div>;
@@ -27,6 +28,7 @@ function Routers(): React.ReactElement {
           <Route path="/dashboard/*" element={<Layout />} />
           <Route path="/dashboardMerchant/*" element={<LayoutMerchant />} />
           <Route path="/operations" element={<OperationsConsole />} />
+          <Route path="/production-maturity" element={<ProductionMaturityDashboard />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

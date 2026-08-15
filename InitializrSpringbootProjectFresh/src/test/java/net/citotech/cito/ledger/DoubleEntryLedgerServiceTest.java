@@ -89,6 +89,82 @@ class DoubleEntryLedgerServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void postScopesLedgerAccountsByOwnerCurrencyAndCode() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_transactions"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        contains("FROM ledger_period_locks"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForObject(
+                        eq("SELECT LAST_INSERT_ID()"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
+                .thenReturn(700L);
+        when(jdbcTemplate.queryForObject(
+                        contains("owner_scope_id=:owner_scope_id"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
+                .thenReturn(901L);
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        service.post(
+                "TX-SCOPED-ACCOUNT",
+                "PAYMENT",
+                "PAY-SCOPED-ACCOUNT",
+                "scoped account identity",
+                List.of(
+                        entry(
+                                "shared:UGX:liability",
+                                "MERCHANT_LIABILITY",
+                                "MERCHANT",
+                                101L,
+                                "CR",
+                                "1000",
+                                "UGX"),
+                        entry(
+                                "shared:UGX:liability",
+                                "MERCHANT_LIABILITY",
+                                "MERCHANT",
+                                202L,
+                                "DR",
+                                "1000",
+                                "UGX")));
+
+        verify(jdbcTemplate)
+                .update(
+                        contains("owner_id, owner_scope_id, currency"),
+                        org.mockito.ArgumentMatchers.<MapSqlParameterSource>argThat(
+                                params ->
+                                        params.hasValue("owner_scope_id")
+                                                && Long.valueOf(101L)
+                                                        .equals(
+                                                                params.getValue(
+                                                                        "owner_scope_id"))));
+        verify(jdbcTemplate)
+                .update(
+                        contains("owner_id, owner_scope_id, currency"),
+                        org.mockito.ArgumentMatchers.<MapSqlParameterSource>argThat(
+                                params ->
+                                        params.hasValue("owner_scope_id")
+                                                && Long.valueOf(202L)
+                                                        .equals(
+                                                                params.getValue(
+                                                                        "owner_scope_id"))));
+        verify(jdbcTemplate, org.mockito.Mockito.times(2))
+                .queryForObject(
+                        contains("owner_scope_id=:owner_scope_id"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void postThrowsWhenTheCurrencyIsLockedForTheCurrentPeriod() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         when(jdbcTemplate.query(
@@ -260,6 +336,187 @@ class DoubleEntryLedgerServiceTest {
         assertThatThrownBy(() -> service.reverse("TX-EMPTY", "TX-NEW", "correction"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("has no entries");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationReplayWithSameAttributesDoesNotMutateExistingReservation() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        List.of(
+                                existingReservation(
+                                        10L, "PAY-1", "80000.0000", "UGX", "RESERVED")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        service.reserve("RES-1", 10L, "PAY-1", new BigDecimal("80000"), "ugx");
+
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationReplayWithDifferentAttributesIsRejectedBeforeMutation() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        List.of(
+                                existingReservation(
+                                        10L, "PAY-1", "80000.0000", "UGX", "RESERVED")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        assertThatThrownBy(
+                        () ->
+                                service.reserve(
+                                        "RES-1", 10L, "PAY-2", new BigDecimal("80000"), "UGX"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("already exists with different attributes");
+
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    void availableMerchantBalanceSubtractsActiveReservationsFromPostedLedgerBalance() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForMap(
+                        contains("active_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        java.util.Map.of(
+                                "posted_balance",
+                                new BigDecimal("100000.0000"),
+                                "active_reservations",
+                                new BigDecimal("25000.0000")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        BigDecimal available = service.availableMerchantBalance(10L, "ugx");
+
+        assertThat(available).isEqualByComparingTo("75000.0000");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationLocksMerchantCurrencyScopeAndChecksAvailableBalanceBeforeInsert() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForMap(
+                        contains("active_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        java.util.Map.of(
+                                "posted_balance",
+                                new BigDecimal("100000.0000"),
+                                "active_reservations",
+                                new BigDecimal("0.0000")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        service.reserve("RES-ATOMIC-1", 10L, "PAY-1", new BigDecimal("80000"), "ugx");
+
+        verify(jdbcTemplate)
+                .update(
+                        contains("INSERT INTO ledger_reservation_controls"),
+                        any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .query(
+                        contains("FOR UPDATE"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class));
+        verify(jdbcTemplate)
+                .queryForMap(contains("active_reservations"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservationRejectsInsufficientLedgerDerivedBalanceWithoutInsertingReservation() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.queryForList(
+                        contains("FROM ledger_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForMap(
+                        contains("active_reservations"), any(MapSqlParameterSource.class)))
+                .thenReturn(
+                        java.util.Map.of(
+                                "posted_balance",
+                                new BigDecimal("100000.0000"),
+                                "active_reservations",
+                                new BigDecimal("25000.0000")));
+        DoubleEntryLedgerService service = new DoubleEntryLedgerService(jdbcTemplate);
+
+        assertThatThrownBy(
+                        () ->
+                                service.reserve(
+                                        "RES-ATOMIC-2",
+                                        10L,
+                                        "PAY-2",
+                                        new BigDecimal("80000"),
+                                        "UGX"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("Insufficient ledger-derived available balance");
+
+        verify(jdbcTemplate)
+                .update(
+                        contains("INSERT INTO ledger_reservation_controls"),
+                        any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .query(
+                        contains("FOR UPDATE"),
+                        any(MapSqlParameterSource.class),
+                        any(org.springframework.jdbc.core.RowMapper.class));
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO ledger_reservations"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    private java.util.Map<String, Object> existingReservation(
+            long merchantId,
+            String sourceReference,
+            String amount,
+            String currency,
+            String status) {
+        return java.util.Map.of(
+                "merchant_id",
+                merchantId,
+                "source_reference",
+                sourceReference,
+                "amount",
+                new BigDecimal(amount),
+                "currency",
+                currency,
+                "reservation_status",
+                status);
+    }
+
+    private LedgerEntryCommand entry(
+            String account,
+            String accountType,
+            String ownerType,
+            Long ownerId,
+            String direction,
+            String amount,
+            String currency) {
+        return new LedgerEntryCommand(
+                account,
+                account,
+                accountType,
+                ownerType,
+                ownerId,
+                direction,
+                new BigDecimal(amount),
+                currency,
+                "test");
     }
 
     private LedgerEntryCommand entry(String account, String direction, String amount) {

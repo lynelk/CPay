@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.security.CanonicalRequestSigner;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class KycService {
         if (merchantId <= 0 || blank(fullName)) {
             throw new PaymentGatewayException("merchantId and fullName are required");
         }
+        validateOwnershipPercent(ownershipPercent);
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchant_id", merchantId);
         p.addValue("full_name", fullName.trim());
@@ -88,52 +90,155 @@ public class KycService {
 
     /**
      * Admin KYB review action for a beneficial owner (audit P7/KYB workbench): moves a pending
-     * record to APPROVED or REJECTED. Only a record still in a screening status is updated, so a
-     * re-review cannot overwrite a prior decision. The {@code reviewedBy} actor is accepted for API
-     * symmetry with {@link #reviewDocument(long, String, String)}; the owner table has no reviewer
-     * column, so it is intentionally not persisted.
+     * record to APPROVED or REJECTED. Unsupported decisions fail closed and every successful
+     * decision records reviewer attribution in {@code kyb_review_decisions}.
      */
     @Transactional
     public int reviewOwner(long ownerId, String decision, String reviewedBy) {
+        return reviewOwner(ownerId, decision, reviewedBy, null, null);
+    }
+
+    @Transactional
+    public int reviewOwner(
+            long ownerId, String decision, String reviewedBy, String reviewerRole, String reason) {
         String status = normalizeDecision(decision);
+        String reviewer = normalizeReviewer(reviewedBy);
+        String previousStatus =
+                lookupStatus(
+                        "SELECT screening_status FROM beneficial_owners WHERE id=:id", ownerId);
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("id", ownerId);
         p.addValue("screening_status", status);
-        return jdbcTemplate.update(
-                "UPDATE beneficial_owners SET screening_status=:screening_status, updated_at=CURRENT_TIMESTAMP "
-                        + "WHERE id=:id AND screening_status IN ('PENDING','IN_REVIEW')",
-                p);
+        int updated =
+                jdbcTemplate.update(
+                        "UPDATE beneficial_owners SET screening_status=:screening_status, updated_at=CURRENT_TIMESTAMP "
+                                + "WHERE id=:id AND screening_status IN ('PENDING','IN_REVIEW')",
+                        p);
+        if (updated > 0) {
+            recordReviewDecision(
+                    "BENEFICIAL_OWNER",
+                    ownerId,
+                    previousStatus,
+                    status,
+                    status,
+                    reason,
+                    reviewer,
+                    reviewerRole);
+        }
+        return updated;
     }
 
     /**
      * Admin KYB review action for a KYC document: moves a pending record to APPROVED or REJECTED
-     * and stamps the verifier. The UPDATE predicate also requires the record to still be PENDING,
-     * so a re-review cannot overwrite a prior verification.
+     * and stamps the verifier. Unsupported decisions fail closed, and successful decisions are
+     * recorded as compliance evidence.
      */
     @Transactional
     public int reviewDocument(long documentId, String decision, String reviewedBy) {
+        return reviewDocument(documentId, decision, reviewedBy, null, null);
+    }
+
+    @Transactional
+    public int reviewDocument(
+            long documentId,
+            String decision,
+            String reviewedBy,
+            String reviewerRole,
+            String reason) {
         String status = normalizeDecision(decision);
-        String reviewer = blank(reviewedBy) ? "system" : reviewedBy.trim();
+        String reviewer = normalizeReviewer(reviewedBy);
+        String previousStatus =
+                lookupStatus(
+                        "SELECT verification_status FROM merchant_kyc_documents WHERE id=:id",
+                        documentId);
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("id", documentId);
         p.addValue("verification_status", status);
         p.addValue("verified_by", reviewer);
-        return jdbcTemplate.update(
-                "UPDATE merchant_kyc_documents SET verification_status=:verification_status, "
-                        + "verified_by=:verified_by, verified_at=CURRENT_TIMESTAMP "
-                        + "WHERE id=:id AND verification_status IN ('PENDING','IN_REVIEW')",
-                p);
+        int updated =
+                jdbcTemplate.update(
+                        "UPDATE merchant_kyc_documents SET verification_status=:verification_status, "
+                                + "verified_by=:verified_by, verified_at=CURRENT_TIMESTAMP "
+                                + "WHERE id=:id AND verification_status IN ('PENDING','IN_REVIEW')",
+                        p);
+        if (updated > 0) {
+            recordReviewDecision(
+                    "KYC_DOCUMENT",
+                    documentId,
+                    previousStatus,
+                    status,
+                    status,
+                    reason,
+                    reviewer,
+                    reviewerRole);
+        }
+        return updated;
+    }
+
+    private void validateOwnershipPercent(BigDecimal ownershipPercent) {
+        if (ownershipPercent == null) {
+            return;
+        }
+        if (ownershipPercent.compareTo(BigDecimal.ZERO) <= 0
+                || ownershipPercent.compareTo(new BigDecimal("100")) > 0) {
+            throw new PaymentGatewayException(
+                    "ownershipPercent must be greater than 0 and at most 100");
+        }
     }
 
     private String normalizeDecision(String decision) {
-        if (decision == null) {
-            return "APPROVED";
+        if (blank(decision)) {
+            throw new PaymentGatewayException("KYC review decision is required");
         }
         String normalized = decision.trim().toUpperCase(Locale.ROOT);
+        if ("APPROVE".equals(normalized) || "APPROVED".equals(normalized)) {
+            return "APPROVED";
+        }
         if ("REJECT".equals(normalized) || "REJECTED".equals(normalized)) {
             return "REJECTED";
         }
-        return "APPROVED";
+        throw new PaymentGatewayException("Unsupported KYC review decision: " + decision.trim());
+    }
+
+    private String normalizeReviewer(String reviewedBy) {
+        if (blank(reviewedBy)) {
+            throw new PaymentGatewayException("reviewedBy is required");
+        }
+        return reviewedBy.trim();
+    }
+
+    private String lookupStatus(String sql, long id) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    sql, new MapSqlParameterSource("id", id), String.class);
+        } catch (EmptyResultDataAccessException ignored) {
+            return null;
+        }
+    }
+
+    private void recordReviewDecision(
+            String subjectType,
+            long subjectId,
+            String oldStatus,
+            String newStatus,
+            String decision,
+            String reason,
+            String reviewedBy,
+            String reviewerRole) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("subject_type", subjectType);
+        p.addValue("subject_id", subjectId);
+        p.addValue("old_status", oldStatus);
+        p.addValue("new_status", newStatus);
+        p.addValue("decision", decision);
+        p.addValue("reason", blank(reason) ? null : reason.trim());
+        p.addValue("reviewer_user_id", reviewedBy);
+        p.addValue("reviewer_role", blank(reviewerRole) ? null : reviewerRole.trim());
+        jdbcTemplate.update(
+                "INSERT INTO kyb_review_decisions "
+                        + "(subject_type, subject_id, old_status, new_status, decision, reason, reviewer_user_id, reviewer_role) "
+                        + "VALUES (:subject_type, :subject_id, :old_status, :new_status, :decision, :reason, :reviewer_user_id, :reviewer_role)",
+                p);
     }
 
     private boolean blank(String value) {

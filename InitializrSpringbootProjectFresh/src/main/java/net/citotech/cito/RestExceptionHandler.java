@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 /**
@@ -71,6 +72,34 @@ public class RestExceptionHandler {
         String code = "110";
         String message = GeneralException.ERRORS_110;
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .header("Content-Type", "application/json")
+                .body(GeneralException.getError(code, message));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseBody
+    protected ResponseEntity<String> requestValidationException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .header("Content-Type", "application/json")
+                .body(GeneralException.getError("114", ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseBody
+    protected ResponseEntity<String> requestStateConflict(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header("Content-Type", "application/json")
+                .body(GeneralException.getError("130", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    @ResponseBody
+    protected ResponseEntity<String> requestResponseStatusException(ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        HttpStatus resolved = status == null ? HttpStatus.INTERNAL_SERVER_ERROR : status;
+        String code = resolved == HttpStatus.BAD_REQUEST ? "114" : String.valueOf(resolved.value());
+        String message = ex.getReason() == null ? resolved.getReasonPhrase() : ex.getReason();
+        return ResponseEntity.status(resolved)
                 .header("Content-Type", "application/json")
                 .body(GeneralException.getError(code, message));
     }
