@@ -127,24 +127,6 @@ jobs:
           assert '/api/v2/native/payments/collect' in spec['paths']
           assert '/api/v2/production-maturity/screening/requests' in spec['paths']
           PY
-          grep -q "/api/v2/admin/readiness/summary" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/treasury/positions" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/payout-approvals" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/communication/campaigns" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/vending/overview" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/billing/price-books" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/admin/finance-operations/settlements" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/cross-border/transfers" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/production-maturity/screening/requests" Docs/Api/cpay-v2-openapi.yaml
-          grep -q "/api/v2/production-maturity/settlements/finance/{settlementBatchId}/post" Docs/Api/cpay-v2-openapi.yaml
-          python - <<'PY'
-          import yaml
-          with open('Docs/Api/cpay-v2-openapi.yaml', encoding='utf-8') as fh:
-              spec = yaml.safe_load(fh)
-          assert spec.get('openapi')
-          assert '/api/v2/native/payments/collect' in spec['paths']
-          assert '/api/v2/production-maturity/screening/requests' in spec['paths']
-          PY
 
   owasp:
     name: OWASP Dependency-Check
