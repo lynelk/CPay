@@ -108,7 +108,7 @@ class ProductionMaturityMigrationValidationTest {
     @Test
     void productionMaturityControllersExposeExpectedRouteRoots() {
         assertRoute(ComplianceKybKycController.class, "/api/v2");
-        assertRoute(CrossBorderController.class, "/api/v2");
+        assertRoute(RegionalCrossBorderController.class, "/api/v2");
         assertRoute(FinanceOperationsController.class, "/api/v2/admin/finance-operations");
         assertRoute(ProductDeveloperExperienceController.class, "/api/v2/product-experience");
         assertRoute(ProductionMaturityAutomationController.class, "/api/v2/production-maturity");

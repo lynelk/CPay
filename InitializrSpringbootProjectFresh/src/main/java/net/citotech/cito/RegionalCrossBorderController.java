@@ -21,16 +21,20 @@ import org.springframework.web.bind.annotation.RestController;
  * treasury evidence surfaces over the Flyway-backed regional schema. Payment execution remains
  * owned by existing payment/gateway services; these endpoints establish the regulated workflow
  * envelope around that money movement.
+ *
+ * <p>Named {@code regionalCrossBorderController} so it cannot collide with the secured v2 {@code
+ * net.citotech.cito.crossborder.CrossBorderController}, which owns {@code POST /fx/quotes} and
+ * {@code POST /cross-border/transfers}.
  */
-@RestController
+@RestController("regionalCrossBorderController")
 @RequestMapping(
         path = "/api/v2",
         produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
-public class CrossBorderController {
+public class RegionalCrossBorderController {
 
     private final JdbcTemplate jdbc;
 
-    public CrossBorderController(JdbcTemplate jdbc) {
+    public RegionalCrossBorderController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
@@ -181,40 +185,6 @@ public class CrossBorderController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/fx/quotes")
-    public ResponseEntity<Map<String, Object>> createFxQuote(
-            @RequestBody Map<String, Object> body) {
-        require(body, "corridorCode");
-        require(body, "sourceAmount");
-        require(body, "destinationAmount");
-        require(body, "rate");
-        require(body, "expiresAt");
-        Map<String, Object> corridor =
-                jdbc.queryForMap(
-                        "select * from corridors where corridor_code = ?",
-                        body.get("corridorCode"));
-        String quoteReference = asString(valueOr(body, "quoteReference", "FXQ-" + shortUuid()));
-        jdbc.update(
-                "insert into fx_quotes (quote_reference, corridor_id, merchant_id, source_currency_code, "
-                        + "destination_currency_code, source_amount, destination_amount, rate, spread_amount, fee_amount, "
-                        + "rate_source, status, expires_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                quoteReference,
-                corridor.get("id"),
-                body.get("merchantId"),
-                corridor.get("source_currency_code"),
-                corridor.get("destination_currency_code"),
-                body.get("sourceAmount"),
-                body.get("destinationAmount"),
-                body.get("rate"),
-                valueOr(body, "spreadAmount", 0),
-                valueOr(body, "feeAmount", 0),
-                body.get("rateSource"),
-                valueOr(body, "status", "ACTIVE"),
-                body.get("expiresAt"));
-        return ResponseEntity.ok(
-                ok("quoteReference", quoteReference, "status", valueOr(body, "status", "ACTIVE")));
-    }
-
     @GetMapping("/fx/quotes/{quoteReference}")
     public ResponseEntity<Map<String, Object>> getFxQuote(@PathVariable String quoteReference) {
         return ResponseEntity.ok(
@@ -223,84 +193,6 @@ public class CrossBorderController {
                         jdbc.queryForMap(
                                 "select * from fx_quotes where quote_reference = ?",
                                 quoteReference)));
-    }
-
-    @PostMapping("/cross-border/transfers")
-    public ResponseEntity<Map<String, Object>> createCrossBorderTransfer(
-            @RequestBody Map<String, Object> body) {
-        require(body, "corridorCode");
-        require(body, "beneficiaryReference");
-        require(body, "instrumentReference");
-        require(body, "sourceAmount");
-        require(body, "destinationAmount");
-        require(body, "purposeCode");
-        Map<String, Object> corridor =
-                jdbc.queryForMap(
-                        "select * from corridors where corridor_code = ?",
-                        body.get("corridorCode"));
-        Long routeId =
-                lookupOptionalId(
-                        "select id from corridor_routes where route_code = ?",
-                        body.get("routeCode"));
-        Map<String, Object> beneficiary =
-                jdbc.queryForMap(
-                        "select * from beneficiaries where beneficiary_reference = ?",
-                        body.get("beneficiaryReference"));
-        Map<String, Object> instrument =
-                jdbc.queryForMap(
-                        "select * from beneficiary_instruments where instrument_reference = ?",
-                        body.get("instrumentReference"));
-        Long quoteId =
-                lookupOptionalId(
-                        "select id from fx_quotes where quote_reference = ?",
-                        body.get("quoteReference"));
-        Long caseId =
-                lookupOptionalId(
-                        "select id from compliance_cases where case_reference = ?",
-                        body.get("complianceCaseReference"));
-        boolean holdActive =
-                body.get("complianceCaseReference") != null
-                        || booleanValue(body.get("complianceHoldActive"));
-        String transferReference =
-                asString(valueOr(body, "transferReference", "XBT-" + shortUuid()));
-        String status =
-                asString(valueOr(body, "status", holdActive ? "COMPLIANCE_HOLD" : "CREATED"));
-        jdbc.update(
-                "insert into cross_border_transfers (transfer_reference, merchant_id, merchant_number, corridor_id, "
-                        + "route_id, beneficiary_id, beneficiary_instrument_id, fx_quote_id, source_amount, source_currency_code, "
-                        + "destination_amount, destination_currency_code, purpose_code, status, compliance_case_id, "
-                        + "compliance_hold_active, treasury_reservation_reference, metadata, created_by) "
-                        + "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, ?)",
-                transferReference,
-                body.get("merchantId"),
-                body.get("merchantNumber"),
-                corridor.get("id"),
-                routeId,
-                beneficiary.get("id"),
-                instrument.get("id"),
-                quoteId,
-                body.get("sourceAmount"),
-                corridor.get("source_currency_code"),
-                body.get("destinationAmount"),
-                corridor.get("destination_currency_code"),
-                body.get("purposeCode"),
-                status,
-                caseId,
-                holdActive,
-                body.get("treasuryReservationReference"),
-                body.get("createdBy"));
-        Long transferId =
-                lookupId(
-                        "select id from cross_border_transfers where transfer_reference = ?",
-                        transferReference);
-        insertTransferEvent(
-                transferId,
-                "TRANSFER_CREATED",
-                null,
-                status,
-                asString(body.get("createdBy")),
-                asString(body.get("notes")));
-        return ResponseEntity.ok(ok("transferReference", transferReference, "status", status));
     }
 
     @GetMapping("/cross-border/transfers/{transferReference}")
