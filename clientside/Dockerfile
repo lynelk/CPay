@@ -14,12 +14,12 @@ COPY . .
 # Build
 RUN npm run build
 
-# Stage 2: Runtime with Vite preview or nginx
+# Stage 2: Runtime with Vite preview
 FROM node:20.19.0-alpine
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
+# Create non-root user (use different UID if 1000 is taken)
+RUN addgroup -g 1001 appuser && adduser -D -u 1001 -G appuser appuser
 
 # Copy built files from build stage
 COPY --from=build --chown=appuser:appuser /app/dist ./dist

@@ -15,7 +15,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Create non-root user for security
-RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
+RUN addgroup -g 1002 appuser && adduser -D -u 1002 -G appuser appuser
 
 # Set environment
 ENV HTTP_PORT=8081 \
