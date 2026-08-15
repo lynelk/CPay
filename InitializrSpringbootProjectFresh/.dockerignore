@@ -1,5 +1,36 @@
+# Git
 .git
-target
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+
+# Build artifacts
+target/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
-hs_err_pid*.log
-src/main/resources/application-local.properties
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Local dev
+.local-mysql/
+.runtime-logs/

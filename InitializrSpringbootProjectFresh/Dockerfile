@@ -1,17 +1,36 @@
+# Stage 1: Build with Maven
 FROM maven:3.9.16-eclipse-temurin-21 AS build
 WORKDIR /workspace
 
+# Copy pom.xml and download dependencies (cache layer)
 COPY pom.xml .
-COPY src ./src
-RUN mvn -q -DskipTests package
+RUN mvn -q dependency:resolve
 
-FROM eclipse-temurin:21-jre
+# Copy source and build
+COPY src ./src
+RUN mvn -q -DskipTests clean package
+
+# Stage 2: Runtime image (minimal)
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-ENV HTTP_PORT=8081
+# Create non-root user for security
+RUN addgroup -g 1002 appuser && adduser -D -u 1002 -G appuser appuser
+
+# Set environment
+ENV HTTP_PORT=8081 \
+    JAVA_OPTS="-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxRAMPercentage=50 -XX:MinRAMPercentage=25"
+
 EXPOSE 8081
 
-COPY --from=build /workspace/target/*.jar /app/cpay-backend.jar
+# Copy JAR from build stage
+COPY --from=build --chown=appuser:appuser /workspace/target/*.jar /app/cpay-backend.jar
 
-ENTRYPOINT ["java", "-jar", "/app/cpay-backend.jar"]
-#
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1
+
+# Use non-root user
+USER appuser
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/cpay-backend.jar"]

@@ -1,0 +1,12 @@
+FROM nginx:latest-alpine
+
+# Create non-root user
+RUN addgroup -g 1003 appuser && adduser -D -u 1003 -G appuser appuser
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Use non-root user
+USER appuser
+
+EXPOSE 80 443
