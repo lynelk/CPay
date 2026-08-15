@@ -48,7 +48,7 @@ Install the following tools:
 
 ```text
 InitializrSpringbootProjectFresh/   Backend service
-Clientside/                         Frontend portal
+clientside/                         Frontend portal
 Integrations/Citoconnect/           JavaScript integration assets
 Docs/                               API, readiness, security, and operations documentation
 Sdk/                                Signing helpers and OpenAPI code-generation guidance
@@ -69,7 +69,7 @@ The backend uses JDBC database configuration. The exact database user, password,
 For local development, you may need to import baseline SQL files under:
 
 ```text
-Clientside/db/
+clientside/db/
 ```
 
 Database changes are kept under Flyway migrations in:
@@ -121,7 +121,7 @@ DB_USERNAME=cpay
 DB_PASSWORD=cpay-local
 ```
 
-The React/Vite frontend is still run from `Clientside/` during local development.
+The React/Vite frontend is still run from `clientside/` during local development.
 
 ## 5. Environment variables
 
@@ -262,7 +262,7 @@ If the backend fails to start, check:
 From the repository root:
 
 ```bash
-cd Clientside
+cd clientside
 npm install
 npm run dev
 npm run build

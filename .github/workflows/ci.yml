@@ -5,6 +5,7 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -46,6 +47,15 @@ jobs:
           cache: maven
       - name: Compile, test and verify
         run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
+      - name: Verify packaged jar contains its startup dependencies
+        run: |
+          set -euo pipefail
+          # Regression guard: the production jar must boot, but sliced-context tests never
+          # load the full logback-spring.xml. This check fails the build if the structured
+          # JSON-logging encoder (referenced by logback-spring.xml) is missing from the jar.
+          # In a Spring Boot fat jar third-party jars live as nested BOOT-INF/lib entries,
+          # so we match the nested library name, not a loose class file.
+          unzip -l target/cito-fresh-*.jar | grep -q "BOOT-INF/lib/logstash-logback-encoder-"
       - name: Generate backend SBOM
         run: mvn -B org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom --no-transfer-progress -DskipTests
       - name: Upload test reports
@@ -92,6 +102,16 @@ jobs:
         run: |
           test -s Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/native/payments/collect" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/payments/payout" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/payment-links" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/checkout/{token}/pay" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/invoices" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/invoices/pay/{token}" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/channels" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/payments/{reference}" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/balances" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/merchant-self-service/batches/{batchId}" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/merchant-self-service/webhooks" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/recon-finance/summary" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/compliance/cases" Docs/Api/cpay-v2-openapi.yaml
           grep -q "/api/v2/admin/provider-certification/evidence" Docs/Api/cpay-v2-openapi.yaml
@@ -107,6 +127,12 @@ jobs:
           assert '/api/v2/native/payments/collect' in spec['paths']
           assert '/api/v2/production-maturity/screening/requests' in spec['paths']
           PY
+          grep -q "/api/v2/admin/readiness/summary" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/treasury/positions" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/payout-approvals" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/communication/campaigns" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/vending/overview" Docs/Api/cpay-v2-openapi.yaml
+          grep -q "/api/v2/admin/billing/price-books" Docs/Api/cpay-v2-openapi.yaml
 
   owasp:
     name: OWASP Dependency-Check
@@ -143,7 +169,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: java
           queries: security-extended
@@ -157,7 +183,7 @@ jobs:
         working-directory: InitializrSpringbootProjectFresh
         run: mvn -B compile --no-transfer-progress -DskipTests
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:java"
 
@@ -170,7 +196,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -205,3 +231,9 @@ jobs:
           test -s Docs/Readiness/Market-readiness-gates.md
           test -s Docs/Runbooks/Production-incident-response.md
           test -s Docs/Runbooks/Provider-certification-checklist.md
+          test -s Docs/Runbooks/Operations-alerts.md
+          test -s Docs/Runbooks/Callback-security-and-requeue.md
+          test -s Docs/Runbooks/Reconciliation-finance-daily-close.md
+          test -s Docs/Architecture/Overview.md
+          test -s Docs/Production-code-controls.md
+          test -s Docs/Readiness/Market-readiness-tracker.md

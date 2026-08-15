@@ -8,6 +8,8 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Added
 
+- Added `Docs/Readiness/Market-readiness-tracker.md`, an owner/status/evidence tracker for every automated and manual gate in `Docs/Readiness/Market-readiness-gates.md`, and wired it into the CI readiness-summary job.
+- Expanded `Docs/Api/cpay-v2-openapi.yaml` (97 → 109 paths) to cover the documented v2 surface that previously had no contract entries: invoices/request-to-pay (`/api/v2/invoices`, `{reference}/send`, `{reference}/cancel`, public `pay/{token}` view+pay), communication campaigns, vending admin, and billing price-books, with matching schemas. The CI API-contract job now asserts the full merchant + admin surface instead of five endpoints.
 - Refreshed root and `Docs/` documentation to cover the current admin and merchant surface: sandbox/production switching, production transaction caps, Yo! Payments, payment links/hosted checkout, invoices/request-to-pay, compliance/KYB review, provider certification, treasury/balance monitoring, communication operations, vending/ChargeNow, and billing traceability.
 - Added provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments statement imports with shared CSV/XLSX parsing support.
 - Added a ledger-refreshed channel-balance read model so dashboard balance views no longer need to recompute every card directly from statement rows.
@@ -89,6 +91,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Changed
 
+- Fixed case-sensitivity drift in CI and docs: `ci.yml` referenced `Initializrspringbootprojectfresh`/`Clientside` while the repository tracks `InitializrSpringbootProjectFresh`/`clientside`, which fails on case-sensitive Linux runners. Deleted the stale workflows that target artifacts this repo does not have (`android.yml`, `php.yml`, `gradle-publish.yml`, `maven-publish.yml`, `npm-publish-github-packages.yml`, the duplicate/incorrect `node.js.yml`, the external-token `codacy.yml`, and the duplicate `codeql.yml`). The unified `ci.yml` now covers backend, frontend, migration naming, API contract, OWASP, CodeQL, and readiness-summary, and gained `workflow_dispatch`. The deploy workflow now defaults to `main` (was a stale `frontend/ios-design-system` branch) and points at the correct `deployment/scripts/deploy-server.sh` path casing; `Deployment.md`/`Installation.md`/`Readme.md`/`Contributing.md` path references were aligned to the real casing.
 - Removed `common.base_url` (a dead, always-empty legacy config field) from every frontend call site in favor of `shared/config.ts`'s `apiUrl()`, and centralized the ad-hoc `localStorage` admin/merchant user read behind a shared `readStoredUser(portal)` helper for the class components that can't use the `useAuth()` hook directly.
 - Chart line/point colors now resolve through the same CSS-variable helper as the rest of the dashboard charts, instead of a hardcoded hex color and a bare white point-border that looked wrong in dark mode.
 - Routed legacy outbound provider HTTP calls through a Spring-managed `RestClient` executor with central timeout, error, and metrics handling.
@@ -106,6 +109,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Fixed
 
+- Fixed the packaged backend jar crashing at startup with `ClassNotFoundException: net.logstash.logback.encoder.LogstashEncoder`: `logback-spring.xml` requires the structured JSON-logging encoder but the dependency was missing from the pom. Sliced-context tests never boot the full logback config, so `mvn verify` alone could not catch it. Added `net.logstash.logback:logstash-logback-encoder` and a CI guard (`unzip -l | grep BOOT-INF/lib/logstash-logback-encoder-`) asserting the encoder ships inside the repackaged jar.
 - Fixed SHA-256 hex formatting to emit full 64-character hashes.
 - Fixed client IP extraction to avoid concatenating proxy headers and null values.
 - Added visible spreadsheet upload limits for size, type, and row count.
@@ -116,6 +120,7 @@ Use calendar-versioned tags such as `2026.07.16` for releases. Keep entries grou
 
 ### Operational
 
+- Regenerated the no-data schema snapshot to the current V60 state: `Docs/Schema/snapshots/2026-08-14-cpayadmin.sql` was produced with `mysqldump` from a freshly migrated MySQL 8.4 database (backend booted from the packaged jar; Flyway applied all 58 migrations through `V60__communication_billing_meters.sql`). It replaces the hand-reconstructed 2026-07-28 snapshot as the review baseline, and `Docs/Schema/Readme.md` now names it as the current snapshot.
 - Confirmed the schema documentation currently tracks Flyway through V44 and points operators to regenerate a real `mysqldump` snapshot from a migrated database before release tagging.
 - Added Flyway migrations `V29__provider_conversation_references.sql` and `V30__shedlock.sql`.
 - Added Flyway migrations `V31__merchant_key_encryption.sql`, `V32__kyc_tier_limits.sql`, `V33__maker_checker_finance_close.sql`, `V34__payout_controls.sql`, `V35__efris_regulator_pii.sql`, `V36__feature_registry.sql`, `V37__identity_verification.sql`, and `V38__billing_tenancy_core.sql`.

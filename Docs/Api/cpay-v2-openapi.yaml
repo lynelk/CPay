@@ -206,6 +206,149 @@ paths:
                 $ref: '#/components/schemas/PaymentResult'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v2/invoices:
+    post:
+      summary: Create an invoice / request-to-pay
+      operationId: createInvoice
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateRequest'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      summary: List invoices for a merchant
+      operationId: listInvoices
+      parameters:
+        - name: merchantNumber
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvoiceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/invoices/{reference}/send:
+    post:
+      summary: Send an invoice to its payer
+      operationId: sendInvoice
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: merchantNumber
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/invoices/{reference}/cancel:
+    post:
+      summary: Cancel an invoice
+      operationId: cancelInvoice
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: merchantNumber
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/invoices/pay/{token}:
+    get:
+      summary: View an invoice by payment token (public)
+      operationId: viewInvoiceByToken
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+        '404':
+          description: Invoice not found
+    post:
+      summary: Pay an invoice (public hosted payment)
+      operationId: payInvoice
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostedCheckoutPayRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HostedCheckoutPayRequest'
+      responses:
+        '202':
+          description: Invoice payment accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v2/statements:
     get:
       summary: Export merchant statement rows
@@ -2144,6 +2287,469 @@ paths:
       - in: query
         name: status
         schema:
+  /api/v2/admin/communication/campaigns:
+    post:
+      summary: Create a draft communication campaign with a recipient list
+      operationId: createCommunicationCampaign
+      security:
+        - AdminBasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateRequest'
+      responses:
+        '200':
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  campaignId:
+                    type: integer
+                    format: int64
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      summary: List campaigns for a merchant
+      operationId: listCommunicationCampaigns
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Campaign list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  campaigns:
+                    type: array
+                    items:
+                      type: object
+  /api/v2/admin/communication/campaigns/{campaignId}/queue:
+    post:
+      summary: Queue a draft campaign for the delivery sweep
+      operationId: queueCommunicationCampaign
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Queued item count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  queued:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/communication/campaigns/sweep-due:
+    post:
+      summary: Run an on-demand sweep of due campaign items
+      operationId: sweepDueCommunicationCampaigns
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 200
+      responses:
+        '200':
+          description: Processed item count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  processed:
+                    type: integer
+  /api/v2/admin/vending/overview:
+    get:
+      summary: Cross-tenant vending rollout, device health, and callback evidence overview
+      operationId: vendingOverview
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Vending overview counters and recent rentals
+  /api/v2/admin/vending/events:
+    get:
+      summary: List vending event audit records
+      operationId: vendingEvents
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 500
+      responses:
+        '200':
+          description: Vending event records
+  /api/v2/admin/vending/callbacks:
+    get:
+      summary: List signed device callback attempts and their processing status
+      operationId: vendingCallbacks
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 500
+      responses:
+        '200':
+          description: Device callback records
+  /api/v2/admin/vending/commands:
+    get:
+      summary: List vending device commands and provider references
+      operationId: vendingCommands
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 500
+      responses:
+        '200':
+          description: Device command records
+  /api/v2/admin/vending/connectors/{merchantId}:
+    get:
+      summary: List connector configurations for a merchant
+      operationId: listVendingConnectors
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Connector configurations
+  /api/v2/admin/vending/connectors/{merchantId}/{connectorCode}:
+    post:
+      summary: Save a vending connector configuration for a merchant
+      operationId: saveVendingConnector
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: connectorCode
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Saved connector configuration
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/vending/connectors/{merchantId}/{connectorCode}/rotate-callback-secret:
+    post:
+      summary: Rotate a connector callback signing secret
+      operationId: rotateVendingConnectorSecret
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: connectorCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: New callback signing secret
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/vending/devices/{merchantId}/{deviceCode}/rotate-public-token:
+    post:
+      summary: Rotate a hosted device public token
+      operationId: rotateVendingDeviceToken
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: deviceCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: New device public token
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/billing/price-books:
+    get:
+      summary: Get the active price-book version and components for a key
+      operationId: activePriceBook
+      security:
+        - AdminBasicAuth: []
+      parameters:
+        - name: billingTenantId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: serviceCode
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: meterCode
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: chargeType
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Active price-book version with components (or PRICE_BOOK_NOT_CONFIGURED)
+    post:
+      summary: Publish a new price-book version, closing the previously active one
+      operationId: publishPriceBook
+      security:
+        - AdminBasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceBookPublishRequest'
+      responses:
+        '200':
+          description: Published price-book version with components
+        '400':
+          $ref: '#/components/responses/BadRequest'
+components:
+  securitySchemes:
+    CPayV2Signature:
+      type: apiKey
+      in: header
+      name: X-CPay-Signature
+    AdminBasicAuth:
+      type: http
+      scheme: basic
+  parameters:
+    IdempotencyKey:
+      name: X-CPay-Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+  schemas:
+    PaymentParty:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+    PaymentRequest:
+      type: object
+      required: [merchantNumber, country, currency, amount, reference, description, callbackUrl]
+      properties:
+        merchantNumber:
+          type: string
+        channel:
+          type: string
+        country:
+          type: string
+        currency:
+          type: string
+        amount:
+          type: string
+        reference:
+          type: string
+        description:
+          type: string
+        callbackUrl:
+          type: string
+        payer:
+          $ref: '#/components/schemas/PaymentParty'
+        payee:
+          $ref: '#/components/schemas/PaymentParty'
+    PaymentResult:
+      type: object
+      properties:
+        reference:
+          type: string
+        transactionId:
+          type: string
+        status:
+          type: string
+        channel:
+          type: string
+        currency:
+          type: string
+        message:
+          type: string
+        providerResponse:
+          type: string
+    FxQuoteRequest:
+      type: object
+      required: [merchantNumber, sourceCurrency, targetCurrency, sourceAmount]
+      properties:
+        merchantNumber:
+          type: string
+        sourceCurrency:
+          type: string
+        targetCurrency:
+          type: string
+        sourceAmount:
+          type: string
+    FxQuoteResponse:
+      type: object
+      properties:
+        quoteReference:
+          type: string
+        sourceCurrency:
+          type: string
+        targetCurrency:
+          type: string
+        sourceAmount:
+          type: string
+        targetAmount:
+          type: string
+        rate:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    TransferIntentRequest:
+      type: object
+      required: [quoteReference, sourceCountry, targetCountry, sourceCurrency, targetCurrency, sourceAmount, beneficiaryAccount, beneficiaryName]
+      properties:
+        merchantNumber:
+          type: string
+        quoteReference:
+          type: string
+        sourceCountry:
+          type: string
+        targetCountry:
+          type: string
+        sourceCurrency:
+          type: string
+        targetCurrency:
+          type: string
+        sourceAmount:
+          type: string
+        beneficiaryAccount:
+          type: string
+        beneficiaryName:
+          type: string
+        description:
+          type: string
+    TransferIntentResponse:
+      type: object
+      properties:
+        transferReference:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+    WebhookEventCatalogEntry:
+      type: object
+      properties:
+        eventType:
           type: string
       - in: query
         name: merchantId
@@ -4468,6 +5074,112 @@ components:
           type: string
         requestedBy:
           type: string
+    InvoiceCreateRequest:
+      type: object
+      required: [merchantNumber, amount, currency]
+      properties:
+        merchantNumber:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        description:
+          type: string
+        reference:
+          type: string
+        payerName:
+          type: string
+        payerContact:
+          type: string
+        dueDate:
+          type: string
+          format: date
+    InvoiceResponse:
+      type: object
+      properties:
+        reference:
+          type: string
+        status:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        description:
+          type: string
+        payerName:
+          type: string
+        payerContact:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        payUrl:
+          type: string
+        createdTransactionId:
+          type: string
+    CampaignCreateRequest:
+      type: object
+      required: [merchantId, name, channel, templateKey, recipients]
+      properties:
+        merchantId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        channel:
+          type: string
+          enum: [SMS, EMAIL, WHATSAPP, USSD]
+        templateKey:
+          type: string
+        recipients:
+          type: array
+          maxItems: 5000
+          items:
+            type: string
+        createdBy:
+          type: string
+    PriceBookComponentDraft:
+      type: object
+      required: [componentType]
+      properties:
+        componentType:
+          type: string
+          enum: [FLAT, PERCENTAGE, TIER]
+        flatAmount:
+          type: string
+        percentageRate:
+          type: string
+        tierDefinition:
+          type: array
+          items:
+            type: object
+    PriceBookPublishRequest:
+      type: object
+      required: [serviceCode, meterCode, chargeType, currency, components]
+      properties:
+        billingTenantId:
+          type: integer
+          format: int64
+        serviceCode:
+          type: string
+        meterCode:
+          type: string
+        chargeType:
+          type: string
+        currency:
+          type: string
+        effectiveFrom:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        components:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PriceBookComponentDraft'
   responses:
     BadRequest:
       description: Request was rejected
