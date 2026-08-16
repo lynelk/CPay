@@ -16,14 +16,24 @@ public class ProviderEndpointExecutionService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final ProviderTokenStoreService tokenStoreService;
     private final ChannelCircuitBreaker circuitBreaker;
+    private final ProviderCertificationService certificationService;
 
     public ProviderEndpointExecutionService(
             NamedParameterJdbcTemplate jdbcTemplate,
             ProviderTokenStoreService tokenStoreService,
             ChannelCircuitBreaker circuitBreaker) {
+        this(jdbcTemplate, tokenStoreService, circuitBreaker, null);
+    }
+
+    public ProviderEndpointExecutionService(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            ProviderTokenStoreService tokenStoreService,
+            ChannelCircuitBreaker circuitBreaker,
+            ProviderCertificationService certificationService) {
         this.jdbcTemplate = jdbcTemplate;
         this.tokenStoreService = tokenStoreService;
         this.circuitBreaker = circuitBreaker;
+        this.certificationService = certificationService;
     }
 
     public GateWayResponse execute(
@@ -34,6 +44,21 @@ public class ProviderEndpointExecutionService {
         String endpointKey = operation.toLowerCase() + "Url";
         String endpointUrl = request.getMetadata().get(endpointKey);
         String gatewayState = request.getMetadata().getOrDefault("gatewayState", "SANDBOX");
+        // P0 §1: a production call also requires an APPROVED certification run (all scenarios
+        // passed, no unresolved blocking exceptions, not expired) for the channel being called -
+        // not just a configured endpoint URL. The channel code is the certification key; providers
+        // may run multiple channels, so the channel itself carries the certification state.
+        if ("PRODUCTION".equalsIgnoreCase(gatewayState) && certificationService != null) {
+            Map<String, Object> readiness =
+                    certificationService.productionReadiness(channelCode, channelCode);
+            if (!Boolean.TRUE.equals(readiness.get("ready"))) {
+                throw new PaymentGatewayException(
+                        "Channel "
+                                + channelCode
+                                + " is not certified for production: "
+                                + readiness.get("reason"));
+            }
+        }
         if (isBlank(endpointUrl)) {
             if ("PRODUCTION".equalsIgnoreCase(gatewayState)) {
                 throw new PaymentGatewayException(

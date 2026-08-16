@@ -1564,6 +1564,380 @@ paths:
       responses:
         '200':
           description: Approval result
+  /api/v2/admin/provider-certification/runs:
+    post:
+      summary: Create a provider certification run (DRAFT) with seeded required scenarios
+      operationId: createProviderCertificationRun
+      security:
+      - AdminBasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - providerCode
+              - channelCode
+              properties:
+                providerCode:
+                  type: string
+                channelCode:
+                  type: string
+                environment:
+                  type: string
+                  enum:
+                  - SANDBOX
+                  - PRODUCTION
+                  default: SANDBOX
+                scopeType:
+                  type: string
+                  default: GLOBAL
+                country:
+                  type: string
+                currency:
+                  type: string
+                createdBy:
+                  type: string
+                  default: system
+      responses:
+        '201':
+          description: Certification run created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      summary: List provider certification runs
+      operationId: listProviderCertificationRuns
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: provider
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: channel
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
+      responses:
+        '200':
+          description: Certification runs
+  /api/v2/admin/provider-certification/runs/{runId}:
+    get:
+      summary: Get a certification run with its scenarios and exceptions
+      operationId: getProviderCertificationRun
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Certification run detail
+        '404':
+          description: Run not found
+  /api/v2/admin/provider-certification/runs/{runId}/start:
+    post:
+      summary: Move a DRAFT certification run to RUNNING
+      operationId: startProviderCertificationRun
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: startedBy
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Run started
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/{runId}/scenarios/{scenarioName}/result:
+    post:
+      summary: Record a scenario result (PASSED/FAILED/PENDING) and recompute run flags
+      operationId: recordProviderCertificationScenarioResult
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: scenarioName
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - scenarioResult
+              properties:
+                scenarioResult:
+                  type: string
+                  enum:
+                  - PASSED
+                  - FAILED
+                  - PENDING
+                observedStatus:
+                  type: string
+                notes:
+                  type: string
+                updatedBy:
+                  type: string
+                  default: system
+      responses:
+        '200':
+          description: Scenario result recorded
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/{runId}/evidence/{evidenceId}/link:
+    post:
+      summary: Link an approved evidence record to a run scenario
+      operationId: linkProviderCertificationEvidence
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: evidenceId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - scenarioName
+              properties:
+                scenarioName:
+                  type: string
+                updatedBy:
+                  type: string
+                  default: system
+      responses:
+        '200':
+          description: Evidence linked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/{runId}/exceptions:
+    post:
+      summary: Record an exception against a certification run
+      operationId: addProviderCertificationException
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exceptionCode:
+                  type: string
+                exceptionType:
+                  type: string
+                  enum:
+                  - BLOCKING
+                  - NON_BLOCKING
+                  default: BLOCKING
+                severity:
+                  type: string
+                  default: MEDIUM
+                description:
+                  type: string
+                createdBy:
+                  type: string
+                  default: system
+      responses:
+        '200':
+          description: Exception recorded
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/{runId}/exceptions/{exceptionId}/resolve:
+    post:
+      summary: Resolve a certification run exception
+      operationId: resolveProviderCertificationException
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: exceptionId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolution:
+                  type: string
+                resolvedBy:
+                  type: string
+                  default: system
+      responses:
+        '200':
+          description: Exception resolved
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/{runId}/submit:
+    post:
+      summary: Submit a completed certification run for review (REVIEW_PENDING)
+      operationId: submitProviderCertificationRun
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: submittedBy
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Run submitted for review
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/{runId}/approve:
+    post:
+      summary: Approve a REVIEW_PENDING certification run (all scenarios passed, no blockers)
+      operationId: approveProviderCertificationRun
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: approvedBy
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: expiresInDays
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 365
+      responses:
+        '200':
+          description: Run approved
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/{runId}/reject:
+    post:
+      summary: Reject a REVIEW_PENDING certification run with a reason
+      operationId: rejectProviderCertificationRun
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                rejectedBy:
+                  type: string
+                  default: system
+      responses:
+        '200':
+          description: Run rejected
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v2/admin/provider-certification/runs/readiness:
+    get:
+      summary: Check whether a channel is certified for production activation
+      operationId: providerCertificationProductionReadiness
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: provider
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: channel
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Production readiness decision (ready, status, reason)
   /api/v2/admin/readiness/summary:
     get:
       summary: Get non-manual readiness evidence summary

@@ -26,7 +26,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V65__payment_state_transition_audit.sql",
                     "V66__ledger_reservation_funds_controls.sql",
                     "V67__ledger_account_scoped_identity.sql",
-                    "V68__ledger_finance_constraint_hardening.sql");
+                    "V68__ledger_finance_constraint_hardening.sql",
+                    "V69__provider_certification_run_lifecycle.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -69,7 +70,10 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("payment_state_transitions")
                 .contains("ledger_reservation_controls")
                 .contains("owner_scope_id")
-                .contains("uk_ledger_account_scope");
+                .contains("uk_ledger_account_scope")
+                .contains("provider_certification_runs")
+                .contains("provider_certification_run_scenarios")
+                .contains("provider_certification_run_exceptions");
     }
 
     @Test
