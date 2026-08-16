@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import net.citotech.cito.DoPayGateway;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
@@ -163,6 +164,55 @@ public class PayoutControlService {
                     amount,
                     "FIRST_BENEFICIARY",
                     requestedBy);
+        }
+        // P0 section 3: provider-switch trigger (opt-in per control row). A payout routing a known
+        // beneficiary through a different provider than their previous payout is parked as
+        // PROVIDER_SWITCH. Resolution is gateway-level (the beneficiary's MSISDN routing vs the
+        // last actual payout gateway) so no merchant-channel registry dependency is introduced.
+        if ("YES".equalsIgnoreCase(control.providerSwitchApprovalFlag)
+                && !blank(beneficiary)
+                && !firstBeneficiary) {
+            String priorGateway = lastPayoutGateway(merchant.getId(), beneficiary);
+            String currentGateway = currentGatewayFor(beneficiary);
+            if (priorGateway != null
+                    && currentGateway != null
+                    && !priorGateway.equals(currentGateway)) {
+                return queueApproval(
+                        request,
+                        merchant,
+                        channelCode,
+                        currency,
+                        country,
+                        beneficiary,
+                        amount,
+                        "PROVIDER_SWITCH",
+                        requestedBy);
+            }
+        }
+        // P0 section 3: beneficiary-amount trigger (opt-in per control row). A single payout to a
+        // known beneficiary that exceeds (factor x their historical max payout) is parked as
+        // BENEFICIARY_AMOUNT_CHANGE - the honest SQL-visible proxy for a beneficiary whose payout
+        // profile changed materially.
+        if (control.beneficiaryAmountFactor != null
+                && control.beneficiaryAmountFactor.compareTo(BigDecimal.ZERO) > 0
+                && !blank(beneficiary)
+                && !firstBeneficiary) {
+            BigDecimal historicalMax = beneficiaryMaxPayout(merchant.getId(), beneficiary);
+            if (historicalMax != null
+                    && amount.compareTo(
+                                    historicalMax.multiply(control.beneficiaryAmountFactor))
+                            > 0) {
+                return queueApproval(
+                        request,
+                        merchant,
+                        channelCode,
+                        currency,
+                        country,
+                        beneficiary,
+                        amount,
+                        "BENEFICIARY_AMOUNT_CHANGE",
+                        requestedBy);
+            }
         }
         return PayoutEvaluation.execute();
     }
@@ -340,7 +390,7 @@ public class PayoutControlService {
         List<Control> controls =
                 jdbcTemplate.query(
                         "SELECT daily_amount_limit, monthly_amount_limit, per_transaction_limit, beneficiary_velocity_limit, "
-                                + "approval_required_flag, enabled_flag "
+                                + "approval_required_flag, enabled_flag, provider_switch_approval_flag, beneficiary_amount_factor "
                                 + "FROM payout_controls WHERE merchant_id=:merchant_id AND channel_code=:channel_code "
                                 + "AND currency=:currency AND country=:country LIMIT 1",
                         p,
@@ -351,8 +401,65 @@ public class PayoutControlService {
                                         rs.getBigDecimal("per_transaction_limit"),
                                         (Integer) rs.getObject("beneficiary_velocity_limit"),
                                         rs.getString("approval_required_flag"),
-                                        rs.getString("enabled_flag")));
+                                        rs.getString("enabled_flag"),
+                                        rs.getString("provider_switch_approval_flag"),
+                                        rs.getBigDecimal("beneficiary_amount_factor")));
         return controls.isEmpty() ? null : controls.get(0);
+    }
+
+    /**
+     * Returns the provider gateway used by the beneficiary's most recent payout, or null when the
+     * beneficiary has no prior payouts (the FIRST_BENEFICIARY rule already covers the no-history
+     * case upstream, so PROVIDER_SWITCH only fires for known beneficiaries).
+     */
+    private String lastPayoutGateway(long merchantId, String beneficiary) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("merchant_id", merchantId);
+        p.addValue("beneficiary", beneficiary);
+        p.addValue("tx_type", Transaction.TX_TYPE_PAYOUT);
+        List<String> gateways =
+                jdbcTemplate.query(
+                        "SELECT gateway_id FROM merchant_transactions_log "
+                                + "WHERE merchant_id=:merchant_id AND tx_type=:tx_type "
+                                + "AND payer_number=:beneficiary AND status IN ('PENDING','SUBMITTED','SUCCESSFUL') "
+                                + "ORDER BY created_on DESC LIMIT 1",
+                        p,
+                        (rs, rowNum) -> rs.getString("gateway_id"));
+        return gateways.isEmpty() ? null : gateways.get(0);
+    }
+
+    /**
+     * Resolves the provider gateway that would handle this beneficiary today, reusing the same
+     * legacy MSISDN-router the payment executor uses. Null when the router cannot resolve the
+     * account - the PROVIDER_SWITCH rule then fails open (executes) rather than blocking on a
+     * routing gap.
+     */
+    private String currentGatewayFor(String beneficiary) {
+        try {
+            return DoPayGateway.getGatewayIdByMsisdn(beneficiary, jdbcTemplate);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns the largest prior payout to this beneficiary (null when none) so the
+     * BENEFICIARY_AMOUNT_CHANGE rule can compare against a factor of the beneficiary's own
+     * history instead of a flat amount.
+     */
+    private BigDecimal beneficiaryMaxPayout(long merchantId, String beneficiary) {
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("merchant_id", merchantId);
+        p.addValue("beneficiary", beneficiary);
+        p.addValue("tx_type", Transaction.TX_TYPE_PAYOUT);
+        BigDecimal max =
+                jdbcTemplate.queryForObject(
+                        "SELECT MAX(original_amount) FROM merchant_transactions_log "
+                                + "WHERE merchant_id=:merchant_id AND tx_type=:tx_type "
+                                + "AND payer_number=:beneficiary AND status IN ('PENDING','SUBMITTED','SUCCESSFUL')",
+                        p,
+                        BigDecimal.class);
+        return max == null ? null : max;
     }
 
     /**
@@ -428,5 +535,7 @@ public class PayoutControlService {
             BigDecimal perTransactionLimit,
             Integer beneficiaryVelocityLimit,
             String approvalRequiredFlag,
-            String enabledFlag) {}
+            String enabledFlag,
+            String providerSwitchApprovalFlag,
+            BigDecimal beneficiaryAmountFactor) {}
 }

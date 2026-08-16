@@ -29,7 +29,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V68__ledger_finance_constraint_hardening.sql",
                     "V69__provider_certification_run_lifecycle.sql",
                     "V70__admin_rbac_maker_checker.sql",
-                    "V71__webhook_delivery_replay_hardening.sql");
+                    "V71__webhook_delivery_replay_hardening.sql",
+                    "V72__payout_risk_trigger_rules.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -84,7 +85,9 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("delivery_timestamp")
                 .contains("merchant_webhook_delivery_attempts")
                 .contains("parked_at")
-                .contains("park_reason");
+                .contains("park_reason")
+                .contains("provider_switch_approval_flag")
+                .contains("beneficiary_amount_factor");
     }
 
     @Test

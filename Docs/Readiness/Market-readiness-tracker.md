@@ -20,7 +20,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 |---|---|---|---|---|
 | 1.1 | Backend Maven verify passes | DONE | Platform Eng | CI `backend` job (`mvn -B verify`), local `mvn verify` 768 tests green |
 | 1.2 | Frontend install and build pass | DONE | Platform Eng | CI `frontend` job (`npm ci`, `lint`, `test`, `typecheck`, `build`) |
-| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V71 unique (`V71__webhook_delivery_replay_hardening.sql`) |
+| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V72 unique (`V72__payout_risk_trigger_rules.sql`) |
 | 1.4 | API contract assets are present | DONE | Platform Eng | CI `api-contract` job; `Docs/Api/cpay-v2-openapi.yaml` 109 paths, Postman collection |
 | 1.5 | CI uploads test reports | DONE | Platform Eng | CI `backend` job uploads `backend-surefire-reports` |
 
@@ -117,6 +117,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 | 7.6 | Daily close runbook | DONE | Platform Eng | `Docs/Runbooks/Reconciliation-finance-daily-close.md` |
 | 7.7 | **Finance signoff on settlement variance thresholds** | NOT STARTED | Finance | signed-off thresholds |
 | 7.8 | **Daily close dry run against staging data** | NOT STARTED | Finance | staging dry-run report |
+| 7.9 | Payout risk-trigger rules | DONE | Platform Eng | V72 `provider_switch_approval_flag`/`beneficiary_amount_factor` on `payout_controls`; `PayoutControlService` PROVIDER_SWITCH + BENEFICIARY_AMOUNT_CHANGE -> maker-checker queue (fail-open); `PayoutControlServiceTest` (12) |
 
 ## 8. Operations gate
 
