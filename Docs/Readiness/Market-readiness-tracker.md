@@ -20,7 +20,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 |---|---|---|---|---|
 | 1.1 | Backend Maven verify passes | DONE | Platform Eng | CI `backend` job (`mvn -B verify`), local `mvn verify` 768 tests green |
 | 1.2 | Frontend install and build pass | DONE | Platform Eng | CI `frontend` job (`npm ci`, `lint`, `test`, `typecheck`, `build`) |
-| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V70 unique (`V70__admin_rbac_maker_checker.sql`) |
+| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V71 unique (`V71__webhook_delivery_replay_hardening.sql`) |
 | 1.4 | API contract assets are present | DONE | Platform Eng | CI `api-contract` job; `Docs/Api/cpay-v2-openapi.yaml` 109 paths, Postman collection |
 | 1.5 | CI uploads test reports | DONE | Platform Eng | CI `backend` job uploads `backend-surefire-reports` |
 
@@ -103,6 +103,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 | 6.7 | Callback runbook exists | DONE | Platform Eng | `Docs/Runbooks/Callback-security-and-requeue.md` |
 | 6.8 | **Merchant receiver verifies signatures in sandbox** | NOT STARTED | Operations | sandbox callback verification evidence |
 | 6.9 | **Merchant callback URL reachable** | NOT STARTED | Operations | delivery log evidence |
+| 6.10 | Merchant webhook delivery replay protection and soak state | DONE | Platform Eng | V71: signed `eventId`/`createdAt` envelope + `X-CPay-Nonce`/`X-CPay-Timestamp` headers, exponential backoff (1m/5m/30m/2h), PARKED soak state with `merchant_webhook_delivery_attempts` per-attempt audit; `MerchantWebhookServiceTest` (13) |
 
 ## 7. Finance gate
 

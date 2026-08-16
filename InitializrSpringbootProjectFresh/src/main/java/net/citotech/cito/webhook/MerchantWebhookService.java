@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MerchantWebhookService {
+    private static final int MAX_ATTEMPTS = 5;
+    private static final long[] BACKOFF_MINUTES = {1L, 5L, 30L, 120L};
+
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final MerchantChannelCryptoService cryptoService;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -123,6 +126,12 @@ public class MerchantWebhookService {
                                         new PaymentGatewayException(
                                                 "Unknown webhook event type: " + eventType));
         String envelopedPayload = envelope(definition, payloadJson);
+        // P0 §4: the enveloped payload carries the per-delivery nonce (eventId) and creation
+        // timestamp; surface both as first-class columns so receivers can de-dupe on the nonce
+        // without parsing the body, and audits can query them directly.
+        JSONObject enveloped = new JSONObject(envelopedPayload);
+        String deliveryNonce = enveloped.getString("eventId");
+        Timestamp deliveryTimestamp = Timestamp.from(Instant.parse(enveloped.getString("createdAt")));
         List<EndpointRow> endpoints = activeEndpoints(merchantId, eventType);
         int queued = 0;
         for (EndpointRow endpoint : endpoints) {
@@ -132,11 +141,15 @@ public class MerchantWebhookService {
             p.addValue("event_type", normalizeEvent(eventType));
             p.addValue("event_reference", eventReference);
             p.addValue("payload_json", envelopedPayload);
+            p.addValue("delivery_nonce", deliveryNonce);
+            p.addValue("delivery_timestamp", deliveryTimestamp);
             queued +=
                     jdbcTemplate.update(
                             "INSERT IGNORE INTO merchant_webhook_deliveries "
-                                    + "(merchant_id, endpoint_id, event_type, event_reference, payload_json, delivery_status, next_attempt_at) "
-                                    + "VALUES (:merchant_id, :endpoint_id, :event_type, :event_reference, :payload_json, 'PENDING', CURRENT_TIMESTAMP)",
+                                    + "(merchant_id, endpoint_id, event_type, event_reference, payload_json, "
+                                    + " delivery_status, next_attempt_at, delivery_nonce, delivery_timestamp) "
+                                    + "VALUES (:merchant_id, :endpoint_id, :event_type, :event_reference, :payload_json, "
+                                    + " 'PENDING', CURRENT_TIMESTAMP, :delivery_nonce, :delivery_timestamp)",
                             p);
         }
         return queued;
@@ -196,6 +209,7 @@ public class MerchantWebhookService {
      * Adds the versioned envelope fields (eventId/eventVersion/createdAt) from the catalog on top
      * of the caller's payload, additively - existing fields the caller already set (eventType,
      * merchantNumber, etc.) are left untouched so a merchant reading only those is unaffected.
+     * The eventId doubles as the delivery nonce that receivers de-dupe on.
      */
     private String envelope(EventDefinition definition, String payloadJson) {
         JSONObject obj = new JSONObject(payloadJson);
@@ -208,8 +222,9 @@ public class MerchantWebhookService {
     @Transactional
     public int replay(long deliveryId) {
         return jdbcTemplate.update(
-                "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
-                        + "WHERE id=:id AND delivery_status IN ('FAILED','DELIVERED')",
+                "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP, "
+                        + "parked_at=NULL, parked_by=NULL, park_reason=NULL "
+                        + "WHERE id=:id AND delivery_status IN ('FAILED','DELIVERED','PARKED')",
                 new MapSqlParameterSource("id", deliveryId));
     }
 
@@ -224,8 +239,10 @@ public class MerchantWebhookService {
         p.addValue("id", deliveryId);
         p.addValue("merchant_id", merchantId);
         return jdbcTemplate.update(
-                "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP "
-                        + "WHERE id=:id AND merchant_id=:merchant_id AND delivery_status IN ('FAILED','DELIVERED')",
+                "UPDATE merchant_webhook_deliveries SET delivery_status='PENDING', next_attempt_at=CURRENT_TIMESTAMP, "
+                        + "parked_at=NULL, parked_by=NULL, park_reason=NULL "
+                        + "WHERE id=:id AND merchant_id=:merchant_id "
+                        + "AND delivery_status IN ('FAILED','DELIVERED','PARKED')",
                 p);
     }
 
@@ -240,7 +257,8 @@ public class MerchantWebhookService {
         p.addValue("limit", Math.max(1, Math.min(limit, 200)));
         return jdbcTemplate.queryForList(
                 "SELECT id, endpoint_id, event_type, event_reference, delivery_status, attempt_count, "
-                        + "last_http_status, last_response_summary, next_attempt_at, created_at, updated_at "
+                        + "last_http_status, last_response_summary, next_attempt_at, delivery_nonce, "
+                        + "delivery_timestamp, parked_at, park_reason, created_at, updated_at "
                         + "FROM merchant_webhook_deliveries WHERE merchant_id=:merchant_id "
                         + "ORDER BY created_at DESC LIMIT :limit",
                 p);
@@ -259,11 +277,18 @@ public class MerchantWebhookService {
 
     private void deliver(DeliveryRow delivery) {
         try {
+            // P0 §4: the signature remains a hash of (payload.secret); because the payload already
+            // embeds the delivery nonce (eventId) and createdAt inside the signed material, a
+            // captured request can no longer be replayed with a different nonce/timestamp without
+            // breaking the signature. The nonce/timestamp are also surfaced as explicit headers so
+            // a receiver can de-dupe without parsing the body.
             Map<String, String> headers =
                     Map.of(
                             "Content-Type", "application/json",
                             "X-CPay-Event", delivery.eventType(),
                             "X-CPay-Reference", delivery.eventReference(),
+                            "X-CPay-Nonce", delivery.nonce(),
+                            "X-CPay-Timestamp", delivery.timestampIso(),
                             "X-CPay-Signature",
                                     CanonicalRequestSigner.sha256Hex(
                                             delivery.payloadJson() + "." + delivery.secret()));
@@ -277,23 +302,37 @@ public class MerchantWebhookService {
                     ok ? "DELIVERED" : nextStatus(delivery.attemptCount() + 1),
                     delivery.attemptCount() + 1,
                     status,
-                    response == null ? "No response" : response.getResponse());
+                    response == null ? "No response" : response.getResponse(),
+                    delivery.nonce(),
+                    ok);
         } catch (Exception ex) {
             updateDelivery(
                     delivery.id(),
                     nextStatus(delivery.attemptCount() + 1),
                     delivery.attemptCount() + 1,
                     0,
-                    ex.getMessage());
+                    ex.getMessage(),
+                    delivery.nonce(),
+                    false);
         }
     }
 
+    /**
+     * P0 §4: retries exhaust into PARKED (an operator-visible soak state) instead of dropping
+     * silently to FAILED; the delivery stays replayable from PARKED.
+     */
     private String nextStatus(int attemptCount) {
-        return attemptCount >= 5 ? "FAILED" : "PENDING";
+        return attemptCount >= MAX_ATTEMPTS ? "PARKED" : "PENDING";
     }
 
     private void updateDelivery(
-            long id, String status, int attempts, int httpStatus, String responseSummary) {
+            long id,
+            String status,
+            int attempts,
+            int httpStatus,
+            String responseSummary,
+            String nonce,
+            boolean success) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("id", id);
         p.addValue("status", status);
@@ -302,14 +341,44 @@ public class MerchantWebhookService {
         p.addValue("response", trim(responseSummary));
         p.addValue(
                 "next_attempt",
-                Timestamp.from(
-                        Instant.now().plus(Math.min(60, attempts * 5L), ChronoUnit.MINUTES)));
+                Timestamp.from(Instant.now().plus(delayMinutes(attempts), ChronoUnit.MINUTES)));
+        String parkClause = " ";
+        if (!success && "PARKED".equals(status)) {
+            p.addValue("park_reason", "exhausted attempts");
+            parkClause =
+                    ", parked_at=CURRENT_TIMESTAMP, parked_by='system', park_reason=:park_reason ";
+        } else if (success) {
+            parkClause = ", parked_at=NULL, parked_by=NULL, park_reason=NULL ";
+        }
         jdbcTemplate.update(
                 "UPDATE merchant_webhook_deliveries SET delivery_status=:status, attempt_count=:attempts, "
                         + "last_http_status=:http_status, last_response_summary=:response, "
-                        + "next_attempt_at=CASE WHEN :status='PENDING' THEN :next_attempt ELSE next_attempt_at END "
+                        + "next_attempt_at=CASE WHEN :status='PENDING' THEN :next_attempt ELSE next_attempt_at END"
+                        + parkClause
                         + "WHERE id=:id",
                 p);
+        // P0 §4 per-attempt audit trail.
+        MapSqlParameterSource attempt = new MapSqlParameterSource();
+        attempt.addValue("delivery_id", id);
+        attempt.addValue("attempt", attempts);
+        attempt.addValue("status", status);
+        attempt.addValue("http_status", httpStatus);
+        attempt.addValue("response", trim(responseSummary));
+        attempt.addValue("nonce", nonce);
+        jdbcTemplate.update(
+                "INSERT INTO merchant_webhook_delivery_attempts "
+                        + "(delivery_id, attempt_number, attempt_status, http_status, response_summary, delivery_nonce) "
+                        + "VALUES (:delivery_id, :attempt, :status, :http_status, :response, :nonce)",
+                attempt);
+    }
+
+    /** P0 §4: exponential backoff (1m, 5m, 30m, 2h) capped at the final schedule slot. */
+    private long delayMinutes(int attempts) {
+        if (attempts <= 1) {
+            return BACKOFF_MINUTES[0];
+        }
+        int idx = Math.min(attempts - 1, BACKOFF_MINUTES.length - 1);
+        return BACKOFF_MINUTES[idx];
     }
 
     private List<EndpointRow> activeEndpoints(long merchantId, String eventType) {
@@ -328,21 +397,35 @@ public class MerchantWebhookService {
                 new MapSqlParameterSource("limit", Math.max(1, Math.min(limit, 100)));
         return jdbcTemplate.query(
                 "SELECT d.id, d.event_type, d.event_reference, d.payload_json, d.attempt_count, "
-                        + "e.endpoint_url, e.secret_value "
+                        + "e.endpoint_url, e.secret_value, d.delivery_nonce, d.delivery_timestamp "
                         + "FROM merchant_webhook_deliveries d "
                         + "JOIN merchant_webhook_endpoints e ON e.id=d.endpoint_id "
                         + "WHERE d.delivery_status='PENDING' AND d.next_attempt_at <= CURRENT_TIMESTAMP "
                         + "AND e.endpoint_status='ACTIVE' ORDER BY d.id ASC LIMIT :limit",
                 p,
-                (rs, rowNum) ->
-                        new DeliveryRow(
-                                rs.getLong("id"),
-                                rs.getString("event_type"),
-                                rs.getString("event_reference"),
-                                rs.getString("payload_json"),
-                                rs.getInt("attempt_count"),
-                                rs.getString("endpoint_url"),
-                                decrypt(rs.getString("secret_value"))));
+                (rs, rowNum) -> {
+                    Timestamp ts = rs.getTimestamp("delivery_timestamp");
+                    return new DeliveryRow(
+                            rs.getLong("id"),
+                            rs.getString("event_type"),
+                            rs.getString("event_reference"),
+                            rs.getString("payload_json"),
+                            rs.getInt("attempt_count"),
+                            rs.getString("endpoint_url"),
+                            decrypt(rs.getString("secret_value")),
+                            safeNonce(rs.getString("delivery_nonce")),
+                            ts == null ? Instant.now().toString() : ts.toInstant().toString());
+                });
+    }
+
+    private String safeNonce(String nonce) {
+        if (nonce != null && !nonce.isBlank()) {
+            return nonce;
+        }
+        // Rows enqueued before V71 have delivery_nonce backfilled to event_reference; a NULL here
+        // means a legacy row written outside the normal path - fall back to an empty nonce rather
+        // than crashing the sweep.
+        return "";
     }
 
     private String decrypt(String value) {
@@ -383,5 +466,7 @@ public class MerchantWebhookService {
             String payloadJson,
             int attemptCount,
             String endpointUrl,
-            String secret) {}
+            String secret,
+            String nonce,
+            String timestampIso) {}
 }

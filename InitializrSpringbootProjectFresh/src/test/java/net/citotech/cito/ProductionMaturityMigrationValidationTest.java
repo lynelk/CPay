@@ -28,7 +28,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V67__ledger_account_scoped_identity.sql",
                     "V68__ledger_finance_constraint_hardening.sql",
                     "V69__provider_certification_run_lifecycle.sql",
-                    "V70__admin_rbac_maker_checker.sql");
+                    "V70__admin_rbac_maker_checker.sql",
+                    "V71__webhook_delivery_replay_hardening.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -78,7 +79,12 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("admin_roles")
                 .contains("admin_role_assignments")
                 .contains("admin_access_matrix")
-                .contains("approval_requests");
+                .contains("approval_requests")
+                .contains("delivery_nonce")
+                .contains("delivery_timestamp")
+                .contains("merchant_webhook_delivery_attempts")
+                .contains("parked_at")
+                .contains("park_reason");
     }
 
     @Test
