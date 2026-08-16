@@ -20,7 +20,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 |---|---|---|---|---|
 | 1.1 | Backend Maven verify passes | DONE | Platform Eng | CI `backend` job (`mvn -B verify`), local `mvn verify` 768 tests green |
 | 1.2 | Frontend install and build pass | DONE | Platform Eng | CI `frontend` job (`npm ci`, `lint`, `test`, `typecheck`, `build`) |
-| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V60 unique |
+| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V68 unique (`V68__ledger_finance_constraint_hardening.sql`) |
 | 1.4 | API contract assets are present | DONE | Platform Eng | CI `api-contract` job; `Docs/Api/cpay-v2-openapi.yaml` 109 paths, Postman collection |
 | 1.5 | CI uploads test reports | DONE | Platform Eng | CI `backend` job uploads `backend-surefire-reports` |
 
@@ -66,7 +66,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 | 4.5 | Callback signing supports merchant-level values | DONE | Platform Eng | webhook/callback secret model |
 | 4.6 | Channel setup values encrypted at rest | DONE | Platform Eng | AES-GCM credential store |
 | 4.7 | API origins restricted to trusted origins | DONE | Platform Eng | `CORS_ALLOWED_ORIGINS` / trusted IPs |
-| 4.8 | Dependency and CodeQL checks in CI | DONE | Platform Eng | CI `owasp` + `codeql` jobs |
+| 4.8 | Dependency and CodeQL checks in CI | DONE | Platform Eng | CI `owasp` + `codeql` jobs; `docker-build.yml` Trivy container scans (`aquasecurity/trivy-action@0.35.0`, CRITICAL/HIGH gate, SARIF) on backend/frontend/nginx images |
 | 4.9 | **External security review** | NOT STARTED | Security | Signed-off review report |
 | 4.10 | **Production configuration review** | NOT STARTED | Security | `/etc/cpay/.env` checklist walkthrough |
 
@@ -110,7 +110,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 | 7.1 | Reconciliation import and validation paths | DONE | Platform Eng | import/check endpoints |
 | 7.2 | Maker-checker review workflow | DONE | Platform Eng | reviews + approve/reject |
 | 7.3 | Approved reviews post to finance workflow | DONE | Platform Eng | `POST /api/v2/admin/recon-finance/post` |
-| 7.4 | Daily close records | DONE | Platform Eng | recon daily-close records |
+| 7.4 | Daily close records | DONE | Platform Eng | recon daily-close records; `decideDailyClose` enforces the six preconditions + open HIGH/CRITICAL exceptions + unbalanced trial-balance runs and records `BLOCKED` with reasons (`FinanceDailyCloseGateTest`) |
 | 7.5 | Finance summary endpoint | DONE | Platform Eng | `GET /api/v2/admin/recon-finance/summary` |
 | 7.6 | Daily close runbook | DONE | Platform Eng | `Docs/Runbooks/Reconciliation-finance-daily-close.md` |
 | 7.7 | **Finance signoff on settlement variance thresholds** | NOT STARTED | Finance | signed-off thresholds |

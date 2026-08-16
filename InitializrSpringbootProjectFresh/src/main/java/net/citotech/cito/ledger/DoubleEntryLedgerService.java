@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.money.CurrencyMetadata;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -17,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DoubleEntryLedgerService {
-    private static final int MONEY_SCALE = 4;
+    private static final int MONEY_SCALE = CurrencyMetadata.SETTLEMENT_SCALE;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 

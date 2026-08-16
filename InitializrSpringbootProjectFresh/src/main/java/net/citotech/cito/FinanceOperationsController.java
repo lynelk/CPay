@@ -326,6 +326,74 @@ public class FinanceOperationsController {
     public Map<String, Object> decideDailyClose(
             @PathVariable Long id, @RequestBody Map<String, Object> body) {
         String status = requiredString(body, "status");
+
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT * FROM finance_daily_close_records WHERE id = ?", id);
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Daily close record not found");
+        }
+        Map<String, Object> current = rows.getFirst();
+
+        String effectiveStatus = status;
+        String effectiveReason = optionalString(body, "blockedReason");
+        if ("APPROVED".equals(status) || "CLOSED".equals(status)) {
+            List<String> blockers = new java.util.ArrayList<>();
+            if (!effectiveBoolean(body.get("providerStatementsReceived"), current, "provider_statements_received")) {
+                blockers.add("provider statements not received");
+            }
+            if (!effectiveBoolean(body.get("reconciliationImportCompleted"), current, "reconciliation_import_completed")) {
+                blockers.add("reconciliation import not completed");
+            }
+            if (!effectiveBoolean(body.get("unmatchedItemsReviewed"), current, "unmatched_items_reviewed")) {
+                blockers.add("unmatched items not reviewed");
+            }
+            if (!effectiveBoolean(body.get("highSeverityControlsResolved"), current, "high_severity_controls_resolved")) {
+                blockers.add("high-severity controls unresolved");
+            }
+            if (!effectiveBoolean(body.get("makerCheckerApprovalsComplete"), current, "maker_checker_approvals_complete")) {
+                blockers.add("maker-checker approvals incomplete");
+            }
+            if (!effectiveBoolean(body.get("financeOwnerSignedOff"), current, "finance_owner_signed_off")) {
+                blockers.add("finance owner has not signed off");
+            }
+
+            Integer openCriticalExceptions =
+                    jdbcTemplate.queryForObject(
+                            """
+                            SELECT COUNT(*) FROM reconciliation_exceptions ex
+                              JOIN finance_settlement_batches sb ON sb.id = ex.settlement_batch_id
+                             WHERE sb.business_date = ?
+                               AND ex.severity IN ('HIGH', 'CRITICAL')
+                               AND ex.status IN ('OPEN', 'ASSIGNED', 'UNDER_REVIEW')
+                            """,
+                            Integer.class,
+                            current.get("business_date"));
+            if (openCriticalExceptions != null && openCriticalExceptions > 0) {
+                blockers.add(openCriticalExceptions + " unresolved high-severity reconciliation exception(s)");
+            }
+
+            Integer unbalancedRuns =
+                    jdbcTemplate.queryForObject(
+                            """
+                            SELECT COUNT(*) FROM ledger_trial_balance_runs
+                             WHERE run_date = ? AND balanced_flag = 'NO'
+                            """,
+                            Integer.class,
+                            current.get("business_date"));
+            if (unbalancedRuns != null && unbalancedRuns > 0) {
+                blockers.add(unbalancedRuns + " unbalanced trial-balance run(s) for the business date");
+            }
+
+            if (!blockers.isEmpty()) {
+                effectiveStatus = "BLOCKED";
+                effectiveReason =
+                        effectiveReason == null || effectiveReason.isBlank()
+                                ? String.join("; ", blockers)
+                                : effectiveReason + "; " + String.join("; ", blockers);
+            }
+        }
+
         jdbcTemplate.update(
                 """
                 UPDATE finance_daily_close_records
@@ -341,18 +409,18 @@ public class FinanceOperationsController {
                        updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?
                 """,
-                status,
+                effectiveStatus,
                 body.get("providerStatementsReceived"),
                 body.get("reconciliationImportCompleted"),
                 body.get("unmatchedItemsReviewed"),
                 body.get("highSeverityControlsResolved"),
                 body.get("makerCheckerApprovalsComplete"),
                 body.get("financeOwnerSignedOff"),
-                optionalString(body, "blockedReason"),
-                status,
+                effectiveReason,
+                effectiveStatus,
                 optionalString(body, "actor"),
-                status,
-                status,
+                effectiveStatus,
+                effectiveStatus,
                 id);
         return accepted("daily_close_decision_recorded", id);
     }
@@ -530,5 +598,23 @@ public class FinanceOperationsController {
         } catch (JsonProcessingException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid JSON payload", e);
         }
+    }
+
+    private boolean effectiveBoolean(
+            Object submitted, Map<String, Object> current, String column) {
+        if (submitted instanceof Boolean bool) {
+            return bool;
+        }
+        Object stored = current.get(column);
+        if (stored instanceof Boolean bool) {
+            return bool;
+        }
+        if (stored instanceof Number number) {
+            return number.intValue() != 0;
+        }
+        if (stored != null) {
+            return Boolean.parseBoolean(stored.toString());
+        }
+        return false;
     }
 }

@@ -25,7 +25,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V64__kyb_decision_audit_controls.sql",
                     "V65__payment_state_transition_audit.sql",
                     "V66__ledger_reservation_funds_controls.sql",
-                    "V67__ledger_account_scoped_identity.sql");
+                    "V67__ledger_account_scoped_identity.sql",
+                    "V68__ledger_finance_constraint_hardening.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
