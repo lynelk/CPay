@@ -3,6 +3,7 @@ package net.citotech.cito.security;
 import net.citotech.cito.Common;
 import net.citotech.cito.GeneralException;
 import net.citotech.cito.Model.Merchant;
+import net.citotech.cito.metrics.SignatureVerificationFailureRegistry;
 
 import java.security.PublicKey;
 import java.security.Signature;
@@ -27,6 +28,7 @@ public class SignatureVerificationService {
      */
     public static String verify(Merchant merchant, String signedData, String signatureBase64) {
         if (merchant.getPublic_key() == null || merchant.getPublic_key().isEmpty()) {
+            SignatureVerificationFailureRegistry.record("115");
             return GeneralException.getError("115", GeneralException.ERRORS_115);
         }
 
@@ -37,6 +39,7 @@ public class SignatureVerificationService {
             String base64_cleaned = base64_public_key.replace("\n-----END PUBLIC KEY-----\n", "");
             PublicKey publicKey = Common.getPublicKeyFromBase64String(base64_cleaned);
             if (publicKey == null) {
+                SignatureVerificationFailureRegistry.record("115");
                 return GeneralException.getError("115", GeneralException.ERRORS_115);
             }
             sign.initVerify(publicKey);
@@ -46,14 +49,17 @@ public class SignatureVerificationService {
             try {
                 signature_content = Base64.getDecoder().decode(signatureBase64);
             } catch (Exception e) {
+                SignatureVerificationFailureRegistry.record("122");
                 return GeneralException.getError("122", GeneralException.ERRORS_122);
             }
 
             if (signature_content.length < 256) {
+                SignatureVerificationFailureRegistry.record("122");
                 return GeneralException.getError("122", GeneralException.ERRORS_122);
             }
 
             if (!sign.verify(signature_content)) {
+                SignatureVerificationFailureRegistry.record("116");
                 return GeneralException.getError("116", GeneralException.ERRORS_116);
             }
 
@@ -61,8 +67,8 @@ public class SignatureVerificationService {
 
         } catch (Exception ex) {
             logger.log(Level.SEVERE, "Signature verification error: " + ex.getMessage(), ex);
+            SignatureVerificationFailureRegistry.record("116");
             return GeneralException.getError("116", GeneralException.ERRORS_116);
         }
     }
 }
-

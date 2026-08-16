@@ -134,6 +134,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 | 8.9 | **Support rota** | NOT STARTED | Operations | on-call rota + escalation |
 | 8.10 | **Production monitoring channel setup** | NOT STARTED | Operations | alert routes confirmed |
 | 8.11 | **Provider emergency contact list** | NOT STARTED | Operations | contacts document |
+| 8.12 | Production observability metric baseline | DONE | Platform Eng | `SignatureVerificationFailureRegistry` per-reason signing-failure counters in `SignatureVerificationService` + `ObservabilityScorecardService` scrape-lazy gauges (`cpay.payout.approval.pending`, `cpay.reconciliation.exceptions.open[_high]`, `cpay.compliance.cases.open`, `cpay.webhook.deliveries.parked`, `cpay.api.signature_failures{reason}`); `ObservabilityScorecardServiceTest` (4)
 
 ## Launch rule
 
