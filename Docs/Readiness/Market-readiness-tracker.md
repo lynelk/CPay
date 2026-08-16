@@ -20,7 +20,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 |---|---|---|---|---|
 | 1.1 | Backend Maven verify passes | DONE | Platform Eng | CI `backend` job (`mvn -B verify`), local `mvn verify` 768 tests green |
 | 1.2 | Frontend install and build pass | DONE | Platform Eng | CI `frontend` job (`npm ci`, `lint`, `test`, `typecheck`, `build`) |
-| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V68 unique (`V68__ledger_finance_constraint_hardening.sql`) |
+| 1.3 | Flyway migration versions are unique | DONE | Platform Eng | CI `migration-smoke` job; currently V1–V70 unique (`V70__admin_rbac_maker_checker.sql`) |
 | 1.4 | API contract assets are present | DONE | Platform Eng | CI `api-contract` job; `Docs/Api/cpay-v2-openapi.yaml` 109 paths, Postman collection |
 | 1.5 | CI uploads test reports | DONE | Platform Eng | CI `backend` job uploads `backend-surefire-reports` |
 
@@ -62,6 +62,7 @@ assigned owner role so launch signoff is tracked, not just documented.
 | 4.1 | v2 requests use version, timestamp, nonce, signature | DONE | Platform Eng | `Docs/Api-v2-signing.md`, `V2RequestSecurityService` |
 | 4.2 | Replay protection enabled | DONE | Platform Eng | JDBC nonce store (`CPAY_SECURITY_NONCE_STORE=jdbc`) |
 | 4.3 | Admin routes require admin credentials | DONE | Platform Eng | path-level + `@PreAuthorize` |
+| 4.11 | Admin RBAC enforcement and maker-checker approval lifecycle | DONE | Platform Eng | `AdminPermissionService` grant lookup vs `admin_permissions`, `admin_access_matrix`, `approval_requests` maker-checker workflow (`/api/v2/admin/approval-requests/**`), enriched `admin_audit_events`; `AdminPermissionServiceTest` (7) + `AdminApprovalServiceTest` (16) |
 | 4.4 | Actuator routes separated from admin | DONE | Platform Eng | `/actuator/**` under `ACTUATOR_*` creds |
 | 4.5 | Callback signing supports merchant-level values | DONE | Platform Eng | webhook/callback secret model |
 | 4.6 | Channel setup values encrypted at rest | DONE | Platform Eng | AES-GCM credential store |

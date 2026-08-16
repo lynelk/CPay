@@ -1938,6 +1938,194 @@ paths:
       responses:
         '200':
           description: Production readiness decision (ready, status, reason)
+  /api/v2/admin/access/roles:
+    get:
+      summary: List the P0 admin RBAC role catalog
+      operationId: listAdminRoles
+      security:
+      - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Admin role catalog
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/admin/access/permissions:
+    get:
+      summary: List admin permission grants, optionally filtered by role
+      operationId: listAdminPermissions
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: role
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Admin permission grants
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/admin/access/matrix:
+    get:
+      summary: List the admin authorization matrix (action to allowed roles, mode, maker-checker)
+      operationId: listAdminAccessMatrix
+      security:
+      - AdminBasicAuth: []
+      responses:
+        '200':
+          description: Admin authorization matrix
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/admin/approval-requests:
+    post:
+      summary: Submit a privileged action for maker-checker approval (maker step)
+      operationId: createApprovalRequest
+      security:
+      - AdminBasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - approvalType
+              - resourceType
+              - resourceId
+              properties:
+                approvalType:
+                  type: string
+                resourceType:
+                  type: string
+                resourceId:
+                  type: string
+                payload:
+                  type: object
+                previousStateHash:
+                  type: string
+                newStateHash:
+                  type: string
+                requestId:
+                  type: string
+                expiresInHours:
+                  type: integer
+      responses:
+        '201':
+          description: Approval request recorded as PENDING_APPROVAL
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      summary: List approval requests by status and type
+      operationId: listApprovalRequests
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: approvalType
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
+      responses:
+        '200':
+          description: Approval requests
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/admin/approval-requests/{requestId}:
+    get:
+      summary: Read an approval request with its review state
+      operationId: getApprovalRequest
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Approval request detail
+        '404':
+          description: Approval request not found
+  /api/v2/admin/approval-requests/{requestId}/approve:
+    post:
+      summary: Checker approval for a pending approval request (checker step)
+      operationId: approveApprovalRequest
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                approvedBy:
+                  type: string
+                note:
+                  type: string
+      responses:
+        '200':
+          description: Approval request approved
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v2/admin/approval-requests/{requestId}/reject:
+    post:
+      summary: Checker rejection for a pending approval request (checker step)
+      operationId: rejectApprovalRequest
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - reason
+              properties:
+                rejectedBy:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Approval request rejected
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v2/admin/readiness/summary:
     get:
       summary: Get non-manual readiness evidence summary

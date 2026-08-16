@@ -27,7 +27,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V66__ledger_reservation_funds_controls.sql",
                     "V67__ledger_account_scoped_identity.sql",
                     "V68__ledger_finance_constraint_hardening.sql",
-                    "V69__provider_certification_run_lifecycle.sql");
+                    "V69__provider_certification_run_lifecycle.sql",
+                    "V70__admin_rbac_maker_checker.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -73,7 +74,11 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("uk_ledger_account_scope")
                 .contains("provider_certification_runs")
                 .contains("provider_certification_run_scenarios")
-                .contains("provider_certification_run_exceptions");
+                .contains("provider_certification_run_exceptions")
+                .contains("admin_roles")
+                .contains("admin_role_assignments")
+                .contains("admin_access_matrix")
+                .contains("approval_requests");
     }
 
     @Test
