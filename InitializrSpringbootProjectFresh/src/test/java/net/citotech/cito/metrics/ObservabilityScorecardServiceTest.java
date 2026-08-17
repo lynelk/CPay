@@ -33,10 +33,7 @@ class ObservabilityScorecardServiceTest {
         assertThat(registry.get("cpay.compliance.cases.open").gauge()).isNotNull();
         assertThat(registry.get("cpay.webhook.deliveries.parked").gauge()).isNotNull();
         for (String reason : List.of("115", "116", "122")) {
-            assertThat(
-                            registry.get("cpay.api.signature_failures")
-                                    .tag("reason", reason)
-                                    .gauge())
+            assertThat(registry.get("cpay.api.signature_failures").tag("reason", reason).gauge())
                     .isNotNull();
         }
     }
@@ -60,9 +57,7 @@ class ObservabilityScorecardServiceTest {
                         eq(Integer.class)))
                 .thenReturn(2);
         when(jdbcTemplate.queryForObject(
-                        contains("CRITICAL"),
-                        any(MapSqlParameterSource.class),
-                        eq(Integer.class)))
+                        contains("CRITICAL"), any(MapSqlParameterSource.class), eq(Integer.class)))
                 .thenReturn(3);
         when(jdbcTemplate.queryForObject(
                         contains("compliance_cases"),
@@ -78,16 +73,13 @@ class ObservabilityScorecardServiceTest {
                 new ObservabilityScorecardService(registry, jdbcTemplate);
         service.registerGauges();
 
-        assertThat(registry.get("cpay.payout.approval.pending").gauge().value())
-                .isEqualTo(1.0);
+        assertThat(registry.get("cpay.payout.approval.pending").gauge().value()).isEqualTo(1.0);
         assertThat(registry.get("cpay.reconciliation.exceptions.open").gauge().value())
                 .isEqualTo(2.0);
         assertThat(registry.get("cpay.reconciliation.exceptions.open_high").gauge().value())
                 .isEqualTo(3.0);
-        assertThat(registry.get("cpay.compliance.cases.open").gauge().value())
-                .isEqualTo(4.0);
-        assertThat(registry.get("cpay.webhook.deliveries.parked").gauge().value())
-                .isEqualTo(5.0);
+        assertThat(registry.get("cpay.compliance.cases.open").gauge().value()).isEqualTo(4.0);
+        assertThat(registry.get("cpay.webhook.deliveries.parked").gauge().value()).isEqualTo(5.0);
     }
 
     @Test
@@ -97,8 +89,7 @@ class ObservabilityScorecardServiceTest {
                 new ObservabilityScorecardService(registry, mock(NamedParameterJdbcTemplate.class));
         service.registerGauges();
 
-        long before115 =
-                SignatureVerificationFailureRegistry.snapshot().getOrDefault("115", 0L);
+        long before115 = SignatureVerificationFailureRegistry.snapshot().getOrDefault("115", 0L);
         SignatureVerificationFailureRegistry.record("115");
         SignatureVerificationFailureRegistry.record("116");
         SignatureVerificationFailureRegistry.record("122");

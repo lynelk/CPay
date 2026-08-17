@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * P0 §2: read surface for the admin RBAC catalog. Lists the role catalog, the permission grants
- * and the authorization matrix. Every read is permission-gated (ACCESS_CONTROL_READ) and class
+ * P0 §2: read surface for the admin RBAC catalog. Lists the role catalog, the permission grants and
+ * the authorization matrix. Every read is permission-gated (ACCESS_CONTROL_READ) and class
  * annotated with the {@code hasRole('ADMIN')} reinforcement used across the v2 admin surface.
  */
 @RestController
@@ -20,7 +20,8 @@ public class AdminAccessController {
     private final AdminAccessService accessService;
     private final AdminPermissionService permissions;
 
-    public AdminAccessController(AdminAccessService accessService, AdminPermissionService permissions) {
+    public AdminAccessController(
+            AdminAccessService accessService, AdminPermissionService permissions) {
         this.accessService = accessService;
         this.permissions = permissions;
     }

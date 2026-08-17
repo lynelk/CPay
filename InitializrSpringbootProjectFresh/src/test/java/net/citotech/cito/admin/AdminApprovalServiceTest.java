@@ -101,7 +101,14 @@ class AdminApprovalServiceTest {
         assertThatThrownBy(
                         () ->
                                 service.create(
-                                        "DAILY_CLOSE", "merchant", "42", null, null, null, null, null))
+                                        "DAILY_CLOSE",
+                                        "merchant",
+                                        "42",
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null))
                 .isInstanceOf(AccessDeniedException.class);
 
         verifyNoInteractions(jdbcTemplate);
@@ -110,9 +117,7 @@ class AdminApprovalServiceTest {
     @Test
     void createRejectsBlankRequiredFields() {
         assertThatThrownBy(
-                        () ->
-                                service.create(
-                                        " ", "merchant", "42", null, null, null, null, null))
+                        () -> service.create(" ", "merchant", "42", null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("approvalType");
     }
@@ -126,14 +131,19 @@ class AdminApprovalServiceTest {
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("cannot approve their own");
 
-        verify(jdbcTemplate, never()).update(contains("SET request_status = 'APPROVED'"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("SET request_status = 'APPROVED'"),
+                        any(MapSqlParameterSource.class));
     }
 
     @Test
     void checkerApprovesPendingRequestAndAuditsWithFullContext() {
         Map<String, Object> pending = pendingRow("ops.admin", null);
         stubFindById(pending);
-        when(jdbcTemplate.update(contains("SET request_status = 'APPROVED'"), any(MapSqlParameterSource.class)))
+        when(jdbcTemplate.update(
+                        contains("SET request_status = 'APPROVED'"),
+                        any(MapSqlParameterSource.class)))
                 .thenReturn(1);
 
         Map<String, Object> result = service.approve(1L, "finance.checker", "looks good");
@@ -167,7 +177,10 @@ class AdminApprovalServiceTest {
         Map<String, Object> result = service.approve(1L, "finance.checker", null);
 
         assertThat(result.get("request_status")).isEqualTo("APPROVED");
-        verify(jdbcTemplate, never()).update(contains("SET request_status = 'APPROVED'"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("SET request_status = 'APPROVED'"),
+                        any(MapSqlParameterSource.class));
     }
 
     @Test
@@ -201,7 +214,9 @@ class AdminApprovalServiceTest {
     void checkerRejectsPendingRequestAndAuditsWithReason() {
         Map<String, Object> pending = pendingRow("ops.admin", null);
         stubFindById(pending);
-        when(jdbcTemplate.update(contains("SET request_status = 'REJECTED'"), any(MapSqlParameterSource.class)))
+        when(jdbcTemplate.update(
+                        contains("SET request_status = 'REJECTED'"),
+                        any(MapSqlParameterSource.class)))
                 .thenReturn(1);
 
         Map<String, Object> result = service.reject(1L, "finance.checker", "variance too high");
@@ -217,13 +232,16 @@ class AdminApprovalServiceTest {
                         contains("reason=variance too high"),
                         argThat(
                                 (AdminAuditService.AuditContext ctx) ->
-                                        ctx != null && "variance too high".equals(ctx.reasonText())));
+                                        ctx != null
+                                                && "variance too high".equals(ctx.reasonText())));
     }
 
     @Test
     void requireNoPendingForBlocksWhenARequestIsPending() {
         when(jdbcTemplate.queryForObject(
-                        contains("FROM approval_requests"), any(MapSqlParameterSource.class), eq(Long.class)))
+                        contains("FROM approval_requests"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
                 .thenReturn(1L);
 
         assertThatThrownBy(() -> service.requireNoPendingFor("merchant", "42", "DAILY_CLOSE"))
@@ -234,7 +252,9 @@ class AdminApprovalServiceTest {
     @Test
     void requireNoPendingForAllowsWhenNoRequestIsPending() {
         when(jdbcTemplate.queryForObject(
-                        contains("FROM approval_requests"), any(MapSqlParameterSource.class), eq(Long.class)))
+                        contains("FROM approval_requests"),
+                        any(MapSqlParameterSource.class),
+                        eq(Long.class)))
                 .thenReturn(0L);
 
         service.requireNoPendingFor("merchant", "42", "DAILY_CLOSE");
@@ -282,7 +302,10 @@ class AdminApprovalServiceTest {
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("expired");
 
-        verify(jdbcTemplate).update(contains("SET request_status = 'EXPIRED'"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate)
+                .update(
+                        contains("SET request_status = 'EXPIRED'"),
+                        any(MapSqlParameterSource.class));
     }
 
     private void stubFindById(Map<String, Object> row) {
@@ -297,7 +320,8 @@ class AdminApprovalServiceTest {
                         contains("FROM approval_requests WHERE id = :id"),
                         argThat(
                                 (MapSqlParameterSource p) ->
-                                        p != null && java.util.Objects.equals(1L, p.getValue("id")))))
+                                        p != null
+                                                && java.util.Objects.equals(1L, p.getValue("id")))))
                 .thenReturn(List.of(row));
     }
 

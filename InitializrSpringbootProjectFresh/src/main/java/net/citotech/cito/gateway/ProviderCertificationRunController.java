@@ -3,7 +3,6 @@ package net.citotech.cito.gateway;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -131,9 +130,7 @@ public class ProviderCertificationRunController {
     public Map<String, Object> reject(
             @PathVariable long runId, @RequestBody Map<String, Object> payload) {
         return service.rejectRun(
-                runId,
-                string(payload, "reason", null),
-                string(payload, "rejectedBy", "system"));
+                runId, string(payload, "reason", null), string(payload, "rejectedBy", "system"));
     }
 
     @GetMapping(path = "/readiness")

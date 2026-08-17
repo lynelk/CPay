@@ -80,12 +80,12 @@ public class ObservabilityScorecardService {
     }
 
     private double countPendingPayoutApprovals() {
-        return count("SELECT COUNT(*) FROM payout_approval_queue WHERE queue_status='PENDING_APPROVAL'");
+        return count(
+                "SELECT COUNT(*) FROM payout_approval_queue WHERE queue_status='PENDING_APPROVAL'");
     }
 
     private double countOpenReconciliationExceptions() {
-        return count(
-                "SELECT COUNT(*) FROM reconciliation_exceptions WHERE status='OPEN'");
+        return count("SELECT COUNT(*) FROM reconciliation_exceptions WHERE status='OPEN'");
     }
 
     private double countOpenHighCriticalExceptions() {
@@ -111,8 +111,7 @@ public class ObservabilityScorecardService {
     private double count(String sql) {
         try {
             Integer value =
-                    jdbcTemplate.queryForObject(
-                            sql, new MapSqlParameterSource(), Integer.class);
+                    jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Integer.class);
             return value == null ? 0 : value;
         } catch (Exception e) {
             // A metrics read must never take the process down; scrape resolves to 0 this cycle.

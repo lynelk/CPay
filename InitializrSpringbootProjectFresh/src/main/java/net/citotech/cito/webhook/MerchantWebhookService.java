@@ -131,7 +131,8 @@ public class MerchantWebhookService {
         // without parsing the body, and audits can query them directly.
         JSONObject enveloped = new JSONObject(envelopedPayload);
         String deliveryNonce = enveloped.getString("eventId");
-        Timestamp deliveryTimestamp = Timestamp.from(Instant.parse(enveloped.getString("createdAt")));
+        Timestamp deliveryTimestamp =
+                Timestamp.from(Instant.parse(enveloped.getString("createdAt")));
         List<EndpointRow> endpoints = activeEndpoints(merchantId, eventType);
         int queued = 0;
         for (EndpointRow endpoint : endpoints) {
@@ -208,8 +209,8 @@ public class MerchantWebhookService {
     /**
      * Adds the versioned envelope fields (eventId/eventVersion/createdAt) from the catalog on top
      * of the caller's payload, additively - existing fields the caller already set (eventType,
-     * merchantNumber, etc.) are left untouched so a merchant reading only those is unaffected.
-     * The eventId doubles as the delivery nonce that receivers de-dupe on.
+     * merchantNumber, etc.) are left untouched so a merchant reading only those is unaffected. The
+     * eventId doubles as the delivery nonce that receivers de-dupe on.
      */
     private String envelope(EventDefinition definition, String payloadJson) {
         JSONObject obj = new JSONObject(payloadJson);

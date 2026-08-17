@@ -13,11 +13,11 @@ import org.springframework.stereotype.Service;
  * P0 §2: real admin RBAC enforcement over the P0 role catalog.
  *
  * <p>Previously this service recorded an audit row but never verified that the acting principal's
- * role actually held the requested permission - any {@code ROLE_ADMIN} could perform any
- * privileged action. It now resolves the principal's roles from Spring authorities, checks them
- * against {@code admin_permissions} (seeded by V70 for {@code ADMIN} plus the nine P0 roles), and
- * refuses the action with {@link AccessDeniedException} unless at least one of those roles holds
- * the permission.
+ * role actually held the requested permission - any {@code ROLE_ADMIN} could perform any privileged
+ * action. It now resolves the principal's roles from Spring authorities, checks them against {@code
+ * admin_permissions} (seeded by V70 for {@code ADMIN} plus the nine P0 roles), and refuses the
+ * action with {@link AccessDeniedException} unless at least one of those roles holds the
+ * permission.
  *
  * <p>Backwards-compatible: the constructor signature, {@link #require}, {@link
  * #seedDefaultPermissions} and the {@code ADMIN} role keep working exactly as before, so existing
@@ -33,7 +33,8 @@ public class AdminPermissionService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final AdminAuditService auditService;
 
-    public AdminPermissionService(NamedParameterJdbcTemplate jdbcTemplate, AdminAuditService auditService) {
+    public AdminPermissionService(
+            NamedParameterJdbcTemplate jdbcTemplate, AdminAuditService auditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.auditService = auditService;
     }
@@ -48,32 +49,39 @@ public class AdminPermissionService {
     public void require(String permissionCode, String actionName, String resourceReference) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {
-            auditService.record(permissionCode, actionName, resourceReference, "denied:no-authentication");
+            auditService.record(
+                    permissionCode, actionName, resourceReference, "denied:no-authentication");
             throw new AccessDeniedException("Admin role is required");
         }
 
         List<String> roles = rolesOf(authentication);
         if (roles.isEmpty()) {
-            auditService.record(permissionCode, actionName, resourceReference, "denied:no-admin-role");
+            auditService.record(
+                    permissionCode, actionName, resourceReference, "denied:no-admin-role");
             throw new AccessDeniedException("Admin role is required");
         }
 
         boolean granted = roles.stream().anyMatch(role -> hasPermission(role, permissionCode));
-        String summary = granted
-                ? "allowed;roles=" + String.join(",", roles)
-                : "denied:permission-not-granted;roles=" + String.join(",", roles);
+        String summary =
+                granted
+                        ? "allowed;roles=" + String.join(",", roles)
+                        : "denied:permission-not-granted;roles=" + String.join(",", roles);
         auditService.record(permissionCode, actionName, resourceReference, summary);
 
         if (!granted) {
-            throw new AccessDeniedException("Admin role " + String.join(",", roles)
-                    + " does not hold permission " + permissionCode);
+            throw new AccessDeniedException(
+                    "Admin role "
+                            + String.join(",", roles)
+                            + " does not hold permission "
+                            + permissionCode);
         }
     }
 
     /** Whether the given role currently has {@code permissionCode} in {@code admin_permissions}. */
     public boolean hasPermission(String roleName, String permissionCode) {
-        String sql = "SELECT COUNT(*) FROM admin_permissions "
-                + "WHERE role_name = :role_name AND permission_code = :permission_code";
+        String sql =
+                "SELECT COUNT(*) FROM admin_permissions "
+                        + "WHERE role_name = :role_name AND permission_code = :permission_code";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("role_name", roleName);
         p.addValue("permission_code", permissionCode);
@@ -99,7 +107,8 @@ public class AdminPermissionService {
     }
 
     private void add(String roleName, String permissionCode) {
-        String sql = "INSERT IGNORE INTO admin_permissions (role_name, permission_code) VALUES (:role_name, :permission_code)";
+        String sql =
+                "INSERT IGNORE INTO admin_permissions (role_name, permission_code) VALUES (:role_name, :permission_code)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("role_name", roleName);
         p.addValue("permission_code", permissionCode);

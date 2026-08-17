@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
  * admin_audit_events} columns for that list were added by V70; this service exposes a
  * backward-compatible {@link #record(String, String, String, String)} plus a richer overload that
  * takes an {@link AuditContext} so callers (admin role changes, approval-request decisions) can
- * write the full field set. Rows remain append-only; V28 already blocks UPDATE/DELETE on the
- * legacy audit tables with triggers, and this table follows the same no-mutation convention.
+ * write the full field set. Rows remain append-only; V28 already blocks UPDATE/DELETE on the legacy
+ * audit tables with triggers, and this table follows the same no-mutation convention.
  */
 @Service
 public class AdminAuditService {
@@ -26,7 +26,11 @@ public class AdminAuditService {
     }
 
     /** Backward-compatible overload: writes the core fields with the enriched columns NULL. */
-    public void record(String permissionCode, String actionName, String resourceReference, String requestSummary) {
+    public void record(
+            String permissionCode,
+            String actionName,
+            String resourceReference,
+            String requestSummary) {
         record(permissionCode, actionName, resourceReference, requestSummary, null);
     }
 
@@ -57,7 +61,9 @@ public class AdminAuditService {
         p.addValue("resource_reference", resourceReference);
         p.addValue("resource_type", auditContext == null ? null : auditContext.resourceType());
         p.addValue("resource_id", auditContext == null ? null : auditContext.resourceId());
-        p.addValue("previous_state_hash", auditContext == null ? null : auditContext.previousStateHash());
+        p.addValue(
+                "previous_state_hash",
+                auditContext == null ? null : auditContext.previousStateHash());
         p.addValue("new_state_hash", auditContext == null ? null : auditContext.newStateHash());
         p.addValue("reason_text", auditContext == null ? null : auditContext.reasonText());
         p.addValue("request_id", auditContext == null ? null : auditContext.requestId());

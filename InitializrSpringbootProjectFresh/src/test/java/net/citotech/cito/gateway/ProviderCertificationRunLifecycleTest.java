@@ -48,7 +48,8 @@ class ProviderCertificationRunLifecycleTest {
         when(jdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class)))
                 .thenReturn(List.of(runRow(7L, "REJECTED", null, null, 1L, 0L)));
 
-        Map<String, Object> result = service.rejectRun(7L, "Insufficient evidence", "ops@example.com");
+        Map<String, Object> result =
+                service.rejectRun(7L, "Insufficient evidence", "ops@example.com");
 
         assertThat(result.get("run_status")).isEqualTo("REJECTED");
         assertThat(result.get("runId")).isEqualTo(7L);
@@ -124,10 +125,7 @@ class ProviderCertificationRunLifecycleTest {
     @Test
     void productionReadinessIsFalseWhenRunNotApproved() {
         when(jdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class)))
-                .thenReturn(
-                        List.of(
-                                readinessRow(
-                                        "DRAFT", 0L, 1L, null)));
+                .thenReturn(List.of(readinessRow("DRAFT", 0L, 1L, null)));
 
         Map<String, Object> result = service.productionReadiness("MTN", "MTN_MOMO");
 

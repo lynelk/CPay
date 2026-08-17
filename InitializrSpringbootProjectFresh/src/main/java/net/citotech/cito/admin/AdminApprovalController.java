@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * P0 §2: maker-checker approval-request endpoints. A privileged action listed in {@code
- * admin_access_matrix} as requiring maker-checker is recorded here by the maker (POST create),
- * then decided by a checker (approve/reject). The checker must differ from the maker; every
- * transition is fully audited via {@link AdminApprovalService}.
+ * admin_access_matrix} as requiring maker-checker is recorded here by the maker (POST create), then
+ * decided by a checker (approve/reject). The checker must differ from the maker; every transition
+ * is fully audited via {@link AdminApprovalService}.
  */
 @RestController
 @RequestMapping(path = "/api/v2/admin/approval-requests")
@@ -63,18 +63,14 @@ public class AdminApprovalController {
     public Map<String, Object> approve(
             @PathVariable long requestId, @RequestBody Map<String, Object> payload) {
         return approvalService.approve(
-                requestId,
-                string(payload, "approvedBy", null),
-                string(payload, "note", null));
+                requestId, string(payload, "approvedBy", null), string(payload, "note", null));
     }
 
     @PostMapping(path = "/{requestId}/reject")
     public Map<String, Object> reject(
             @PathVariable long requestId, @RequestBody Map<String, Object> payload) {
         return approvalService.reject(
-                requestId,
-                string(payload, "rejectedBy", null),
-                required(payload, "reason"));
+                requestId, string(payload, "rejectedBy", null), required(payload, "reason"));
     }
 
     private static String required(Map<String, Object> payload, String key) {

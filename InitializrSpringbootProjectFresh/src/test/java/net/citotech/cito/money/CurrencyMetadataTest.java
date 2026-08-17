@@ -48,7 +48,10 @@ class CurrencyMetadataTest {
     @Test
     void settlementScaleIsFinerThanOrEqualToEveryMinorUnit() {
         assertThat(CurrencyMetadata.SETTLEMENT_SCALE).isGreaterThanOrEqualTo(2);
-        for (String currency : new String[] {"UGX", "KES", "TZS", "RWF", "NGN", "GHS", "ZAR", "USD", "EUR", "GBP"}) {
+        for (String currency :
+                new String[] {
+                    "UGX", "KES", "TZS", "RWF", "NGN", "GHS", "ZAR", "USD", "EUR", "GBP"
+                }) {
             assertThat(CurrencyMetadata.SETTLEMENT_SCALE)
                     .as("settlement scale must cover display scale for %s", currency)
                     .isGreaterThanOrEqualTo(CurrencyMetadata.minorUnitScale(currency));

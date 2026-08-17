@@ -19,12 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
  * P0 §2: maker-checker approval-request lifecycle.
  *
  * <p>A privileged action that requires maker-checker (settlement approval, daily close, manual
- * finance adjustment, callback secret rotation, high-value payout release, compliance case
- * closure, admin role change, production cap removal, provider production enablement, merchant
- * production activation - see {@code admin_access_matrix}) must first be recorded here as a
- * {@code PENDING_APPROVAL} request by one actor (the maker), then approved or rejected by a
- * different actor (the checker). The maker can never decide their own request, which is the
- * core separation P0 §2 exists to enforce.
+ * finance adjustment, callback secret rotation, high-value payout release, compliance case closure,
+ * admin role change, production cap removal, provider production enablement, merchant production
+ * activation - see {@code admin_access_matrix}) must first be recorded here as a {@code
+ * PENDING_APPROVAL} request by one actor (the maker), then approved or rejected by a different
+ * actor (the checker). The maker can never decide their own request, which is the core separation
+ * P0 §2 exists to enforce.
  *
  * <p>Each request carries the target resource, the action payload, an optional TTL, and the
  * previous/new state hashes required by the P0 audit field list; every transition writes a full
@@ -58,8 +58,8 @@ public class AdminApprovalService {
 
     /**
      * Maker step: record a privileged action for checker approval. The acting principal must hold
-     * {@link #PERMISSION_CREATE}; a non-blank {@code approvalType}, {@code resourceType} and
-     * {@code resourceId} are required; the payload is stored for the checker's review.
+     * {@link #PERMISSION_CREATE}; a non-blank {@code approvalType}, {@code resourceType} and {@code
+     * resourceId} are required; the payload is stored for the checker's review.
      *
      * @return the request id
      */
@@ -73,7 +73,8 @@ public class AdminApprovalService {
             String newStateHash,
             String requestId,
             String expiresInHours) {
-        permissions.require(PERMISSION_CREATE, "approval-request-create", resourceType + ":" + resourceId);
+        permissions.require(
+                PERMISSION_CREATE, "approval-request-create", resourceType + ":" + resourceId);
 
         String trimmedType = required(approvalType, "approvalType");
         String trimmedResourceType = required(resourceType, "resourceType");
@@ -111,8 +112,14 @@ public class AdminApprovalService {
                 PERMISSION_CREATE,
                 "APPROVAL_REQUEST_CREATE",
                 trimmedResourceType + ":" + trimmedResourceId,
-                "approval_type=" + trimmedType + "; request_reference=" + requestReference
-                        + "; requested_by=" + currentActor() + "; expires_in_hours=" + expiresInHours,
+                "approval_type="
+                        + trimmedType
+                        + "; request_reference="
+                        + requestReference
+                        + "; requested_by="
+                        + currentActor()
+                        + "; expires_in_hours="
+                        + expiresInHours,
                 new AdminAuditService.AuditContext(
                         null,
                         trimmedResourceType,
@@ -133,7 +140,8 @@ public class AdminApprovalService {
      */
     @Transactional
     public Map<String, Object> approve(long requestId, String checker, String note) {
-        permissions.require(PERMISSION_APPROVE, "approval-request-approve", "approval:" + requestId);
+        permissions.require(
+                PERMISSION_APPROVE, "approval-request-approve", "approval:" + requestId);
 
         Map<String, Object> existing = findById(requestId);
         if (existing == null) {
@@ -182,7 +190,12 @@ public class AdminApprovalService {
                 PERMISSION_APPROVE,
                 "APPROVAL_REQUEST_APPROVE",
                 existing.get("resource_type") + ":" + existing.get("resource_id"),
-                "approval_request_id=" + requestId + "; approved_by=" + actor + "; review_note=" + note,
+                "approval_request_id="
+                        + requestId
+                        + "; approved_by="
+                        + actor
+                        + "; review_note="
+                        + note,
                 new AdminAuditService.AuditContext(
                         null,
                         (String) existing.get("resource_type"),
@@ -249,7 +262,12 @@ public class AdminApprovalService {
                 PERMISSION_REJECT,
                 "APPROVAL_REQUEST_REJECT",
                 existing.get("resource_type") + ":" + existing.get("resource_id"),
-                "approval_request_id=" + requestId + "; rejected_by=" + actor + "; reason=" + trimmedReason,
+                "approval_request_id="
+                        + requestId
+                        + "; rejected_by="
+                        + actor
+                        + "; reason="
+                        + trimmedReason,
                 new AdminAuditService.AuditContext(
                         null,
                         (String) existing.get("resource_type"),
@@ -262,7 +280,10 @@ public class AdminApprovalService {
         return result;
     }
 
-    /** Generic maker-checker gate: refuses an action on {@code resourceType:resourceId} if one is pending. */
+    /**
+     * Generic maker-checker gate: refuses an action on {@code resourceType:resourceId} if one is
+     * pending.
+     */
     @Transactional
     public void requireNoPendingFor(String resourceType, String resourceId, String actionName) {
         MapSqlParameterSource p = new MapSqlParameterSource();
@@ -276,8 +297,11 @@ public class AdminApprovalService {
                         Long.class);
         if (count != null && count > 0) {
             throw new PaymentGatewayException(
-                    actionName + " blocked: a pending approval request already exists for "
-                            + resourceType + ":" + resourceId);
+                    actionName
+                            + " blocked: a pending approval request already exists for "
+                            + resourceType
+                            + ":"
+                            + resourceId);
         }
     }
 
@@ -343,7 +367,11 @@ public class AdminApprovalService {
                 "UPDATE approval_requests SET request_status = 'EXPIRED' "
                         + "WHERE id = :id AND request_status = 'PENDING_APPROVAL'",
                 new MapSqlParameterSource("id", requestId));
-        auditService.record(PERMISSION_READ, "APPROVAL_REQUEST_EXPIRE", "approval:" + requestId, "expired_by=" + actor);
+        auditService.record(
+                PERMISSION_READ,
+                "APPROVAL_REQUEST_EXPIRE",
+                "approval:" + requestId,
+                "expired_by=" + actor);
     }
 
     private String effectiveActor(String checker) {

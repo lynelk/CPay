@@ -1,28 +1,26 @@
 package net.citotech.cito.security;
 
-import net.citotech.cito.Common;
-import net.citotech.cito.GeneralException;
-import net.citotech.cito.Model.Merchant;
-import net.citotech.cito.metrics.SignatureVerificationFailureRegistry;
-
 import java.security.PublicKey;
 import java.security.Signature;
 import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.citotech.cito.Common;
+import net.citotech.cito.GeneralException;
+import net.citotech.cito.Model.Merchant;
+import net.citotech.cito.metrics.SignatureVerificationFailureRegistry;
 
-/**
- * Service for verifying RSA SHA256 signatures from merchant API requests.
- */
+/** Service for verifying RSA SHA256 signatures from merchant API requests. */
 public class SignatureVerificationService {
 
-    private static final Logger logger = Logger.getLogger(SignatureVerificationService.class.getName());
+    private static final Logger logger =
+            Logger.getLogger(SignatureVerificationService.class.getName());
 
     /**
      * Verifies the RSA SHA256 signature for a merchant API request.
      *
-     * @param merchant        the merchant whose public key is used for verification
-     * @param signedData      the data that was signed (concatenation of request fields)
+     * @param merchant the merchant whose public key is used for verification
+     * @param signedData the data that was signed (concatenation of request fields)
      * @param signatureBase64 the base64-encoded signature from the request
      * @return null if signature is valid, or an error JSON string if invalid
      */

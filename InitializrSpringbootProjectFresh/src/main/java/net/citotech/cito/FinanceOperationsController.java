@@ -339,22 +339,36 @@ public class FinanceOperationsController {
         String effectiveReason = optionalString(body, "blockedReason");
         if ("APPROVED".equals(status) || "CLOSED".equals(status)) {
             List<String> blockers = new java.util.ArrayList<>();
-            if (!effectiveBoolean(body.get("providerStatementsReceived"), current, "provider_statements_received")) {
+            if (!effectiveBoolean(
+                    body.get("providerStatementsReceived"),
+                    current,
+                    "provider_statements_received")) {
                 blockers.add("provider statements not received");
             }
-            if (!effectiveBoolean(body.get("reconciliationImportCompleted"), current, "reconciliation_import_completed")) {
+            if (!effectiveBoolean(
+                    body.get("reconciliationImportCompleted"),
+                    current,
+                    "reconciliation_import_completed")) {
                 blockers.add("reconciliation import not completed");
             }
-            if (!effectiveBoolean(body.get("unmatchedItemsReviewed"), current, "unmatched_items_reviewed")) {
+            if (!effectiveBoolean(
+                    body.get("unmatchedItemsReviewed"), current, "unmatched_items_reviewed")) {
                 blockers.add("unmatched items not reviewed");
             }
-            if (!effectiveBoolean(body.get("highSeverityControlsResolved"), current, "high_severity_controls_resolved")) {
+            if (!effectiveBoolean(
+                    body.get("highSeverityControlsResolved"),
+                    current,
+                    "high_severity_controls_resolved")) {
                 blockers.add("high-severity controls unresolved");
             }
-            if (!effectiveBoolean(body.get("makerCheckerApprovalsComplete"), current, "maker_checker_approvals_complete")) {
+            if (!effectiveBoolean(
+                    body.get("makerCheckerApprovalsComplete"),
+                    current,
+                    "maker_checker_approvals_complete")) {
                 blockers.add("maker-checker approvals incomplete");
             }
-            if (!effectiveBoolean(body.get("financeOwnerSignedOff"), current, "finance_owner_signed_off")) {
+            if (!effectiveBoolean(
+                    body.get("financeOwnerSignedOff"), current, "finance_owner_signed_off")) {
                 blockers.add("finance owner has not signed off");
             }
 
@@ -370,7 +384,9 @@ public class FinanceOperationsController {
                             Integer.class,
                             current.get("business_date"));
             if (openCriticalExceptions != null && openCriticalExceptions > 0) {
-                blockers.add(openCriticalExceptions + " unresolved high-severity reconciliation exception(s)");
+                blockers.add(
+                        openCriticalExceptions
+                                + " unresolved high-severity reconciliation exception(s)");
             }
 
             Integer unbalancedRuns =
@@ -382,7 +398,8 @@ public class FinanceOperationsController {
                             Integer.class,
                             current.get("business_date"));
             if (unbalancedRuns != null && unbalancedRuns > 0) {
-                blockers.add(unbalancedRuns + " unbalanced trial-balance run(s) for the business date");
+                blockers.add(
+                        unbalancedRuns + " unbalanced trial-balance run(s) for the business date");
             }
 
             if (!blockers.isEmpty()) {
@@ -600,8 +617,7 @@ public class FinanceOperationsController {
         }
     }
 
-    private boolean effectiveBoolean(
-            Object submitted, Map<String, Object> current, String column) {
+    private boolean effectiveBoolean(Object submitted, Map<String, Object> current, String column) {
         if (submitted instanceof Boolean bool) {
             return bool;
         }

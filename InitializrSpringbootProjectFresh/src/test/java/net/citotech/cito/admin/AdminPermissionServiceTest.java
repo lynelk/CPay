@@ -61,7 +61,9 @@ class AdminPermissionServiceTest {
                         eq("DAILY_CLOSE"),
                         eq("daily-close"),
                         eq("merchant:42"),
-                        argThat((String summary) -> summary.startsWith("allowed;roles=SUPER_ADMIN")));
+                        argThat(
+                                (String summary) ->
+                                        summary.startsWith("allowed;roles=SUPER_ADMIN")));
     }
 
     @Test
@@ -78,7 +80,9 @@ class AdminPermissionServiceTest {
                         eq("DAILY_CLOSE"),
                         eq("daily-close"),
                         eq("merchant:42"),
-                        argThat((String summary) -> summary.contains("denied:permission-not-granted")));
+                        argThat(
+                                (String summary) ->
+                                        summary.contains("denied:permission-not-granted")));
     }
 
     @Test
@@ -86,13 +90,17 @@ class AdminPermissionServiceTest {
         authenticate("OPERATIONS_ADMIN");
         stubPermission("OPERATIONS_ADMIN", "MERCHANT_PRODUCTION_ACTIVATION", false);
 
-        assertThatThrownBy(() -> service.require("MERCHANT_PRODUCTION_ACTIVATION", "activate", "merchant:9"))
+        assertThatThrownBy(
+                        () ->
+                                service.require(
+                                        "MERCHANT_PRODUCTION_ACTIVATION", "activate", "merchant:9"))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void requireRefusesWhenThePrincipalHoldsNoAdminRole() {
-        // A non-role authority (e.g. an OAuth scope) means the principal holds no admin role at all.
+        // A non-role authority (e.g. an OAuth scope) means the principal holds no admin role at
+        // all.
         SecurityContextHolder.getContext()
                 .setAuthentication(
                         new UsernamePasswordAuthenticationToken(
@@ -102,7 +110,8 @@ class AdminPermissionServiceTest {
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("Admin role is required");
 
-        verify(jdbcTemplate, never()).queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class));
+        verify(jdbcTemplate, never())
+                .queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class));
     }
 
     @Test
@@ -165,7 +174,8 @@ class AdminPermissionServiceTest {
                                 (MapSqlParameterSource p) ->
                                         p != null
                                                 && roleName.equals(p.getValue("role_name"))
-                                                && permissionCode.equals(p.getValue("permission_code"))),
+                                                && permissionCode.equals(
+                                                        p.getValue("permission_code"))),
                         eq(Long.class)))
                 .thenReturn(granted ? 1L : 0L);
     }

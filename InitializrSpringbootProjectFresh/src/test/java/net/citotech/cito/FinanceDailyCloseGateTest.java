@@ -33,8 +33,7 @@ class FinanceDailyCloseGateTest {
         FinanceOperationsController controller =
                 new FinanceOperationsController(jdbcTemplate, new ObjectMapper());
 
-        controller.decideDailyClose(
-                1L, Map.of("status", "APPROVED", "actor", "finance-admin"));
+        controller.decideDailyClose(1L, Map.of("status", "APPROVED", "actor", "finance-admin"));
 
         Object[] args = capturedUpdateArgs(jdbcTemplate);
         assertThat(args[0]).isEqualTo("APPROVED");
@@ -55,8 +54,7 @@ class FinanceDailyCloseGateTest {
         FinanceOperationsController controller =
                 new FinanceOperationsController(jdbcTemplate, new ObjectMapper());
 
-        controller.decideDailyClose(
-                1L, Map.of("status", "APPROVED", "actor", "finance-admin"));
+        controller.decideDailyClose(1L, Map.of("status", "APPROVED", "actor", "finance-admin"));
 
         Object[] args = capturedUpdateArgs(jdbcTemplate);
         assertThat(args[0]).isEqualTo("BLOCKED");
@@ -75,8 +73,7 @@ class FinanceDailyCloseGateTest {
         FinanceOperationsController controller =
                 new FinanceOperationsController(jdbcTemplate, new ObjectMapper());
 
-        controller.decideDailyClose(
-                1L, Map.of("status", "CLOSED", "actor", "finance-admin"));
+        controller.decideDailyClose(1L, Map.of("status", "CLOSED", "actor", "finance-admin"));
 
         Object[] args = capturedUpdateArgs(jdbcTemplate);
         assertThat(args[0]).isEqualTo("BLOCKED");
@@ -95,8 +92,7 @@ class FinanceDailyCloseGateTest {
         FinanceOperationsController controller =
                 new FinanceOperationsController(jdbcTemplate, new ObjectMapper());
 
-        controller.decideDailyClose(
-                1L, Map.of("status", "APPROVED", "actor", "finance-admin"));
+        controller.decideDailyClose(1L, Map.of("status", "APPROVED", "actor", "finance-admin"));
 
         Object[] args = capturedUpdateArgs(jdbcTemplate);
         assertThat(args[0]).isEqualTo("BLOCKED");

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -18,7 +17,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Common;
-import net.citotech.cito.Model.HttpRequestResponse;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
 import org.json.JSONObject;
@@ -226,8 +224,7 @@ class MerchantWebhookServiceTest {
         verify(jdbcTemplate).update(anyString(), captor.capture());
         String nonce = (String) captor.getValue().getValue("delivery_nonce");
         assertThat(nonce).isNotBlank();
-        assertThat(captor.getValue().getValue("delivery_timestamp"))
-                .isInstanceOf(Timestamp.class);
+        assertThat(captor.getValue().getValue("delivery_timestamp")).isInstanceOf(Timestamp.class);
         JSONObject stored = new JSONObject((String) captor.getValue().getValue("payload_json"));
         assertThat(stored.getString("eventId")).isEqualTo(nonce);
         assertThat(stored.getString("createdAt")).isNotBlank();

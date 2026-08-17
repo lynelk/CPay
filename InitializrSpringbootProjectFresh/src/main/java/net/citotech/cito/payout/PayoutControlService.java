@@ -199,8 +199,7 @@ public class PayoutControlService {
                 && !firstBeneficiary) {
             BigDecimal historicalMax = beneficiaryMaxPayout(merchant.getId(), beneficiary);
             if (historicalMax != null
-                    && amount.compareTo(
-                                    historicalMax.multiply(control.beneficiaryAmountFactor))
+                    && amount.compareTo(historicalMax.multiply(control.beneficiaryAmountFactor))
                             > 0) {
                 return queueApproval(
                         request,
@@ -444,8 +443,8 @@ public class PayoutControlService {
 
     /**
      * Returns the largest prior payout to this beneficiary (null when none) so the
-     * BENEFICIARY_AMOUNT_CHANGE rule can compare against a factor of the beneficiary's own
-     * history instead of a flat amount.
+     * BENEFICIARY_AMOUNT_CHANGE rule can compare against a factor of the beneficiary's own history
+     * instead of a flat amount.
      */
     private BigDecimal beneficiaryMaxPayout(long merchantId, String beneficiary) {
         MapSqlParameterSource p = new MapSqlParameterSource();

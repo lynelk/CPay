@@ -88,7 +88,9 @@ class PayoutControlServiceTest {
                 .thenReturn(0);
         stubControl(jdbcTemplate, new BigDecimal("1000"), null, null, null, "NO");
         when(jdbcTemplate.queryForObject(
-                        contains("COALESCE(SUM"), any(MapSqlParameterSource.class), eq(BigDecimal.class)))
+                        contains("COALESCE(SUM"),
+                        any(MapSqlParameterSource.class),
+                        eq(BigDecimal.class)))
                 .thenReturn(new BigDecimal("800"));
         when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
         when(jdbcTemplate.queryForObject(
@@ -112,7 +114,9 @@ class PayoutControlServiceTest {
                 .thenReturn(0);
         stubControl(jdbcTemplate, new BigDecimal("1000"), new BigDecimal("5000"), null, null, "NO");
         when(jdbcTemplate.queryForObject(
-                        contains("COALESCE(SUM"), any(MapSqlParameterSource.class), eq(BigDecimal.class)))
+                        contains("COALESCE(SUM"),
+                        any(MapSqlParameterSource.class),
+                        eq(BigDecimal.class)))
                 .thenReturn(new BigDecimal("200"));
         PayoutControlService service = new PayoutControlService(jdbcTemplate, OBJECT_MAPPER);
 
@@ -232,7 +236,9 @@ class PayoutControlServiceTest {
                 .thenReturn(1);
         stubControl(jdbcTemplate, null, null, null, null, "NO", "NO", new BigDecimal("2.00"));
         when(jdbcTemplate.queryForObject(
-                        contains("COALESCE(SUM"), any(MapSqlParameterSource.class), eq(BigDecimal.class)))
+                        contains("COALESCE(SUM"),
+                        any(MapSqlParameterSource.class),
+                        eq(BigDecimal.class)))
                 .thenReturn(BigDecimal.ZERO);
         when(jdbcTemplate.queryForObject(
                         contains("SELECT MAX(original_amount)"),
@@ -308,8 +314,7 @@ class PayoutControlServiceTest {
             BigDecimal perTx,
             Integer velocity,
             String approvalRequired) {
-        stubControl(
-                jdbcTemplate, daily, monthly, perTx, velocity, approvalRequired, "NO", null);
+        stubControl(jdbcTemplate, daily, monthly, perTx, velocity, approvalRequired, "NO", null);
     }
 
     private void stubControl(
