@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import net.citotech.cito.finance.SettlementLifecycleService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,9 +40,19 @@ public class FinanceOperationsController {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
+    private final SettlementLifecycleService settlementLifecycleService;
+
     public FinanceOperationsController(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+        this(jdbcTemplate, objectMapper, null);
+    }
+
+    public FinanceOperationsController(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            SettlementLifecycleService settlementLifecycleService) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+        this.settlementLifecycleService = settlementLifecycleService;
     }
 
     @GetMapping("/settlements")
@@ -152,6 +163,10 @@ public class FinanceOperationsController {
             @PathVariable Long id, @RequestBody Map<String, Object> body) {
         String status = requiredString(body, "status");
         String actor = optionalString(body, "actor");
+        if (settlementLifecycleService != null) {
+            return settlementLifecycleService.transitionStatus(
+                    id, status, actor, optionalString(body, "reason"), null);
+        }
         jdbcTemplate.update(
                 """
                 UPDATE finance_settlement_batches
@@ -541,6 +556,107 @@ public class FinanceOperationsController {
                 optionalString(body, "evidenceUrl"),
                 json(body));
         return accepted("incident_event_recorded", id);
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/calculate")
+    public Map<String, Object> calculateSettlement(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.calculate(
+                id, optionalString(body, "actor"), optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/submit-review")
+    public Map<String, Object> submitSettlementForReview(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.submitForReview(
+                id, optionalString(body, "actor"), optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/approve")
+    public Map<String, Object> approveSettlement(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.approve(
+                id,
+                optionalString(body, "checker"),
+                optionalString(body, "note"),
+                optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/reject-review")
+    public Map<String, Object> rejectSettlementReview(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.rejectReview(
+                id,
+                optionalString(body, "checker"),
+                requiredString(body, "reason"),
+                optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/mark-paid")
+    public Map<String, Object> markSettlementPaid(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.markPaid(
+                id, optionalString(body, "actor"), optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/reconcile")
+    public Map<String, Object> reconcileSettlement(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.reconcile(
+                id, optionalString(body, "actor"), optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/close")
+    public Map<String, Object> closeSettlement(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.close(
+                id, optionalString(body, "actor"), optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/exception")
+    public Map<String, Object> flagSettlementException(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.flagException(
+                id,
+                optionalString(body, "actor"),
+                optionalString(body, "reason"),
+                optionalString(body, "requestId"));
+    }
+
+    @Transactional
+    @PostMapping("/settlements/{id}/reopen")
+    public Map<String, Object> reopenSettlement(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireSettlementService();
+        return settlementLifecycleService.reopenFromException(
+                id,
+                optionalString(body, "actor"),
+                optionalString(body, "reason"),
+                optionalString(body, "requestId"));
+    }
+
+    private void requireSettlementService() {
+        if (settlementLifecycleService == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Settlement lifecycle service is not available");
+        }
     }
 
     private Long lastInsertId() {
