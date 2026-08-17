@@ -2848,6 +2848,31 @@ paths:
       - in: query
         name: status
         schema:
+          type: string
+      - in: query
+        name: merchantId
+        schema:
+          type: integer
+          format: int64
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Settlement batches returned
+    post:
+      summary: Create a settlement batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettlementBatchRequest'
+      responses:
+        '200':
+          description: Settlement batch created
   /api/v2/admin/communication/campaigns:
     post:
       summary: Create a draft communication campaign with a recipient list
@@ -3179,163 +3204,6 @@ paths:
           description: Published price-book version with components
         '400':
           $ref: '#/components/responses/BadRequest'
-components:
-  securitySchemes:
-    CPayV2Signature:
-      type: apiKey
-      in: header
-      name: X-CPay-Signature
-    AdminBasicAuth:
-      type: http
-      scheme: basic
-  parameters:
-    IdempotencyKey:
-      name: X-CPay-Idempotency-Key
-      in: header
-      required: false
-      schema:
-        type: string
-  schemas:
-    PaymentParty:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-    PaymentRequest:
-      type: object
-      required: [merchantNumber, country, currency, amount, reference, description, callbackUrl]
-      properties:
-        merchantNumber:
-          type: string
-        channel:
-          type: string
-        country:
-          type: string
-        currency:
-          type: string
-        amount:
-          type: string
-        reference:
-          type: string
-        description:
-          type: string
-        callbackUrl:
-          type: string
-        payer:
-          $ref: '#/components/schemas/PaymentParty'
-        payee:
-          $ref: '#/components/schemas/PaymentParty'
-    PaymentResult:
-      type: object
-      properties:
-        reference:
-          type: string
-        transactionId:
-          type: string
-        status:
-          type: string
-        channel:
-          type: string
-        currency:
-          type: string
-        message:
-          type: string
-        providerResponse:
-          type: string
-    FxQuoteRequest:
-      type: object
-      required: [merchantNumber, sourceCurrency, targetCurrency, sourceAmount]
-      properties:
-        merchantNumber:
-          type: string
-        sourceCurrency:
-          type: string
-        targetCurrency:
-          type: string
-        sourceAmount:
-          type: string
-    FxQuoteResponse:
-      type: object
-      properties:
-        quoteReference:
-          type: string
-        sourceCurrency:
-          type: string
-        targetCurrency:
-          type: string
-        sourceAmount:
-          type: string
-        targetAmount:
-          type: string
-        rate:
-          type: string
-        expiresAt:
-          type: string
-          format: date-time
-    TransferIntentRequest:
-      type: object
-      required: [quoteReference, sourceCountry, targetCountry, sourceCurrency, targetCurrency, sourceAmount, beneficiaryAccount, beneficiaryName]
-      properties:
-        merchantNumber:
-          type: string
-        quoteReference:
-          type: string
-        sourceCountry:
-          type: string
-        targetCountry:
-          type: string
-        sourceCurrency:
-          type: string
-        targetCurrency:
-          type: string
-        sourceAmount:
-          type: string
-        beneficiaryAccount:
-          type: string
-        beneficiaryName:
-          type: string
-        description:
-          type: string
-    TransferIntentResponse:
-      type: object
-      properties:
-        transferReference:
-          type: string
-        status:
-          type: string
-        message:
-          type: string
-    WebhookEventCatalogEntry:
-      type: object
-      properties:
-        eventType:
-          type: string
-      - in: query
-        name: merchantId
-        schema:
-          type: integer
-          format: int64
-      - in: query
-        name: limit
-        schema:
-          type: integer
-          default: 50
-      responses:
-        '200':
-          description: Settlement batches returned
-    post:
-      summary: Create a settlement batch
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SettlementBatchRequest'
-      responses:
-        '200':
-          description: Settlement batch created
   /api/v2/admin/finance-operations/settlements/{id}:
     get:
       summary: Read settlement batch with items
