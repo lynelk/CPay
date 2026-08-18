@@ -62,11 +62,9 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
 
         try {
             Map<String, String> values = templateValues(command);
-            String renderedPath = replace(operation.commandPath(), values);
             String body = renderBody(operation.requestTemplate(), values);
-            String url = join(contract.commandBaseUrl(), renderedPath);
-            Map<String, String> headers =
-                    authHeaders(contract, operation, renderedPath, body, values);
+            String url = buildUrl(contract, operation, values, body);
+            Map<String, String> headers = authHeaders(contract, operation, url, body, values);
             headers.put("Accept", "application/json");
             if (!body.isBlank()) headers.put("Content-Type", "application/json");
             if (!operation.idempotencyHeaderName().isBlank()) {
@@ -104,6 +102,48 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
         }
     }
 
+    /**
+     * Builds the request URL structurally using {@code UriComponentsBuilder} so query parameters
+     * containing {@code ?}, {@code &}, {@code =}, {@code /} (especially callback URLs with their
+     * own query strings) are correctly encoded rather than naively concatenated.
+     *
+     * <p>ChargeNow operations are all query-parameter driven; the operation path supplies the
+     * relative path template and the values map supplies every known placeholder.
+     */
+    private String buildUrl(
+            Contract contract, Operation operation, Map<String, String> values, String body) {
+        String renderedPath = replace(operation.commandPath(), values);
+        String base = join(contract.commandBaseUrl(), renderedPath);
+        StringBuilder url = new StringBuilder(base);
+        String sep = base.contains("?") ? "&" : "?";
+        if (values.containsKey("externalDeviceId") && !values.get("externalDeviceId").isBlank()) {
+            url.append(sep)
+                    .append("deviceId=")
+                    .append(encodeQueryParam(values.get("externalDeviceId")));
+            sep = "&";
+        }
+        if (values.containsKey("providerReference") && !values.get("providerReference").isBlank()) {
+            url.append(sep)
+                    .append("tradeNo=")
+                    .append(encodeQueryParam(values.get("providerReference")));
+            sep = "&";
+        }
+        if (values.containsKey("callbackUrl") && !values.get("callbackUrl").isBlank()) {
+            url.append(sep)
+                    .append("callbackURL=")
+                    .append(encodeQueryParam(values.get("callbackUrl")));
+        }
+        return url.toString();
+    }
+
+    private String encodeQueryParam(String value) {
+        try {
+            return java.net.URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+        } catch (Exception e) {
+            return value;
+        }
+    }
+
     private Map<String, String> templateValues(VendingCommand command) {
         Map<String, String> values = new LinkedHashMap<>();
         values.put("externalDeviceId", nullToEmpty(command.externalDeviceId()));
@@ -115,6 +155,8 @@ public class ChargeNowVendingConnectorAdapter implements VendingConnectorAdapter
                     .forEach((key, value) -> values.put(key, value == null ? "" : value));
         }
         values.putIfAbsent("rentalReference", "");
+        values.putIfAbsent("providerReference", "");
+        values.putIfAbsent("callbackUrl", "");
         return values;
     }
 

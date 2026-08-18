@@ -32,7 +32,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V71__webhook_delivery_replay_hardening.sql",
                     "V72__payout_risk_trigger_rules.sql",
                     "V73__settlement_lifecycle_enforcement.sql",
-                    "V74__vending_vendor_neutral_production.sql");
+                    "V74__vending_vendor_neutral_production.sql",
+                    "V75__chargenow_native_profile.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -98,7 +99,10 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("vending_exceptions")
                 .contains("vending_settlements")
                 .contains("vendor_code")
-                .contains("uk_vending_rental_provider_ref");
+                .contains("uk_vending_rental_provider_ref")
+                .contains("request_body_required")
+                .contains("callback_verification_mode")
+                .contains("vendor_username");
     }
 
     @Test
