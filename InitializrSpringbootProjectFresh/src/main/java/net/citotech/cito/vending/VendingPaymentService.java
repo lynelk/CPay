@@ -32,7 +32,8 @@ public class VendingPaymentService {
             String amount,
             String currency,
             String channel,
-            String reference) {
+            String reference,
+            VendingPaymentContext context) {
         Merchant merchant = merchant(merchantId);
         PaymentRequest request = request(merchant, amount, currency, channel, reference);
         PaymentPartyRequest payer = new PaymentPartyRequest();
@@ -40,8 +41,7 @@ public class VendingPaymentService {
         payer.setValue(msisdn);
         request.setPayer(payer);
         request.setDescription("Vending deposit " + reference);
-        request.getMetadata().put("cpayDomain", "VENDING");
-        request.getMetadata().put("vendingOperation", "DEPOSIT");
+        applyVendingMetadata(request, "DEPOSIT", context);
         return payments.collect(request, merchant, "vending-internal");
     }
 
@@ -51,7 +51,8 @@ public class VendingPaymentService {
             String amount,
             String currency,
             String channel,
-            String reference) {
+            String reference,
+            VendingPaymentContext context) {
         Merchant merchant = merchant(merchantId);
         PaymentRequest request = request(merchant, amount, currency, channel, reference);
         PaymentPartyRequest payee = new PaymentPartyRequest();
@@ -59,9 +60,31 @@ public class VendingPaymentService {
         payee.setValue(msisdn);
         request.setPayee(payee);
         request.setDescription("Vending refund " + reference);
-        request.getMetadata().put("cpayDomain", "VENDING");
-        request.getMetadata().put("vendingOperation", "REFUND");
+        applyVendingMetadata(request, "REFUND", context);
         return payments.payout(request, merchant, "vending-internal");
+    }
+
+    /**
+     * Tags every vending financial movement with the domain/vendor/operation metadata required by
+     * the vending directive, so reports can always explain which vendor, connector, device and OEM
+     * reference produced a ledger entry. Blank correlation values are omitted rather than stored as
+     * empty metadata.
+     */
+    private void applyVendingMetadata(
+            PaymentRequest request, String operation, VendingPaymentContext context) {
+        request.getMetadata().put("cpayDomain", "VENDING");
+        request.getMetadata()
+                .put("vendingVendor", VendingVendorCode.require(context.vendorCode()).value());
+        request.getMetadata().put("vendingOperation", operation);
+        putIfPresent(request, "vendingConnectorId", context.connectorId());
+        putIfPresent(request, "vendingRentalReference", context.rentalReference());
+        putIfPresent(request, "vendingDeviceId", context.deviceId());
+        putIfPresent(request, "vendingOemReference", context.oemReference());
+    }
+
+    private void putIfPresent(PaymentRequest request, String key, String value) {
+        if (value == null || value.isBlank()) return;
+        request.getMetadata().put(key, value.trim());
     }
 
     private PaymentRequest request(

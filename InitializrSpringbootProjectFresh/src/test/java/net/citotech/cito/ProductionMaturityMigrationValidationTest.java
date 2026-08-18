@@ -31,7 +31,8 @@ class ProductionMaturityMigrationValidationTest {
                     "V70__admin_rbac_maker_checker.sql",
                     "V71__webhook_delivery_replay_hardening.sql",
                     "V72__payout_risk_trigger_rules.sql",
-                    "V73__settlement_lifecycle_enforcement.sql");
+                    "V73__settlement_lifecycle_enforcement.sql",
+                    "V74__vending_vendor_neutral_production.sql");
 
     @Test
     void productionMaturityMigrationVersionsArePresentWithoutCollidingWithExistingMigrations()
@@ -89,7 +90,15 @@ class ProductionMaturityMigrationValidationTest {
                 .contains("parked_at")
                 .contains("park_reason")
                 .contains("provider_switch_approval_flag")
-                .contains("beneficiary_amount_factor");
+                .contains("beneficiary_amount_factor")
+                .contains("vending_rental_provider_refs")
+                .contains("vending_callback_verifications")
+                .contains("vending_price_snapshots")
+                .contains("vending_reconciliations")
+                .contains("vending_exceptions")
+                .contains("vending_settlements")
+                .contains("vendor_code")
+                .contains("uk_vending_rental_provider_ref");
     }
 
     @Test

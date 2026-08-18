@@ -117,7 +117,13 @@ public class VendingRentalService {
                             deposit.toPlainString(),
                             policy.currency(),
                             channelCode,
-                            collectReference);
+                            collectReference,
+                            VendingPaymentContext.of(vendorCode(device))
+                                    .withConnectorId(connectorId(device))
+                                    .withRentalReference(rentalReference)
+                                    .withDeviceId(
+                                            String.valueOf(
+                                                    VendingRepository.number(device.get("id")))));
             repository.setCollectTransaction(
                     merchantId, rentalReference, result.getTransactionId());
             repository.event(
@@ -416,7 +422,8 @@ public class VendingRentalService {
                             refund.toPlainString(),
                             VendingRepository.string(rental.get("currency")),
                             VendingRepository.string(rental.get("channel_code")),
-                            VendingRepository.string(rental.get("refund_reference")));
+                            VendingRepository.string(rental.get("refund_reference")),
+                            refundContext(rental));
             repository.setRefundTransaction(
                     merchantId,
                     VendingRepository.string(rental.get("rental_reference")),
@@ -441,6 +448,34 @@ public class VendingRentalService {
                     VendingRepository.string(rental.get("currency")),
                     null);
         }
+    }
+
+    private String vendorCode(Map<String, Object> device) {
+        String value = VendingRepository.string(device.get("vendor_code"));
+        if (value.isBlank()) return VendingVendorCode.CHARGENOW.value();
+        try {
+            return VendingVendorCode.require(value).value();
+        } catch (PaymentGatewayException e) {
+            return VendingVendorCode.CHARGENOW.value();
+        }
+    }
+
+    private String connectorId(Map<String, Object> device) {
+        Object value = device.get("connector_id");
+        if (value == null) return "";
+        return String.valueOf(value);
+    }
+
+    private VendingPaymentContext refundContext(Map<String, Object> rental) {
+        String rentalReference = VendingRepository.string(rental.get("rental_reference"));
+        return VendingPaymentContext.of(
+                        VendingVendorCode.require(
+                                        VendingRepository.string(rental.get("vendor_code")))
+                                .value())
+                .withRentalReference(rentalReference)
+                .withDeviceId(VendingRepository.string(rental.get("device_id")))
+                .withOemReference(
+                        VendingRepository.string(rental.get("provider_rental_reference")));
     }
 
     private void syncRefund(long merchantId, Map<String, Object> rental, String actor) {
