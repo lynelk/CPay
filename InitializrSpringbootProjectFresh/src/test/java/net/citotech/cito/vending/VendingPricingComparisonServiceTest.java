@@ -122,7 +122,9 @@ class VendingPricingComparisonServiceTest {
     }
 
     @Test
-    void dailyMaxPriceZeroIgnoredWhenPolicyNull() {
+    void dailyMaxPriceWithoutPolicyLimitIsMismatch() {
+        // A device charging a daily cap the merchant's policy never configured is itself a
+        // material mismatch - BLOCK_ON_MISMATCH exists to catch exactly this.
         VendingPricingPolicy policy = policyWithNullDailyCap();
         String providerJson =
                 "{\"currency\":\"UGX\",\"depositAmount\":20000,\"priceMinute\":2000,"
@@ -130,14 +132,11 @@ class VendingPricingComparisonServiceTest {
                         + "\"timeoutDay\":0}";
 
         String result = service.compare(policy, providerJson);
-        // Provider says 50000 but policy says null, so this should be a mismatch only if policy has a value
-        // Since policy has null daily cap and provider has 50000, and we only compare when provider > 0 and policy != null
-        // So this should be MATCH because policy.dailyCapAmount() is null
-        assertEquals("MATCH", result);
+        assertEquals("MISMATCH", result);
     }
 
     @Test
-    void timeoutAmountZeroIgnoredWhenPolicyNull() {
+    void timeoutAmountWithoutPolicyLimitIsMismatch() {
         VendingPricingPolicy policy = policyWithNullOvertime();
         String providerJson =
                 "{\"currency\":\"UGX\",\"depositAmount\":20000,\"priceMinute\":2000,"
@@ -145,14 +144,11 @@ class VendingPricingComparisonServiceTest {
                         + "\"timeoutDay\":3}";
 
         String result = service.compare(policy, providerJson);
-        // Policy overtimeAmount is null, provider timeoutAmount is 10000 (non-zero)
-        // Code only compares when providerTimeout != 0 && policy.overtimeAmount() != null
-        // So this should be MATCH because policy.overtimeAmount() is null
-        assertEquals("MATCH", result);
+        assertEquals("MISMATCH", result);
     }
 
     @Test
-    void timeoutDayZeroIgnoredWhenPolicyNull() {
+    void timeoutDayWithoutPolicyLimitIsMismatch() {
         VendingPricingPolicy policy = policyWithNullOvertime();
         String providerJson =
                 "{\"currency\":\"UGX\",\"depositAmount\":20000,\"priceMinute\":2000,"
@@ -160,7 +156,7 @@ class VendingPricingComparisonServiceTest {
                         + "\"timeoutDay\":5}";
 
         String result = service.compare(policy, providerJson);
-        assertEquals("MATCH", result);
+        assertEquals("MISMATCH", result);
     }
 
     @Test

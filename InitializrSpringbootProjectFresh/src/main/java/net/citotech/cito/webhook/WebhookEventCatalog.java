@@ -42,7 +42,14 @@ public final class WebhookEventCatalog {
      */
     private static final String INVOICE_ENVELOPE_SCHEMA = invoiceEnvelopeSchema();
 
+    /** Validation events are workflow events, not merchant transactions — they carry a
+     * {@code caseId} instead of {@code transactionId} (same non-transactional precedent as the
+     * invoice envelope, ADR 0006). */
+    private static final String VALIDATION_ENVELOPE_SCHEMA = validationEnvelopeSchema();
+
     static {
+        // Original transactional/invoice events keep their registration order - the catalog
+        // endpoint exposes insertion order and consumers/tests rely on the stable listing.
         register(
                 "payment.pending",
                 1,
@@ -88,6 +95,47 @@ public final class WebhookEventCatalog {
                 1,
                 "A billing invoice was issued to the merchant.",
                 INVOICE_ENVELOPE_SCHEMA);
+        // Validation workflow events (Track B Phase 6) appended after the established entries.
+        register(
+                "validation.case.created",
+                1,
+                "A validation case was created for a merchant.",
+                VALIDATION_ENVELOPE_SCHEMA);
+        register(
+                "validation.case.processing",
+                1,
+                "A validation case moved into processing.",
+                VALIDATION_ENVELOPE_SCHEMA);
+        register(
+                "validation.check.updated",
+                1,
+                "A validation check changed status (passed, failed, pending, error).",
+                VALIDATION_ENVELOPE_SCHEMA);
+        register(
+                "validation.case.review_required",
+                1,
+                "A validation case requires manual review.",
+                VALIDATION_ENVELOPE_SCHEMA);
+        register(
+                "validation.case.verified",
+                1,
+                "A validation case completed with a verified decision.",
+                VALIDATION_ENVELOPE_SCHEMA);
+        register(
+                "validation.case.rejected",
+                1,
+                "A validation case completed with a rejected decision.",
+                VALIDATION_ENVELOPE_SCHEMA);
+        register(
+                "validation.case.inconclusive",
+                1,
+                "A validation case completed inconclusively (evidence insufficient or technical error).",
+                VALIDATION_ENVELOPE_SCHEMA);
+        register(
+                "validation.case.expired",
+                1,
+                "A validation case expired before completion.",
+                VALIDATION_ENVELOPE_SCHEMA);
     }
 
     private WebhookEventCatalog() {}
@@ -148,6 +196,26 @@ public final class WebhookEventCatalog {
                 + "\"amount\":{\"type\":\"string\"},"
                 + "\"currency\":{\"type\":\"string\"},"
                 + "\"dueAt\":{\"type\":\"string\",\"format\":\"date-time\"}"
+                + "}"
+                + "}";
+    }
+
+    private static String validationEnvelopeSchema() {
+        return "{"
+                + "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\","
+                + "\"type\":\"object\","
+                + "\"required\":[\"eventId\",\"eventType\",\"eventVersion\",\"createdAt\",\"merchantNumber\",\"caseId\",\"status\"],"
+                + "\"properties\":{"
+                + "\"eventId\":{\"type\":\"string\",\"description\":\"Unique id of this event, stable across delivery retries.\"},"
+                + "\"eventType\":{\"type\":\"string\",\"description\":\"One of the types listed in the webhook event catalog.\"},"
+                + "\"eventVersion\":{\"type\":\"integer\",\"description\":\"Envelope schema version for eventType.\"},"
+                + "\"createdAt\":{\"type\":\"string\",\"format\":\"date-time\"},"
+                + "\"merchantNumber\":{\"type\":\"string\"},"
+                + "\"caseId\":{\"type\":\"string\",\"description\":\"CPay-assigned validation case id.\"},"
+                + "\"merchantReference\":{\"type\":\"string\",\"description\":\"Merchant-supplied case reference.\"},"
+                + "\"status\":{\"type\":\"string\"},"
+                + "\"capability\":{\"type\":\"string\",\"description\":\"Validation capability the event relates to.\"},"
+                + "\"reasonCode\":{\"type\":\"string\",\"description\":\"Normalized decision/reason code (e.g. NIN_MATCH, VERIFICATION_INCONCLUSIVE).\"}"
                 + "}"
                 + "}";
     }

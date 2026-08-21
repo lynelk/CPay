@@ -141,32 +141,37 @@ public class VendingPricingComparisonService {
                 }
             }
 
+            // Optional-limit fields: a provider declaring a non-zero cap/timeout that the CPay
+            // policy does not configure is itself a mismatch - the device would charge limits
+            // the merchant never priced (exactly what BLOCK_ON_MISMATCH must catch).
             if (positiveField(root, "dailyMaxPrice")) {
                 int providerDailyCap = root.get("dailyMaxPrice").asInt();
-                if (providerDailyCap != 0 && policy.dailyCapAmount() != null) {
-                    if (policy.dailyCapAmount()
-                            .compareTo(java.math.BigDecimal.valueOf(providerDailyCap)) != 0) {
-                        return "MISMATCH";
-                    }
+                if (providerDailyCap != 0
+                        && (policy.dailyCapAmount() == null
+                                || policy.dailyCapAmount()
+                                        .compareTo(java.math.BigDecimal.valueOf(providerDailyCap))
+                                        != 0)) {
+                    return "MISMATCH";
                 }
             }
 
             if (positiveField(root, "timeoutAmount")) {
                 int providerTimeout = root.get("timeoutAmount").asInt();
-                if (providerTimeout != 0 && policy.overtimeAmount() != null) {
-                    if (policy.overtimeAmount()
-                            .compareTo(java.math.BigDecimal.valueOf(providerTimeout)) != 0) {
-                        return "MISMATCH";
-                    }
+                if (providerTimeout != 0
+                        && (policy.overtimeAmount() == null
+                                || policy.overtimeAmount()
+                                        .compareTo(java.math.BigDecimal.valueOf(providerTimeout))
+                                        != 0)) {
+                    return "MISMATCH";
                 }
             }
 
             if (positiveField(root, "timeoutDay")) {
                 int providerTimeoutDays = root.get("timeoutDay").asInt();
-                if (providerTimeoutDays != 0 && policy.overtimeDays() != null) {
-                    if (policy.overtimeDays() != providerTimeoutDays) {
-                        return "MISMATCH";
-                    }
+                if (providerTimeoutDays != 0
+                        && (policy.overtimeDays() == null
+                                || policy.overtimeDays() != providerTimeoutDays)) {
+                    return "MISMATCH";
                 }
             }
 
