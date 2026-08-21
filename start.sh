@@ -1,8 +1,9 @@
 #!/bin/sh
 # Railpack/Railway start command for the CPay Spring Boot backend.
 #
-# Railpack detects the Maven project under InitializrSpringbootProjectFresh/ (via
-# RAILPACK_BUILD_CMD in railway.json) and runs `mvn -DskipTests package`.
+# railway.json's buildCommand runs `mvn -DskipTests clean package` from the repo
+# root (via the aggregator pom.xml) and copies the boot jar into ./target so
+# Railpack's Java provider finds its expected output at /app/target.
 # This script then locates the built fat jar and execs it as PID 1 so the
 # container receives SIGTERM directly for graceful shutdown
 # (server.shutdown=graceful, SHUTDOWN_PHASE_TIMEOUT).
@@ -23,13 +24,21 @@ set -eu
 APP_DIR="InitializrSpringbootProjectFresh"
 
 # --- Locate the built jar ---------------------------------------------------
-# Prefer the exact artifact name from pom.xml; fall back to any boot jar in target/.
-JAR_FILE="${APP_DIR}/target/cito-fresh-0.0.1-SNAPSHOT.jar"
+# The railway.json buildCommand runs Maven from the repo root and copies the
+# boot jar into ./target so Railpack's Java provider finds its expected output
+# at /app/target. Fall back to the module's own target/ for local runs.
+JAR_FILE="target/cito-fresh-0.0.1-SNAPSHOT.jar"
+if [ ! -f "$JAR_FILE" ]; then
+    JAR_FILE=$(ls target/*.jar 2>/dev/null | grep -v '\.original\.' | head -n 1 || true)
+fi
+if [ -z "$JAR_FILE" ] || [ ! -f "$JAR_FILE" ]; then
+    JAR_FILE="${APP_DIR}/target/cito-fresh-0.0.1-SNAPSHOT.jar"
+fi
 if [ ! -f "$JAR_FILE" ]; then
     JAR_FILE=$(ls "${APP_DIR}"/target/*.jar 2>/dev/null | grep -v '\.original\.' | head -n 1 || true)
 fi
 if [ -z "$JAR_FILE" ] || [ ! -f "$JAR_FILE" ]; then
-    echo "FATAL: no built jar found in ${APP_DIR}/target/." >&2
+    echo "FATAL: no built jar found in ./target/ or ${APP_DIR}/target/." >&2
     echo "Expected cito-fresh-0.0.1-SNAPSHOT.jar. Did the Railpack build step run?" >&2
     exit 1
 fi
