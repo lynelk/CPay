@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Root aggregator POM.
+
+    Purpose: Railpack (Railway's builder) detects a Java/Maven project only when a
+    pom.xml exists in the repository root. The actual application lives in
+    InitializrSpringbootProjectFresh/, so this POM exists solely to make root-level
+    `mvn package` (what Railpack runs) build that module. It declares no plugins and
+    no dependencies of its own; all real configuration remains in the child POM.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>net.citotech</groupId>
+    <artifactId>cpay-root</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>CPay</name>
+    <description>Aggregator POM so root-level Maven builds (Railpack/Railway) compile the CPay backend module</description>
+
+    <modules>
+        <module>InitializrSpringbootProjectFresh</module>
+    </modules>
+</project>
