@@ -257,7 +257,7 @@ function MerchantSignup(): React.ReactElement {
             >
               {strings.verify_email_link}
             </Button>
-            <Button variant="link" onClick={() => navigate('/')}>
+            <Button variant="link" onClick={() => navigate('/login')}>
               {strings.go_to_login}
             </Button>
           </div>
@@ -288,7 +288,7 @@ function MerchantSignup(): React.ReactElement {
             <Button type="submit" variant="primary" loading={loading} loadingLabel={strings.submitting}>
               {strings.create_merchant_account}
             </Button>
-            <Button type="button" variant="link" onClick={() => navigate('/')}>
+            <Button type="button" variant="link" onClick={() => navigate('/login')}>
               {strings.back_to_login}
             </Button>
           </div>
