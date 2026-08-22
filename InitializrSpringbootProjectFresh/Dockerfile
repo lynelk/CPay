@@ -26,6 +26,10 @@ EXPOSE 8081
 # Copy JAR from build stage
 COPY --from=build --chown=appuser:appuser /workspace/target/*.jar /app/cpay-backend.jar
 
+# Copy the Railway start script from repo root and make it executable
+COPY --chown=appuser:appuser ../start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1
