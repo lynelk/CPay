@@ -247,7 +247,7 @@ function CitoLandingPage(): React.ReactElement {
           <div className="cito-section-heading">
             <p className="cito-eyebrow">Trust & control</p>
             <h2>Built for financial operations.</h2>
-            <p>Security is part of the transaction lifecycle, not decorative copy pasted below the pricing table.</p>
+            <p>Security controls are designed into request authentication, environment management, credential protection, audit trails, and callback delivery.</p>
           </div>
           <div className="cito-security-grid">
             {securityControls.map(([title, copy]) => (
@@ -260,7 +260,7 @@ function CitoLandingPage(): React.ReactElement {
           <div className="cito-section-heading">
             <p className="cito-eyebrow">Contact</p>
             <h2>Talk to Cito.</h2>
-            <p>Choose the route that matches what you need and reach the team without hunting through application menus.</p>
+            <p>Choose the route that matches what you need and reach the appropriate team directly.</p>
           </div>
           <div className="cito-contact-grid">
             <a href="mailto:info@citotech.net"><span>Sales</span><strong>Discuss CPay for your business</strong><small>info@citotech.net</small></a>
