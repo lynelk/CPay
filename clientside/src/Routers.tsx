@@ -1,9 +1,10 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import LoginMerchant from './components/LoginMerchant';
 import Login from './components/Login';
 
-// Heavy authenticated surfaces are code-split so the login entry stays light.
+// Public and authenticated surfaces are code-split so each entry point stays focused and light.
+const CitoLandingPage = lazy(() => import('./components/CitoLandingPage'));
+const LoginMerchant = lazy(() => import('./components/LoginMerchant'));
 const MerchantSignup = lazy(() => import('./components/MerchantSignup'));
 const VerifyEmail = lazy(() => import('./components/VerifyEmail'));
 const Layout = lazy(() => import('./components/Layout'));
@@ -20,7 +21,8 @@ function Routers(): React.ReactElement {
     <BrowserRouter>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/" element={<LoginMerchant />} />
+          <Route path="/" element={<CitoLandingPage />} />
+          <Route path="/login" element={<LoginMerchant />} />
           <Route path="/signup" element={<MerchantSignup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
