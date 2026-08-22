@@ -10,6 +10,7 @@ import net.citotech.cito.identity.provider.ProviderCheckRequest;
 import net.citotech.cito.identity.provider.ProviderCheckResult;
 import net.citotech.cito.identity.provider.ValidationProviderAdapter;
 import net.citotech.cito.identity.provider.ValidationProviderException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,6 +43,7 @@ public class GnuGridCrbProviderAdapter implements ValidationProviderAdapter {
                 null);
     }
 
+    @Autowired
     public GnuGridCrbProviderAdapter(
             GnuGridIdValidationClient idValidationClient,
             GnuGridPhoneValidationClient phoneValidationClient,
