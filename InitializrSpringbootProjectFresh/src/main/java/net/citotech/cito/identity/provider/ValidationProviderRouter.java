@@ -6,22 +6,27 @@ import net.citotech.cito.identity.domain.ValidationCapability;
 import org.springframework.stereotype.Service;
 
 /**
- * Provider router (Track B Phase 8). Hard filters run before any scoring: capability support via
- * {@link ValidationProviderRegistry#byCapability} and health via {@link ProviderHealthMonitor}
- * (an open circuit excludes the provider outright). With a single pool the first eligible
- * provider is deterministic; when multiple adapters exist, {@code preferredProviderCode} (a CPay
- * operator routing preference, never a merchant-specified provider) is honoured first, falling
- * back to registration order. This is deliberately deterministic and explainable — the guide's
- * first-production router must answer "why this provider": capability + healthy + (optional)
- * operator preference.
+ * Validation provider router (Track B Phase 8). Hard filters run before any scoring: capability
+ * support via {@link ValidationProviderRegistry#byCapability} and health via {@link
+ * ProviderHealthMonitor} (an open circuit excludes the provider outright). With a single pool the
+ * first eligible provider is deterministic; when multiple adapters exist, {@code
+ * preferredProviderCode} (a CPay operator routing preference, never a merchant-specified provider)
+ * is honoured first, falling back to registration order. This is deliberately deterministic and
+ * explainable — the guide's first-production router must answer "why this provider": capability +
+ * healthy + (optional) operator preference.
+ *
+ * <p>Named {@code ValidationProviderRouter} (not {@code ProviderRouter}) because {@code
+ * net.citotech.cito.communication.routing.ProviderRouter} already owns the default bean name
+ * {@code providerRouter}; two scanned components with the same simple name collide on startup
+ * with a ConflictingBeanDefinitionException.
  */
 @Service
-public class ProviderRouter {
+public class ValidationProviderRouter {
 
     private final ValidationProviderRegistry registry;
     private final ProviderHealthMonitor healthMonitor;
 
-    public ProviderRouter(
+    public ValidationProviderRouter(
             ValidationProviderRegistry registry, ProviderHealthMonitor healthMonitor) {
         this.registry = registry;
         this.healthMonitor = healthMonitor;
