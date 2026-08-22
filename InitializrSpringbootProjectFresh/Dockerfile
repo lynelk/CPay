@@ -26,6 +26,9 @@ EXPOSE 8081
 # Copy JAR from build stage
 COPY --from=build --chown=appuser:appuser /workspace/target/*.jar /app/cpay-backend.jar
 
+# Copy the Railway start script from repo root and make it executable
+COPY --chown=appuser:appuser ../start.sh ./start.sh
+RUN chmod +x ./start.sh
 # Copy start script so railway.json's "sh ./start.sh" startCommand can find it
 COPY --chown=appuser:appuser start.sh /app/start.sh
 RUN chmod +x /app/start.sh
