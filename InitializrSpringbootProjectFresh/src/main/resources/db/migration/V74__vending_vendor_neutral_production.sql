@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS `vending_reconciliations` (
   `completed_at` TIMESTAMP NULL,
   `error` TEXT NULL,
   `provider_snapshot` JSON NULL,
+  `next_reconciliation_at` TIMESTAMP NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_vending_recon_tenant_rental` (`merchant_id`, `rental_id`),
@@ -79,6 +80,3 @@ CREATE TABLE IF NOT EXISTS `vending_reconciliations` (
   KEY `idx_vending_recon_next` (`merchant_id`, `result`, `next_reconciliation_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add a nullable next_reconciliation_at to support durable worker scheduling
-ALTER TABLE `vending_reconciliations`
-  ADD COLUMN `next_reconciliation_at` TIMESTAMP NULL AFTER `provider_snapshot`;
