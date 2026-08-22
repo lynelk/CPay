@@ -4,6 +4,10 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
+vi.mock('./components/CitoLandingPage', () => ({ default: function MockCitoLandingPage() {
+  return <div>Cito public gateway</div>;
+} }));
+
 vi.mock('./components/Login', () => ({ default: function MockLogin() {
   return <div>Admin login</div>;
 } }));
@@ -28,15 +32,15 @@ vi.mock('./features/OperationsConsole', () => ({ default: function MockOperation
   return <div>Operations console</div>;
 } }));
 
-it('renders without crashing', () => {
+it('renders the public gateway at the root route', async () => {
   const div = document.createElement('div');
   const root = createRoot(div);
 
-  act(() => {
+  await act(async () => {
     root.render(<App />);
   });
 
-  expect(div.textContent).toContain('Merchant login');
+  expect(div.textContent).toContain('Cito public gateway');
 
   act(() => {
     root.unmount();
