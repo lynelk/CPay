@@ -107,7 +107,7 @@ public class CommunicationOutboxWorker {
      */
     private List<OutboxRow> claimBatch(int limit) {
         String claimToken = "worker-" + java.util.UUID.randomUUID();
-        jdbcTemplate.getJdbcTemplate().update(
+        jdbcTemplate.update(
                 "UPDATE communication_outbox SET status='DISPATCHING', claimed_by=:claimed_by,"
                         + " claimed_at=NOW(), attempts=attempts+1"
                         + " WHERE id IN (SELECT id FROM (SELECT id FROM communication_outbox"
