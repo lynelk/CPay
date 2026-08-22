@@ -95,6 +95,24 @@ CREATE TABLE IF NOT EXISTS treasury_positions (
     UNIQUE (merchant_id, provider_code, channel_code, country_code, currency_code, position_date, source)
 );
 
+-- treasury_positions may already exist from an earlier foundation migration.
+-- Add the finance-operations date dimension before creating its index.
+SET @treasury_position_date_exists = (
+    SELECT COUNT(*)
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'treasury_positions'
+      AND column_name = 'position_date'
+);
+SET @treasury_position_date_sql = IF(
+    @treasury_position_date_exists = 0,
+    'ALTER TABLE treasury_positions ADD COLUMN position_date DATE NULL',
+    'SELECT 1'
+);
+PREPARE treasury_position_date_stmt FROM @treasury_position_date_sql;
+EXECUTE treasury_position_date_stmt;
+DEALLOCATE PREPARE treasury_position_date_stmt;
+
 CREATE INDEX idx_treasury_positions_date
     ON treasury_positions(position_date);
 CREATE INDEX idx_treasury_positions_provider
