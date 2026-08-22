@@ -50,9 +50,9 @@ echo "Starting CPay backend: $JAR_FILE"
 # --- Port mapping -----------------------------------------------------------
 # The app reads server.port from HTTP_PORT (default 8081). Railway exposes the
 # public port via PORT; honor an explicit HTTP_PORT first, else map PORT.
-if [ -z "$HTTP_PORT" ] && [ -n "$PORT" ]; then
-    export HTTP_PORT="$PORT"
-fi
+# Railway's injected PORT must win over the image-level HTTP_PORT default so
+# platform health checks and the application listen on the same socket.
+export HTTP_PORT="${PORT:-${HTTP_PORT:-8081}}"
 
 # --- JVM options ------------------------------------------------------------
 # Container-aware heap sizing (matches Dockerfile.nginx-era runtime image):
