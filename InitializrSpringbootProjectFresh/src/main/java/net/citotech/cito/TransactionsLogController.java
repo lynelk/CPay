@@ -2093,16 +2093,16 @@ public class TransactionsLogController {
 
         String filePath = lockfiledirectory + Common.CLASS_PATH_CHECK_TX_LOCK;
         Logger.getLogger(TransactionsLogController.class.getName())
-                .log(Level.SEVERE, "LockFile " + filePath);
+                .log(Level.FINE, "LockFile " + filePath);
 
         try {
 
-            RandomAccessFile writer = new RandomAccessFile(Common.CLASS_PATH_CHECK_TX_LOCK, "rw");
+            RandomAccessFile writer = new RandomAccessFile(filePath, "rw");
 
             File lfile = new File(filePath);
             if (lfile.createNewFile()) {
                 Logger.getLogger(TransactionsLogController.class.getName())
-                        .log(Level.SEVERE, "Filed " + filePath + " has been created.");
+                        .log(Level.FINE, "File " + filePath + " has been created.");
             }
 
             FileLock lock = writer.getChannel().lock();
@@ -5024,13 +5024,13 @@ public class TransactionsLogController {
 
         String filePath = lockfiledirectory + Common.CLASS_PATH_PAYMENTS_CRON_TX_LOCK;
         Logger.getLogger(TransactionsLogController.class.getName())
-                .log(Level.SEVERE, "LockFile " + filePath);
+                .log(Level.FINE, "LockFile " + filePath);
         try {
 
             File lfile = new File(filePath);
             if (lfile.createNewFile()) {
                 Logger.getLogger(TransactionsLogController.class.getName())
-                        .log(Level.SEVERE, "Filed " + filePath + " has been created.");
+                        .log(Level.FINE, "File " + filePath + " has been created.");
             }
 
             RandomAccessFile writer = new RandomAccessFile(lfile, "rw");
@@ -5493,8 +5493,8 @@ public class TransactionsLogController {
             // close the file
             writer.close();
 
-            Logger.getLogger(AuthenticationController.class.getName())
-                    .log(Level.SEVERE, "PAYMENTS CRON DONE!", "");
+            Logger.getLogger(TransactionsLogController.class.getName())
+                    .log(Level.FINE, "Payments cron completed");
 
         } catch (IOException ex) {
             Logger.getLogger(AuthenticationController.class.getName())
