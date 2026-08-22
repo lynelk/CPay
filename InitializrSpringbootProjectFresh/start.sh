@@ -54,11 +54,6 @@ if [ -z "$HTTP_PORT" ] && [ -n "$PORT" ]; then
     export HTTP_PORT="$PORT"
 fi
 
-# --- Lockfile directory -----------------------------------------------------
-# custom.lockfiledirectory defaults to ./tmp; ensure it exists so cron jobs that
-# take file locks don't fail on a read-only or missing path.
-mkdir -p tmp
-
 # --- JVM options ------------------------------------------------------------
 # Container-aware heap sizing (matches Dockerfile.nginx-era runtime image):
 # G1GC with heap capped at 50% of container RAM so metaspace/threads have room.
