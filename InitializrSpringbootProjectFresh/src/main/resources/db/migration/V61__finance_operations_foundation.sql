@@ -115,6 +115,47 @@ DEALLOCATE PREPARE treasury_position_date_stmt;
 
 CREATE INDEX idx_treasury_positions_date
     ON treasury_positions(position_date);
+-- Backfill legacy treasury dimension columns before creating the composite index.
+SET @treasury_provider_exists = (
+    SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'treasury_positions' AND column_name = 'provider_code'
+);
+SET @treasury_provider_sql = IF(@treasury_provider_exists = 0,
+    'ALTER TABLE treasury_positions ADD COLUMN provider_code VARCHAR(64) NULL', 'SELECT 1');
+PREPARE treasury_provider_stmt FROM @treasury_provider_sql;
+EXECUTE treasury_provider_stmt;
+DEALLOCATE PREPARE treasury_provider_stmt;
+
+SET @treasury_channel_exists = (
+    SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'treasury_positions' AND column_name = 'channel_code'
+);
+SET @treasury_channel_sql = IF(@treasury_channel_exists = 0,
+    'ALTER TABLE treasury_positions ADD COLUMN channel_code VARCHAR(64) NULL', 'SELECT 1');
+PREPARE treasury_channel_stmt FROM @treasury_channel_sql;
+EXECUTE treasury_channel_stmt;
+DEALLOCATE PREPARE treasury_channel_stmt;
+
+SET @treasury_country_exists = (
+    SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'treasury_positions' AND column_name = 'country_code'
+);
+SET @treasury_country_sql = IF(@treasury_country_exists = 0,
+    'ALTER TABLE treasury_positions ADD COLUMN country_code VARCHAR(3) NULL', 'SELECT 1');
+PREPARE treasury_country_stmt FROM @treasury_country_sql;
+EXECUTE treasury_country_stmt;
+DEALLOCATE PREPARE treasury_country_stmt;
+
+SET @treasury_currency_exists = (
+    SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'treasury_positions' AND column_name = 'currency_code'
+);
+SET @treasury_currency_sql = IF(@treasury_currency_exists = 0,
+    'ALTER TABLE treasury_positions ADD COLUMN currency_code VARCHAR(3) NULL', 'SELECT 1');
+PREPARE treasury_currency_stmt FROM @treasury_currency_sql;
+EXECUTE treasury_currency_stmt;
+DEALLOCATE PREPARE treasury_currency_stmt;
+
 CREATE INDEX idx_treasury_positions_provider
     ON treasury_positions(provider_code, channel_code, country_code, currency_code);
 
