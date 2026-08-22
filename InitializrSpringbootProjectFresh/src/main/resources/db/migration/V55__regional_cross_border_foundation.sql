@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS beneficiaries (
 
 CREATE TABLE IF NOT EXISTS beneficiary_instruments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    beneficiary_id BIGINT NOT NULL,
+    beneficiary_id BIGINT UNSIGNED NOT NULL,
     instrument_reference VARCHAR(80) NOT NULL,
     instrument_type VARCHAR(60) NOT NULL,
     provider_code VARCHAR(80) NULL,
@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS cross_border_transfers (
     merchant_number VARCHAR(64) NULL,
     corridor_id BIGINT NOT NULL,
     route_id BIGINT NULL,
-    beneficiary_id BIGINT NOT NULL,
+    beneficiary_id BIGINT UNSIGNED NOT NULL,
     beneficiary_instrument_id BIGINT NOT NULL,
     fx_quote_id BIGINT NULL,
     source_amount DECIMAL(19,4) NOT NULL,
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS cross_border_transfers (
     destination_currency_code CHAR(3) NOT NULL,
     purpose_code VARCHAR(80) NOT NULL,
     status VARCHAR(60) NOT NULL DEFAULT 'CREATED',
-    compliance_case_id BIGINT NULL,
+    compliance_case_id BIGINT UNSIGNED NULL,
     compliance_hold_active BOOLEAN NOT NULL DEFAULT FALSE,
     treasury_reservation_reference VARCHAR(80) NULL,
     provider_reference VARCHAR(128) NULL,
