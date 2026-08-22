@@ -17,8 +17,8 @@ describe('CitoLandingPage', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: /connect your business through cito/i })).toBeInTheDocument();
     expect(screen.getByText(/cito is the gateway/i)).toBeInTheDocument();
-    expect(screen.getByText(/cpay is cito's payments service/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: /gateway/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/cpay is cito's payments service/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { level: 2, name: /^gateway$/i })).toBeInTheDocument();
   });
 
   it('routes every primary access action to the live Cito access screens', () => {
