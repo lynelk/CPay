@@ -29,6 +29,9 @@ COPY --from=build --chown=appuser:appuser /workspace/target/*.jar /app/cpay-back
 # Copy the Railway start script from repo root and make it executable
 COPY --chown=appuser:appuser ../start.sh ./start.sh
 RUN chmod +x ./start.sh
+# Copy start script so railway.json's "sh ./start.sh" startCommand can find it
+COPY --chown=appuser:appuser start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
