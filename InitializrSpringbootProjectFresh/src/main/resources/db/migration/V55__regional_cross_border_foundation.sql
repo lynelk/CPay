@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS cross_border_transfers (
     route_id BIGINT NULL,
     beneficiary_id BIGINT UNSIGNED NOT NULL,
     beneficiary_instrument_id BIGINT NOT NULL,
-    fx_quote_id BIGINT NULL,
+    fx_quote_id BIGINT UNSIGNED NULL,
     source_amount DECIMAL(19,4) NOT NULL,
     source_currency_code CHAR(3) NOT NULL,
     destination_amount DECIMAL(19,4) NOT NULL,
