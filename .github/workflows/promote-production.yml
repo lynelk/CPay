@@ -1,0 +1,35 @@
+name: Promote Production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Fast-forward production after CI
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the verified commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Fast-forward the production branch
+        run: |
+          set -euo pipefail
+          git fetch origin production
+          if ! git merge-base --is-ancestor origin/production HEAD; then
+            echo "Refusing non-fast-forward production promotion" >&2
+            exit 1
+          fi
+          git push origin HEAD:production
