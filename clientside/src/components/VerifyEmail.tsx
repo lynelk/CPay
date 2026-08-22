@@ -131,7 +131,7 @@ function VerifyEmail(): React.ReactElement {
           <h2>{strings.verify_email_success}</h2>
           <p>{strings.verify_email_success_instructions}</p>
           <div className="ios-actions">
-            <Button variant="primary" onClick={() => navigate('/')}>
+            <Button variant="primary" onClick={() => navigate('/login')}>
               {strings.go_to_login}
             </Button>
           </div>
@@ -169,7 +169,7 @@ function VerifyEmail(): React.ReactElement {
             <Button type="button" variant="link" loading={resending} loadingLabel={strings.resending} onClick={handleResend}>
               {strings.resend_verification_code}
             </Button>
-            <Button type="button" variant="link" onClick={() => navigate('/')}>
+            <Button type="button" variant="link" onClick={() => navigate('/login')}>
               {strings.back_to_login}
             </Button>
           </div>
