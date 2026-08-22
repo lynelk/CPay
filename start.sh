@@ -24,9 +24,10 @@ set -eu
 APP_DIR="InitializrSpringbootProjectFresh"
 
 # --- Locate the built jar ---------------------------------------------------
-# The railway.json buildCommand runs Maven from the repo root and copies the
-# boot jar into ./target so Railpack's Java provider finds its expected output
-# at /app/target. Fall back to the module's own target/ for local runs.
+# The Dockerfile's runtime stage copies the Maven build stage's jar directly
+# to /app/cpay-backend.jar, so that's the primary location to check. The
+# ./target and ${APP_DIR}/target fallbacks only apply to local/non-Docker runs
+# where a build step copies the jar into a target/ directory.
 JAR_FILE="/app/cpay-backend.jar"
 if [ ! -f "$JAR_FILE" ]; then
     JAR_FILE="target/cito-fresh-0.0.1-SNAPSHOT.jar"
