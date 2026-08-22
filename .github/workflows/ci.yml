@@ -134,7 +134,7 @@ jobs:
           CALLBACK_SIGNING_SECRET: ci-callback-secret
           MERCHANT_CHANNEL_ENCRYPTION_KEY: Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ==
           CPAY_KEY_ENCRYPTION_KEY: Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ==
-        run: mvn -B test --no-transfer-progress -DskipTests -Dspring.main.web-application-type=none
+        run: mvn -B test --no-transfer-progress -Dtest=FlywayMigrationSmokeTest
 
   api-contract:
     name: API Contract Assets
