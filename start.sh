@@ -27,7 +27,10 @@ APP_DIR="InitializrSpringbootProjectFresh"
 # The railway.json buildCommand runs Maven from the repo root and copies the
 # boot jar into ./target so Railpack's Java provider finds its expected output
 # at /app/target. Fall back to the module's own target/ for local runs.
-JAR_FILE="target/cito-fresh-0.0.1-SNAPSHOT.jar"
+JAR_FILE="/app/cpay-backend.jar"
+if [ ! -f "$JAR_FILE" ]; then
+    JAR_FILE="target/cito-fresh-0.0.1-SNAPSHOT.jar"
+fi
 if [ ! -f "$JAR_FILE" ]; then
     JAR_FILE=$(ls target/*.jar 2>/dev/null | grep -v '\.original\.' | head -n 1 || true)
 fi
@@ -38,8 +41,8 @@ if [ ! -f "$JAR_FILE" ]; then
     JAR_FILE=$(ls "${APP_DIR}"/target/*.jar 2>/dev/null | grep -v '\.original\.' | head -n 1 || true)
 fi
 if [ -z "$JAR_FILE" ] || [ ! -f "$JAR_FILE" ]; then
-    echo "FATAL: no built jar found in ./target/ or ${APP_DIR}/target/." >&2
-    echo "Expected cito-fresh-0.0.1-SNAPSHOT.jar. Did the Railpack build step run?" >&2
+    echo "FATAL: no built jar found at /app/cpay-backend.jar, ./target/, or ${APP_DIR}/target/." >&2
+    echo "Expected cito-fresh-0.0.1-SNAPSHOT.jar or cpay-backend.jar. Did the build step run?" >&2
     exit 1
 fi
 echo "Starting CPay backend: $JAR_FILE"
