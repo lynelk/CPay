@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS compliance_cases (
 
 CREATE TABLE IF NOT EXISTS compliance_case_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    case_id BIGINT NOT NULL,
+    case_id BIGINT UNSIGNED NOT NULL,
     event_type VARCHAR(80) NOT NULL,
     actor VARCHAR(128) NULL,
     from_status VARCHAR(40) NULL,
@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS compliance_screening_results (
     match_count INT NOT NULL DEFAULT 0,
     raw_result_reference VARCHAR(255) NULL,
     normalized_result JSON NULL,
-    case_id BIGINT NULL,
+    case_id BIGINT UNSIGNED NULL,
     screened_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_screening_results_reference UNIQUE (screening_reference),
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS transaction_monitoring_alerts (
     merchant_id BIGINT NULL,
     transaction_reference VARCHAR(128) NULL,
     triggering_payload JSON NULL,
-    case_id BIGINT NULL,
+    case_id BIGINT UNSIGNED NULL,
     assigned_to VARCHAR(128) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     resolved_at TIMESTAMP NULL,
