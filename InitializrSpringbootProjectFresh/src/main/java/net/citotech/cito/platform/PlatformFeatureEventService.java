@@ -90,13 +90,22 @@ public class PlatformFeatureEventService {
         if (eventReference == null || eventReference.isBlank()) {
             return;
         }
-        boolean success = successful(result == null ? null : result.getStatus());
-        jdbcTemplate.update(
-                "UPDATE platform_feature_events SET status=:status, next_attempt_at=CURRENT_TIMESTAMP, "
-                        + "last_error=NULL WHERE event_reference=:event_reference AND status='WAITING_PAYMENT'",
-                new MapSqlParameterSource()
-                        .addValue("event_reference", eventReference)
-                        .addValue("status", success ? "PENDING" : "CANCELLED"));
+        String paymentStatus = result == null ? null : result.getStatus();
+        if (successful(paymentStatus)) {
+            updateWaitingReference(eventReference, "PENDING", null, Instant.now());
+            return;
+        }
+        if (terminalFailure(paymentStatus)) {
+            updateWaitingReference(eventReference, "CANCELLED", null, Instant.now());
+            return;
+        }
+        // Accepted, submitted and provider-pending outcomes are deliberately not guessed. The
+        // recovery sweep waits for CPay's normalized transaction status/callback before deciding.
+        updateWaitingReference(
+                eventReference,
+                "WAITING_PAYMENT",
+                "Payment outcome is pending; waiting for final transaction status",
+                Instant.now().plusSeconds(30));
     }
 
     /** Leaves an ambiguous provider exception recoverable instead of guessing that money did not move. */
@@ -105,13 +114,11 @@ public class PlatformFeatureEventService {
         if (eventReference == null || eventReference.isBlank()) {
             return;
         }
-        jdbcTemplate.update(
-                "UPDATE platform_feature_events SET last_error=:last_error, next_attempt_at=:next_attempt_at "
-                        + "WHERE event_reference=:event_reference AND status='WAITING_PAYMENT'",
-                new MapSqlParameterSource()
-                        .addValue("event_reference", eventReference)
-                        .addValue("last_error", safeMessage(error))
-                        .addValue("next_attempt_at", Timestamp.from(Instant.now().plusSeconds(30))));
+        updateWaitingReference(
+                eventReference,
+                "WAITING_PAYMENT",
+                safeMessage(error),
+                Instant.now().plusSeconds(30));
     }
 
     @Scheduled(fixedDelayString = "${cpay.platform-feature-events.delay-ms:15000}")
@@ -150,9 +157,9 @@ public class PlatformFeatureEventService {
                 continue;
             }
             String status = statuses.get(0) == null ? "" : statuses.get(0).trim().toUpperCase(Locale.ROOT);
-            if (java.util.Set.of("SUCCESS", "SUCCESSFUL", "COMPLETED", "COMPLETE").contains(status)) {
+            if (successful(status)) {
                 changed += updateWaitingStatus(((Number) event.get("id")).longValue(), "PENDING", null);
-            } else if (java.util.Set.of("FAILED", "REJECTED", "CANCELLED", "CANCELED", "DECLINED").contains(status)) {
+            } else if (terminalFailure(status)) {
                 changed += updateWaitingStatus(((Number) event.get("id")).longValue(), "CANCELLED", null);
             } else {
                 deferWaiting(((Number) event.get("id")).longValue());
@@ -228,6 +235,18 @@ public class PlatformFeatureEventService {
                         .addValue("last_error", error));
     }
 
+    private void updateWaitingReference(
+            String eventReference, String status, String error, Instant nextAttemptAt) {
+        jdbcTemplate.update(
+                "UPDATE platform_feature_events SET status=:status, last_error=:last_error, next_attempt_at=:next_attempt_at "
+                        + "WHERE event_reference=:event_reference AND status='WAITING_PAYMENT'",
+                new MapSqlParameterSource()
+                        .addValue("event_reference", eventReference)
+                        .addValue("status", status)
+                        .addValue("last_error", error)
+                        .addValue("next_attempt_at", Timestamp.from(nextAttemptAt)));
+    }
+
     private void deferWaiting(long id) {
         jdbcTemplate.update(
                 "UPDATE platform_feature_events SET next_attempt_at=:next_attempt_at WHERE id=:id AND status='WAITING_PAYMENT'",
@@ -256,6 +275,16 @@ public class PlatformFeatureEventService {
         }
         String status = value.trim().toUpperCase(Locale.ROOT);
         return java.util.Set.of("SUCCESS", "SUCCESSFUL", "COMPLETED", "COMPLETE", "000").contains(status);
+    }
+
+    private boolean terminalFailure(String value) {
+        if (value == null) {
+            return false;
+        }
+        String status = value.trim().toUpperCase(Locale.ROOT);
+        return java.util.Set.of(
+                        "FAILED", "FAILURE", "REJECTED", "CANCELLED", "CANCELED", "DECLINED")
+                .contains(status);
     }
 
     private String deterministicReference(String value) {
