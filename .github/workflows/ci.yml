@@ -46,7 +46,8 @@ jobs:
       - name: Verify packaged jar contains its startup dependencies
         run: |
           set -euo pipefail
-          unzip -l target/cito-fresh-*.jar | grep -q "BOOT-INF/lib/logstash-logback-encoder-"
+          jar tf target/cito-fresh-*.jar > /tmp/cpay-jar-contents.txt
+          grep -q "BOOT-INF/lib/logstash-logback-encoder-" /tmp/cpay-jar-contents.txt
       - name: Generate backend SBOM
         run: mvn -B org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom --no-transfer-progress -DskipTests
       - name: Upload test reports
