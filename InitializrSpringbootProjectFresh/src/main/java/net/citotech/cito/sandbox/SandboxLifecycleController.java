@@ -22,17 +22,35 @@ import org.springframework.web.server.ResponseStatusException;
 public class SandboxLifecycleController {
     private final SandboxLifecycleService service;
     private final SandboxCleanupService cleanupService;
+    private final SandboxCapabilityCatalogService capabilityCatalogService;
+    private final SandboxGoLiveControlService goLiveControlService;
 
     public SandboxLifecycleController(
-            SandboxLifecycleService service, SandboxCleanupService cleanupService) {
+            SandboxLifecycleService service,
+            SandboxCleanupService cleanupService,
+            SandboxCapabilityCatalogService capabilityCatalogService,
+            SandboxGoLiveControlService goLiveControlService) {
         this.service = service;
         this.cleanupService = cleanupService;
+        this.capabilityCatalogService = capabilityCatalogService;
+        this.goLiveControlService = goLiveControlService;
     }
 
     @GetMapping("/summary")
     public Map<String, Object> summary(HttpSession session) {
         MerchantUser user = merchant(session);
-        return service.summary(user.getMerchant_id(), user.getMerchant_number());
+        Map<String, Object> result =
+                new LinkedHashMap<>(service.summary(user.getMerchant_id(), user.getMerchant_number()));
+        result.put(
+                "catalog",
+                capabilityCatalogService.catalog(user.getMerchant_id(), user.getMerchant_number()));
+        return result;
+    }
+
+    @GetMapping("/catalog")
+    public Map<String, Object> catalog(HttpSession session) {
+        MerchantUser user = merchant(session);
+        return capabilityCatalogService.catalog(user.getMerchant_id(), user.getMerchant_number());
     }
 
     @GetMapping("/readiness")
@@ -50,15 +68,26 @@ public class SandboxLifecycleController {
     public Map<String, Object> topUp(@RequestBody WalletTopUpRequest request, HttpSession session) {
         MerchantUser user = merchant(session);
         return service.topUp(
-                user.getMerchant_id(), request.channelCode(), request.currency(), request.amount(), actor(user));
+                user.getMerchant_id(),
+                request.channelCode(),
+                request.currency(),
+                request.amount(),
+                actor(user));
     }
 
     @PostMapping("/reset")
     public Map<String, Object> reset(@RequestBody ResetRequest request, HttpSession session) {
         MerchantUser user = merchant(session);
-        Map<String, Object> result = new LinkedHashMap<>(service.reset(
-                user.getMerchant_id(), user.getMerchant_number(), request.scope(), actor(user)));
-        if (request.scope() == null || request.scope().isBlank() || "ALL".equalsIgnoreCase(request.scope())) {
+        Map<String, Object> result =
+                new LinkedHashMap<>(
+                        service.reset(
+                                user.getMerchant_id(),
+                                user.getMerchant_number(),
+                                request.scope(),
+                                actor(user)));
+        if (request.scope() == null
+                || request.scope().isBlank()
+                || "ALL".equalsIgnoreCase(request.scope())) {
             result.putAll(cleanupService.resetFinancialSimulations(user.getMerchant_id()));
         }
         result.put("productionDataTouched", false);
@@ -111,7 +140,7 @@ public class SandboxLifecycleController {
     @PostMapping("/production-access")
     public Map<String, Object> requestProductionAccess(HttpSession session) {
         MerchantUser user = merchant(session);
-        return service.requestProductionAccess(user.getMerchant_id(), actor(user));
+        return goLiveControlService.requestProductionAccess(user.getMerchant_id(), actor(user));
     }
 
     @GetMapping("/production-access/latest")
