@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /** Verifies that the complete migration history applies to a pristine externally supplied MySQL schema. */
@@ -11,7 +12,11 @@ class FlywayMigrationSmokeTest {
 
     @Test
     void appliesAllMigrationsToCleanMysqlSchema() {
-        String url = requireEnvironment("DB_URL");
+        String url = System.getenv("DB_URL");
+        Assumptions.assumeTrue(
+                url != null && url.startsWith("jdbc:mysql:"),
+                "Clean migration smoke test requires the dedicated MySQL integration environment");
+
         String username = requireEnvironment("DB_USERNAME");
         String password = requireEnvironment("DB_PASSWORD");
 
