@@ -60,6 +60,7 @@ public class AdapterNativePaymentService {
         validate(request, merchant, true, Common.API_MOBILE_MONEY_PAYIN);
         String account = request.getPayer().getValue();
         String resolvedEnvironment = environmentService.normalizedEnvironment(environment);
+        requireMetadataEntitlements(request, merchant, resolvedEnvironment);
         environmentService.enforceProductionLimit(merchant, resolvedEnvironment);
         AdapterSelection selection =
                 selectAdapterAndEnsureReady(
@@ -107,6 +108,17 @@ public class AdapterNativePaymentService {
         } catch (RuntimeException e) {
             recordFailure(selection, request, started);
             throw e;
+        }
+    }
+
+    private void requireMetadataEntitlements(
+            PaymentRequest request, Merchant merchant, String environment) {
+        if (request == null || request.getMetadata() == null || merchant == null || merchant.getId() == null) {
+            return;
+        }
+        String subscriptionReference = request.getMetadata().get("subscriptionReference");
+        if (subscriptionReference != null && !subscriptionReference.isBlank()) {
+            featureAccessService.require(merchant.getId(), "RECURRING_PAYMENTS", environment);
         }
     }
 
