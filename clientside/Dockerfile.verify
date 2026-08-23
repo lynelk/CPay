@@ -16,7 +16,7 @@ RUN npm run typecheck
 RUN npm run build
 
 FROM nginx:1.27-alpine
-COPY --from=build /workspace/dist /usr/share/nginx/html
+COPY --from=build /workspace/build /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
