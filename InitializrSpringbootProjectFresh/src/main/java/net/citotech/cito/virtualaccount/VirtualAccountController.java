@@ -49,12 +49,19 @@ public class VirtualAccountController {
 
     @GetMapping
     public ResponseEntity<?> accounts(
-            @RequestParam(value = "environment", defaultValue = "SANDBOX") String environment,
+            @RequestParam(value = "environment", required = false) String environment,
             HttpServletRequest request) {
         try {
+            String resolved = environment;
+            if (resolved == null || resolved.isBlank()) {
+                resolved = request.getHeader("X-CPay-Environment");
+            }
+            if (resolved == null || resolved.isBlank()) {
+                resolved = "SANDBOX";
+            }
             return ResponseEntity.ok(
                     virtualAccountService.accounts(
-                            sessionContext.requireMerchantId(request), environment));
+                            sessionContext.requireMerchantId(request), resolved));
         } catch (PaymentGatewayException e) {
             return bad("VIRTUAL_ACCOUNT_QUERY_REJECTED", e.getMessage());
         }
