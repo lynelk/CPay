@@ -124,7 +124,7 @@ function VerifyEmail(): React.ReactElement {
       subtitle={strings.verify_email_subtitle}
       asideTitle="Email verification"
       asideCopy="Confirm the address on your merchant account to secure your portal access."
-      footer={`© ${new Date().getFullYear()} CPay`}
+      footer={`© ${new Date().getFullYear()} Core-Synergies`}
     >
       {verified ? (
         <div className="ios-result">
