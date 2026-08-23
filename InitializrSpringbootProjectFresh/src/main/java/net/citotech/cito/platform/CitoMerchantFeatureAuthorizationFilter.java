@@ -51,6 +51,9 @@ public class CitoMerchantFeatureAuthorizationFilter extends OncePerRequestFilter
         if (environment == null || environment.isBlank()) {
             environment = request.getParameter("environment");
         }
+        if (environment == null || environment.isBlank()) {
+            environment = "SANDBOX";
+        }
         try {
             featureAccessService.require(user.getMerchant_id(), serviceCode, environment);
             filterChain.doFilter(request, response);
