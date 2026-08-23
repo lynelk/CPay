@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import net.citotech.cito.admin.FeatureRegistryService;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -28,14 +28,22 @@ public class SandboxCapabilityCatalogService {
     private final ApplicationContext applicationContext;
     private final FeatureRegistryService featureRegistryService;
     private final MerchantEnvironmentService environmentService;
+    private final String sandboxPublicUrl;
+    private final String productionPublicUrl;
 
     public SandboxCapabilityCatalogService(
             ApplicationContext applicationContext,
             FeatureRegistryService featureRegistryService,
-            MerchantEnvironmentService environmentService) {
+            MerchantEnvironmentService environmentService,
+            @Value("${cpay.sandbox.public-url:https://cpay-sandbox-production.up.railway.app}")
+                    String sandboxPublicUrl,
+            @Value("${cpay.production.public-url:https://cito.coresynergi.es}")
+                    String productionPublicUrl) {
         this.applicationContext = applicationContext;
         this.featureRegistryService = featureRegistryService;
         this.environmentService = environmentService;
+        this.sandboxPublicUrl = trimSlash(sandboxPublicUrl);
+        this.productionPublicUrl = trimSlash(productionPublicUrl);
     }
 
     public Map<String, Object> catalog(long merchantId, String merchantNumber) {
@@ -44,15 +52,15 @@ public class SandboxCapabilityCatalogService {
         result.put("generatedAt", Instant.now().toString());
         result.put("generatedFromRuntimeMappings", true);
         result.put("environment", MerchantEnvironmentService.SANDBOX);
-        result.put("sandboxBaseUrl", guide.get("sandboxBaseUrl"));
-        result.put("productionBaseUrl", guide.get("productionBaseUrl"));
+        result.put("sandboxBaseUrl", sandboxPublicUrl);
+        result.put("productionBaseUrl", productionPublicUrl);
         result.put("requestHeader", "X-CPay-Environment: SANDBOX");
         result.put(
                 "documentation",
                 Map.of(
-                        "swaggerUi", "/swagger-ui/index.html",
-                        "openApiJson", "/v3/api-docs",
-                        "openApiYaml", "/v3/api-docs.yaml"));
+                        "swaggerUi", sandboxPublicUrl + "/swagger-ui/index.html",
+                        "openApiJson", sandboxPublicUrl + "/v3/api-docs",
+                        "openApiYaml", sandboxPublicUrl + "/v3/api-docs.yaml"));
         result.put(
                 "policy",
                 "Every non-admin /api/v2 route is automatically catalogued in sandbox. "
@@ -82,12 +90,14 @@ public class SandboxCapabilityCatalogService {
                     continue;
                 }
                 for (RequestMethod method : methods) {
-                    endpoints.add(endpoint(method.name(), path, entry.getValue().getMethod().getName()));
+                    endpoints.add(
+                            endpoint(method.name(), path, entry.getValue().getMethod().getName()));
                 }
             }
         }
         endpoints.sort(
-                Comparator.comparing((Map<String, Object> item) -> String.valueOf(item.get("path")))
+                Comparator.comparing(
+                                (Map<String, Object> item) -> String.valueOf(item.get("path")))
                         .thenComparing(item -> String.valueOf(item.get("method"))));
         return List.copyOf(endpoints);
     }
@@ -99,7 +109,7 @@ public class SandboxCapabilityCatalogService {
         endpoint.put("scope", scope(path));
         endpoint.put("handler", handler);
         endpoint.put("sandboxHeaderRequiredForEnvironmentAwareCalls", true);
-        endpoint.put("documentation", "/swagger-ui/index.html");
+        endpoint.put("documentation", sandboxPublicUrl + "/swagger-ui/index.html");
         return endpoint;
     }
 
@@ -111,5 +121,13 @@ public class SandboxCapabilityCatalogService {
             return "MERCHANT_SELF_SERVICE";
         }
         return "PUBLIC_API";
+    }
+
+    private String trimSlash(String value) {
+        String safe = value == null ? "" : value.trim();
+        while (safe.endsWith("/")) {
+            safe = safe.substring(0, safe.length() - 1);
+        }
+        return safe;
     }
 }
