@@ -18,9 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class SandboxLifecycleAdminController {
     private final SandboxLifecycleService service;
+    private final SandboxProductionGuardService productionGuard;
 
-    public SandboxLifecycleAdminController(SandboxLifecycleService service) {
+    public SandboxLifecycleAdminController(
+            SandboxLifecycleService service, SandboxProductionGuardService productionGuard) {
         this.service = service;
+        this.productionGuard = productionGuard;
     }
 
     @GetMapping("/go-live-requests")
@@ -34,8 +37,9 @@ public class SandboxLifecycleAdminController {
             @PathVariable long requestId,
             @RequestBody DecisionRequest request,
             Authentication authentication) {
-        return service.advanceGoLiveRequest(
-                requestId, request.action(), actor(authentication), request.notes());
+        String actor = actor(authentication);
+        productionGuard.assertDecisionAllowed(requestId, request.action(), actor);
+        return service.advanceGoLiveRequest(requestId, request.action(), actor, request.notes());
     }
 
     @PostMapping("/merchants/{merchantId}/promote-configuration")
@@ -52,6 +56,7 @@ public class SandboxLifecycleAdminController {
             @PathVariable long merchantId,
             @RequestBody RolloutRequest request,
             Authentication authentication) {
+        productionGuard.assertRolloutStageAllowed(merchantId, request.stage());
         return service.setRolloutStage(
                 merchantId, request.stage(), actor(authentication), request.dailyLimit());
     }
