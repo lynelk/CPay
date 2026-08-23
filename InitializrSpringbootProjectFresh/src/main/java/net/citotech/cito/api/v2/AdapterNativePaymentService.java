@@ -17,6 +17,7 @@ import net.citotech.cito.gateway.PaymentGatewayRequest;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
 import net.citotech.cito.money.MoneyAmount;
+import net.citotech.cito.platform.CitoFeatureAccessService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +28,7 @@ public class AdapterNativePaymentService {
     private final MerchantEnvironmentService environmentService;
     private final GatewayExecutionService gatewayExecutionService;
     private final IntelligentPaymentRoutingService routingService;
+    private final CitoFeatureAccessService featureAccessService;
     private final String gatewayState;
 
     public AdapterNativePaymentService(
@@ -35,12 +37,14 @@ public class AdapterNativePaymentService {
             MerchantEnvironmentService environmentService,
             GatewayExecutionService gatewayExecutionService,
             IntelligentPaymentRoutingService routingService,
+            CitoFeatureAccessService featureAccessService,
             @Value("${custom.gatewaystate:SANDBOX}") String gatewayState) {
         this.registry = registry;
         this.channelCredentialService = channelCredentialService;
         this.environmentService = environmentService;
         this.gatewayExecutionService = gatewayExecutionService;
         this.routingService = routingService;
+        this.featureAccessService = featureAccessService;
         this.gatewayState = gatewayState;
     }
 
@@ -124,8 +128,10 @@ public class AdapterNativePaymentService {
             return new AdapterSelection(adapter, null);
         }
 
+        featureAccessService.require(merchant.getId(), "INTELLIGENT_ROUTING", environment);
         IntelligentPaymentRoutingService.RoutingPlan plan =
-                routingService.rank(request, merchant.getAccount_number(), operation, account);
+                routingService.rank(
+                        request, merchant.getAccount_number(), operation, account, environment);
         PaymentGatewayException lastPreflightFailure = null;
         int attempted = 0;
         for (IntelligentPaymentRoutingService.RoutingCandidate candidate : plan.candidates()) {
@@ -140,6 +146,7 @@ public class AdapterNativePaymentService {
                                 merchant.getAccount_number(),
                                 request,
                                 operation,
+                                environment,
                                 candidate.adapter().channelCode(),
                                 attempted == 1
                                         ? "Top-ranked channel passed preflight"
