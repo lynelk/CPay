@@ -11,6 +11,7 @@ import {
 } from '../ui';
 
 import ModuleDashboard from './modules/ModuleDashboard';
+import ModuleCitoPlatform from './modules/ModuleCitoPlatform';
 import ModuleVending from './modules/ModuleVending';
 import ModuleAdmins from './modules/ModuleAdmins';
 import ModuleSettings from './modules/ModuleSettings';
@@ -36,6 +37,7 @@ import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
   dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_admin },
+  citoplatform: { title: 'Cito Control Plane', subtitle: 'Service catalogue, merchant entitlements and access governance' },
   vending: { title: 'Vending', subtitle: 'Multi-tenant device estate, rentals, callbacks and manufacturer commands' },
   merchants: { title: strings.menu_merchants, subtitle: strings.menu_merchants_subtitle },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_admin },
@@ -100,6 +102,7 @@ class LayoutWithOutRouter extends React.Component {
     };
 
     switch (item) {
+      case 'citoplatform': return <ModuleCitoPlatform {...moduleProps} />;
       case 'vending': return <ModuleVending {...moduleProps} />;
       case 'admins': return <ModuleAdmins {...moduleProps} />;
       case 'merchants': return <ModuleMerchants {...moduleProps} />;
@@ -255,7 +258,7 @@ class LayoutWithOutRouter extends React.Component {
       <Shell
         navOpen={this.state.navOpen}
         sidebar={
-          <Sidebar brand={<Brand logo={Logo} name="CPay" product="Admin Portal" />}>
+          <Sidebar brand={<Brand logo={Logo} name="Cito" product="Admin Portal" />}>
             <MainMenu activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} />
           </Sidebar>
         }
