@@ -10,6 +10,19 @@ RUN mvn -q dependency:resolve
 COPY InitializrSpringbootProjectFresh/src ./src
 COPY Docs /workspace/Docs
 
+# Spotless intentionally ratchets from origin/main. Docker build contexts do not
+# contain .git, so recreate just enough repository history for the ratchet to
+# compare this verified snapshot against main instead of weakening/skipping the
+# formatting gate.
+RUN cd /workspace \
+    && git init \
+    && git config user.email "verification@cito.local" \
+    && git config user.name "CPay Verification" \
+    && git remote add origin https://github.com/lynelk/CPay.git \
+    && git fetch --depth=1 origin main \
+    && git add InitializrSpringbootProjectFresh Docs \
+    && git commit -m "verification snapshot"
+
 # Deterministic non-production values matching the normal backend CI lane.
 # The dedicated clean-MySQL migration smoke test skips here and executes only
 # when DB_URL points at a MySQL integration environment.
@@ -25,7 +38,7 @@ ENV DB_URL="jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1" \
     ADMIN_API_PASSWORD="ci-admin-password" \
     CALLBACK_SIGNING_SECRET="ci-callback-secret" \
     MERCHANT_CHANNEL_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ==" \
-    CPAY_KEY_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ=="
+    CPAY_KEY_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aWtleQ=="
 
 RUN mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
 RUN unzip -l target/cito-fresh-*.jar | grep -q "BOOT-INF/lib/logstash-logback-encoder-"
