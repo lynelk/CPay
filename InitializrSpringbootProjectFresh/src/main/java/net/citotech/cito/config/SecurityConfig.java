@@ -60,6 +60,9 @@ public class SecurityConfig {
                     "/api/v2/beneficiaries/**",
                     "/api/v2/fx/**");
 
+    static final List<String> PUBLIC_ANONYMOUS_API_PATTERNS =
+            List.of("/api/public/embedded/onboarding/**");
+
     static final List<String> PUBLIC_SIGNED_API_PATTERNS =
             List.of(
                     "/api/v1/**",
@@ -128,8 +131,7 @@ public class SecurityConfig {
             LegacySessionAuthorizationFilter legacySessionAuthorizationFilter,
             CitoMerchantFeatureAuthorizationFilter citoMerchantFeatureAuthorizationFilter)
             throws Exception {
-        CsrfTokenRequestAttributeHandler csrfRequestHandler =
-                new CsrfTokenRequestAttributeHandler();
+        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(
@@ -175,6 +177,9 @@ public class SecurityConfig {
                                         .hasRole("ADMIN")
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ACTUATOR")
+                                        .requestMatchers(
+                                                PUBLIC_ANONYMOUS_API_PATTERNS.toArray(String[]::new))
+                                        .permitAll()
                                         .requestMatchers(
                                                 PUBLIC_SIGNED_API_PATTERNS.toArray(String[]::new))
                                         .permitAll()
