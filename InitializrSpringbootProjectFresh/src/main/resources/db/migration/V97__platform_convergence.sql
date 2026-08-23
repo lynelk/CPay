@@ -44,7 +44,7 @@ ON DUPLICATE KEY UPDATE environment=VALUES(environment), status='ACTIVE', update
 
 CREATE TABLE IF NOT EXISTS marketplace_split_refund_allocations (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  refund_id BIGINT NOT NULL,
+  refund_id BIGINT UNSIGNED NOT NULL,
   split_execution_id BIGINT NOT NULL,
   subaccount_id BIGINT NOT NULL,
   original_allocation_amount DECIMAL(18,6) NOT NULL,
