@@ -9,6 +9,7 @@ import net.citotech.cito.api.v2.dto.ApiErrorResponse;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.platform.PlatformFeatureEventService;
 import net.citotech.cito.sandbox.SandboxProductionGuardService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ public class NativePaymentsV2Controller {
     private final V2RequestSecurityService securityService;
     private final IdempotencyService idempotencyService;
     private final SandboxProductionGuardService productionGuard;
+    private final PlatformFeatureEventService featureEventService;
     private final ObjectMapper objectMapper;
 
     public NativePaymentsV2Controller(
@@ -31,16 +33,19 @@ public class NativePaymentsV2Controller {
             V2RequestSecurityService securityService,
             IdempotencyService idempotencyService,
             SandboxProductionGuardService productionGuard,
+            PlatformFeatureEventService featureEventService,
             ObjectMapper objectMapper) {
         this.adapterNativePaymentService = adapterNativePaymentService;
         this.securityService = securityService;
         this.idempotencyService = idempotencyService;
         this.productionGuard = productionGuard;
+        this.featureEventService = featureEventService;
         this.objectMapper = objectMapper;
     }
 
     @PostMapping(path = "/collect")
     public ResponseEntity<?> collect(@RequestBody String body, HttpServletRequest servletRequest) {
+        String splitEventReference = null;
         try {
             PaymentRequest request = objectMapper.readValue(body, PaymentRequest.class);
             String environment =
@@ -56,20 +61,30 @@ public class NativePaymentsV2Controller {
             if (existing.isPresent()) {
                 return ResponseEntity.ok(existing.get());
             }
+
             productionGuard.reserveProductionExecution(
                     merchant, environment, "COLLECT", request.getReference());
+            splitEventReference =
+                    featureEventService.prepareSplitCapture(merchant, request, environment);
             PaymentResult result =
                     adapterNativePaymentService.collect(request, merchant, environment);
+            featureEventService.confirmPaymentOutcome(splitEventReference, result);
             idempotencyService.record(
                     request.getMerchantNumber(), idempotencyKey, idempotencyBody, result);
             return ResponseEntity.accepted().body(result);
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
         } catch (IllegalStateException e) {
-            return error(HttpStatus.FORBIDDEN, "PRODUCTION_CAPABILITY_NOT_ENABLED", e.getMessage());
+            featureEventService.markPaymentOutcomeUnknown(splitEventReference, e);
+            return error(
+                    HttpStatus.FORBIDDEN,
+                    "PRODUCTION_CAPABILITY_NOT_ENABLED",
+                    e.getMessage());
         } catch (PaymentGatewayException e) {
+            featureEventService.markPaymentOutcomeUnknown(splitEventReference, e);
             return error(HttpStatus.BAD_REQUEST, "PAYMENT_REJECTED", e.getMessage());
         } catch (Exception e) {
+            featureEventService.markPaymentOutcomeUnknown(splitEventReference, e);
             return error(
                     HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid native collect request");
         }
@@ -102,7 +117,10 @@ public class NativePaymentsV2Controller {
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
         } catch (IllegalStateException e) {
-            return error(HttpStatus.FORBIDDEN, "PRODUCTION_CAPABILITY_NOT_ENABLED", e.getMessage());
+            return error(
+                    HttpStatus.FORBIDDEN,
+                    "PRODUCTION_CAPABILITY_NOT_ENABLED",
+                    e.getMessage());
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.BAD_REQUEST, "PAYMENT_REJECTED", e.getMessage());
         } catch (Exception e) {

@@ -8,6 +8,7 @@ import net.citotech.cito.api.v2.dto.RefundRequest;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
 import net.citotech.cito.money.MoneyAmount;
+import net.citotech.cito.platform.CitoFeatureAccessService;
 import net.citotech.cito.refund.RefundRecord;
 import net.citotech.cito.refund.RefundService;
 import net.citotech.cito.sandbox.SandboxFinancialSimulationService;
@@ -22,13 +23,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** v2 partial refunds with an explicit sandbox/production execution boundary. */
+/** v2 partial refunds with explicit entitlement and sandbox/production execution boundaries. */
 @RestController
 @RequestMapping(path = "/api/v2/refunds")
 public class RefundsV2Controller {
     private final RefundService refundService;
     private final V2RequestSecurityService securityService;
     private final MerchantEnvironmentService environmentService;
+    private final CitoFeatureAccessService featureAccessService;
     private final SandboxProductionGuardService productionGuard;
     private final SandboxFinancialSimulationService sandboxSimulation;
     private final ObjectMapper objectMapper;
@@ -37,12 +39,14 @@ public class RefundsV2Controller {
             RefundService refundService,
             V2RequestSecurityService securityService,
             MerchantEnvironmentService environmentService,
+            CitoFeatureAccessService featureAccessService,
             SandboxProductionGuardService productionGuard,
             SandboxFinancialSimulationService sandboxSimulation,
             ObjectMapper objectMapper) {
         this.refundService = refundService;
         this.securityService = securityService;
         this.environmentService = environmentService;
+        this.featureAccessService = featureAccessService;
         this.productionGuard = productionGuard;
         this.sandboxSimulation = sandboxSimulation;
         this.objectMapper = objectMapper;
@@ -56,6 +60,12 @@ public class RefundsV2Controller {
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
             String environment = compatibilityEnvironment(servletRequest);
+            if (!featureAccessService.allowed(merchant.getId(), "REFUND_OPERATIONS", environment)) {
+                return error(
+                        HttpStatus.FORBIDDEN,
+                        "CITO_SERVICE_NOT_ENTITLED",
+                        "Refund Operations is not active for this merchant in " + environment);
+            }
             BigDecimal amount =
                     request.getAmount() == null || request.getAmount().isBlank()
                             ? null
@@ -102,6 +112,12 @@ public class RefundsV2Controller {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
             String environment = compatibilityEnvironment(servletRequest);
+            if (!featureAccessService.allowed(merchant.getId(), "REFUND_OPERATIONS", environment)) {
+                return error(
+                        HttpStatus.FORBIDDEN,
+                        "CITO_SERVICE_NOT_ENTITLED",
+                        "Refund Operations is not active for this merchant in " + environment);
+            }
             if (MerchantEnvironmentService.SANDBOX.equals(environment)) {
                 return sandboxSimulation
                         .findRefund(merchant.getId(), reference)
@@ -126,6 +142,8 @@ public class RefundsV2Controller {
                                                     + reference));
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
+        } catch (PaymentGatewayException e) {
+            return error(HttpStatus.BAD_REQUEST, "REFUND_REJECTED", e.getMessage());
         }
     }
 
