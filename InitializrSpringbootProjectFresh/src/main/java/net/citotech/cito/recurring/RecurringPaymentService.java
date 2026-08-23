@@ -557,13 +557,14 @@ public class RecurringPaymentService {
 
     private Instant nextCharge(Instant from, String unit, int count) {
         ZonedDateTime value = ZonedDateTime.ofInstant(from, ZoneOffset.UTC);
-        return switch (unit) {
+        ZonedDateTime next =
+                switch (unit) {
                     case "DAY" -> value.plusDays(count);
                     case "WEEK" -> value.plusWeeks(count);
                     case "MONTH" -> value.plusMonths(count);
                     default -> throw new PaymentGatewayException("Unsupported recurring interval");
-                }
-                .toInstant();
+                };
+        return next.toInstant();
     }
 
     private boolean successful(String value) {
