@@ -33,6 +33,8 @@ class PaymentsV2ControllerMerchantFeaturesTest {
 
     private final PaymentOrchestrationService orchestrationService =
             mock(PaymentOrchestrationService.class);
+    private final AdapterNativePaymentService adapterNativePaymentService =
+            mock(AdapterNativePaymentService.class);
     private final PaymentStatusService paymentStatusService = mock(PaymentStatusService.class);
     private final V2RequestSecurityService securityService = mock(V2RequestSecurityService.class);
     private final IdempotencyService idempotencyService = mock(IdempotencyService.class);
@@ -170,6 +172,7 @@ class PaymentsV2ControllerMerchantFeaturesTest {
         PaymentsV2Controller controller =
                 new PaymentsV2Controller(
                         orchestrationService,
+                        adapterNativePaymentService,
                         paymentStatusService,
                         securityService,
                         idempotencyService,
