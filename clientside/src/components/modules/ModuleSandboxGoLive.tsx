@@ -157,14 +157,16 @@ export default function ModuleSandboxGoLive({ loader, refreshSignal, sessionExpi
       <Card>
         <Section
           title="Sandbox → production approvals"
-          description="Technical, compliance, risk and operations reviews are explicit stages. Production activation starts at a low collections-only limit."
           actions={<Button variant="ghost" className="ios-btn--sm" onClick={() => void load()} disabled={busy}>Refresh</Button>}
-        />
+        >
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Technical, compliance, risk and operations reviews are explicit stages. Production activation starts at a low collections-only limit.</p>
+        </Section>
         <Table columns={columns} rows={rows} rowKey={(row) => row.id} pageSize={50} emptyText="No production-access requests yet." />
       </Card>
 
       <Card>
-        <Section title="Production smoke-test verification" description="Verify an already-authorized low-value live transaction without creating a real transaction from the admin console.">
+        <Section title="Production smoke-test verification">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Verify an already-authorized low-value live transaction without creating a real transaction from the admin console.</p>
           <div className="ios-form" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
             <TextField id="smoke-merchant-id" label="Merchant ID" type="number" value={smokeMerchantId} onValueChange={setSmokeMerchantId} />
             <TextField id="smoke-merchant-number" label="Merchant number" value={smokeMerchantNumber} onValueChange={setSmokeMerchantNumber} />
@@ -179,7 +181,8 @@ export default function ModuleSandboxGoLive({ loader, refreshSignal, sessionExpi
       </Card>
 
       <Card>
-        <Section title="Isolation verification" description="Re-check the database-level sandbox/production boundaries and production capability gates.">
+        <Section title="Isolation verification">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Re-check the database-level sandbox/production boundaries and production capability gates.</p>
           <Toolbar>
             <Button variant="primary" disabled={busy} onClick={() => void mutate('/api/v2/admin/sandbox/verify-isolation', undefined, 'Sandbox isolation checks completed.')}>Run isolation verification</Button>
           </Toolbar>
