@@ -55,4 +55,9 @@ describe('CitoLandingPage', () => {
       'mailto:support@citotech.net',
     );
   });
+
+  it('shows Core-Synergies as the copyright owner', () => {
+    renderLandingPage();
+    expect(screen.getByText(/© .* Core-Synergies/i)).toBeInTheDocument();
+  });
 });

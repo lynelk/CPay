@@ -228,7 +228,7 @@ function MerchantSignup(): React.ReactElement {
       asideImageAlt="Merchant onboarding workspace"
       asideCards={asideCards}
       asideBenefits={asideBenefits}
-      footer={`© ${new Date().getFullYear()} CPay`}
+      footer={`© ${new Date().getFullYear()} Core-Synergies`}
     >
       {message && !result ? <Alert variant="error">{message}</Alert> : null}
 
