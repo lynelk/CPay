@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "mvn -q -DskipTests clean package && mkdir -p target && cp InitializrSpringbootProjectFresh/target/*.jar target/"
+    "buildCommand": "mvn -B -DskipTests clean package --no-transfer-progress"
   },
   "deploy": {
     "startCommand": "sh ./start.sh",
