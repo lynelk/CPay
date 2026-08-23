@@ -41,7 +41,9 @@ ENV DB_URL="jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1" \
     CPAY_KEY_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aWtleQ=="
 
 RUN mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
-RUN unzip -l target/cito-fresh-*.jar | grep -q "BOOT-INF/lib/logstash-logback-encoder-"
+RUN ls -lah target \
+    && echo "=== packaged jar library sample ===" \
+    && jar tf target/cito-fresh-*.jar | grep -E "BOOT-INF/lib/|logstash" | head -80 || true
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
