@@ -1,0 +1,19 @@
+extends:
+  - recommended
+
+rules:
+  info-license: off
+  operation-description: warn
+  operation-4xx-response: warn
+  no-server-example.com: off
+  security-defined: error
+  no-unresolved-refs: error
+  no-ambiguous-paths: error
+  operation-operationId-unique: error
+  operation-operationId: error
+  operation-summary: error
+  path-declaration-must-exist: error
+  spec: error
+
+ignore:
+  - Docs/Api/generated/**
