@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "policy": "Production go-live is blocked until every required gate is VERIFIED with named reviewer, verification timestamp, and evidence references. Never store credentials, secrets, customer data, or provider tokens in this file.",
+  "gates": [
+    {
+      "id": "operations.production-monitoring",
+      "title": "Production monitoring target and dashboards verified",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "operations.alert-delivery",
+      "title": "Production alert delivery and acknowledgement drill verified",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "operations.support-escalation",
+      "title": "Primary, secondary and provider support escalation paths verified",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "provider.mtn-sandbox",
+      "title": "MTN real sandbox certification approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "provider.airtel-sandbox",
+      "title": "Airtel real sandbox certification approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "provider.airtel-openapi-sandbox",
+      "title": "Airtel OpenAPI real sandbox certification approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "provider.safaricom-sandbox",
+      "title": "Safaricom real sandbox certification approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "staging.migration-validation",
+      "title": "Staging Flyway migration and recovery rehearsal approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "finance.balance-reconciliation",
+      "title": "Staging balances and ledger/provider reconciliation approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "security.production-review",
+      "title": "Production security review and remediation acceptance approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "compliance.production-review",
+      "title": "Compliance and privacy review approved",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    },
+    {
+      "id": "regulatory.applicability-and-approval",
+      "title": "Applicable regulatory, scheme and legal approvals recorded",
+      "required": true,
+      "status": "PENDING_MANUAL",
+      "verifiedBy": null,
+      "verifiedAt": null,
+      "evidence": []
+    }
+  ]
+}

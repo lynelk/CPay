@@ -2,7 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy-server.sh"
+READINESS_GATE="${REPO_ROOT}/ops/readiness/verify_go_live_evidence.py"
 
 export CPAY_ENVIRONMENT="production"
 export CPAY_DOMAIN="change_me"
@@ -23,6 +25,16 @@ if [ ! -f "${DEPLOY_SCRIPT}" ]; then
   echo "Deployment script not found: ${DEPLOY_SCRIPT}" >&2
   exit 1
 fi
+
+if [ ! -f "${READINESS_GATE}" ]; then
+  echo "Production readiness gate not found: ${READINESS_GATE}" >&2
+  exit 1
+fi
+
+# Production deployment is deliberately fail-closed. Provider certification,
+# monitoring/escalation drills, staging reconciliation, and security/compliance
+# approvals must be recorded before this wrapper can deploy production.
+python3 "${READINESS_GATE}"
 
 exec sudo env \
   CPAY_ENVIRONMENT="${CPAY_ENVIRONMENT}" \
