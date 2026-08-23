@@ -9,7 +9,7 @@ import net.citotech.cito.api.v2.dto.ApiErrorResponse;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
 import net.citotech.cito.gateway.PaymentGatewayException;
-import net.citotech.cito.sandbox.SandboxLifecycleService;
+import net.citotech.cito.sandbox.SandboxProductionGuardService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,19 +23,19 @@ public class NativePaymentsV2Controller {
     private final AdapterNativePaymentService adapterNativePaymentService;
     private final V2RequestSecurityService securityService;
     private final IdempotencyService idempotencyService;
-    private final SandboxLifecycleService sandboxLifecycleService;
+    private final SandboxProductionGuardService productionGuard;
     private final ObjectMapper objectMapper;
 
     public NativePaymentsV2Controller(
             AdapterNativePaymentService adapterNativePaymentService,
             V2RequestSecurityService securityService,
             IdempotencyService idempotencyService,
-            SandboxLifecycleService sandboxLifecycleService,
+            SandboxProductionGuardService productionGuard,
             ObjectMapper objectMapper) {
         this.adapterNativePaymentService = adapterNativePaymentService;
         this.securityService = securityService;
         this.idempotencyService = idempotencyService;
-        this.sandboxLifecycleService = sandboxLifecycleService;
+        this.productionGuard = productionGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -48,8 +48,7 @@ public class NativePaymentsV2Controller {
                             servletRequest.getHeader("X-CPay-Environment"), request);
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
-            sandboxLifecycleService.requireProductionCapability(
-                    merchant.getId(), environment, "COLLECT");
+            productionGuard.enforcePayment(merchant, environment, "COLLECT");
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
             String idempotencyBody = bodyWithEnvironment(body, environment);
             Optional<PaymentResult> existing =
@@ -84,8 +83,7 @@ public class NativePaymentsV2Controller {
                             servletRequest.getHeader("X-CPay-Environment"), request);
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
-            sandboxLifecycleService.requireProductionCapability(
-                    merchant.getId(), environment, "PAYOUT");
+            productionGuard.enforcePayment(merchant, environment, "PAYOUT");
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
             String idempotencyBody = bodyWithEnvironment(body, environment);
             Optional<PaymentResult> existing =
