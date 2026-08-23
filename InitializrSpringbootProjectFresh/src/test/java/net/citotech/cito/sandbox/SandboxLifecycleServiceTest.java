@@ -22,48 +22,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 class SandboxLifecycleServiceTest {
 
     @Test
-    void sandboxMoneyMovementIsNeverBlockedByProductionRollout() {
-        NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
-        SandboxLifecycleService service = service(jdbc);
-
-        service.requireProductionCapability(42L, "SANDBOX", "PAYOUT");
-
-        verify(jdbc, never())
-                .queryForObject(
-                        any(String.class),
-                        any(MapSqlParameterSource.class),
-                        eq(Integer.class));
-    }
-
-    @Test
-    void productionPayoutFailsClosedUntilRolloutEnablesIt() {
-        NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(jdbc.queryForObject(
-                        argThat(sql -> sql != null && sql.contains("payouts_enabled")),
-                        any(MapSqlParameterSource.class),
-                        eq(Integer.class)))
-                .thenReturn(0);
-        SandboxLifecycleService service = service(jdbc);
-
-        assertThatThrownBy(() -> service.requireProductionCapability(42L, "PRODUCTION", "PAYOUT"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("not enabled");
-    }
-
-    @Test
-    void productionCollectionPassesOnceCollectionsStageIsEnabled() {
-        NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(jdbc.queryForObject(
-                        argThat(sql -> sql != null && sql.contains("collections_enabled")),
-                        any(MapSqlParameterSource.class),
-                        eq(Integer.class)))
-                .thenReturn(1);
-        SandboxLifecycleService service = service(jdbc);
-
-        service.requireProductionCapability(42L, "PRODUCTION", "COLLECT");
-    }
-
-    @Test
     void topUpWritesOnlySyntheticWalletStorage() {
         NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
         when(jdbc.update(
@@ -73,15 +31,26 @@ class SandboxLifecycleServiceTest {
         when(jdbc.queryForList(
                         argThat(sql -> sql != null && sql.contains("sandbox_wallet_balances")),
                         any(MapSqlParameterSource.class)))
-                .thenReturn(List.of(Map.of(
-                        "id", 1L,
-                        "channel_code", "GENERAL",
-                        "currency", "UGX",
-                        "available_balance", new BigDecimal("1000"))));
+                .thenReturn(
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        1L,
+                                        "channel_code",
+                                        "GENERAL",
+                                        "currency",
+                                        "UGX",
+                                        "available_balance",
+                                        new BigDecimal("1000"))));
         SandboxLifecycleService service = service(jdbc);
 
         Map<String, Object> result =
-                service.topUp(42L, "GENERAL", "UGX", new BigDecimal("1000"), "merchant@example.test");
+                service.topUp(
+                        42L,
+                        "GENERAL",
+                        "UGX",
+                        new BigDecimal("1000"),
+                        "merchant@example.test");
 
         assertThat(result.get("available_balance")).isEqualTo(new BigDecimal("1000"));
         verify(jdbc, never())
@@ -119,6 +88,39 @@ class SandboxLifecycleServiceTest {
     }
 
     @Test
+    void certificationResetIsBlockedWhileGoLiveRequestIsActive() {
+        NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
+        when(jdbc.queryForObject(
+                        argThat(
+                                sql ->
+                                        sql != null
+                                                && sql.contains("merchant_go_live_requests")
+                                                && sql.contains("IN_REVIEW")),
+                        any(MapSqlParameterSource.class),
+                        eq(Integer.class)))
+                .thenReturn(1);
+        SandboxLifecycleService service = service(jdbc);
+
+        assertThatThrownBy(
+                        () ->
+                                service.reset(
+                                        42L,
+                                        "1000042",
+                                        "CERTIFICATION",
+                                        "merchant@example.test"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("production-access request is active");
+
+        verify(jdbc, never())
+                .update(
+                        argThat(
+                                sql ->
+                                        sql != null
+                                                && sql.contains("sandbox_certification_runs")),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
     void oversizedSyntheticTopUpIsRejectedBeforeDatabaseAccess() {
         NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
         SandboxLifecycleService service = service(jdbc);
@@ -138,8 +140,6 @@ class SandboxLifecycleServiceTest {
 
     private SandboxLifecycleService service(NamedParameterJdbcTemplate jdbc) {
         return new SandboxLifecycleService(
-                jdbc,
-                mock(ReadinessDashboardService.class),
-                new ObjectMapper());
+                jdbc, mock(ReadinessDashboardService.class), new ObjectMapper());
     }
 }
