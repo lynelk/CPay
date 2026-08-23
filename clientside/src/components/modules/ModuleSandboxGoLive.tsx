@@ -81,6 +81,10 @@ export default function ModuleSandboxGoLive({ loader, refreshSignal, sessionExpi
         method: 'POST',
         body: body === undefined ? undefined : JSON.stringify(body),
       });
+      const operationStatus = result.status ? String(result.status).toUpperCase() : '';
+      if (operationStatus === 'FAILED') {
+        throw new Error(`${message.replace(/[.!]\s*$/, '')} failed. Review the verification evidence before continuing.`);
+      }
       setNotice(`${message}${result.status ? ` Status: ${String(result.status)}.` : ''}`);
       await load();
     } catch (err) {
@@ -136,7 +140,6 @@ export default function ModuleSandboxGoLive({ loader, refreshSignal, sessionExpi
             ) : null}
             {row.request_status === 'ACTIVATED' ? (
               <>
-                <Button variant="ghost" className="ios-btn--sm" disabled={busy} onClick={() => void mutate(`/api/v2/admin/sandbox/merchants/${row.merchant_id}/rollout`, { stage: 'COLLECTIONS', dailyLimit: 10 }, 'Collections stage enabled.')}>Collections</Button>
                 <Button variant="ghost" className="ios-btn--sm" disabled={busy} onClick={() => void mutate(`/api/v2/admin/sandbox/merchants/${row.merchant_id}/rollout`, { stage: 'REFUNDS', dailyLimit: 25 }, 'Refund stage enabled.')}>Refunds</Button>
                 <Button variant="ghost" className="ios-btn--sm" disabled={busy} onClick={() => void mutate(`/api/v2/admin/sandbox/merchants/${row.merchant_id}/rollout`, { stage: 'PAYOUTS_LOW_LIMIT', dailyLimit: 50 }, 'Low-limit payout stage enabled.')}>Payouts</Button>
                 <Button variant="primary" className="ios-btn--sm" disabled={busy} onClick={() => void mutate(`/api/v2/admin/sandbox/merchants/${row.merchant_id}/rollout`, { stage: 'FULL' }, 'Full production stage enabled.')}>Full</Button>
