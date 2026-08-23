@@ -15,15 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * Central entitlement guard for merchant-facing Cito feature modules.
- *
- * <p>Existing core merchant endpoints remain untouched. Only the newer modular product surfaces are
- * mapped here so each controller cannot accidentally invent its own access semantics. The active
- * environment comes from X-CPay-Environment or the environment query parameter and defaults to
- * SANDBOX. Money-moving services still perform their own explicit production entitlement checks
- * using the resolved request/mandate environment.</p>
- */
+/** Central entitlement guard for merchant-facing Cito feature modules. */
 @Component
 public class CitoMerchantFeatureAuthorizationFilter extends OncePerRequestFilter {
     private static final Map<String, String> FEATURE_PREFIXES = featurePrefixes();
@@ -47,7 +39,10 @@ public class CitoMerchantFeatureAuthorizationFilter extends OncePerRequestFilter
         HttpSession session = request.getSession(false);
         if (session == null || !(session.getAttribute("merchantUser") instanceof MerchantUser user)
                 || user.getMerchant_id() == null) {
-            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "MERCHANT_SESSION_REQUIRED",
+            writeError(
+                    response,
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "MERCHANT_SESSION_REQUIRED",
                     "Merchant login is required");
             return;
         }
@@ -60,7 +55,10 @@ public class CitoMerchantFeatureAuthorizationFilter extends OncePerRequestFilter
             featureAccessService.require(user.getMerchant_id(), serviceCode, environment);
             filterChain.doFilter(request, response);
         } catch (PaymentGatewayException e) {
-            writeError(response, HttpServletResponse.SC_FORBIDDEN, "CITO_SERVICE_NOT_ENTITLED",
+            writeError(
+                    response,
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "CITO_SERVICE_NOT_ENTITLED",
                     e.getMessage());
         }
     }
@@ -82,8 +80,13 @@ public class CitoMerchantFeatureAuthorizationFilter extends OncePerRequestFilter
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write(
-                "{\"code\":\"" + escape(code) + "\",\"message\":\"" + escape(message) + "\"}");
+        response.getWriter()
+                .write(
+                        "{\"code\":\""
+                                + escape(code)
+                                + "\",\"message\":\""
+                                + escape(message)
+                                + "\"}");
     }
 
     private String escape(String value) {
@@ -94,6 +97,7 @@ public class CitoMerchantFeatureAuthorizationFilter extends OncePerRequestFilter
         Map<String, String> map = new LinkedHashMap<>();
         map.put("/api/v2/merchant-self-service/routing", "INTELLIGENT_ROUTING");
         map.put("/api/v2/merchant-self-service/marketplace", "MARKETPLACE_PAYMENTS");
+        map.put("/api/v2/merchant-self-service/refunds", "REFUND_OPERATIONS");
         map.put("/api/v2/merchant-self-service/disputes", "REFUND_OPERATIONS");
         map.put("/api/v2/merchant-self-service/recurring", "RECURRING_PAYMENTS");
         map.put("/api/v2/merchant-self-service/analytics", "MERCHANT_ANALYTICS");
