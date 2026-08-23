@@ -235,7 +235,7 @@ export default function MerchantModuleCitoServices({ loader, refreshSignal, sess
     }
   }, [loadOverview, loadTab, loader, tab]);
 
-  React.useEffect(() => { void refresh(); }, [environment, tab]);
+  React.useEffect(() => { void refresh(); }, [refresh]);
   React.useEffect(() => {
     if (refreshSignal !== undefined) void refresh();
     // refreshSignal is intentionally an external refresh edge.
@@ -566,7 +566,7 @@ export default function MerchantModuleCitoServices({ loader, refreshSignal, sess
     }
   }
 
-  const summaryPairs = [
+  const summaryPairs: Array<[string, unknown]> = [
     ['Routing decisions', (overview?.routing as Record<string, unknown> | undefined)?.decisions],
     ['Open disputes', (overview?.refunds as Record<string, unknown> | undefined)?.openDisputes],
     ['Split recovery pending', (overview?.marketplace as Record<string, unknown> | undefined)?.pendingRecoveryEvents],
@@ -601,7 +601,7 @@ export default function MerchantModuleCitoServices({ loader, refreshSignal, sess
       {overview ? (
         <div className="cito-platform__metrics">
           {summaryPairs.map(([label, value]) => (
-            <div className="cito-platform__metric" key={String(label)}>
+            <div className="cito-platform__metric" key={label}>
               <div className="cito-platform__metric-head"><span className="cito-platform__muted">{label}</span></div>
               <strong>{text(value || 0)}</strong>
             </div>
