@@ -1,0 +1,169 @@
+.cito-platform {
+  display: grid;
+  gap: 20px;
+}
+
+.cito-platform__hero {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.cito-platform__hero h2,
+.cito-platform__section h3 {
+  margin: 0;
+}
+
+.cito-platform__hero p,
+.cito-platform__section p {
+  margin: 6px 0 0;
+  color: var(--ios-text-secondary, #667085);
+}
+
+.cito-platform__environment {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cito-platform__tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.cito-platform__tab {
+  border: 1px solid var(--ios-border, #d0d5dd);
+  background: var(--ios-surface, #fff);
+  color: inherit;
+  border-radius: 999px;
+  padding: 8px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  font: inherit;
+}
+
+.cito-platform__tab[aria-selected='true'] {
+  border-color: var(--ios-accent, #1198c4);
+  box-shadow: inset 0 0 0 1px var(--ios-accent, #1198c4);
+  font-weight: 700;
+}
+
+.cito-platform__services,
+.cito-platform__metrics,
+.cito-platform__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.cito-platform__service,
+.cito-platform__metric,
+.cito-platform__panel {
+  border: 1px solid var(--ios-border, #e4e7ec);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--ios-surface, #fff);
+}
+
+.cito-platform__service-head,
+.cito-platform__metric-head,
+.cito-platform__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cito-platform__service h4,
+.cito-platform__panel h4 {
+  margin: 0;
+}
+
+.cito-platform__metric strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 1.35rem;
+}
+
+.cito-platform__form {
+  display: grid;
+  gap: 12px;
+}
+
+.cito-platform__form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.cito-platform__field {
+  display: grid;
+  gap: 5px;
+}
+
+.cito-platform__field label {
+  font-size: .85rem;
+  font-weight: 650;
+}
+
+.cito-platform__field input,
+.cito-platform__field select,
+.cito-platform__field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--ios-border, #d0d5dd);
+  border-radius: 10px;
+  background: var(--ios-surface, #fff);
+  color: inherit;
+  padding: 9px 10px;
+  font: inherit;
+}
+
+.cito-platform__field textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.cito-platform__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cito-platform__list li {
+  border-top: 1px solid var(--ios-border, #eaecf0);
+  padding-top: 9px;
+}
+
+.cito-platform__muted {
+  color: var(--ios-text-secondary, #667085);
+  font-size: .9rem;
+}
+
+.cito-platform__code {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: .84rem;
+}
+
+.cito-platform__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .cito-platform__hero {
+    display: grid;
+  }
+
+  .cito-platform__environment {
+    justify-content: flex-start;
+  }
+}
