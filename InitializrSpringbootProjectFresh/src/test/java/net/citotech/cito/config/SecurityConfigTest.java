@@ -40,7 +40,12 @@ class SecurityConfigTest {
 
         assertThat(configuration).isNotNull();
         assertThat(configuration.getAllowedHeaders())
-                .contains("X-Request-ID", "X-CPay-Signature", "X-Idempotency-Key")
+                .contains(
+                        "X-Request-ID",
+                        "X-CPay-Signature",
+                        "X-CPay-Environment",
+                        "X-CPay-Idempotency-Key",
+                        "X-Idempotency-Key")
                 .doesNotContain("*");
         assertThat(configuration.getExposedHeaders())
                 .contains("X-Request-ID", "Deprecation", "Sunset", "Link");
@@ -48,6 +53,9 @@ class SecurityConfigTest {
 
     @Test
     void apiAuthorizationMatchersAreExplicitAndDoNotPermitEveryApiRoute() {
+        assertThat(SecurityConfig.PUBLIC_ANONYMOUS_API_PATTERNS)
+                .containsExactly("/api/public/embedded/onboarding/**")
+                .doesNotContain("/api/public/**", "/api/**");
         assertThat(SecurityConfig.PUBLIC_SIGNED_API_PATTERNS).doesNotContain("/api/**");
         assertThat(SecurityConfig.PUBLIC_SESSION_API_PATTERNS).doesNotContain("/api/**");
         assertThat(SecurityConfig.PUBLIC_PAGE_AND_LEGACY_PORTAL_PATTERNS).doesNotContain("/api/**");

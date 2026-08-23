@@ -5,7 +5,9 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import net.citotech.cito.platform.CitoMerchantFeatureAuthorizationFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -30,11 +32,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
-// Audit E3: enables @PreAuthorize as defense-in-depth on top of the path-based rules in
-// filterChain() below. This is additive hardening only - every method-level check added under
-// this flag mirrors an existing path-matcher rule (e.g. hasRole("ADMIN") for /api/v2/admin/**),
-// so it can never grant access the path matcher wouldn't already grant; it only protects against
-// the path rule drifting or being bypassed by an internal forward/include.
 @EnableMethodSecurity
 public class SecurityConfig {
 
@@ -62,6 +59,9 @@ public class SecurityConfig {
                     "/api/v2/cross-border/**",
                     "/api/v2/beneficiaries/**",
                     "/api/v2/fx/**");
+
+    static final List<String> PUBLIC_ANONYMOUS_API_PATTERNS =
+            List.of("/api/public/embedded/onboarding/**");
 
     static final List<String> PUBLIC_SIGNED_API_PATTERNS =
             List.of(
@@ -122,21 +122,16 @@ public class SecurityConfig {
     @Value("${admin.api.password}")
     private String adminPassword;
 
-    // Audit E10: the Vite-built SPA (Clientside/build/index.html) loads its bundle via an external
-    // <script type="module"> and stylesheet <link> with no inline <script> anywhere, so script-src
-    // does not need 'unsafe-inline' - only style-src does, because the React component library
-    // sets `style={{...}}` (a DOM inline-style attribute) extensively. This extra connect-src
-    // allowance is the local Vite dev server target only; production overrides it to blank in
-    // application-production.properties so the shipped CSP has no localhost carve-out.
     @Value("${csp.connect-src.extra:http://localhost:8081 http://127.0.0.1:8081}")
     private String cspConnectSrcExtra;
 
     @Bean
     public SecurityFilterChain filterChain(
-            HttpSecurity http, LegacySessionAuthorizationFilter legacySessionAuthorizationFilter)
+            HttpSecurity http,
+            LegacySessionAuthorizationFilter legacySessionAuthorizationFilter,
+            CitoMerchantFeatureAuthorizationFilter citoMerchantFeatureAuthorizationFilter)
             throws Exception {
-        CsrfTokenRequestAttributeHandler csrfRequestHandler =
-                new CsrfTokenRequestAttributeHandler();
+        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(
@@ -183,6 +178,9 @@ public class SecurityConfig {
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ACTUATOR")
                                         .requestMatchers(
+                                                PUBLIC_ANONYMOUS_API_PATTERNS.toArray(String[]::new))
+                                        .permitAll()
+                                        .requestMatchers(
                                                 PUBLIC_SIGNED_API_PATTERNS.toArray(String[]::new))
                                         .permitAll()
                                         .requestMatchers(
@@ -197,8 +195,26 @@ public class SecurityConfig {
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
                 .addFilterBefore(legacySessionAuthorizationFilter, AuthorizationFilter.class)
+                .addFilterAfter(
+                        citoMerchantFeatureAuthorizationFilter,
+                        LegacySessionAuthorizationFilter.class)
                 .httpBasic(httpBasic -> {});
         return http.build();
+    }
+
+    /**
+     * The feature entitlement filter belongs to the Spring Security chain only. Disabling servlet
+     * auto-registration makes its order deterministic and avoids the same filter executing outside
+     * the security chain before session/authentication bridging has run.
+     */
+    @Bean
+    public FilterRegistrationBean<CitoMerchantFeatureAuthorizationFilter>
+            citoMerchantFeatureAuthorizationFilterRegistration(
+                    CitoMerchantFeatureAuthorizationFilter filter) {
+        FilterRegistrationBean<CitoMerchantFeatureAuthorizationFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
@@ -253,6 +269,8 @@ public class SecurityConfig {
                         "X-CPay-Signature",
                         "X-CPay-Timestamp",
                         "X-CPay-Nonce",
+                        "X-CPay-Environment",
+                        "X-CPay-Idempotency-Key",
                         "X-Idempotency-Key",
                         "Idempotency-Key",
                         "X-Request-ID"));
@@ -300,11 +318,15 @@ public class SecurityConfig {
     }
 
     private boolean isLoopbackHost(String host) {
-        return "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "::1".equals(host);
+        return "localhost".equalsIgnoreCase(host)
+                || "127.0.0.1".equals(host)
+                || "::1".equals(host);
     }
 
     private void validateCredentials(String username, String password, String message) {
-        if (isBlank(username) || isBlank(password)) throw new IllegalStateException(message);
+        if (isBlank(username) || isBlank(password)) {
+            throw new IllegalStateException(message);
+        }
     }
 
     private boolean isBlank(String value) {

@@ -19,12 +19,14 @@ import net.citotech.cito.gateway.GatewayBalance;
 import net.citotech.cito.gateway.GatewayBalanceRequest;
 import net.citotech.cito.gateway.GatewayCapabilities;
 import net.citotech.cito.gateway.GatewayExecutionService;
+import net.citotech.cito.gateway.IntelligentPaymentRoutingService;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayRequest;
 import net.citotech.cito.gateway.PaymentStatusRequest;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
+import net.citotech.cito.platform.CitoFeatureAccessService;
 import org.junit.jupiter.api.Test;
 
 class AdapterNativePaymentServiceTest {
@@ -32,31 +34,40 @@ class AdapterNativePaymentServiceTest {
     @Test
     void productionModeUsesProductionMerchantChannelCredentials() {
         CapturingAdapter adapter = new CapturingAdapter();
-        MerchantChannelCredentialService credentialService = mock(MerchantChannelCredentialService.class);
+        MerchantChannelCredentialService credentialService =
+                mock(MerchantChannelCredentialService.class);
         MerchantEnvironmentService environmentService = mock(MerchantEnvironmentService.class);
+        IntelligentPaymentRoutingService routingService = mock(IntelligentPaymentRoutingService.class);
+        CitoFeatureAccessService featureAccessService = mock(CitoFeatureAccessService.class);
         GatewayExecutionService gatewayExecutionService = new GatewayExecutionService();
         when(environmentService.normalizedEnvironment("PRODUCTION")).thenReturn("PRODUCTION");
-        when(credentialService.loadDecrypted(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION")))
-            .thenReturn(Map.of("collectUrl", "https://provider.example/collect"));
+        when(credentialService.loadDecrypted(
+                        any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION")))
+                .thenReturn(Map.of("collectUrl", "https://provider.example/collect"));
 
-        AdapterNativePaymentService service = new AdapterNativePaymentService(
-            new PaymentChannelRegistry(List.of(adapter)),
-            credentialService,
-            environmentService,
-            gatewayExecutionService,
-            "PRODUCTION"
-        );
+        AdapterNativePaymentService service =
+                new AdapterNativePaymentService(
+                        new PaymentChannelRegistry(List.of(adapter)),
+                        credentialService,
+                        environmentService,
+                        gatewayExecutionService,
+                        routingService,
+                        featureAccessService,
+                        "PRODUCTION");
 
         PaymentResult result = service.collect(paymentRequest(), merchant(), "PRODUCTION");
 
-        verify(environmentService).enforceProductionLimit(any(Merchant.class), eq("PRODUCTION"));
-        verify(credentialService).ensureChannelReady(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
-        verify(credentialService).loadDecrypted(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
+        verify(environmentService)
+                .enforceProductionLimit(any(Merchant.class), eq("PRODUCTION"));
+        verify(credentialService)
+                .ensureChannelReady(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
+        verify(credentialService)
+                .loadDecrypted(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
         assertThat(result.getEnvironment()).isEqualTo("PRODUCTION");
         assertThat(adapter.lastRequest.getMetadata())
-            .containsEntry("gatewayState", "PRODUCTION")
-            .containsEntry("credentialEnvironment", "PRODUCTION")
-            .containsEntry("collectUrl", "https://provider.example/collect");
+                .containsEntry("gatewayState", "PRODUCTION")
+                .containsEntry("credentialEnvironment", "PRODUCTION")
+                .containsEntry("collectUrl", "https://provider.example/collect");
 
         gatewayExecutionService.shutdown();
     }
@@ -92,22 +103,34 @@ class AdapterNativePaymentServiceTest {
         private PaymentGatewayRequest lastRequest;
 
         @Override
-        public String channelCode() { return "mtn_momo"; }
+        public String channelCode() {
+            return "mtn_momo";
+        }
 
         @Override
-        public String displayName() { return "MTN MoMo"; }
+        public String displayName() {
+            return "MTN MoMo";
+        }
 
         @Override
-        public String countryCode() { return "UG"; }
+        public String countryCode() {
+            return "UG";
+        }
 
         @Override
-        public String currencyCode() { return "UGX"; }
+        public String currencyCode() {
+            return "UGX";
+        }
 
         @Override
-        public GatewayCapabilities capabilities() { return GatewayCapabilities.mobileMoneyDefaults(); }
+        public GatewayCapabilities capabilities() {
+            return GatewayCapabilities.mobileMoneyDefaults();
+        }
 
         @Override
-        public boolean supportsAccount(String accountIdentifier) { return true; }
+        public boolean supportsAccount(String accountIdentifier) {
+            return true;
+        }
 
         @Override
         public GateWayResponse collect(PaymentGatewayRequest request) {
@@ -121,12 +144,18 @@ class AdapterNativePaymentServiceTest {
         }
 
         @Override
-        public GateWayResponse payout(PaymentGatewayRequest request) { return collect(request); }
+        public GateWayResponse payout(PaymentGatewayRequest request) {
+            return collect(request);
+        }
 
         @Override
-        public GateWayResponse checkStatus(PaymentStatusRequest request) { return new GateWayResponse(); }
+        public GateWayResponse checkStatus(PaymentStatusRequest request) {
+            return new GateWayResponse();
+        }
 
         @Override
-        public GatewayBalance getBalance(GatewayBalanceRequest request) { return null; }
+        public GatewayBalance getBalance(GatewayBalanceRequest request) {
+            return null;
+        }
     }
 }
