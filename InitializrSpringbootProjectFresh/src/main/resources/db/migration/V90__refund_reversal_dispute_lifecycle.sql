@@ -8,7 +8,7 @@ ALTER TABLE refunds
 
 CREATE TABLE IF NOT EXISTS refund_attempts (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  refund_id BIGINT NOT NULL,
+  refund_id BIGINT UNSIGNED NOT NULL,
   attempt_number INT NOT NULL,
   provider_channel VARCHAR(64) NULL,
   provider_reference VARCHAR(190) NULL,
