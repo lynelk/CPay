@@ -19,11 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class SandboxLifecycleAdminController {
     private final SandboxLifecycleService service;
     private final SandboxProductionGuardService productionGuard;
+    private final SandboxGoLiveControlService goLiveControlService;
 
     public SandboxLifecycleAdminController(
-            SandboxLifecycleService service, SandboxProductionGuardService productionGuard) {
+            SandboxLifecycleService service,
+            SandboxProductionGuardService productionGuard,
+            SandboxGoLiveControlService goLiveControlService) {
         this.service = service;
         this.productionGuard = productionGuard;
+        this.goLiveControlService = goLiveControlService;
     }
 
     @GetMapping("/go-live-requests")
@@ -39,7 +43,8 @@ public class SandboxLifecycleAdminController {
             Authentication authentication) {
         String actor = actor(authentication);
         productionGuard.assertDecisionAllowed(requestId, request.action(), actor);
-        return service.advanceGoLiveRequest(requestId, request.action(), actor, request.notes());
+        return goLiveControlService.advanceGoLiveRequest(
+                requestId, request.action(), actor, request.notes());
     }
 
     @PostMapping("/merchants/{merchantId}/promote-configuration")
@@ -57,7 +62,7 @@ public class SandboxLifecycleAdminController {
             @RequestBody RolloutRequest request,
             Authentication authentication) {
         productionGuard.assertRolloutStageAllowed(merchantId, request.stage());
-        return service.setRolloutStage(
+        return goLiveControlService.setRolloutStage(
                 merchantId, request.stage(), actor(authentication), request.dailyLimit());
     }
 
