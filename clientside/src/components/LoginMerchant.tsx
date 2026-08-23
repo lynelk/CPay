@@ -94,7 +94,7 @@ function LoginMerchant(): React.ReactElement {
     let active = true;
     const uiportal = new URL(window.location.href).searchParams.get('uiportal');
     if (uiportal === 'portal') {
-      navigate('/portal');
+      navigate('/login?realm=platform', { replace: true });
       return;
     }
     isLoggedIn().then((ok) => {
@@ -231,7 +231,7 @@ function LoginMerchant(): React.ReactElement {
       asideImageAlt="Merchant payment workspace"
       asideCards={asideCards}
       asideBenefits={asideBenefits}
-      footer={`© ${new Date().getFullYear()} CPay`}
+      footer={`© ${new Date().getFullYear()} Core-Synergies`}
     >
       <form className="ios-form" onSubmit={handleSubmit} noValidate>
         {error ? <Alert variant="error">{error}</Alert> : null}
