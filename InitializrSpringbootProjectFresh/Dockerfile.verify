@@ -1,0 +1,64 @@
+# Verification image used by the persistent CPay sandbox gate.
+# IMPORTANT: build this Dockerfile from the repository root so backend tests can
+# validate repository-level contracts under Docs/Api.
+FROM maven:3.9.16-eclipse-temurin-21 AS build
+WORKDIR /workspace/InitializrSpringbootProjectFresh
+
+COPY InitializrSpringbootProjectFresh/pom.xml ./pom.xml
+RUN mvn -q dependency:resolve
+
+COPY InitializrSpringbootProjectFresh/src ./src
+COPY Docs /workspace/Docs
+
+# Spotless intentionally ratchets from origin/main. Docker build contexts do not
+# contain .git, so recreate just enough repository history for the ratchet to
+# compare this verified snapshot against main instead of weakening/skipping the
+# formatting gate.
+RUN cd /workspace \
+    && git init \
+    && git config user.email "verification@cito.local" \
+    && git config user.name "CPay Verification" \
+    && git remote add origin https://github.com/lynelk/CPay.git \
+    && git fetch --depth=1 origin main \
+    && git add InitializrSpringbootProjectFresh Docs \
+    && git commit -m "verification snapshot"
+
+# Deterministic non-production values matching the normal backend CI lane.
+# The dedicated clean-MySQL migration smoke test skips here and executes only
+# when DB_URL points at a MySQL integration environment.
+ENV DB_URL="jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1" \
+    DB_USERNAME="sa" \
+    DB_PASSWORD="" \
+    MAIL_USERNAME="noreply@example.com" \
+    MAIL_PASSWORD="" \
+    LOCK_FILE_DIR="/tmp/cpay/locks" \
+    ACTUATOR_USERNAME="ci-actuator" \
+    ACTUATOR_PASSWORD="ci-actuator-password" \
+    ADMIN_API_USERNAME="ci-admin" \
+    ADMIN_API_PASSWORD="ci-admin-password" \
+    CALLBACK_SIGNING_SECRET="ci-callback-secret" \
+    MERCHANT_CHANNEL_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ==" \
+    CPAY_KEY_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aWtleQ=="
+
+RUN mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
+# Materialize the archive listing first. Piping a large archive directly into grep -q can make the
+# producer exit on SIGPIPE as soon as grep finds its match, turning a successful assertion into a
+# false failure under pipefail-aware shells.
+RUN jar tf target/cito-fresh-*.jar > /tmp/cpay-jar-contents.txt \
+    && grep -q "BOOT-INF/lib/logstash-logback-encoder-" /tmp/cpay-jar-contents.txt
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -g 1002 appuser && adduser -D -u 1002 -G appuser appuser
+
+ENV HTTP_PORT=8081 \
+    JAVA_OPTS="-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxRAMPercentage=50 -XX:MinRAMPercentage=25"
+
+EXPOSE 8081
+COPY --from=build --chown=appuser:appuser /workspace/InitializrSpringbootProjectFresh/target/*.jar /app/cpay-backend.jar
+COPY --chown=appuser:appuser InitializrSpringbootProjectFresh/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+USER appuser
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/cpay-backend.jar"]

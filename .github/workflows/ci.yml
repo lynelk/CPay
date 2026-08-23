@@ -34,10 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Audit J6: spotless's ratchetFrom=origin/main (bound to the `verify` phase this job
-          # already runs) needs origin/main's actual history to diff against; the default shallow
-          # (depth-1) checkout only fetches the ref under test and would leave origin/main
-          # unresolvable on PR builds.
           fetch-depth: 0
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -50,12 +46,8 @@ jobs:
       - name: Verify packaged jar contains its startup dependencies
         run: |
           set -euo pipefail
-          # Regression guard: the production jar must boot, but sliced-context tests never
-          # load the full logback-spring.xml. This check fails the build if the structured
-          # JSON-logging encoder (referenced by logback-spring.xml) is missing from the jar.
-          # In a Spring Boot fat jar third-party jars live as nested BOOT-INF/lib entries,
-          # so we match the nested library name, not a loose class file.
-          unzip -l target/cito-fresh-*.jar | grep -q "BOOT-INF/lib/logstash-logback-encoder-"
+          jar tf target/cito-fresh-*.jar > /tmp/cpay-jar-contents.txt
+          grep -q "BOOT-INF/lib/logstash-logback-encoder-" /tmp/cpay-jar-contents.txt
       - name: Generate backend SBOM
         run: mvn -B org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom --no-transfer-progress -DskipTests
       - name: Upload test reports
@@ -91,7 +83,12 @@ jobs:
           for migration in V54__compliance_kyb_kyc_foundation.sql V55__regional_cross_border_foundation.sql V61__finance_operations_foundation.sql V62__product_polish_developer_experience_foundation.sql V63__production_maturity_execution_automation.sql; do
             test -s "InitializrSpringbootProjectFresh/src/main/resources/db/migration/$migration"
           done
-          ! grep -R -Ei 'BIGSERIAL|JSONB|::jsonb|ON CONFLICT|RETURNING|CREATE INDEX IF NOT EXISTS'             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V54__compliance_kyb_kyc_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V55__regional_cross_border_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V61__finance_operations_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V62__product_polish_developer_experience_foundation.sql             InitializrSpringbootProjectFresh/src/main/resources/db/migration/V63__production_maturity_execution_automation.sql
+          ! grep -R -Ei 'BIGSERIAL|JSONB|::jsonb|ON CONFLICT|RETURNING|CREATE INDEX IF NOT EXISTS' \
+            InitializrSpringbootProjectFresh/src/main/resources/db/migration/V54__compliance_kyb_kyc_foundation.sql \
+            InitializrSpringbootProjectFresh/src/main/resources/db/migration/V55__regional_cross_border_foundation.sql \
+            InitializrSpringbootProjectFresh/src/main/resources/db/migration/V61__finance_operations_foundation.sql \
+            InitializrSpringbootProjectFresh/src/main/resources/db/migration/V62__product_polish_developer_experience_foundation.sql \
+            InitializrSpringbootProjectFresh/src/main/resources/db/migration/V63__production_maturity_execution_automation.sql
 
   mysql-migration:
     name: Clean MySQL 8.4 Migration
@@ -122,6 +119,16 @@ jobs:
           java-version: "21"
           distribution: "temurin"
           cache: maven
+      - name: Enable binary-log-safe V28 trigger creation
+        working-directory: .
+        run: |
+          set -euo pipefail
+          MYSQL_CONTAINER=$(docker ps --filter ancestor=mysql:8.4 --format '{{.ID}}' | head -n1)
+          test -n "$MYSQL_CONTAINER"
+          docker exec "$MYSQL_CONTAINER" \
+            mysql -uroot -proot-ci-password \
+            -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+          test "$(docker exec "$MYSQL_CONTAINER" mysql -uroot -proot-ci-password -NBe 'SELECT @@GLOBAL.log_bin_trust_function_creators')" = "1"
       - name: Apply every Flyway migration to a clean MySQL schema
         env:
           DB_URL: jdbc:mysql://127.0.0.1:3306/cpayadmin?allowPublicKeyRetrieval=true&useSSL=false
