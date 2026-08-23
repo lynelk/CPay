@@ -7,7 +7,10 @@ import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-/** Verifies that the complete migration history applies to a pristine externally supplied MySQL schema. */
+/**
+ * Verifies that the complete migration history applies to a pristine externally supplied MySQL
+ * schema.
+ */
 class FlywayMigrationSmokeTest {
 
     @Test
