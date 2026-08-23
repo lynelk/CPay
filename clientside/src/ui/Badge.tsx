@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type BadgeTone = 'neutral' | 'success' | 'danger' | 'warning' | 'info';
+export type BadgeTone = 'neutral' | 'success' | 'danger' | 'error' | 'warning' | 'info';
 
 export function Badge({
   tone = 'neutral',
@@ -9,5 +9,6 @@ export function Badge({
   tone?: BadgeTone;
   children: React.ReactNode;
 }): React.ReactElement {
-  return <span className={`ios-badge ios-badge--${tone}`}>{children}</span>;
+  const classTone = tone === 'error' ? 'danger' : tone;
+  return <span className={`ios-badge ios-badge--${classTone}`}>{children}</span>;
 }

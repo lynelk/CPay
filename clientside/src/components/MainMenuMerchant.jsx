@@ -6,6 +6,7 @@ const navGroups = [
     title: 'Workspace',
     items: [
       { value: 'dashboard', text: 'Dashboard', Icon: Icons.DashboardIcon },
+      { value: 'cito-services', text: 'Cito Services', Icon: Icons.LightningIcon },
       { value: 'sandbox', text: 'Sandbox & Go-Live', Icon: Icons.LightningIcon },
       { value: 'channels', text: 'Payment Channels', Icon: Icons.CardsIcon },
       { value: 'statement', text: 'Statement', Icon: Icons.ReceiptIcon },
