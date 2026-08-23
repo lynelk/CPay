@@ -2,6 +2,7 @@ package net.citotech.cito.sandbox;
 
 import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Model.MerchantUser;
@@ -20,9 +21,12 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping(path = "/api/v2/portal/sandbox", produces = "application/json")
 public class SandboxLifecycleController {
     private final SandboxLifecycleService service;
+    private final SandboxCleanupService cleanupService;
 
-    public SandboxLifecycleController(SandboxLifecycleService service) {
+    public SandboxLifecycleController(
+            SandboxLifecycleService service, SandboxCleanupService cleanupService) {
         this.service = service;
+        this.cleanupService = cleanupService;
     }
 
     @GetMapping("/summary")
@@ -52,8 +56,13 @@ public class SandboxLifecycleController {
     @PostMapping("/reset")
     public Map<String, Object> reset(@RequestBody ResetRequest request, HttpSession session) {
         MerchantUser user = merchant(session);
-        return service.reset(
-                user.getMerchant_id(), user.getMerchant_number(), request.scope(), actor(user));
+        Map<String, Object> result = new LinkedHashMap<>(service.reset(
+                user.getMerchant_id(), user.getMerchant_number(), request.scope(), actor(user)));
+        if (request.scope() == null || request.scope().isBlank() || "ALL".equalsIgnoreCase(request.scope())) {
+            result.putAll(cleanupService.resetFinancialSimulations(user.getMerchant_id()));
+        }
+        result.put("productionDataTouched", false);
+        return result;
     }
 
     @GetMapping("/personas")
