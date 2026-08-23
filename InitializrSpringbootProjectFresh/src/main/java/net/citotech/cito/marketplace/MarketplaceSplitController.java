@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.platform.MerchantSessionContext;
+import net.citotech.cito.platform.PlatformFeatureEventService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,14 +20,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class MarketplaceSplitController {
     private final MarketplaceSplitService splitService;
     private final MarketplaceSplitSimulationService simulationService;
+    private final MarketplaceRefundAllocationService refundAllocationService;
+    private final PlatformFeatureEventService featureEventService;
     private final MerchantSessionContext sessionContext;
 
     public MarketplaceSplitController(
             MarketplaceSplitService splitService,
             MarketplaceSplitSimulationService simulationService,
+            MarketplaceRefundAllocationService refundAllocationService,
+            PlatformFeatureEventService featureEventService,
             MerchantSessionContext sessionContext) {
         this.splitService = splitService;
         this.simulationService = simulationService;
+        this.refundAllocationService = refundAllocationService;
+        this.featureEventService = featureEventService;
         this.sessionContext = sessionContext;
     }
 
@@ -116,6 +123,23 @@ public class MarketplaceSplitController {
             HttpServletRequest request) {
         return ResponseEntity.ok(
                 splitService.executions(sessionContext.requireMerchantId(request), limit));
+    }
+
+    @GetMapping("/refund-allocations")
+    public ResponseEntity<?> refundAllocations(
+            @RequestParam("refundReference") String refundReference,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(
+                refundAllocationService.allocations(
+                        sessionContext.requireMerchantId(request), refundReference));
+    }
+
+    @GetMapping("/recovery-events")
+    public ResponseEntity<?> recoveryEvents(
+            @RequestParam(value = "limit", defaultValue = "50") int limit,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(
+                featureEventService.recentEvents(sessionContext.requireMerchantId(request), limit));
     }
 
     @SuppressWarnings("unchecked")
