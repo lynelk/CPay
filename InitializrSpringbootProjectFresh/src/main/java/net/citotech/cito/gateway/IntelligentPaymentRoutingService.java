@@ -1,6 +1,7 @@
 package net.citotech.cito.gateway;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -22,6 +23,7 @@ public class IntelligentPaymentRoutingService {
     private static final Set<String> OPERATIONS = Set.of("COLLECT", "PAYOUT");
     private static final Set<String> STRATEGIES =
             Set.of("BALANCED", "SUCCESS_RATE", "LATENCY", "COST", "PRIORITY");
+    private static final Set<String> ENVIRONMENTS = Set.of("SANDBOX", "PRODUCTION");
 
     private final PaymentChannelRegistry registry;
     private final ChannelCircuitBreaker circuitBreaker;
@@ -37,14 +39,32 @@ public class IntelligentPaymentRoutingService {
     }
 
     public RoutingPlan rank(
-            PaymentRequest request, String merchantNumber, String operation, String accountIdentifier) {
+            PaymentRequest request,
+            String merchantNumber,
+            String operation,
+            String accountIdentifier) {
+        return rank(
+                request,
+                merchantNumber,
+                operation,
+                accountIdentifier,
+                requestEnvironment(request));
+    }
+
+    public RoutingPlan rank(
+            PaymentRequest request,
+            String merchantNumber,
+            String operation,
+            String accountIdentifier,
+            String environment) {
         if (request == null) {
             throw new PaymentGatewayException("Request body is required");
         }
         String op = normalizeOperation(operation);
+        String env = normalizeEnvironment(environment);
         String country = normalizeOptional(request.getCountry());
         String currency = normalizeOptional(request.getCurrency());
-        Policy policy = resolvePolicy(merchantNumber, op, country, currency);
+        Policy policy = resolvePolicy(merchantNumber, op, env, country, currency);
         Map<String, Rule> rules = rules(policy.id());
 
         Collection<PaymentChannelAdapter> initial =
@@ -66,10 +86,10 @@ public class IntelligentPaymentRoutingService {
                 continue;
             }
             Health health = health(adapter.channelCode(), country, currency);
-            if (rule != null && rule.minSuccessRate() != null) {
-                if (health.successRate().compareTo(rule.minSuccessRate()) < 0) {
-                    continue;
-                }
+            if (rule != null
+                    && rule.minSuccessRate() != null
+                    && health.successRate().compareTo(rule.minSuccessRate()) < 0) {
+                continue;
             }
             if (rule != null
                     && rule.maxLatencyMs() != null
@@ -101,11 +121,14 @@ public class IntelligentPaymentRoutingService {
                         .reversed()
                         .thenComparing(candidate -> candidate.adapter().channelCode()));
         if (candidates.isEmpty()) {
-            throw new PaymentGatewayException("No healthy eligible payment channel is available");
+            throw new PaymentGatewayException(
+                    "No healthy eligible payment channel is available in " + env);
         }
         String explanation =
                 "Strategy "
                         + policy.strategy()
+                        + " in "
+                        + env
                         + " ranked "
                         + candidates.size()
                         + " eligible channel(s); highest score selected first";
@@ -121,6 +144,27 @@ public class IntelligentPaymentRoutingService {
             String operation,
             String selectedChannel,
             String explanationSuffix) {
+        return recordDecision(
+                plan,
+                merchantId,
+                merchantNumber,
+                request,
+                operation,
+                plan.policy().environment(),
+                selectedChannel,
+                explanationSuffix);
+    }
+
+    @Transactional
+    public String recordDecision(
+            RoutingPlan plan,
+            long merchantId,
+            String merchantNumber,
+            PaymentRequest request,
+            String operation,
+            String environment,
+            String selectedChannel,
+            String explanationSuffix) {
         String reference =
                 "ROUTE-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         String candidateJson =
@@ -133,9 +177,9 @@ public class IntelligentPaymentRoutingService {
         }
         jdbcTemplate.update(
                 "INSERT INTO payment_route_decisions "
-                        + "(decision_reference, merchant_number, merchant_id, transaction_reference, operation, country_code, currency_code, "
+                        + "(decision_reference, merchant_number, merchant_id, transaction_reference, operation, environment, country_code, currency_code, "
                         + "policy_id, selected_channel, candidate_channels_json, explanation) "
-                        + "VALUES (:decision_reference, :merchant_number, :merchant_id, :transaction_reference, :operation, :country_code, "
+                        + "VALUES (:decision_reference, :merchant_number, :merchant_id, :transaction_reference, :operation, :environment, :country_code, "
                         + ":currency_code, :policy_id, :selected_channel, :candidate_channels_json, :explanation)",
                 new MapSqlParameterSource()
                         .addValue("decision_reference", reference)
@@ -143,6 +187,7 @@ public class IntelligentPaymentRoutingService {
                         .addValue("merchant_id", merchantId)
                         .addValue("transaction_reference", request.getReference())
                         .addValue("operation", normalizeOperation(operation))
+                        .addValue("environment", normalizeEnvironment(environment))
                         .addValue("country_code", normalizeOptional(request.getCountry()))
                         .addValue("currency_code", normalizeOptional(request.getCurrency()))
                         .addValue("policy_id", plan.policy().id())
@@ -204,7 +249,7 @@ public class IntelligentPaymentRoutingService {
         int safeLimit = Math.max(1, Math.min(limit, 200));
         return jdbcTemplate.queryForList(
                 "SELECT decision_reference AS decisionReference, transaction_reference AS transactionReference, "
-                        + "operation, country_code AS countryCode, currency_code AS currencyCode, selected_channel AS selectedChannel, "
+                        + "operation, environment, country_code AS countryCode, currency_code AS currencyCode, selected_channel AS selectedChannel, "
                         + "candidate_channels_json AS candidateChannels, explanation, outcome, latency_ms AS latencyMs, "
                         + "created_at AS createdAt, completed_at AS completedAt "
                         + "FROM payment_route_decisions WHERE merchant_number=:merchant_number "
@@ -222,12 +267,36 @@ public class IntelligentPaymentRoutingService {
             String strategy,
             boolean fallbackAllowed,
             String actor) {
+        return savePolicy(
+                merchantNumber,
+                operation,
+                country,
+                currency,
+                "SANDBOX",
+                strategy,
+                fallbackAllowed,
+                actor);
+    }
+
+    @Transactional
+    public Map<String, Object> savePolicy(
+            String merchantNumber,
+            String operation,
+            String country,
+            String currency,
+            String environment,
+            String strategy,
+            boolean fallbackAllowed,
+            String actor) {
         String op = normalizeOperation(operation);
+        String env = normalizeEnvironment(environment);
         String normalizedStrategy = normalizeStrategy(strategy);
         String scope =
                 (merchantNumber == null || merchantNumber.isBlank() ? "GLOBAL" : merchantNumber.trim())
                         + "-"
                         + op
+                        + "-"
+                        + env
                         + "-"
                         + normalizeOptional(country)
                         + "-"
@@ -236,22 +305,26 @@ public class IntelligentPaymentRoutingService {
                 "POL-"
                         + Integer.toUnsignedString(scope.hashCode(), 36).toUpperCase(Locale.ROOT)
                         + "-"
-                        + op;
+                        + op
+                        + "-"
+                        + env.substring(0, 3);
         MapSqlParameterSource p =
                 new MapSqlParameterSource()
                         .addValue("policy_code", policyCode)
                         .addValue("merchant_number", blankToNull(merchantNumber))
                         .addValue("operation", op)
-                        .addValue("country_code", blankToNull(country))
-                        .addValue("currency_code", blankToNull(currency))
+                        .addValue("environment", env)
+                        .addValue("country_code", blankToNull(normalizeOptional(country)))
+                        .addValue("currency_code", blankToNull(normalizeOptional(currency)))
                         .addValue("strategy", normalizedStrategy)
                         .addValue("fallback_allowed", fallbackAllowed ? "YES" : "NO")
                         .addValue("created_by", blankToNull(actor));
         jdbcTemplate.update(
                 "INSERT INTO payment_routing_policies "
-                        + "(policy_code, merchant_number, operation, country_code, currency_code, strategy, fallback_allowed, status, created_by) "
-                        + "VALUES (:policy_code, :merchant_number, :operation, :country_code, :currency_code, :strategy, :fallback_allowed, 'ACTIVE', :created_by) "
-                        + "ON DUPLICATE KEY UPDATE strategy=VALUES(strategy), fallback_allowed=VALUES(fallback_allowed), status='ACTIVE', updated_at=CURRENT_TIMESTAMP",
+                        + "(policy_code, merchant_number, operation, environment, country_code, currency_code, strategy, fallback_allowed, status, created_by) "
+                        + "VALUES (:policy_code, :merchant_number, :operation, :environment, :country_code, :currency_code, :strategy, :fallback_allowed, 'ACTIVE', :created_by) "
+                        + "ON DUPLICATE KEY UPDATE environment=VALUES(environment), strategy=VALUES(strategy), "
+                        + "fallback_allowed=VALUES(fallback_allowed), status='ACTIVE', updated_at=CURRENT_TIMESTAMP",
                 p);
         return policyRow(policyCode);
     }
@@ -288,12 +361,30 @@ public class IntelligentPaymentRoutingService {
         return Map.of(
                 "policyCode", policyCode,
                 "channelCode", channelCode,
+                "environment", policy.environment(),
                 "status", active ? "ACTIVE" : "DISABLED");
     }
 
     public Map<String, Object> simulate(
-            PaymentRequest request, String merchantNumber, String operation, String accountIdentifier) {
-        RoutingPlan plan = rank(request, merchantNumber, operation, accountIdentifier);
+            PaymentRequest request,
+            String merchantNumber,
+            String operation,
+            String accountIdentifier) {
+        return simulate(
+                request,
+                merchantNumber,
+                operation,
+                accountIdentifier,
+                requestEnvironment(request));
+    }
+
+    public Map<String, Object> simulate(
+            PaymentRequest request,
+            String merchantNumber,
+            String operation,
+            String accountIdentifier,
+            String environment) {
+        RoutingPlan plan = rank(request, merchantNumber, operation, accountIdentifier, environment);
         List<Map<String, Object>> candidates =
                 plan.candidates().stream()
                         .map(
@@ -313,6 +404,8 @@ public class IntelligentPaymentRoutingService {
                 plan.policy().policyCode(),
                 "strategy",
                 plan.policy().strategy(),
+                "environment",
+                plan.policy().environment(),
                 "selectedChannel",
                 plan.candidates().get(0).adapter().channelCode(),
                 "fallbackAllowed",
@@ -324,33 +417,42 @@ public class IntelligentPaymentRoutingService {
     }
 
     private Policy resolvePolicy(
-            String merchantNumber, String operation, String country, String currency) {
+            String merchantNumber,
+            String operation,
+            String environment,
+            String country,
+            String currency) {
         MapSqlParameterSource p =
                 new MapSqlParameterSource()
                         .addValue("merchant_number", merchantNumber)
                         .addValue("operation", operation)
+                        .addValue("environment", environment)
                         .addValue("country_code", country)
                         .addValue("currency_code", currency);
         List<Map<String, Object>> rows =
                 jdbcTemplate.queryForList(
-                        "SELECT id, policy_code, strategy, fallback_allowed FROM payment_routing_policies "
-                                + "WHERE status='ACTIVE' AND operation=:operation "
+                        "SELECT id, policy_code, strategy, fallback_allowed, environment FROM payment_routing_policies "
+                                + "WHERE status='ACTIVE' AND operation=:operation AND environment=:environment "
                                 + "AND (merchant_number=:merchant_number OR merchant_number IS NULL) "
                                 + "AND (country_code=:country_code OR country_code IS NULL) "
                                 + "AND (currency_code=:currency_code OR currency_code IS NULL) "
                                 + "ORDER BY (merchant_number IS NOT NULL) DESC, (country_code IS NOT NULL) DESC, "
                                 + "(currency_code IS NOT NULL) DESC, id DESC LIMIT 1",
                         p);
-        if (rows.isEmpty()) {
-            return policyByCode("DEFAULT-" + operation);
+        if (!rows.isEmpty()) {
+            return policy(rows.get(0));
         }
-        return policy(rows.get(0));
+        String defaultCode =
+                "SANDBOX".equals(environment)
+                        ? "DEFAULT-" + operation
+                        : "DEFAULT-" + operation + "-PRODUCTION";
+        return policyByCode(defaultCode);
     }
 
     private Policy policyByCode(String policyCode) {
         List<Map<String, Object>> rows =
                 jdbcTemplate.queryForList(
-                        "SELECT id, policy_code, strategy, fallback_allowed FROM payment_routing_policies "
+                        "SELECT id, policy_code, strategy, fallback_allowed, environment FROM payment_routing_policies "
                                 + "WHERE policy_code=:policy_code AND status='ACTIVE'",
                         new MapSqlParameterSource("policy_code", policyCode));
         if (rows.isEmpty()) {
@@ -361,8 +463,9 @@ public class IntelligentPaymentRoutingService {
 
     private Map<String, Object> policyRow(String policyCode) {
         return jdbcTemplate.queryForMap(
-                "SELECT policy_code AS policyCode, merchant_number AS merchantNumber, operation, country_code AS countryCode, "
-                        + "currency_code AS currencyCode, strategy, fallback_allowed AS fallbackAllowed, status, updated_at AS updatedAt "
+                "SELECT policy_code AS policyCode, merchant_number AS merchantNumber, operation, environment, "
+                        + "country_code AS countryCode, currency_code AS currencyCode, strategy, "
+                        + "fallback_allowed AS fallbackAllowed, status, updated_at AS updatedAt "
                         + "FROM payment_routing_policies WHERE policy_code=:policy_code",
                 new MapSqlParameterSource("policy_code", policyCode));
     }
@@ -372,7 +475,8 @@ public class IntelligentPaymentRoutingService {
                 ((Number) row.get("id")).longValue(),
                 String.valueOf(row.get("policy_code")),
                 String.valueOf(row.get("strategy")),
-                "YES".equalsIgnoreCase(String.valueOf(row.get("fallback_allowed"))));
+                "YES".equalsIgnoreCase(String.valueOf(row.get("fallback_allowed"))),
+                normalizeEnvironment(String.valueOf(row.get("environment"))));
     }
 
     private Map<String, Rule> rules(long policyId) {
@@ -419,7 +523,7 @@ public class IntelligentPaymentRoutingService {
                 total == 0
                         ? BigDecimal.ONE
                         : BigDecimal.valueOf(successes)
-                                .divide(BigDecimal.valueOf(total), 5, java.math.RoundingMode.HALF_UP);
+                                .divide(BigDecimal.valueOf(total), 5, RoundingMode.HALF_UP);
         return new Health(rate, ((Number) row.get("average_latency_ms")).longValue());
     }
 
@@ -453,6 +557,13 @@ public class IntelligentPaymentRoutingService {
         return base * Math.max(0.01, weight);
     }
 
+    private String requestEnvironment(PaymentRequest request) {
+        if (request == null || request.getMetadata() == null) {
+            return "SANDBOX";
+        }
+        return normalizeEnvironment(request.getMetadata().getOrDefault("environment", "SANDBOX"));
+    }
+
     private String normalizeOperation(String value) {
         String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
         if (!OPERATIONS.contains(normalized)) {
@@ -465,6 +576,16 @@ public class IntelligentPaymentRoutingService {
         String normalized = value == null ? "BALANCED" : value.trim().toUpperCase(Locale.ROOT);
         if (!STRATEGIES.contains(normalized)) {
             throw new PaymentGatewayException("Unsupported routing strategy");
+        }
+        return normalized;
+    }
+
+    private String normalizeEnvironment(String value) {
+        String normalized = value == null || value.isBlank()
+                ? "SANDBOX"
+                : value.trim().toUpperCase(Locale.ROOT);
+        if (!ENVIRONMENTS.contains(normalized)) {
+            throw new PaymentGatewayException("environment must be SANDBOX or PRODUCTION");
         }
         return normalized;
     }
@@ -489,7 +610,12 @@ public class IntelligentPaymentRoutingService {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
-    public record Policy(long id, String policyCode, String strategy, boolean fallbackAllowed) {}
+    public record Policy(
+            long id,
+            String policyCode,
+            String strategy,
+            boolean fallbackAllowed,
+            String environment) {}
 
     public record RoutingCandidate(
             PaymentChannelAdapter adapter,
