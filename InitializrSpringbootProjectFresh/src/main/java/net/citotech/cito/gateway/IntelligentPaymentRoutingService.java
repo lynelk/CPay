@@ -115,6 +115,7 @@ public class IntelligentPaymentRoutingService {
     @Transactional
     public String recordDecision(
             RoutingPlan plan,
+            long merchantId,
             String merchantNumber,
             PaymentRequest request,
             String operation,
@@ -132,13 +133,14 @@ public class IntelligentPaymentRoutingService {
         }
         jdbcTemplate.update(
                 "INSERT INTO payment_route_decisions "
-                        + "(decision_reference, merchant_number, transaction_reference, operation, country_code, currency_code, "
+                        + "(decision_reference, merchant_number, merchant_id, transaction_reference, operation, country_code, currency_code, "
                         + "policy_id, selected_channel, candidate_channels_json, explanation) "
-                        + "VALUES (:decision_reference, :merchant_number, :transaction_reference, :operation, :country_code, "
+                        + "VALUES (:decision_reference, :merchant_number, :merchant_id, :transaction_reference, :operation, :country_code, "
                         + ":currency_code, :policy_id, :selected_channel, :candidate_channels_json, :explanation)",
                 new MapSqlParameterSource()
                         .addValue("decision_reference", reference)
                         .addValue("merchant_number", merchantNumber)
+                        .addValue("merchant_id", merchantId)
                         .addValue("transaction_reference", request.getReference())
                         .addValue("operation", normalizeOperation(operation))
                         .addValue("country_code", normalizeOptional(request.getCountry()))
@@ -434,11 +436,19 @@ public class IntelligentPaymentRoutingService {
         double costComponent = Math.max(0, 1000 - costScore * 100.0);
         double base =
                 switch (strategy) {
-                    case "SUCCESS_RATE" -> successScore * 0.75 + priorityScore * 0.15 + latencyScore * 0.10;
-                    case "LATENCY" -> latencyScore * 0.70 + successScore * 0.20 + priorityScore * 0.10;
-                    case "COST" -> costComponent * 0.60 + successScore * 0.25 + priorityScore * 0.15;
-                    case "PRIORITY" -> priorityScore * 0.80 + successScore * 0.15 + latencyScore * 0.05;
-                    default -> priorityScore * 0.30 + successScore * 0.35 + latencyScore * 0.25 + costComponent * 0.10;
+                    case "SUCCESS_RATE" ->
+                            successScore * 0.75 + priorityScore * 0.15 + latencyScore * 0.10;
+                    case "LATENCY" ->
+                            latencyScore * 0.70 + successScore * 0.20 + priorityScore * 0.10;
+                    case "COST" ->
+                            costComponent * 0.60 + successScore * 0.25 + priorityScore * 0.15;
+                    case "PRIORITY" ->
+                            priorityScore * 0.80 + successScore * 0.15 + latencyScore * 0.05;
+                    default ->
+                            priorityScore * 0.30
+                                    + successScore * 0.35
+                                    + latencyScore * 0.25
+                                    + costComponent * 0.10;
                 };
         return base * Math.max(0.01, weight);
     }
