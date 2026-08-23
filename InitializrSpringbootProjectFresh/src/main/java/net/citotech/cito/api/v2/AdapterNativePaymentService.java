@@ -118,16 +118,14 @@ public class AdapterNativePaymentService {
                             .orElseThrow(
                                     () ->
                                             new PaymentGatewayException(
-                                                    "Unsupported channel: "
-                                                            + request.getChannel()));
+                                                    "Unsupported channel: " + request.getChannel()));
             channelCredentialService.ensureChannelReady(
                     merchant, adapter.channelCode(), environment);
             return new AdapterSelection(adapter, null);
         }
 
         IntelligentPaymentRoutingService.RoutingPlan plan =
-                routingService.rank(
-                        request, merchant.getAccount_number(), operation, account);
+                routingService.rank(request, merchant.getAccount_number(), operation, account);
         PaymentGatewayException lastPreflightFailure = null;
         int attempted = 0;
         for (IntelligentPaymentRoutingService.RoutingCandidate candidate : plan.candidates()) {
@@ -138,13 +136,16 @@ public class AdapterNativePaymentService {
                 String decisionReference =
                         routingService.recordDecision(
                                 plan,
+                                merchant.getId(),
                                 merchant.getAccount_number(),
                                 request,
                                 operation,
                                 candidate.adapter().channelCode(),
                                 attempted == 1
                                         ? "Top-ranked channel passed preflight"
-                                        : "Selected fallback candidate " + attempted + " after preflight rejection");
+                                        : "Selected fallback candidate "
+                                                + attempted
+                                                + " after preflight rejection");
                 return new AdapterSelection(candidate.adapter(), decisionReference);
             } catch (PaymentGatewayException e) {
                 lastPreflightFailure = e;
