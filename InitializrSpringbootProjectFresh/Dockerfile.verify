@@ -1,0 +1,42 @@
+# Verification image used by the persistent CPay sandbox gate.
+# The build fails unless the full backend Maven verify lifecycle succeeds.
+FROM maven:3.9.16-eclipse-temurin-21 AS build
+WORKDIR /workspace
+
+COPY pom.xml .
+RUN mvn -q dependency:resolve
+
+COPY src ./src
+
+# Deterministic non-production values required by the backend test suite.
+ENV DB_URL="jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1" \
+    DB_USERNAME="sa" \
+    DB_PASSWORD="" \
+    MAIL_USERNAME="noreply@example.com" \
+    MAIL_PASSWORD="" \
+    LOCK_FILE_DIR="/tmp/cpay/locks" \
+    ACTUATOR_USERNAME="ci-actuator" \
+    ACTUATOR_PASSWORD="ci-actuator-password" \
+    ADMIN_API_USERNAME="ci-admin" \
+    ADMIN_API_PASSWORD="ci-admin-password" \
+    CALLBACK_SIGNING_SECRET="ci-callback-secret" \
+    MERCHANT_CHANNEL_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ==" \
+    CPAY_KEY_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ=="
+
+RUN mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -g 1002 appuser && adduser -D -u 1002 -G appuser appuser
+
+ENV HTTP_PORT=8081 \
+    JAVA_OPTS="-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxRAMPercentage=50 -XX:MinRAMPercentage=25"
+
+EXPOSE 8081
+COPY --from=build --chown=appuser:appuser /workspace/target/*.jar /app/cpay-backend.jar
+COPY --chown=appuser:appuser start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+USER appuser
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/cpay-backend.jar"]
