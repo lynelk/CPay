@@ -23,6 +23,7 @@ RUN git diff --name-only -- 'InitializrSpringbootProjectFresh/src/**/*.java' > /
     && tar -czf /work/formatted-java.tar.gz -T /work/formatted-files.txt
 
 FROM nginx:1.27-alpine
+LABEL purpose="pr67-spotless-artifact"
 COPY --from=format /work/formatted-java.tar.gz /usr/share/nginx/html/formatted-java.tar.gz
 COPY --from=format /work/formatted-files.txt /usr/share/nginx/html/formatted-files.txt
 RUN printf 'PR 67 Spotless formatting artifact ready\n' > /usr/share/nginx/html/index.html
