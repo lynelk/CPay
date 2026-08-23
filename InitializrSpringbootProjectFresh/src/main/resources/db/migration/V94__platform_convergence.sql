@@ -35,6 +35,13 @@ ALTER TABLE payment_route_decisions
 CREATE INDEX idx_routing_policy_environment
   ON payment_routing_policies(merchant_number, operation, environment, country_code, currency_code, status);
 
+INSERT INTO payment_routing_policies
+  (policy_code, merchant_number, operation, environment, country_code, currency_code, strategy, fallback_allowed, status, created_by)
+VALUES
+  ('DEFAULT-COLLECT-PRODUCTION', NULL, 'COLLECT', 'PRODUCTION', NULL, NULL, 'BALANCED', 'YES', 'ACTIVE', 'SYSTEM'),
+  ('DEFAULT-PAYOUT-PRODUCTION', NULL, 'PAYOUT', 'PRODUCTION', NULL, NULL, 'BALANCED', 'YES', 'ACTIVE', 'SYSTEM')
+ON DUPLICATE KEY UPDATE environment=VALUES(environment), status='ACTIVE', updated_at=CURRENT_TIMESTAMP;
+
 CREATE TABLE IF NOT EXISTS marketplace_split_refund_allocations (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   refund_id BIGINT NOT NULL,
