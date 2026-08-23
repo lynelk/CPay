@@ -2,7 +2,6 @@ package net.citotech.cito.refund;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
@@ -84,9 +83,18 @@ public class MerchantRefundController {
             @RequestParam("transactionReference") String transactionReference,
             @RequestParam(value = "limit", defaultValue = "100") int limit,
             HttpServletRequest request) {
+        long merchantId = sessionContext.requireMerchantId(request);
+        int safeLimit = Math.max(1, Math.min(limit, 200));
         return ResponseEntity.ok(
-                refundService.financialTimeline(
-                        sessionContext.requireMerchantId(request), transactionReference, limit));
+                jdbcTemplate.queryForList(
+                        "SELECT event_reference AS eventReference, event_type AS eventType, event_status AS status, "
+                                + "amount, currency_code AS currencyCode, detail_json AS detail, created_at AS createdAt "
+                                + "FROM payment_financial_timeline WHERE merchant_id=:merchant_id "
+                                + "AND transaction_reference=:transaction_reference ORDER BY id DESC LIMIT "
+                                + safeLimit,
+                        new MapSqlParameterSource()
+                                .addValue("merchant_id", merchantId)
+                                .addValue("transaction_reference", text(transactionReference))));
     }
 
     @GetMapping("/split-allocations")
