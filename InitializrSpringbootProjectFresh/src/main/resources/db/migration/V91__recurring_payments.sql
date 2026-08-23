@@ -1,0 +1,100 @@
+CREATE TABLE IF NOT EXISTS recurring_plans (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  merchant_id BIGINT NOT NULL,
+  plan_reference VARCHAR(64) NOT NULL,
+  plan_name VARCHAR(160) NOT NULL,
+  amount DECIMAL(18,6) NOT NULL,
+  currency_code VARCHAR(3) NOT NULL,
+  interval_unit VARCHAR(16) NOT NULL,
+  interval_count INT NOT NULL DEFAULT 1,
+  retry_count INT NOT NULL DEFAULT 2,
+  retry_interval_hours INT NOT NULL DEFAULT 24,
+  grace_period_days INT NOT NULL DEFAULT 3,
+  status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+  created_by VARCHAR(160) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_recurring_plan_reference (plan_reference),
+  KEY idx_recurring_plan_merchant (merchant_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS payment_mandates (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  merchant_id BIGINT NOT NULL,
+  mandate_reference VARCHAR(64) NOT NULL,
+  customer_reference VARCHAR(160) NULL,
+  payer_type VARCHAR(32) NOT NULL DEFAULT 'MSISDN',
+  payer_value VARCHAR(190) NOT NULL,
+  channel_code VARCHAR(64) NULL,
+  country_code VARCHAR(3) NOT NULL,
+  currency_code VARCHAR(3) NOT NULL,
+  environment VARCHAR(16) NOT NULL DEFAULT 'SANDBOX',
+  execution_mode VARCHAR(32) NOT NULL DEFAULT 'REQUEST_TO_PAY',
+  provider_mandate_reference VARCHAR(190) NULL,
+  consent_reference VARCHAR(190) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+  authorized_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NULL,
+  revoked_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_payment_mandate_reference (mandate_reference),
+  KEY idx_payment_mandate_merchant (merchant_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS recurring_subscriptions (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  merchant_id BIGINT NOT NULL,
+  subscription_reference VARCHAR(64) NOT NULL,
+  plan_id BIGINT NOT NULL,
+  mandate_id BIGINT NOT NULL,
+  customer_reference VARCHAR(160) NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+  start_at TIMESTAMP NOT NULL,
+  next_charge_at TIMESTAMP NOT NULL,
+  last_charge_at TIMESTAMP NULL,
+  end_at TIMESTAMP NULL,
+  paused_at TIMESTAMP NULL,
+  cancelled_at TIMESTAMP NULL,
+  created_by VARCHAR(160) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_recurring_subscription_reference (subscription_reference),
+  KEY idx_recurring_subscription_due (status, next_charge_at),
+  KEY idx_recurring_subscription_merchant (merchant_id, status),
+  CONSTRAINT fk_recurring_subscription_plan FOREIGN KEY (plan_id) REFERENCES recurring_plans(id),
+  CONSTRAINT fk_recurring_subscription_mandate FOREIGN KEY (mandate_id) REFERENCES payment_mandates(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS recurring_scheduled_charges (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  subscription_id BIGINT NOT NULL,
+  charge_reference VARCHAR(80) NOT NULL,
+  due_at TIMESTAMP NOT NULL,
+  amount DECIMAL(18,6) NOT NULL,
+  currency_code VARCHAR(3) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+  attempt_count INT NOT NULL DEFAULT 0,
+  next_attempt_at TIMESTAMP NULL,
+  payment_reference VARCHAR(120) NULL,
+  payment_status VARCHAR(64) NULL,
+  failure_message VARCHAR(1000) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  completed_at TIMESTAMP NULL,
+  UNIQUE KEY uk_recurring_charge_reference (charge_reference),
+  UNIQUE KEY uk_recurring_charge_due (subscription_id, due_at),
+  KEY idx_recurring_charge_process (status, next_attempt_at, due_at),
+  CONSTRAINT fk_recurring_charge_subscription FOREIGN KEY (subscription_id) REFERENCES recurring_subscriptions(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS recurring_dunning_attempts (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  charge_id BIGINT NOT NULL,
+  attempt_number INT NOT NULL,
+  outcome VARCHAR(32) NOT NULL,
+  payment_reference VARCHAR(120) NULL,
+  provider_status VARCHAR(64) NULL,
+  failure_message VARCHAR(1000) NULL,
+  attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_recurring_dunning_attempt (charge_id, attempt_number),
+  CONSTRAINT fk_recurring_dunning_charge FOREIGN KEY (charge_id) REFERENCES recurring_scheduled_charges(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
