@@ -10,11 +10,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v2/merchant-self-service/cito")
 public class CitoFeatureDiscoveryController {
     private final CitoFeatureAccessService featureAccessService;
+    private final CitoPlatformOverviewService overviewService;
     private final MerchantSessionContext sessionContext;
 
     public CitoFeatureDiscoveryController(
-            CitoFeatureAccessService featureAccessService, MerchantSessionContext sessionContext) {
+            CitoFeatureAccessService featureAccessService,
+            CitoPlatformOverviewService overviewService,
+            MerchantSessionContext sessionContext) {
         this.featureAccessService = featureAccessService;
+        this.overviewService = overviewService;
         this.sessionContext = sessionContext;
     }
 
@@ -22,5 +26,11 @@ public class CitoFeatureDiscoveryController {
     public ResponseEntity<?> features(HttpServletRequest request) {
         long merchantId = sessionContext.requireMerchantId(request);
         return ResponseEntity.ok(featureAccessService.featureDiscovery(merchantId));
+    }
+
+    @GetMapping("/overview")
+    public ResponseEntity<?> overview(HttpServletRequest request) {
+        long merchantId = sessionContext.requireMerchantId(request);
+        return ResponseEntity.ok(overviewService.overview(merchantId));
     }
 }
