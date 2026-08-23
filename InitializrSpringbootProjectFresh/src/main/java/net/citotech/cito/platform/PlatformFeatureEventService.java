@@ -4,11 +4,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import net.citotech.cito.Common;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.api.v2.dto.PaymentRequest;
 import net.citotech.cito.api.v2.dto.PaymentResult;
@@ -97,10 +99,66 @@ public class PlatformFeatureEventService {
                         .addValue("status", success ? "PENDING" : "CANCELLED"));
     }
 
+    /** Leaves an ambiguous provider exception recoverable instead of guessing that money did not move. */
+    @Transactional
+    public void markPaymentOutcomeUnknown(String eventReference, Exception error) {
+        if (eventReference == null || eventReference.isBlank()) {
+            return;
+        }
+        jdbcTemplate.update(
+                "UPDATE platform_feature_events SET last_error=:last_error, next_attempt_at=:next_attempt_at "
+                        + "WHERE event_reference=:event_reference AND status='WAITING_PAYMENT'",
+                new MapSqlParameterSource()
+                        .addValue("event_reference", eventReference)
+                        .addValue("last_error", safeMessage(error))
+                        .addValue("next_attempt_at", Timestamp.from(Instant.now().plusSeconds(30))));
+    }
+
     @Scheduled(fixedDelayString = "${cpay.platform-feature-events.delay-ms:15000}")
     @SchedulerLock(name = "platformFeatureEvents", lockAtMostFor = "PT2M", lockAtLeastFor = "PT2S")
     public void processScheduled() {
+        recoverWaitingPayments(100);
         processDue(100);
+    }
+
+    /**
+     * Reconciles WAITING_PAYMENT events with CPay's own transaction log. This is intentionally
+     * conservative: missing or pending transactions stay waiting until a later status check/callback
+     * resolves them. Only explicit success activates split capture; explicit terminal failure cancels it.
+     */
+    @Transactional
+    public int recoverWaitingPayments(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 500));
+        List<Map<String, Object>> waiting = jdbcTemplate.queryForList(
+                "SELECT id, merchant_id, subject_reference FROM platform_feature_events "
+                        + "WHERE event_type=:event_type AND status='WAITING_PAYMENT' AND next_attempt_at<=CURRENT_TIMESTAMP "
+                        + "ORDER BY id LIMIT " + safeLimit,
+                new MapSqlParameterSource("event_type", SPLIT_CAPTURE));
+        int changed = 0;
+        for (Map<String, Object> event : waiting) {
+            long merchantId = ((Number) event.get("merchant_id")).longValue();
+            String reference = String.valueOf(event.get("subject_reference"));
+            List<String> statuses = jdbcTemplate.query(
+                    "SELECT status FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                            + " WHERE merchant_id=:merchant_id AND tx_merchant_ref=:reference ORDER BY id DESC LIMIT 1",
+                    new MapSqlParameterSource()
+                            .addValue("merchant_id", merchantId)
+                            .addValue("reference", reference),
+                    (rs, rowNum) -> rs.getString("status"));
+            if (statuses.isEmpty()) {
+                deferWaiting(((Number) event.get("id")).longValue());
+                continue;
+            }
+            String status = statuses.get(0) == null ? "" : statuses.get(0).trim().toUpperCase(Locale.ROOT);
+            if (java.util.Set.of("SUCCESS", "SUCCESSFUL", "COMPLETED", "COMPLETE").contains(status)) {
+                changed += updateWaitingStatus(((Number) event.get("id")).longValue(), "PENDING", null);
+            } else if (java.util.Set.of("FAILED", "REJECTED", "CANCELLED", "CANCELED", "DECLINED").contains(status)) {
+                changed += updateWaitingStatus(((Number) event.get("id")).longValue(), "CANCELLED", null);
+            } else {
+                deferWaiting(((Number) event.get("id")).longValue());
+            }
+        }
+        return changed;
     }
 
     @Transactional
@@ -130,15 +188,16 @@ public class PlatformFeatureEventService {
             } catch (Exception e) {
                 int attempts = ((Number) event.get("attempt_count")).intValue() + 1;
                 String status = attempts >= 10 ? "FAILED" : "PENDING";
+                long delaySeconds = Math.min(3600, 15L * (1L << Math.min(attempts, 7)));
                 jdbcTemplate.update(
                         "UPDATE platform_feature_events SET status=:status, attempt_count=:attempt_count, "
-                                + "last_error=:last_error, next_attempt_at=DATE_ADD(CURRENT_TIMESTAMP, INTERVAL :delay_seconds SECOND) WHERE id=:id",
+                                + "last_error=:last_error, next_attempt_at=:next_attempt_at WHERE id=:id",
                         new MapSqlParameterSource()
                                 .addValue("id", id)
                                 .addValue("status", status)
                                 .addValue("attempt_count", attempts)
                                 .addValue("last_error", safeMessage(e))
-                                .addValue("delay_seconds", Math.min(3600, 15 * (1 << Math.min(attempts, 7)))));
+                                .addValue("next_attempt_at", Timestamp.from(Instant.now().plusSeconds(delaySeconds))));
             }
         }
         return processed;
@@ -157,6 +216,24 @@ public class PlatformFeatureEventService {
         return jdbcTemplate.update(
                 "UPDATE platform_feature_events SET status='PROCESSING' WHERE id=:id AND status='PENDING'",
                 new MapSqlParameterSource("id", id));
+    }
+
+    private int updateWaitingStatus(long id, String status, String error) {
+        return jdbcTemplate.update(
+                "UPDATE platform_feature_events SET status=:status, next_attempt_at=CURRENT_TIMESTAMP, last_error=:last_error "
+                        + "WHERE id=:id AND status='WAITING_PAYMENT'",
+                new MapSqlParameterSource()
+                        .addValue("id", id)
+                        .addValue("status", status)
+                        .addValue("last_error", error));
+    }
+
+    private void deferWaiting(long id) {
+        jdbcTemplate.update(
+                "UPDATE platform_feature_events SET next_attempt_at=:next_attempt_at WHERE id=:id AND status='WAITING_PAYMENT'",
+                new MapSqlParameterSource()
+                        .addValue("id", id)
+                        .addValue("next_attempt_at", Timestamp.from(Instant.now().plusSeconds(60))));
     }
 
     private void processSplit(Map<String, Object> event) throws Exception {
