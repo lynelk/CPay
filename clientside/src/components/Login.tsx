@@ -170,7 +170,7 @@ function Login(): React.ReactElement {
       asideImageAlt="Admin operations workspace"
       asideCards={asideCards}
       asideBenefits={asideBenefits}
-      footer={`© ${new Date().getFullYear()} CPay`}
+      footer={`© ${new Date().getFullYear()} Core-Synergies`}
     >
       <form className="ios-form" onSubmit={handleSubmit} noValidate>
         {error ? <Alert variant="error">{error}</Alert> : null}
