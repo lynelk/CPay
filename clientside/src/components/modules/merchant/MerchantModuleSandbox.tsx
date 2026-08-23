@@ -211,7 +211,8 @@ export default function MerchantModuleSandbox({ loader, refreshSignal, sessionEx
       {busy && !summary ? <Spinner label="Loading sandbox workbench" /> : null}
 
       <Card>
-        <Section title="Sandbox & production readiness" description="Use synthetic money and identities to validate the whole integration before production activation.">
+        <Section title="Sandbox & production readiness">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Use synthetic money and identities to validate the whole integration before production activation.</p>
           <StatGrid>
             <StatTile label="Environment" value={summary?.environment?.activeEnvironment ?? 'SANDBOX'} />
             <StatTile label="Readiness" value={`${readinessPassed}/${readiness.length}`} />
@@ -239,13 +240,16 @@ export default function MerchantModuleSandbox({ loader, refreshSignal, sessionEx
 
       {certificationChecks.length > 0 ? (
         <Card>
-          <Section title="Certification evidence" description={`${certification.passed_checks ?? 0}/${certification.total_checks ?? 0} automated checks passed.`} />
+          <Section title="Certification evidence">
+            <p style={{ color: 'var(--ios-text-secondary)' }}>{certification.passed_checks ?? 0}/{certification.total_checks ?? 0} automated checks passed.</p>
+          </Section>
           <Table columns={checkColumns} rows={certificationChecks} rowKey={(row, index) => row.key ?? index} pageSize={50} />
         </Card>
       ) : null}
 
       <Card>
-        <Section title="Synthetic wallets" description="Top up test balances only. These values can never settle or move real money.">
+        <Section title="Synthetic wallets">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Top up test balances only. These values can never settle or move real money.</p>
           <div className="ios-form" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
             <TextField id="sandbox-channel" label="Channel" value={channelCode} onValueChange={setChannelCode} />
             <TextField id="sandbox-currency" label="Currency" value={currency} onValueChange={setCurrency} />
@@ -272,7 +276,8 @@ export default function MerchantModuleSandbox({ loader, refreshSignal, sessionEx
       </Card>
 
       <Card>
-        <Section title="Snapshots" description="Save and restore a known sandbox baseline without touching production data.">
+        <Section title="Snapshots">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Save and restore a known sandbox baseline without touching production data.</p>
           <div className="ios-form" style={{ maxWidth: 480 }}>
             <TextField id="sandbox-snapshot-name" label="Snapshot name" value={snapshotName} onValueChange={setSnapshotName} />
           </div>
@@ -284,12 +289,15 @@ export default function MerchantModuleSandbox({ loader, refreshSignal, sessionEx
       </Card>
 
       <Card>
-        <Section title="Synthetic KYC/KYB personas" description="Deterministic identities for success, mismatch, screening, document and biometric scenarios." />
+        <Section title="Synthetic KYC/KYB personas">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Deterministic identities for success, mismatch, screening, document and biometric scenarios.</p>
+        </Section>
         <Table columns={personaColumns} rows={personas} rowKey={(row, index) => row.persona_code ?? index} pageSize={20} />
       </Card>
 
       <Card>
-        <Section title="Environment comparison" description="Production keeps its own credentials and real balances; shared tenant configuration is reused without copying secrets.">
+        <Section title="Environment comparison">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>Production keeps its own credentials and real balances; shared tenant configuration is reused without copying secrets.</p>
           <StatGrid>
             <StatTile label="Sandbox channels" value={String(summary?.environmentComparison?.sandboxChannels ?? 0)} />
             <StatTile label="Production channels" value={String(summary?.environmentComparison?.productionChannels ?? 0)} />
@@ -299,7 +307,7 @@ export default function MerchantModuleSandbox({ loader, refreshSignal, sessionEx
           <p style={{ color: 'var(--ios-text-secondary)' }}>
             Production rollout: collections {yes(rollout.collections_enabled)}, refunds {yes(rollout.refunds_enabled)}, payouts {yes(rollout.payouts_enabled)}. Daily launch limit: {rollout.production_daily_limit ?? 0}.
           </p>
-          {goLive.id ? <Alert variant="info">Go-live request #{goLive.id}: {goLive.request_status} / {goLive.current_stage}</Alert> : null}
+          {goLive.id ? <Alert variant="warning">Go-live request #{goLive.id}: {goLive.request_status} / {goLive.current_stage}</Alert> : null}
         </Section>
       </Card>
     </div>
