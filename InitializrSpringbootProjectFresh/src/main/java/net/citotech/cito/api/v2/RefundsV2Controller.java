@@ -22,10 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * v2 refund endpoint (audit B6): partial refunds with an explicit sandbox/production boundary.
- * Sandbox requests never invoke the legacy payout execution used by production refunds.
- */
+/** v2 partial refunds with an explicit sandbox/production execution boundary. */
 @RestController
 @RequestMapping(path = "/api/v2/refunds")
 public class RefundsV2Controller {
@@ -58,27 +55,30 @@ public class RefundsV2Controller {
             RefundRequest request = objectMapper.readValue(body, RefundRequest.class);
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
-            String environment = environmentService.resolveRequestEnvironment(
-                    servletRequest.getHeader("X-CPay-Environment"), null);
-            BigDecimal amount = request.getAmount() == null || request.getAmount().isBlank()
-                    ? null
-                    : MoneyAmount.of(request.getAmount()).asBigDecimal();
-            if ("SANDBOX".equals(environment)) {
+            String environment = compatibilityEnvironment(servletRequest);
+            BigDecimal amount =
+                    request.getAmount() == null || request.getAmount().isBlank()
+                            ? null
+                            : MoneyAmount.of(request.getAmount()).asBigDecimal();
+            if (MerchantEnvironmentService.SANDBOX.equals(environment)) {
                 return ResponseEntity.accepted()
-                        .body(sandboxSimulation.refund(
-                                merchant.getId(),
-                                request.getOriginalReference(),
-                                request.getReference(),
-                                amount,
-                                request.getReason()));
+                        .body(
+                                sandboxSimulation.refund(
+                                        merchant.getId(),
+                                        request.getOriginalReference(),
+                                        request.getReference(),
+                                        amount,
+                                        request.getReason()));
             }
-            productionGuard.enforcePayment(merchant, environment, "REFUND");
-            RefundRecord refund = refundService.requestRefund(
-                    merchant,
-                    request.getOriginalReference(),
-                    request.getReference(),
-                    amount,
-                    request.getReason());
+            productionGuard.reserveProductionExecution(
+                    merchant, environment, "REFUND", request.getReference());
+            RefundRecord refund =
+                    refundService.requestRefund(
+                            merchant,
+                            request.getOriginalReference(),
+                            request.getReference(),
+                            amount,
+                            request.getReason());
             return ResponseEntity.accepted().body(refund);
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
@@ -101,25 +101,41 @@ public class RefundsV2Controller {
             HttpServletRequest servletRequest) {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
-            String environment = environmentService.resolveRequestEnvironment(
-                    servletRequest.getHeader("X-CPay-Environment"), null);
-            if ("SANDBOX".equals(environment)) {
-                return sandboxSimulation.findRefund(merchant.getId(), reference)
+            String environment = compatibilityEnvironment(servletRequest);
+            if (MerchantEnvironmentService.SANDBOX.equals(environment)) {
+                return sandboxSimulation
+                        .findRefund(merchant.getId(), reference)
                         .<ResponseEntity<?>>map(ResponseEntity::ok)
-                        .orElseGet(() -> error(
-                                HttpStatus.NOT_FOUND,
-                                "REFUND_NOT_FOUND",
-                                "No sandbox refund found for reference " + reference));
+                        .orElseGet(
+                                () ->
+                                        error(
+                                                HttpStatus.NOT_FOUND,
+                                                "REFUND_NOT_FOUND",
+                                                "No sandbox refund found for reference "
+                                                        + reference));
             }
-            return refundService.findByReference(merchant.getId(), reference)
+            return refundService
+                    .findByReference(merchant.getId(), reference)
                     .<ResponseEntity<?>>map(ResponseEntity::ok)
-                    .orElseGet(() -> error(
-                            HttpStatus.NOT_FOUND,
-                            "REFUND_NOT_FOUND",
-                            "No production refund found for reference " + reference));
+                    .orElseGet(
+                            () ->
+                                    error(
+                                            HttpStatus.NOT_FOUND,
+                                            "REFUND_NOT_FOUND",
+                                            "No production refund found for reference "
+                                                    + reference));
         } catch (V2RequestSecurityException e) {
             return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
         }
+    }
+
+    /** Existing refund callers remain production unless they explicitly select SANDBOX. */
+    private String compatibilityEnvironment(HttpServletRequest request) {
+        String header = request.getHeader("X-CPay-Environment");
+        if (header == null || header.isBlank()) {
+            return MerchantEnvironmentService.PRODUCTION;
+        }
+        return environmentService.resolveRequestEnvironment(header, null);
     }
 
     private ResponseEntity<?> error(HttpStatus status, String code, String message) {
