@@ -3,9 +3,10 @@ package net.citotech.cito.refund;
 import java.util.EnumSet;
 import java.util.Set;
 
-/** Explicit refund lifecycle state machine (audit B6). */
+/** Explicit refund lifecycle state machine. */
 public enum RefundStatus {
     REQUESTED,
+    PENDING_APPROVAL,
     PROCESSING,
     COMPLETED,
     FAILED,
@@ -22,7 +23,12 @@ public enum RefundStatus {
             return false;
         }
         return switch (this) {
-            case REQUESTED -> next == PROCESSING || next == REJECTED || next == FAILED;
+            case REQUESTED ->
+                    next == PENDING_APPROVAL
+                            || next == PROCESSING
+                            || next == REJECTED
+                            || next == FAILED;
+            case PENDING_APPROVAL -> next == PROCESSING || next == REJECTED || next == FAILED;
             case PROCESSING -> next == COMPLETED || next == FAILED;
             default -> false;
         };
