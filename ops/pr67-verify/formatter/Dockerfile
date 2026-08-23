@@ -21,11 +21,9 @@ WORKDIR /work/repo
 RUN git diff --name-only -- 'InitializrSpringbootProjectFresh/src/**/*.java' > /work/formatted-files.txt \
     && test -s /work/formatted-files.txt \
     && tar -czf /work/formatted-java.tar.gz -T /work/formatted-files.txt \
-    && while IFS= read -r file; do \
-         echo "FMT_BEGIN|${file}"; \
-         base64 -w 12000 "${file}" | sed 's/^/FMT_CHUNK|/'; \
-         echo "FMT_END|${file}"; \
-       done < /work/formatted-files.txt
+    && echo 'FMT_TAR_BEGIN' \
+    && base64 -w 12000 /work/formatted-java.tar.gz | sed 's/^/FMT_TAR_CHUNK|/' \
+    && echo 'FMT_TAR_END'
 
 FROM nginx:1.27-alpine
 LABEL purpose="pr67-spotless-artifact"
