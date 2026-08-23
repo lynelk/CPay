@@ -21,6 +21,7 @@ import MerchantModuleSms from './modules/merchant/MerchantModuleSms';
 import MerchantModulePaymentChannels from './modules/merchant/MerchantModulePaymentChannels';
 import MerchantModuleWebhooks from './modules/merchant/MerchantModuleWebhooks';
 import MerchantModuleVending from './modules/merchant/MerchantModuleVending';
+import MerchantModuleCitoServices from './modules/merchant/MerchantModuleCitoServices';
 
 import { apiFetch } from '../shared/api/httpClient';
 import { apiUrl } from '../shared/config';
@@ -28,6 +29,7 @@ import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
   dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_merchant },
+  'cito-services': { title: 'Cito Services', subtitle: 'Entitlements, orchestration, marketplace, intelligence and platform tools' },
   channels: { title: strings.menu_channels, subtitle: strings.menu_channels_subtitle },
   statement: { title: strings.menu_statement, subtitle: strings.menu_statement_subtitle },
   webhooks: { title: strings.menu_webhooks, subtitle: strings.menu_webhooks_subtitle },
@@ -84,6 +86,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
     };
 
     switch (item) {
+      case 'cito-services': return <MerchantModuleCitoServices {...moduleProps} />;
       case 'channels': return <MerchantModulePaymentChannels {...moduleProps} />;
       case 'statement': return <MerchantModuleMerchantAccount {...moduleProps} />;
       case 'admins': return <MerchantModuleAdmins {...moduleProps} />;
@@ -206,7 +209,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
       <Shell
         navOpen={this.state.navOpen}
         sidebar={
-          <Sidebar brand={<Brand logo={Logo} name="CPay" product="Merchant Portal" />}>
+          <Sidebar brand={<Brand logo={Logo} name="Cito" product="Merchant Workspace" />}>
             <MainMenuMerchant activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} />
           </Sidebar>
         }
