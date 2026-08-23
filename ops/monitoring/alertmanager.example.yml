@@ -1,0 +1,50 @@
+# Production routing template. Receiver URLs/addresses belong in the deployment secret/config store.
+# Replace every <...> placeholder and perform the delivery drill in
+# Docs/Readiness/production-go-live-manual-verification.md before marking alert delivery VERIFIED.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: cpay-operations
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 2h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: cpay-critical
+      repeat_interval: 30m
+    - matchers:
+        - alertname=~".*Reconciliation.*|.*Settlement.*"
+      receiver: cpay-finance
+    - matchers:
+        - alertname=~".*RateLimit.*|.*Security.*|.*Authentication.*"
+      receiver: cpay-security
+
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal: [alertname]
+
+receivers:
+  - name: cpay-operations
+    webhook_configs:
+      - url: <OPERATIONS_ALERT_WEBHOOK_FROM_SECRET_STORE>
+        send_resolved: true
+  - name: cpay-critical
+    webhook_configs:
+      - url: <PRIMARY_ON_CALL_WEBHOOK_FROM_SECRET_STORE>
+        send_resolved: true
+      - url: <SECONDARY_ON_CALL_WEBHOOK_FROM_SECRET_STORE>
+        send_resolved: true
+  - name: cpay-finance
+    webhook_configs:
+      - url: <FINANCE_RECONCILIATION_WEBHOOK_FROM_SECRET_STORE>
+        send_resolved: true
+  - name: cpay-security
+    webhook_configs:
+      - url: <SECURITY_INCIDENT_WEBHOOK_FROM_SECRET_STORE>
+        send_resolved: true
