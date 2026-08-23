@@ -6,4 +6,6 @@ The branch must not be merged on GitHub mergeability alone. The final head commi
 
 Any automated failure must be corrected on the PR branch and the full applicable gate set rerun against the resulting final head SHA before merge.
 
+For PR #67, isolated Railway verification services are attached to this branch for backend/API/dependency checks, frontend quality checks, and clean-MySQL migration verification. Their evidence is valid only when Railway reports the same branch head commit hash as the pull request.
+
 Production deployment remains separately subject to provider certification, production credentials, production-like UAT, callback/webhook verification, finance and reconciliation signoff, independent security review, compliance/regulatory approval, production secrets and infrastructure authorization, monitoring/on-call readiness, and DNS/TLS cutover approval.
