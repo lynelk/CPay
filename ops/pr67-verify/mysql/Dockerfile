@@ -1,16 +1,10 @@
 FROM maven:3.9.16-eclipse-temurin-21
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git python3 \
+    && apt-get install -y --no-install-recommends python3 \
     && rm -rf /var/lib/apt/lists/*
 
-ARG VERIFY_REF=feature/cito-platform-expansion-integrated
-WORKDIR /verify
-
-RUN git clone --branch "${VERIFY_REF}" https://github.com/lynelk/CPay.git repo \
-    && cd repo \
-    && echo "VERIFY_HEAD=$(git rev-parse HEAD)"
-
+COPY . /verify/repo
 WORKDIR /verify/repo/InitializrSpringbootProjectFresh
 RUN mvn -B dependency:go-offline --no-transfer-progress -DskipTests
 
