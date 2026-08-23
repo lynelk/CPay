@@ -48,7 +48,6 @@ public class NativePaymentsV2Controller {
                             servletRequest.getHeader("X-CPay-Environment"), request);
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
-            productionGuard.enforcePayment(merchant, environment, "COLLECT");
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
             String idempotencyBody = bodyWithEnvironment(body, environment);
             Optional<PaymentResult> existing =
@@ -57,6 +56,8 @@ public class NativePaymentsV2Controller {
             if (existing.isPresent()) {
                 return ResponseEntity.ok(existing.get());
             }
+            productionGuard.reserveProductionExecution(
+                    merchant, environment, "COLLECT", request.getReference());
             PaymentResult result =
                     adapterNativePaymentService.collect(request, merchant, environment);
             idempotencyService.record(
@@ -83,7 +84,6 @@ public class NativePaymentsV2Controller {
                             servletRequest.getHeader("X-CPay-Environment"), request);
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
-            productionGuard.enforcePayment(merchant, environment, "PAYOUT");
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
             String idempotencyBody = bodyWithEnvironment(body, environment);
             Optional<PaymentResult> existing =
@@ -92,6 +92,8 @@ public class NativePaymentsV2Controller {
             if (existing.isPresent()) {
                 return ResponseEntity.ok(existing.get());
             }
+            productionGuard.reserveProductionExecution(
+                    merchant, environment, "PAYOUT", request.getReference());
             PaymentResult result =
                     adapterNativePaymentService.payout(request, merchant, environment);
             idempotencyService.record(
