@@ -9,8 +9,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import net.citotech.cito.GeneralException;
+import net.citotech.cito.Model.User;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -35,12 +39,14 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
+        bridgeAdminSessionIdentity(session);
+
         if (!requiresPortalSession(request)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        HttpSession session = request.getSession(false);
         boolean loggedIn =
                 session != null
                         && (session.getAttribute("user") != null
@@ -54,6 +60,37 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter().write(GeneralException.getError("107", GeneralException.ERRORS_107));
+    }
+
+    /**
+     * The legacy admin login stores the real operator as session attribute "user", while Spring
+     * Security historically knew only the shared ADMIN_API basic-auth principal. Bridge the real
+     * session identity into the SecurityContext so /api/v2/admin/** authorizes the same signed-in
+     * operator and maker-checker/audit code receives a human identity rather than a shared service
+     * username. Merchant sessions are deliberately never promoted to ROLE_ADMIN.
+     */
+    private void bridgeAdminSessionIdentity(HttpSession session) {
+        if (session == null || !(session.getAttribute("user") instanceof User user)) {
+            return;
+        }
+        String principal = adminPrincipal(user);
+        UsernamePasswordAuthenticationToken authentication =
+                UsernamePasswordAuthenticationToken.authenticated(
+                        principal,
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        authentication.setDetails("legacy-admin-session:" + user.getId());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private String adminPrincipal(User user) {
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail().trim();
+        }
+        if (user.getName() != null && !user.getName().isBlank()) {
+            return user.getName().trim() + "#" + user.getId();
+        }
+        return "admin-user-" + user.getId();
     }
 
     boolean requiresPortalSession(HttpServletRequest request) {

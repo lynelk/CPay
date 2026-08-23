@@ -2,10 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "mvn -q -DskipTests clean package && mkdir -p target && cp InitializrSpringbootProjectFresh/target/*.jar target/"
+    "buildCommand": "mvn -B -DskipTests clean package --no-transfer-progress"
   },
   "deploy": {
-    "startCommand": "sh ./start.sh",
+    "startCommand": "sh -c 'exec java -Dserver.port=${HTTP_PORT:-${PORT:-8080}} -jar /app/cpay-backend.jar'",
     "healthcheckPath": "/status/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",

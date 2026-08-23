@@ -27,6 +27,7 @@ import ModuleCommunicationRouting from './modules/ModuleCommunicationRouting';
 import ModuleCompliance from './modules/ModuleCompliance';
 import ModuleKybReview from './modules/ModuleKybReview';
 import ModuleCertification from './modules/ModuleCertification';
+import ModuleSandboxGoLive from './modules/ModuleSandboxGoLive';
 import ModuleTreasury from './modules/ModuleTreasury';
 import ProductionMaturityDashboard from '../features/productionMaturity/ProductionMaturityDashboard';
 
@@ -49,6 +50,7 @@ const menuTitles = {
   compliance: { title: 'Compliance', subtitle: 'AML/KYC cases, screening events and compliance profiles' },
   kybreview: { title: 'KYB Review', subtitle: 'Approve or reject beneficial owners and KYC documents' },
   certification: { title: 'Certification', subtitle: 'Provider sandbox/statement evidence and approvals' },
+  sandboxgolive: { title: 'Sandbox Go-Live', subtitle: 'Review readiness, promote safe configuration, validate live smoke tests and stage production rollout' },
   treasury: { title: 'Treasury', subtitle: 'Channel/currency positions and balance monitoring' },
   productionmaturity: { title: 'Production Maturity', subtitle: 'Finance, compliance, cross-border and automation readiness' },
   admins: { title: strings.menu_admins, subtitle: strings.menu_admins_subtitle_admin },
@@ -114,6 +116,7 @@ class LayoutWithOutRouter extends React.Component {
       case 'compliance': return <ModuleCompliance {...moduleProps} />;
       case 'kybreview': return <ModuleKybReview {...moduleProps} />;
       case 'certification': return <ModuleCertification {...moduleProps} />;
+      case 'sandboxgolive': return <ModuleSandboxGoLive {...moduleProps} />;
       case 'treasury': return <ModuleTreasury {...moduleProps} />;
       case 'productionmaturity': return <ProductionMaturityDashboard {...moduleProps} />;
       case 'audittrail': return <ModuleAuditTrail {...moduleProps} />;

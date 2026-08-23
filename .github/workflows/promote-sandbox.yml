@@ -1,0 +1,38 @@
+name: Promote Sandbox
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-sandbox
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    name: Fast-forward sandbox after verified main CI
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Check out verified main commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Fast-forward sandbox branch
+        run: |
+          set -euo pipefail
+          git fetch origin sandbox || true
+          if git show-ref --verify --quiet refs/remotes/origin/sandbox; then
+            if ! git merge-base --is-ancestor origin/sandbox HEAD; then
+              echo "Sandbox contains commits not present in verified main; refusing destructive update." >&2
+              exit 1
+            fi
+          fi
+          git push origin HEAD:sandbox
