@@ -46,9 +46,8 @@ public class BatchPayoutsV2Controller {
             HttpServletRequest servletRequest) {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
-            String environment = environmentService.resolveRequestEnvironment(
-                    servletRequest.getHeader("X-CPay-Environment"), null);
-            if ("SANDBOX".equals(environment)) {
+            String environment = compatibilityEnvironment(servletRequest);
+            if (MerchantEnvironmentService.SANDBOX.equals(environment)) {
                 return ResponseEntity.ok(sandboxSimulation.batchStatus(merchant.getId(), batchId));
             }
             return ResponseEntity.ok(batchPayoutStatusService.status(batchId, merchant.getId()));
@@ -66,13 +65,13 @@ public class BatchPayoutsV2Controller {
             HttpServletRequest servletRequest) {
         try {
             Merchant merchant = securityService.verify(servletRequest, "", merchantNumber);
-            String environment = environmentService.resolveRequestEnvironment(
-                    servletRequest.getHeader("X-CPay-Environment"), null);
-            if ("SANDBOX".equals(environment)) {
+            String environment = compatibilityEnvironment(servletRequest);
+            if (MerchantEnvironmentService.SANDBOX.equals(environment)) {
                 return ResponseEntity.ok(
                         sandboxSimulation.retryFailedBatch(merchant.getId(), batchId));
             }
-            productionGuard.enforcePayment(merchant, environment, "BATCH_PAYOUT");
+            productionGuard.reserveProductionExecution(
+                    merchant, environment, "BATCH_PAYOUT", "batch-retry:" + batchId);
             int retried = batchPayoutStatusService.retryFailed(batchId, merchant.getId());
             return ResponseEntity.ok(java.util.Map.of("code", "000", "retriedCount", retried));
         } catch (V2RequestSecurityException e) {
@@ -85,6 +84,15 @@ public class BatchPayoutsV2Controller {
         } catch (PaymentGatewayException e) {
             return error(HttpStatus.NOT_FOUND, "BATCH_NOT_FOUND", e.getMessage());
         }
+    }
+
+    /** Existing batch callers remain production unless they explicitly select SANDBOX. */
+    private String compatibilityEnvironment(HttpServletRequest request) {
+        String header = request.getHeader("X-CPay-Environment");
+        if (header == null || header.isBlank()) {
+            return MerchantEnvironmentService.PRODUCTION;
+        }
+        return environmentService.resolveRequestEnvironment(header, null);
     }
 
     private ResponseEntity<?> error(HttpStatus status, String code, String message) {
