@@ -19,11 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v2/merchant-self-service/developer")
 public class DeveloperControlPlaneController {
     private final DeveloperControlPlaneService developerService;
+    private final DeveloperScopeEntitlementService scopeEntitlementService;
     private final MerchantSessionContext sessionContext;
 
     public DeveloperControlPlaneController(
-            DeveloperControlPlaneService developerService, MerchantSessionContext sessionContext) {
+            DeveloperControlPlaneService developerService,
+            DeveloperScopeEntitlementService scopeEntitlementService,
+            MerchantSessionContext sessionContext) {
         this.developerService = developerService;
+        this.scopeEntitlementService = scopeEntitlementService;
         this.sessionContext = sessionContext;
     }
 
@@ -51,11 +55,18 @@ public class DeveloperControlPlaneController {
     public ResponseEntity<?> activateEnvironment(
             @RequestBody Map<String, Object> body, HttpServletRequest request) {
         try {
+            long merchantId = sessionContext.requireMerchantId(request);
+            String projectReference = text(body.get("projectReference"));
+            String environment = text(body.get("environment"));
+            if ("PRODUCTION".equalsIgnoreCase(environment)) {
+                scopeEntitlementService.requireProjectProductionEntitlements(
+                        merchantId, projectReference);
+            }
             return ResponseEntity.ok(
                     developerService.activateEnvironment(
-                            sessionContext.requireMerchantId(request),
-                            text(body.get("projectReference")),
-                            text(body.get("environment")),
+                            merchantId,
+                            projectReference,
+                            environment,
                             sessionContext.actor(request)));
         } catch (PaymentGatewayException e) {
             return bad("DEVELOPER_ENVIRONMENT_REJECTED", e.getMessage());
@@ -66,12 +77,15 @@ public class DeveloperControlPlaneController {
     public ResponseEntity<?> createServiceAccount(
             @RequestBody Map<String, Object> body, HttpServletRequest request) {
         try {
+            long merchantId = sessionContext.requireMerchantId(request);
+            List<String> scopes = stringList(body.get("scopes"));
+            scopeEntitlementService.requireScopes(merchantId, scopes, "SANDBOX");
             return ResponseEntity.ok(
                     developerService.createServiceAccount(
-                            sessionContext.requireMerchantId(request),
+                            merchantId,
                             text(body.get("projectReference")),
                             text(body.get("displayName")),
-                            stringList(body.get("scopes")),
+                            scopes,
                             sessionContext.actor(request)));
         } catch (PaymentGatewayException e) {
             return bad("SERVICE_ACCOUNT_REJECTED", e.getMessage());
@@ -171,6 +185,19 @@ public class DeveloperControlPlaneController {
                             sessionContext.requireMerchantId(request), projectReference));
         } catch (PaymentGatewayException e) {
             return bad("DEVELOPER_READINESS_REJECTED", e.getMessage());
+        }
+    }
+
+    @GetMapping("/scope-readiness")
+    public ResponseEntity<?> scopeReadiness(
+            @RequestParam("projectReference") String projectReference,
+            HttpServletRequest request) {
+        try {
+            return ResponseEntity.ok(
+                    scopeEntitlementService.productionReadiness(
+                            sessionContext.requireMerchantId(request), projectReference));
+        } catch (PaymentGatewayException e) {
+            return bad("DEVELOPER_SCOPE_READINESS_REJECTED", e.getMessage());
         }
     }
 
