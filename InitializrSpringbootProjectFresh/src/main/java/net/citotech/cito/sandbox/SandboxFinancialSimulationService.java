@@ -1,6 +1,7 @@
 package net.citotech.cito.sandbox;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,8 +44,10 @@ public class SandboxFinancialSimulationService {
         }
 
         String scenario = originalReference.trim().toUpperCase(Locale.ROOT);
-        RefundStatus status = scenario.contains("FAIL") ? RefundStatus.FAILED : RefundStatus.COMPLETED;
-        String failure = status == RefundStatus.FAILED ? "Simulated sandbox refund failure" : null;
+        RefundStatus status =
+                scenario.contains("FAIL") ? RefundStatus.FAILED : RefundStatus.COMPLETED;
+        String failure =
+                status == RefundStatus.FAILED ? "Simulated sandbox refund failure" : null;
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchantId", merchantId);
         p.addValue("refundReference", refundReference.trim());
@@ -59,7 +62,8 @@ public class SandboxFinancialSimulationService {
                         + "VALUES (:merchantId,:refundReference,:originalReference,:amount,:status,:reason,:failure)",
                 p);
         return findRefund(merchantId, refundReference)
-                .orElseThrow(() -> new IllegalStateException("Sandbox refund could not be read back."));
+                .orElseThrow(
+                        () -> new IllegalStateException("Sandbox refund could not be read back."));
     }
 
     public Optional<RefundRecord> findRefund(long merchantId, String refundReference) {
@@ -69,21 +73,23 @@ public class SandboxFinancialSimulationService {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchantId", merchantId);
         p.addValue("refundReference", refundReference.trim());
-        List<RefundRecord> rows = jdbcTemplate.query(
-                "SELECT id,merchant_id,refund_reference,original_reference,requested_amount,refund_status,reason,failure_message "
-                        + "FROM sandbox_refunds WHERE merchant_id=:merchantId AND refund_reference=:refundReference",
-                p,
-                (rs, rowNum) -> new RefundRecord(
-                        rs.getLong("id"),
-                        rs.getString("refund_reference"),
-                        rs.getLong("merchant_id"),
-                        0L,
-                        rs.getString("original_reference"),
-                        null,
-                        rs.getBigDecimal("requested_amount"),
-                        RefundStatus.valueOf(rs.getString("refund_status")),
-                        rs.getString("reason"),
-                        rs.getString("failure_message")));
+        List<RefundRecord> rows =
+                jdbcTemplate.query(
+                        "SELECT id,merchant_id,refund_reference,original_reference,requested_amount,refund_status,reason,failure_message "
+                                + "FROM sandbox_refunds WHERE merchant_id=:merchantId AND refund_reference=:refundReference",
+                        p,
+                        (rs, rowNum) ->
+                                new RefundRecord(
+                                        rs.getLong("id"),
+                                        rs.getString("refund_reference"),
+                                        rs.getLong("merchant_id"),
+                                        0L,
+                                        rs.getString("original_reference"),
+                                        null,
+                                        rs.getBigDecimal("requested_amount"),
+                                        RefundStatus.valueOf(rs.getString("refund_status")),
+                                        rs.getString("reason"),
+                                        rs.getString("failure_message")));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
@@ -91,20 +97,30 @@ public class SandboxFinancialSimulationService {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchantId", merchantId);
         p.addValue("batchId", batchId);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT operation,result_status,retried_count,created_at FROM sandbox_batch_payout_runs "
-                        + "WHERE merchant_id=:merchantId AND batch_id=:batchId ORDER BY id DESC LIMIT 1",
-                p);
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT operation,result_status,retried_count,created_at FROM sandbox_batch_payout_runs "
+                                + "WHERE merchant_id=:merchantId AND batch_id=:batchId ORDER BY id DESC LIMIT 1",
+                        p);
         if (rows.isEmpty()) {
             return Map.of(
-                    "batchId", batchId,
-                    "environment", "SANDBOX",
-                    "status", "READY_FOR_SIMULATION",
-                    "retriedCount", 0);
+                    "batchId",
+                    batchId,
+                    "environment",
+                    "SANDBOX",
+                    "status",
+                    "READY_FOR_SIMULATION",
+                    "retriedCount",
+                    0);
         }
-        Map<String, Object> result = new java.util.LinkedHashMap<>(rows.get(0));
+        Map<String, Object> row = rows.get(0);
+        Map<String, Object> result = new LinkedHashMap<>();
         result.put("batchId", batchId);
         result.put("environment", "SANDBOX");
+        result.put("operation", row.get("operation"));
+        result.put("status", row.get("result_status"));
+        result.put("retriedCount", row.get("retried_count"));
+        result.put("createdAt", row.get("created_at"));
         return result;
     }
 
@@ -121,10 +137,15 @@ public class SandboxFinancialSimulationService {
                         + "VALUES (:merchantId,:batchId,'RETRY_FAILED','SIMULATED',:retried)",
                 p);
         return Map.of(
-                "code", "000",
-                "environment", "SANDBOX",
-                "batchId", batchId,
-                "retriedCount", retried,
-                "status", "SIMULATED");
+                "code",
+                "000",
+                "environment",
+                "SANDBOX",
+                "batchId",
+                batchId,
+                "retriedCount",
+                retried,
+                "status",
+                "SIMULATED");
     }
 }
