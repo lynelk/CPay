@@ -40,11 +40,12 @@ public class SandboxGoLiveControlService {
                     "A passing sandbox certification run is required before production access can be requested.");
         }
         MapSqlParameterSource merchant = new MapSqlParameterSource("merchantId", merchantId);
-        Integer active = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM merchant_go_live_requests WHERE merchant_id=:merchantId "
-                        + "AND request_status IN ('REQUESTED','IN_REVIEW','APPROVED')",
-                merchant,
-                Integer.class);
+        Integer active =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM merchant_go_live_requests WHERE merchant_id=:merchantId "
+                                + "AND request_status IN ('REQUESTED','IN_REVIEW','APPROVED')",
+                        merchant,
+                        Integer.class);
         if (active != null && active > 0) {
             throw new IllegalStateException(
                     "A production-access request is already active for this merchant.");
@@ -66,9 +67,10 @@ public class SandboxGoLiveControlService {
     public Map<String, Object> advanceGoLiveRequest(
             long requestId, String action, String actor, String notes) {
         MapSqlParameterSource p = new MapSqlParameterSource("requestId", requestId);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT merchant_id,request_status,current_stage FROM merchant_go_live_requests WHERE id=:requestId",
-                p);
+        List<Map<String, Object>> rows =
+                jdbcTemplate.queryForList(
+                        "SELECT merchant_id,request_status,current_stage FROM merchant_go_live_requests WHERE id=:requestId",
+                        p);
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("Production-access request was not found.");
         }
@@ -76,22 +78,23 @@ public class SandboxGoLiveControlService {
         long merchantId = ((Number) current.get("merchant_id")).longValue();
         String status = String.valueOf(current.get("request_status"));
         String stage = String.valueOf(current.get("current_stage"));
+        if ("ACTIVATED".equals(status) || "REJECTED".equals(status)) {
+            throw new IllegalStateException("This production-access request is already terminal.");
+        }
         String normalizedAction = normalize(action, "ADVANCE");
         if ("REJECT".equals(normalizedAction)) {
             updateRequest(requestId, "REJECTED", stage, actor, notes, false, false);
             return lifecycleService.latestGoLiveRequest(merchantId);
-        }
-        if ("ACTIVATED".equals(status) || "REJECTED".equals(status)) {
-            throw new IllegalStateException("This production-access request is already terminal.");
         }
         int index = GO_LIVE_STAGES.indexOf(stage);
         if (index < 0) {
             throw new IllegalStateException("Unknown go-live review stage: " + stage);
         }
         String next = index + 1 < GO_LIVE_STAGES.size() ? GO_LIVE_STAGES.get(index + 1) : stage;
-        String nextStatus = "APPROVED".equals(next)
-                ? "APPROVED"
-                : "ACTIVATED".equals(next) ? "ACTIVATED" : "IN_REVIEW";
+        String nextStatus =
+                "APPROVED".equals(next)
+                        ? "APPROVED"
+                        : "ACTIVATED".equals(next) ? "ACTIVATED" : "IN_REVIEW";
         updateRequest(
                 requestId,
                 nextStatus,
@@ -113,14 +116,15 @@ public class SandboxGoLiveControlService {
         if (!ROLLOUT_STAGES.contains(stage)) {
             throw new IllegalArgumentException("Unsupported production rollout stage: " + stage);
         }
-        int defaultLimit = switch (stage) {
-            case "SANDBOX" -> 0;
-            case "COLLECTIONS" -> 10;
-            case "REFUNDS" -> 25;
-            case "PAYOUTS_LOW_LIMIT" -> 50;
-            case "FULL" -> 1000000;
-            default -> 0;
-        };
+        int defaultLimit =
+                switch (stage) {
+                    case "SANDBOX" -> 0;
+                    case "COLLECTIONS" -> 10;
+                    case "REFUNDS" -> 25;
+                    case "PAYOUTS_LOW_LIMIT" -> 50;
+                    case "FULL" -> 1000000;
+                    default -> 0;
+                };
         int limit = requestedLimit == null ? defaultLimit : Math.max(0, requestedLimit);
         boolean collections = !"SANDBOX".equals(stage);
         boolean refunds = Set.of("REFUNDS", "PAYOUTS_LOW_LIMIT", "FULL").contains(stage);
@@ -138,7 +142,7 @@ public class SandboxGoLiveControlService {
                 "INSERT INTO merchant_rollout_stages "
                         + "(merchant_id,stage_code,production_daily_limit,collections_enabled,refunds_enabled,payouts_enabled,updated_by) "
                         + "VALUES (:merchantId,:stage,:limit,:collections,:refunds,:payouts,:actor) "
-                        + "ON DUPLICATE KEY UPDATE stage_code=:stage,production_daily_limit=:limit," 
+                        + "ON DUPLICATE KEY UPDATE stage_code=:stage,production_daily_limit=:limit,"
                         + "collections_enabled=:collections,refunds_enabled=:refunds,payouts_enabled=:payouts,updated_by=:actor",
                 p);
         upsertFeature(merchantId, "production-collections", collections);
@@ -174,11 +178,12 @@ public class SandboxGoLiveControlService {
         p.addValue("stage", stage);
         p.addValue("actor", actor);
         p.addValue("notes", notes);
-        String timestamps = approved
-                ? ",approved_at=CURRENT_TIMESTAMP"
-                : activated ? ",activated_at=CURRENT_TIMESTAMP" : "";
+        String timestamps =
+                approved
+                        ? ",approved_at=CURRENT_TIMESTAMP"
+                        : activated ? ",activated_at=CURRENT_TIMESTAMP" : "";
         jdbcTemplate.update(
-                "UPDATE merchant_go_live_requests SET request_status=:status,current_stage=:stage," 
+                "UPDATE merchant_go_live_requests SET request_status=:status,current_stage=:stage,"
                         + "decision_by=:actor,decision_notes=:notes"
                         + timestamps
                         + " WHERE id=:id",
