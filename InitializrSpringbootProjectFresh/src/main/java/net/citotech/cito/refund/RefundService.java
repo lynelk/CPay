@@ -1,9 +1,8 @@
 package net.citotech.cito.refund;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.citotech.cito.Common;
 import net.citotech.cito.DoPayGateway;
@@ -17,18 +16,19 @@ import net.citotech.cito.ledger.DoubleEntryLedgerService;
 import net.citotech.cito.merchant.MerchantNotificationPreferenceService;
 import net.citotech.cito.money.MoneyAmount;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Refund lifecycle service (audit B6): a refund is now a first-class, queryable object with an
- * explicit state machine and support for partial refunds (tracked cumulatively against the
- * original payin so the total refunded can never exceed what was collected), replacing the
- * legacy always-full-amount, state-less payout reversal.
+ * Governed refund lifecycle. Partial refunds, cumulative refund protection, optional maker-checker
+ * approval, provider-attempt evidence, ledger reservation/capture, notifications and a financial
+ * timeline are handled as one lifecycle rather than separate operational side effects.
  */
 @Service
 public class RefundService {
@@ -36,22 +36,50 @@ public class RefundService {
     private final PlatformTransactionManager transactionManager;
     private final DoubleEntryLedgerService ledgerService;
     private final MerchantNotificationPreferenceService notificationPreferenceService;
+    private final BigDecimal approvalThreshold;
 
-    public RefundService(NamedParameterJdbcTemplate jdbcTemplate,
-                         PlatformTransactionManager transactionManager,
-                         DoubleEntryLedgerService ledgerService,
-                         MerchantNotificationPreferenceService notificationPreferenceService) {
+    public RefundService(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            DoubleEntryLedgerService ledgerService,
+            MerchantNotificationPreferenceService notificationPreferenceService,
+            @Value("${cpay.refund.approval-threshold:500000}") BigDecimal approvalThreshold) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
         this.ledgerService = ledgerService;
         this.notificationPreferenceService = notificationPreferenceService;
+        this.approvalThreshold = approvalThreshold == null ? BigDecimal.ZERO : approvalThreshold;
     }
 
     /** amount == null means a full refund of whatever remains unrefunded on the original payin. */
-    public RefundRecord requestRefund(Merchant merchant, String originalMerchantRef, String refundReference,
-            BigDecimal amount, String reason) {
-        // A retried request with the same reference returns the existing refund rather than
-        // erroring or double-refunding - refund_reference is unique per merchant.
+    public RefundRecord requestRefund(
+            Merchant merchant,
+            String originalMerchantRef,
+            String refundReference,
+            BigDecimal amount,
+            String reason) {
+        String requestedBy =
+                merchant == null || merchant.getAccount_number() == null
+                        ? "API"
+                        : "API:" + merchant.getAccount_number();
+        return requestRefund(
+                merchant, originalMerchantRef, refundReference, amount, reason, requestedBy);
+    }
+
+    @Transactional
+    public RefundRecord requestRefund(
+            Merchant merchant,
+            String originalMerchantRef,
+            String refundReference,
+            BigDecimal amount,
+            String reason,
+            String requestedBy) {
+        if (merchant == null || merchant.getId() == null) {
+            throw new PaymentGatewayException("Merchant is required");
+        }
+        if (refundReference == null || refundReference.isBlank()) {
+            throw new PaymentGatewayException("Refund reference is required");
+        }
         Optional<RefundRecord> existing = findByReference(merchant.getId(), refundReference);
         if (existing.isPresent()) {
             return existing.get();
@@ -59,9 +87,11 @@ public class RefundService {
 
         Transaction originalTx = getSuccessfulPayin(originalMerchantRef, merchant.getId());
         if (originalTx == null) {
-            throw new PaymentGatewayException("No successful payin found for reference " + originalMerchantRef);
+            throw new PaymentGatewayException(
+                    "No successful payin found for reference " + originalMerchantRef);
         }
-        BigDecimal originalAmount = MoneyAmount.of(String.valueOf(originalTx.getOriginal_amount())).asBigDecimal();
+        BigDecimal originalAmount =
+                MoneyAmount.of(String.valueOf(originalTx.getOriginal_amount())).asBigDecimal();
         BigDecimal alreadyRefunded = refundedSoFar(originalTx.getId());
         BigDecimal remaining = originalAmount.subtract(alreadyRefunded);
         BigDecimal refundAmount = amount == null ? remaining : amount;
@@ -70,108 +100,340 @@ public class RefundService {
         }
         if (refundAmount.compareTo(remaining) > 0) {
             throw new PaymentGatewayException(
-                "Refund amount " + refundAmount + " exceeds the unrefunded balance " + remaining
-                    + " on transaction " + originalMerchantRef);
+                    "Refund amount "
+                            + refundAmount
+                            + " exceeds the unrefunded balance "
+                            + remaining
+                            + " on transaction "
+                            + originalMerchantRef);
         }
 
-        long refundId = insertRefund(merchant.getId(), refundReference, originalTx.getId(), originalMerchantRef, refundAmount, reason);
-        transition(refundId, RefundStatus.PROCESSING, null);
+        long refundId =
+                insertRefund(
+                        merchant.getId(),
+                        refundReference,
+                        originalTx.getId(),
+                        originalMerchantRef,
+                        refundAmount,
+                        reason,
+                        requestedBy);
+        recordTimeline(
+                merchant.getId(),
+                originalMerchantRef,
+                refundReference,
+                "REFUND_REQUESTED",
+                "REQUESTED",
+                refundAmount,
+                currency(originalTx),
+                null);
 
-        try {
-            RefundOutcome outcome = executeRefundPayout(merchant, originalTx, refundReference, refundAmount, reason);
-            if (outcome.succeeded()) {
-                transition(refundId, RefundStatus.COMPLETED, null);
-                linkPayoutTransaction(refundId, outcome.payoutTransactionId());
-                notifyRefundOutcome(merchant, refundReference, refundAmount, true, null);
-            } else {
-                transition(refundId, RefundStatus.FAILED, outcome.message());
-                notifyRefundOutcome(merchant, refundReference, refundAmount, false, outcome.message());
-            }
-        } catch (RuntimeException ex) {
-            transition(refundId, RefundStatus.FAILED, ex.getMessage());
-            notifyRefundOutcome(merchant, refundReference, refundAmount, false, ex.getMessage());
-            throw ex;
+        if (requiresApproval(refundAmount)) {
+            markPendingApproval(refundId);
+            recordTimeline(
+                    merchant.getId(),
+                    originalMerchantRef,
+                    refundReference,
+                    "REFUND_APPROVAL_REQUIRED",
+                    "PENDING_APPROVAL",
+                    refundAmount,
+                    currency(originalTx),
+                    null);
+            return findById(refundId)
+                    .orElseThrow(
+                            () ->
+                                    new PaymentGatewayException(
+                                            "Failed to read back the refund just created"));
         }
-
-        return findById(refundId).orElseThrow(() -> new PaymentGatewayException("Failed to read back the refund just created"));
+        return processRefund(refundId, merchant, originalTx, refundReference, refundAmount, reason);
     }
 
-    /**
-     * Notifies the merchant of a terminal refund outcome (audit N5) - the refund.completed/
-     * refund.failed events in {@link net.citotech.cito.webhook.WebhookEventCatalog}. Previously
-     * nothing notified the merchant of a refund outcome at all; this routes through the merchant's
-     * own {@link MerchantNotificationPreferenceService} preference rather than sending
-     * unconditionally, so an explicit NONE suppresses the send and a configured address overrides
-     * the merchant's primary contact. SMS is resolved but not dispatched here since no SMS provider
-     * is wired into this codebase yet. A failure in resolving/sending the notification must never
-     * affect the refund result already recorded, so it's swallowed rather than propagated.
-     */
-    private void notifyRefundOutcome(Merchant merchant, String refundReference, BigDecimal amount,
-            boolean succeeded, String failureMessage) {
-        try {
-            String eventType = succeeded ? "refund.completed" : "refund.failed";
-            MerchantNotificationPreferenceService.ResolvedNotification notification =
-                notificationPreferenceService.resolveChannel(merchant.getId(), eventType);
-            if (!notification.shouldSend()
-                    || notification.channel() != MerchantNotificationPreferenceService.Channel.EMAIL) {
-                return;
-            }
-            String to = notification.address();
-            String subject = succeeded ? "Refund completed: " + refundReference : "Refund failed: " + refundReference;
-            String body = succeeded
-                ? "Your refund " + refundReference + " for " + amount + " has completed successfully."
-                : "Your refund " + refundReference + " for " + amount + " failed."
-                    + (failureMessage == null || failureMessage.isEmpty() ? "" : " Reason: " + failureMessage);
-            ManagedAsyncTasks.run("refund-notification-" + refundReference,
-                () -> new SendMail().sendSimpleMessage(to, subject, body, jdbcTemplate));
-        } catch (Exception ignored) {
-            // The refund result is already recorded; a notification routing/send failure must not
-            // affect it or bubble up to the caller.
+    @Transactional
+    public RefundRecord approveRefund(long merchantId, String refundReference, String approver) {
+        RefundRecord refund =
+                findByReference(merchantId, refundReference)
+                        .orElseThrow(() -> new PaymentGatewayException("Refund was not found"));
+        if (refund.status() != RefundStatus.PENDING_APPROVAL) {
+            throw new PaymentGatewayException("Refund is not awaiting approval");
         }
+        String actor = required(approver, "approver");
+        Map<String, Object> approval = approvalMetadata(refund.id());
+        String requestedBy = String.valueOf(approval.getOrDefault("requested_by", ""));
+        if (!requestedBy.isBlank() && requestedBy.equalsIgnoreCase(actor)) {
+            throw new PaymentGatewayException("Maker-checker approval requires a different approver");
+        }
+        jdbcTemplate.update(
+                "UPDATE refunds SET approval_status='APPROVED', approved_by=:approved_by, "
+                        + "approved_at=CURRENT_TIMESTAMP WHERE id=:id AND refund_status='PENDING_APPROVAL'",
+                new MapSqlParameterSource()
+                        .addValue("id", refund.id())
+                        .addValue("approved_by", actor));
+        Merchant merchant = Common.getMerchantById(String.valueOf(merchantId), jdbcTemplate);
+        if (merchant == null) {
+            throw new PaymentGatewayException("Merchant was not found");
+        }
+        Transaction originalTx = getSuccessfulPayin(refund.originalMerchantRef(), merchantId);
+        if (originalTx == null) {
+            throw new PaymentGatewayException("Original transaction was not found");
+        }
+        recordTimeline(
+                merchantId,
+                refund.originalMerchantRef(),
+                refundReference,
+                "REFUND_APPROVED",
+                "APPROVED",
+                refund.requestedAmount(),
+                currency(originalTx),
+                "{\"approvedBy\":\"" + escape(actor) + "\"}");
+        return processRefund(
+                refund.id(),
+                merchant,
+                originalTx,
+                refundReference,
+                refund.requestedAmount(),
+                refund.reason());
+    }
+
+    @Transactional
+    public RefundRecord rejectRefund(
+            long merchantId, String refundReference, String reviewer, String reason) {
+        RefundRecord refund =
+                findByReference(merchantId, refundReference)
+                        .orElseThrow(() -> new PaymentGatewayException("Refund was not found"));
+        if (refund.status() != RefundStatus.PENDING_APPROVAL
+                && refund.status() != RefundStatus.REQUESTED) {
+            throw new PaymentGatewayException("Refund cannot be rejected in its current state");
+        }
+        String actor = required(reviewer, "reviewer");
+        jdbcTemplate.update(
+                "UPDATE refunds SET refund_status='REJECTED', approval_status='REJECTED', "
+                        + "approved_by=:reviewer, approved_at=CURRENT_TIMESTAMP, "
+                        + "failure_message=:reason WHERE id=:id",
+                new MapSqlParameterSource()
+                        .addValue("id", refund.id())
+                        .addValue("reviewer", actor)
+                        .addValue("reason", blankToNull(reason)));
+        recordTimeline(
+                merchantId,
+                refund.originalMerchantRef(),
+                refundReference,
+                "REFUND_REJECTED",
+                "REJECTED",
+                refund.requestedAmount(),
+                null,
+                "{\"reviewer\":\"" + escape(actor) + "\"}");
+        return findById(refund.id())
+                .orElseThrow(() -> new PaymentGatewayException("Unable to read refund"));
     }
 
     public Optional<RefundRecord> findByReference(long merchantId, String refundReference) {
-        List<RefundRecord> rows = jdbcTemplate.query(
-            "SELECT * FROM refunds WHERE merchant_id=:merchant_id AND refund_reference=:refund_reference",
-            new MapSqlParameterSource().addValue("merchant_id", merchantId).addValue("refund_reference", refundReference),
-            this::mapRow);
+        List<RefundRecord> rows =
+                jdbcTemplate.query(
+                        "SELECT * FROM refunds WHERE merchant_id=:merchant_id AND refund_reference=:refund_reference",
+                        new MapSqlParameterSource()
+                                .addValue("merchant_id", merchantId)
+                                .addValue("refund_reference", refundReference),
+                        this::mapRow);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
+    public List<Map<String, Object>> attempts(long merchantId, String refundReference) {
+        RefundRecord refund =
+                findByReference(merchantId, refundReference)
+                        .orElseThrow(() -> new PaymentGatewayException("Refund was not found"));
+        return jdbcTemplate.queryForList(
+                "SELECT attempt_number AS attemptNumber, provider_channel AS providerChannel, "
+                        + "provider_reference AS providerReference, outcome, failure_code AS failureCode, "
+                        + "failure_message AS failureMessage, started_at AS startedAt, completed_at AS completedAt "
+                        + "FROM refund_attempts WHERE refund_id=:refund_id ORDER BY attempt_number",
+                new MapSqlParameterSource("refund_id", refund.id()));
+    }
+
+    public List<Map<String, Object>> financialTimeline(
+            long merchantId, String transactionReference, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 200));
+        return jdbcTemplate.queryForList(
+                "SELECT event_reference AS eventReference, event_type AS eventType, event_status AS eventStatus, "
+                        + "amount, currency_code AS currencyCode, detail_json AS detailJson, occurred_at AS occurredAt "
+                        + "FROM payment_financial_timeline WHERE merchant_id=:merchant_id AND transaction_reference=:transaction_reference "
+                        + "ORDER BY id DESC LIMIT "
+                        + safeLimit,
+                new MapSqlParameterSource()
+                        .addValue("merchant_id", merchantId)
+                        .addValue("transaction_reference", transactionReference));
+    }
+
+    private RefundRecord processRefund(
+            long refundId,
+            Merchant merchant,
+            Transaction originalTx,
+            String refundReference,
+            BigDecimal refundAmount,
+            String reason) {
+        transition(refundId, RefundStatus.PROCESSING, null);
+        int attemptNumber = beginAttempt(refundId, originalTx.getGateway_id());
+        recordTimeline(
+                merchant.getId(),
+                originalTx.getTx_merchant_ref(),
+                refundReference,
+                "REFUND_PROCESSING",
+                "PROCESSING",
+                refundAmount,
+                currency(originalTx),
+                null);
+        try {
+            RefundOutcome outcome =
+                    executeRefundPayout(
+                            merchant, originalTx, refundReference, refundAmount, reason);
+            if (outcome.succeeded()) {
+                transition(refundId, RefundStatus.COMPLETED, null);
+                linkPayoutTransaction(refundId, outcome.payoutTransactionId());
+                completeAttempt(
+                        refundId,
+                        attemptNumber,
+                        "COMPLETED",
+                        outcome.payoutTransactionId() == null
+                                ? null
+                                : String.valueOf(outcome.payoutTransactionId()),
+                        null);
+                recordTimeline(
+                        merchant.getId(),
+                        originalTx.getTx_merchant_ref(),
+                        refundReference,
+                        "REFUND_COMPLETED",
+                        "COMPLETED",
+                        refundAmount,
+                        currency(originalTx),
+                        null);
+                notifyRefundOutcome(merchant, refundReference, refundAmount, true, null);
+            } else {
+                transition(refundId, RefundStatus.FAILED, outcome.message());
+                completeAttempt(
+                        refundId,
+                        attemptNumber,
+                        "FAILED",
+                        outcome.payoutTransactionId() == null
+                                ? null
+                                : String.valueOf(outcome.payoutTransactionId()),
+                        outcome.message());
+                recordTimeline(
+                        merchant.getId(),
+                        originalTx.getTx_merchant_ref(),
+                        refundReference,
+                        "REFUND_FAILED",
+                        "FAILED",
+                        refundAmount,
+                        currency(originalTx),
+                        null);
+                notifyRefundOutcome(
+                        merchant, refundReference, refundAmount, false, outcome.message());
+            }
+        } catch (RuntimeException ex) {
+            transition(refundId, RefundStatus.FAILED, ex.getMessage());
+            completeAttempt(refundId, attemptNumber, "FAILED", null, ex.getMessage());
+            recordTimeline(
+                    merchant.getId(),
+                    originalTx.getTx_merchant_ref(),
+                    refundReference,
+                    "REFUND_FAILED",
+                    "FAILED",
+                    refundAmount,
+                    currency(originalTx),
+                    null);
+            notifyRefundOutcome(merchant, refundReference, refundAmount, false, ex.getMessage());
+            throw ex;
+        }
+        return findById(refundId)
+                .orElseThrow(
+                        () -> new PaymentGatewayException("Failed to read back processed refund"));
+    }
+
+    private void notifyRefundOutcome(
+            Merchant merchant,
+            String refundReference,
+            BigDecimal amount,
+            boolean succeeded,
+            String failureMessage) {
+        try {
+            String eventType = succeeded ? "refund.completed" : "refund.failed";
+            MerchantNotificationPreferenceService.ResolvedNotification notification =
+                    notificationPreferenceService.resolveChannel(merchant.getId(), eventType);
+            if (!notification.shouldSend()
+                    || notification.channel()
+                            != MerchantNotificationPreferenceService.Channel.EMAIL) {
+                return;
+            }
+            String to = notification.address();
+            String subject =
+                    succeeded
+                            ? "Refund completed: " + refundReference
+                            : "Refund failed: " + refundReference;
+            String body =
+                    succeeded
+                            ? "Your refund "
+                                    + refundReference
+                                    + " for "
+                                    + amount
+                                    + " has completed successfully."
+                            : "Your refund "
+                                    + refundReference
+                                    + " for "
+                                    + amount
+                                    + " failed."
+                                    + (failureMessage == null || failureMessage.isEmpty()
+                                            ? ""
+                                            : " Reason: " + failureMessage);
+            ManagedAsyncTasks.run(
+                    "refund-notification-" + refundReference,
+                    () -> new SendMail().sendSimpleMessage(to, subject, body, jdbcTemplate));
+        } catch (Exception ignored) {
+            // Notification delivery cannot change the recorded financial result.
+        }
+    }
+
     private Optional<RefundRecord> findById(long id) {
-        List<RefundRecord> rows = jdbcTemplate.query(
-            "SELECT * FROM refunds WHERE id=:id",
-            new MapSqlParameterSource("id", id),
-            this::mapRow);
+        List<RefundRecord> rows =
+                jdbcTemplate.query(
+                        "SELECT * FROM refunds WHERE id=:id",
+                        new MapSqlParameterSource("id", id),
+                        this::mapRow);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
     private RefundRecord mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new RefundRecord(
-            rs.getLong("id"),
-            rs.getString("refund_reference"),
-            rs.getLong("merchant_id"),
-            rs.getLong("original_transaction_id"),
-            rs.getString("original_merchant_ref"),
-            rs.getObject("payout_transaction_id") == null ? null : rs.getLong("payout_transaction_id"),
-            rs.getBigDecimal("requested_amount"),
-            RefundStatus.valueOf(rs.getString("refund_status")),
-            rs.getString("reason"),
-            rs.getString("failure_message"));
+                rs.getLong("id"),
+                rs.getString("refund_reference"),
+                rs.getLong("merchant_id"),
+                rs.getLong("original_transaction_id"),
+                rs.getString("original_merchant_ref"),
+                rs.getObject("payout_transaction_id") == null
+                        ? null
+                        : rs.getLong("payout_transaction_id"),
+                rs.getBigDecimal("requested_amount"),
+                RefundStatus.valueOf(rs.getString("refund_status")),
+                rs.getString("reason"),
+                rs.getString("failure_message"));
     }
 
     private BigDecimal refundedSoFar(long originalTransactionId) {
-        BigDecimal sum = jdbcTemplate.queryForObject(
-            "SELECT COALESCE(SUM(requested_amount), 0) FROM refunds "
-                + "WHERE original_transaction_id=:original_transaction_id "
-                + "AND refund_status IN ('REQUESTED','PROCESSING','COMPLETED')",
-            new MapSqlParameterSource("original_transaction_id", originalTransactionId),
-            BigDecimal.class);
+        BigDecimal sum =
+                jdbcTemplate.queryForObject(
+                        "SELECT COALESCE(SUM(requested_amount), 0) FROM refunds "
+                                + "WHERE original_transaction_id=:original_transaction_id "
+                                + "AND refund_status IN ('REQUESTED','PENDING_APPROVAL','PROCESSING','COMPLETED')",
+                        new MapSqlParameterSource("original_transaction_id", originalTransactionId),
+                        BigDecimal.class);
         return sum == null ? BigDecimal.ZERO : sum;
     }
 
-    private long insertRefund(long merchantId, String refundReference, long originalTransactionId,
-            String originalMerchantRef, BigDecimal amount, String reason) {
+    private long insertRefund(
+            long merchantId,
+            String refundReference,
+            long originalTransactionId,
+            String originalMerchantRef,
+            BigDecimal amount,
+            String reason,
+            String requestedBy) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("refund_reference", refundReference);
         p.addValue("merchant_id", merchantId);
@@ -179,12 +441,26 @@ public class RefundService {
         p.addValue("original_merchant_ref", originalMerchantRef);
         p.addValue("requested_amount", amount);
         p.addValue("reason", reason);
+        p.addValue("requested_by", blankToNull(requestedBy));
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(
-            "INSERT INTO refunds (refund_reference, merchant_id, original_transaction_id, original_merchant_ref, requested_amount, reason) "
-                + "VALUES (:refund_reference, :merchant_id, :original_transaction_id, :original_merchant_ref, :requested_amount, :reason)",
-            p, keyHolder);
-        return keyHolder.getKey().longValue();
+                "INSERT INTO refunds (refund_reference, merchant_id, original_transaction_id, original_merchant_ref, "
+                        + "requested_amount, reason, requested_by) "
+                        + "VALUES (:refund_reference, :merchant_id, :original_transaction_id, :original_merchant_ref, "
+                        + ":requested_amount, :reason, :requested_by)",
+                p,
+                keyHolder);
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new PaymentGatewayException("Unable to create refund record");
+        }
+        return key.longValue();
+    }
+
+    private void markPendingApproval(long refundId) {
+        jdbcTemplate.update(
+                "UPDATE refunds SET refund_status='PENDING_APPROVAL', approval_required='YES', approval_status='PENDING' WHERE id=:id",
+                new MapSqlParameterSource("id", refundId));
     }
 
     private void transition(long refundId, RefundStatus next, String failureMessage) {
@@ -193,8 +469,43 @@ public class RefundService {
         p.addValue("status", next.name());
         p.addValue("failure_message", failureMessage);
         jdbcTemplate.update(
-            "UPDATE refunds SET refund_status=:status, failure_message=COALESCE(:failure_message, failure_message) WHERE id=:id",
-            p);
+                "UPDATE refunds SET refund_status=:status, failure_message=COALESCE(:failure_message, failure_message) WHERE id=:id",
+                p);
+    }
+
+    private int beginAttempt(long refundId, String providerChannel) {
+        Integer attempt =
+                jdbcTemplate.queryForObject(
+                        "SELECT COALESCE(MAX(attempt_number),0)+1 FROM refund_attempts WHERE refund_id=:refund_id",
+                        new MapSqlParameterSource("refund_id", refundId),
+                        Integer.class);
+        int attemptNumber = attempt == null ? 1 : attempt;
+        jdbcTemplate.update(
+                "INSERT INTO refund_attempts (refund_id, attempt_number, provider_channel, outcome) "
+                        + "VALUES (:refund_id, :attempt_number, :provider_channel, 'PROCESSING')",
+                new MapSqlParameterSource()
+                        .addValue("refund_id", refundId)
+                        .addValue("attempt_number", attemptNumber)
+                        .addValue("provider_channel", blankToNull(providerChannel)));
+        return attemptNumber;
+    }
+
+    private void completeAttempt(
+            long refundId,
+            int attemptNumber,
+            String outcome,
+            String providerReference,
+            String failureMessage) {
+        jdbcTemplate.update(
+                "UPDATE refund_attempts SET outcome=:outcome, provider_reference=:provider_reference, "
+                        + "failure_message=:failure_message, completed_at=CURRENT_TIMESTAMP "
+                        + "WHERE refund_id=:refund_id AND attempt_number=:attempt_number",
+                new MapSqlParameterSource()
+                        .addValue("refund_id", refundId)
+                        .addValue("attempt_number", attemptNumber)
+                        .addValue("outcome", outcome)
+                        .addValue("provider_reference", blankToNull(providerReference))
+                        .addValue("failure_message", blankToNull(failureMessage)));
     }
 
     private void linkPayoutTransaction(long refundId, Long payoutTransactionId) {
@@ -202,17 +513,30 @@ public class RefundService {
             return;
         }
         jdbcTemplate.update(
-            "UPDATE refunds SET payout_transaction_id=:payout_transaction_id WHERE id=:id",
-            new MapSqlParameterSource().addValue("id", refundId).addValue("payout_transaction_id", payoutTransactionId));
+                "UPDATE refunds SET payout_transaction_id=:payout_transaction_id WHERE id=:id",
+                new MapSqlParameterSource()
+                        .addValue("id", refundId)
+                        .addValue("payout_transaction_id", payoutTransactionId));
     }
 
-    private RefundOutcome executeRefundPayout(Merchant merchant, Transaction originalTx, String refundReference,
-            BigDecimal refundAmount, String reason) {
+    private RefundOutcome executeRefundPayout(
+            Merchant merchant,
+            Transaction originalTx,
+            String refundReference,
+            BigDecimal refundAmount,
+            String reason) {
         String gatewayId = originalTx.getGateway_id();
-        GatewayChargeDetails chargeDetails = DoPayGateway.getGatewayChargeDetailsById(jdbcTemplate, gatewayId, merchant.getId());
+        GatewayChargeDetails chargeDetails =
+                DoPayGateway.getGatewayChargeDetailsById(jdbcTemplate, gatewayId, merchant.getId());
         Double amountDouble = refundAmount.doubleValue();
-        Double charges = chargeDetails == null ? 0.0 : DoPayGateway.getCustomerOutboundCharges(amountDouble, chargeDetails);
-        Double txCost = chargeDetails == null ? 0.0 : DoPayGateway.getCostOfOutboundCharges(amountDouble, chargeDetails);
+        Double charges =
+                chargeDetails == null
+                        ? 0.0
+                        : DoPayGateway.getCustomerOutboundCharges(amountDouble, chargeDetails);
+        Double txCost =
+                chargeDetails == null
+                        ? 0.0
+                        : DoPayGateway.getCostOfOutboundCharges(amountDouble, chargeDetails);
 
         Transaction refundTx = new Transaction();
         refundTx.setGateway_id(gatewayId);
@@ -227,20 +551,25 @@ public class RefundService {
         refundTx.setTx_merchant_ref(refundReference);
         refundTx.setCallback_url("");
         refundTx.setOriginate_ip("");
-        refundTx.setCharging_method(chargeDetails == null ? "" : chargeDetails.getCustomerOutboundChargeMethod());
+        refundTx.setCharging_method(
+                chargeDetails == null ? "" : chargeDetails.getCustomerOutboundChargeMethod());
         refundTx.setCharges(charges == null ? 0.0 : charges);
         refundTx.setTx_cost(txCost == null ? 0.0 : txCost);
         refundTx.setTx_request_trace("");
         refundTx.setTx_update_trace("");
         refundTx.setTx_gateway_ref("");
 
-        // Reserve-then-capture (audit A8, applied consistently here too): this calls
-        // Common.doPayOut directly, same as the batch-payout path, so it needs the same
-        // ledger-level hold PaymentOrchestrationService.payout() uses for the v2 flow.
-        String reservationReference = "refund-reserve:" + merchant.getAccount_number() + ":" + refundReference;
-        BigDecimal reservedAmount = refundAmount.add(charges == null ? BigDecimal.ZERO : BigDecimal.valueOf(charges));
-        ledgerService.reserve(reservationReference, merchant.getId(), refundReference, reservedAmount,
-            originalTx.getCurrency() == null || originalTx.getCurrency().isEmpty() ? "UGX" : originalTx.getCurrency());
+        String reservationReference =
+                "refund-reserve:" + merchant.getAccount_number() + ":" + refundReference;
+        BigDecimal reservedAmount =
+                refundAmount.add(
+                        charges == null ? BigDecimal.ZERO : BigDecimal.valueOf(charges));
+        ledgerService.reserve(
+                reservationReference,
+                merchant.getId(),
+                refundReference,
+                reservedAmount,
+                currency(originalTx));
 
         String resultJson;
         try {
@@ -251,7 +580,9 @@ public class RefundService {
         }
 
         JSONObject result = new JSONObject(resultJson);
-        boolean succeeded = "OK".equals(result.optString("state")) && "000".equals(result.optString("code"));
+        boolean succeeded =
+                "OK".equals(result.optString("state"))
+                        && "000".equals(result.optString("code"));
         if (succeeded) {
             ledgerService.captureReservation(reservationReference);
             return RefundOutcome.succeeded(refundTx.getId());
@@ -261,14 +592,74 @@ public class RefundService {
     }
 
     private Transaction getSuccessfulPayin(String merchantRef, long merchantId) {
-        String sql = "SELECT * FROM " + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
-            + " WHERE tx_merchant_ref=:ref AND merchant_id=:mid AND status='SUCCESSFUL' AND tx_type=:type LIMIT 1";
+        String sql =
+                "SELECT * FROM "
+                        + Common.DB_TABLE_MERCHANT_TRANSACTION_LOG
+                        + " WHERE tx_merchant_ref=:ref AND merchant_id=:mid AND status='SUCCESSFUL' AND tx_type=:type LIMIT 1";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("ref", merchantRef);
         p.addValue("mid", merchantId);
         p.addValue("type", Transaction.TX_TYPE_PAYIN);
         List<Transaction> rows = jdbcTemplate.query(sql, p, Common.getTransactionRowMapper());
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private boolean requiresApproval(BigDecimal amount) {
+        return approvalThreshold.compareTo(BigDecimal.ZERO) > 0
+                && amount.compareTo(approvalThreshold) >= 0;
+    }
+
+    private Map<String, Object> approvalMetadata(long refundId) {
+        return jdbcTemplate.queryForMap(
+                "SELECT requested_by, approval_status, approved_by FROM refunds WHERE id=:id",
+                new MapSqlParameterSource("id", refundId));
+    }
+
+    private void recordTimeline(
+            long merchantId,
+            String transactionReference,
+            String eventReference,
+            String eventType,
+            String eventStatus,
+            BigDecimal amount,
+            String currency,
+            String detailJson) {
+        jdbcTemplate.update(
+                "INSERT INTO payment_financial_timeline "
+                        + "(merchant_id, transaction_reference, event_reference, event_type, event_status, amount, currency_code, detail_json) "
+                        + "VALUES (:merchant_id, :transaction_reference, :event_reference, :event_type, :event_status, :amount, :currency_code, :detail_json)",
+                new MapSqlParameterSource()
+                        .addValue("merchant_id", merchantId)
+                        .addValue("transaction_reference", transactionReference)
+                        .addValue("event_reference", eventReference)
+                        .addValue("event_type", eventType)
+                        .addValue("event_status", eventStatus)
+                        .addValue("amount", amount)
+                        .addValue("currency_code", blankToNull(currency))
+                        .addValue("detail_json", detailJson));
+    }
+
+    private String currency(Transaction transaction) {
+        return transaction.getCurrency() == null || transaction.getCurrency().isBlank()
+                ? "UGX"
+                : transaction.getCurrency();
+    }
+
+    private String required(String value, String field) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new PaymentGatewayException(field + " is required");
+        }
+        return value.trim();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private String escape(String value) {
+        return value == null
+                ? ""
+                : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private record RefundOutcome(boolean succeeded, String message, Long payoutTransactionId) {
