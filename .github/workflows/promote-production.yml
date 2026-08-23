@@ -1,10 +1,12 @@
 name: Promote Production
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    branches: [main]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Verified sandbox ref to promote
+        required: false
+        default: sandbox
 
 permissions:
   contents: write
@@ -15,21 +17,33 @@ concurrency:
 
 jobs:
   promote:
-    name: Fast-forward production after CI
-    if: github.event.workflow_run.conclusion == 'success'
+    name: Promote verified sandbox to production
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - name: Check out the verified commit
+      - name: Check out requested verified ref
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
-      - name: Fast-forward the production branch
+      - name: Verify sandbox provenance and fast-forward production
         run: |
           set -euo pipefail
-          git fetch origin production
-          if ! git merge-base --is-ancestor origin/production HEAD; then
-            echo "Refusing non-fast-forward production promotion" >&2
+          git fetch origin main sandbox production
+
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "Refusing promotion: requested ref is not contained in main." >&2
             exit 1
           fi
+
+          if [ "${{ inputs.ref }}" = "sandbox" ] && [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/sandbox)" ]; then
+            echo "Refusing promotion: local sandbox ref does not match origin/sandbox." >&2
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor origin/production HEAD; then
+            echo "Refusing non-fast-forward production promotion." >&2
+            exit 1
+          fi
+
           git push origin HEAD:production
