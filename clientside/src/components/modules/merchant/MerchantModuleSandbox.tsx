@@ -62,6 +62,33 @@ interface RolloutState {
   payouts_enabled?: boolean | number;
 }
 
+interface SandboxEndpoint {
+  method?: string;
+  path?: string;
+  scope?: string;
+}
+
+interface SandboxFeature {
+  flag_key?: string;
+  enabled?: boolean | number;
+  description?: string;
+}
+
+interface SandboxCatalog {
+  sandboxBaseUrl?: string;
+  productionBaseUrl?: string;
+  requestHeader?: string;
+  generatedAt?: string;
+  generatedFromRuntimeMappings?: boolean;
+  documentation?: {
+    swaggerUi?: string;
+    openApiJson?: string;
+    openApiYaml?: string;
+  };
+  features?: SandboxFeature[];
+  endpoints?: SandboxEndpoint[];
+}
+
 interface SandboxSummary {
   environment?: { activeEnvironment?: string; sandboxSeparated?: boolean };
   readiness?: { checklist?: SandboxCheck[]; configuredChannels?: number; channelsWithApprovedCertification?: number };
@@ -72,6 +99,7 @@ interface SandboxSummary {
   goLive?: GoLiveRequest;
   rollout?: RolloutState;
   environmentComparison?: Record<string, unknown>;
+  catalog?: SandboxCatalog;
 }
 
 interface Props {
@@ -99,8 +127,17 @@ function ready(check: SandboxCheck): boolean {
   return check.status === 'READY' || check.passed === true || check.passed === 1;
 }
 
+function enabled(value: boolean | number | undefined): boolean {
+  return value === true || value === 1;
+}
+
 function yes(value: boolean | number | undefined): string {
-  return value === true || value === 1 ? 'Enabled' : 'Disabled';
+  return enabled(value) ? 'Enabled' : 'Disabled';
+}
+
+function openExternal(url?: string) {
+  if (!url) return;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 export default function MerchantModuleSandbox({ loader, refreshSignal, sessionExpired }: Props): React.ReactElement {
@@ -159,6 +196,10 @@ export default function MerchantModuleSandbox({ loader, refreshSignal, sessionEx
   const wallets = summary?.wallets ?? [];
   const snapshots = summary?.snapshots ?? [];
   const personas = summary?.personas ?? [];
+  const catalog = summary?.catalog ?? {};
+  const endpoints = catalog.endpoints ?? [];
+  const features = catalog.features ?? [];
+  const enabledFeatures = features.filter((feature) => enabled(feature.enabled)).length;
 
   const walletColumns = useMemo<Column<SandboxWallet>[]>(() => [
     { key: 'channel', header: 'Channel', accessor: (row) => row.channel_code ?? 'GENERAL' },
@@ -204,11 +245,39 @@ export default function MerchantModuleSandbox({ loader, refreshSignal, sessionEx
     { key: 'evidence', header: 'Evidence / next step', accessor: (row) => row.evidence ?? row.action ?? '' },
   ], []);
 
+  const endpointColumns = useMemo<Column<SandboxEndpoint>[]>(() => [
+    { key: 'method', header: 'Method', width: 90, render: (row) => <Badge tone="neutral">{row.method ?? 'ANY'}</Badge> },
+    { key: 'path', header: 'API', accessor: (row) => row.path ?? '' },
+    { key: 'scope', header: 'Scope', accessor: (row) => row.scope ?? '' },
+  ], []);
+
   return (
     <div style={{ display: 'grid', gap: 'var(--ios-space-4)' }}>
       {error ? <Alert variant="error">{error}</Alert> : null}
       {notice ? <Alert variant="success">{notice}</Alert> : null}
       {busy && !summary ? <Spinner label="Loading sandbox workbench" /> : null}
+
+      <Card>
+        <Section title="Developer sandbox & documentation">
+          <p style={{ color: 'var(--ios-text-secondary)' }}>
+            This catalog is generated from the running application. New non-admin v2 APIs and feature flags appear here as the verified application advances to the sandbox branch.
+          </p>
+          <StatGrid>
+            <StatTile label="Discovered APIs" value={String(endpoints.length)} />
+            <StatTile label="Enabled features" value={`${enabledFeatures}/${features.length}`} />
+            <StatTile label="Sandbox host" value={catalog.sandboxBaseUrl ?? 'Loading'} />
+          </StatGrid>
+          <Toolbar>
+            <Button variant="primary" onClick={() => openExternal(catalog.documentation?.swaggerUi)} disabled={!catalog.documentation?.swaggerUi}>Open Swagger UI</Button>
+            <Button variant="ghost" onClick={() => openExternal(catalog.documentation?.openApiJson)} disabled={!catalog.documentation?.openApiJson}>OpenAPI JSON</Button>
+            <Button variant="ghost" onClick={() => openExternal(catalog.documentation?.openApiYaml)} disabled={!catalog.documentation?.openApiYaml}>OpenAPI YAML</Button>
+          </Toolbar>
+          <p style={{ color: 'var(--ios-text-secondary)' }}>
+            Environment header: <code>{catalog.requestHeader ?? 'X-CPay-Environment: SANDBOX'}</code>
+          </p>
+        </Section>
+        <Table columns={endpointColumns} rows={endpoints} rowKey={(row, index) => `${row.method ?? 'ANY'}:${row.path ?? index}`} pageSize={20} emptyText="No sandbox-testable v2 endpoints discovered." />
+      </Card>
 
       <Card>
         <Section title="Sandbox & production readiness">
