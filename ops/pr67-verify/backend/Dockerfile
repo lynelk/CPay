@@ -1,16 +1,19 @@
 FROM maven:3.9.16-eclipse-temurin-21 AS verify
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git python3 python3-yaml \
+    && apt-get install -y --no-install-recommends git python3 python3-yaml rsync \
     && rm -rf /var/lib/apt/lists/*
 
-ARG VERIFY_REF=feature/cito-platform-expansion-integrated
+COPY . /snapshot
 WORKDIR /verify
-
-RUN git clone --branch "${VERIFY_REF}" https://github.com/lynelk/CPay.git repo \
-    && cd repo \
-    && git fetch origin main:refs/remotes/origin/main \
-    && echo "VERIFY_HEAD=$(git rev-parse HEAD)" \
+RUN git clone --branch main --single-branch https://github.com/lynelk/CPay.git repo \
+    && rsync -a --delete --exclude='.git' /snapshot/ /verify/repo/ \
+    && cd /verify/repo \
+    && git config user.email 'verification@cito.local' \
+    && git config user.name 'Cito Release Verification' \
+    && git add -A \
+    && git commit -m 'PR 67 verification snapshot' \
+    && echo "VERIFY_TREE=$(git rev-parse HEAD^{tree})" \
     && echo "VERIFY_MAIN=$(git rev-parse origin/main)"
 
 WORKDIR /verify/repo/InitializrSpringbootProjectFresh
@@ -44,6 +47,16 @@ RUN set -euo pipefail; \
     grep -q '/api/v2/channels' Docs/Api/cpay-v2-openapi.yaml; \
     grep -q '/api/v2/payments/{reference}' Docs/Api/cpay-v2-openapi.yaml; \
     grep -q '/api/v2/balances' Docs/Api/cpay-v2-openapi.yaml; \
+    for required in \
+      Docs/Readiness/Market-readiness-gates.md \
+      Docs/Runbooks/Production-incident-response.md \
+      Docs/Runbooks/Provider-certification-checklist.md \
+      Docs/Runbooks/Operations-alerts.md \
+      Docs/Runbooks/Callback-security-and-requeue.md \
+      Docs/Runbooks/Reconciliation-finance-daily-close.md \
+      Docs/Architecture/Overview.md \
+      Docs/Production-code-controls.md \
+      Docs/Readiness/Market-readiness-tracker.md; do test -s "$required"; done; \
     python3 - <<'PY'
 import yaml
 with open('Docs/Api/cpay-v2-openapi.yaml', encoding='utf-8') as fh:
