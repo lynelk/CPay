@@ -51,8 +51,10 @@ with open('Docs/Api/cpay-v2-openapi.yaml', encoding='utf-8') as fh:
 assert spec.get('openapi')
 assert '/api/v2/native/payments/collect' in spec['paths']
 PY
+RUN printf 'verified\n' > /verify/pr67-backend-verified.txt
 
 FROM nginx:1.27-alpine
+COPY --from=verify /verify/pr67-backend-verified.txt /usr/share/nginx/html/verification.txt
 RUN printf 'PR 67 backend verification passed\n' > /usr/share/nginx/html/index.html
 EXPOSE 80
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 CMD wget -q --spider http://localhost/ || exit 1
