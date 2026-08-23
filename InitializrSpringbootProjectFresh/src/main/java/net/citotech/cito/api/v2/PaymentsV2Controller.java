@@ -20,7 +20,7 @@ import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
 import net.citotech.cito.payout.PayoutControlService;
 import net.citotech.cito.payout.PayoutControlService.PayoutEvaluation;
-import net.citotech.cito.sandbox.SandboxLifecycleService;
+import net.citotech.cito.sandbox.SandboxProductionGuardService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -44,7 +44,7 @@ public class PaymentsV2Controller {
     private final MerchantStatementExportService statementExportService;
     private final PayoutControlService payoutControlService;
     private final MerchantEnvironmentService environmentService;
-    private final SandboxLifecycleService sandboxLifecycleService;
+    private final SandboxProductionGuardService productionGuard;
     private final ObjectMapper objectMapper;
 
     public PaymentsV2Controller(
@@ -56,7 +56,7 @@ public class PaymentsV2Controller {
             MerchantStatementExportService statementExportService,
             PayoutControlService payoutControlService,
             MerchantEnvironmentService environmentService,
-            SandboxLifecycleService sandboxLifecycleService,
+            SandboxProductionGuardService productionGuard,
             ObjectMapper objectMapper) {
         this.paymentOrchestrationService = paymentOrchestrationService;
         this.paymentStatusService = paymentStatusService;
@@ -66,7 +66,7 @@ public class PaymentsV2Controller {
         this.statementExportService = statementExportService;
         this.payoutControlService = payoutControlService;
         this.environmentService = environmentService;
-        this.sandboxLifecycleService = sandboxLifecycleService;
+        this.productionGuard = productionGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -77,8 +77,7 @@ public class PaymentsV2Controller {
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
             String environment = resolveEnvironment(servletRequest, request);
-            sandboxLifecycleService.requireProductionCapability(
-                    merchant.getId(), environment, "COLLECT");
+            productionGuard.enforcePayment(merchant, environment, "COLLECT");
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
             String idempotencyBody = bodyWithEnvironment(body, environment);
             Optional<PaymentResult> existing =
@@ -111,8 +110,7 @@ public class PaymentsV2Controller {
             Merchant merchant =
                     securityService.verify(servletRequest, body, request.getMerchantNumber());
             String environment = resolveEnvironment(servletRequest, request);
-            sandboxLifecycleService.requireProductionCapability(
-                    merchant.getId(), environment, "PAYOUT");
+            productionGuard.enforcePayment(merchant, environment, "PAYOUT");
             String idempotencyKey = servletRequest.getHeader("X-CPay-Idempotency-Key");
             String idempotencyBody = bodyWithEnvironment(body, environment);
             Optional<PaymentResult> existing =
