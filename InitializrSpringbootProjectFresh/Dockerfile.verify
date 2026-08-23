@@ -1,14 +1,18 @@
 # Verification image used by the persistent CPay sandbox gate.
-# The build fails unless the full backend Maven verify lifecycle succeeds.
+# IMPORTANT: build this Dockerfile from the repository root so backend tests can
+# validate repository-level contracts under Docs/Api.
 FROM maven:3.9.16-eclipse-temurin-21 AS build
-WORKDIR /workspace
+WORKDIR /workspace/InitializrSpringbootProjectFresh
 
-COPY pom.xml .
+COPY InitializrSpringbootProjectFresh/pom.xml ./pom.xml
 RUN mvn -q dependency:resolve
 
-COPY src ./src
+COPY InitializrSpringbootProjectFresh/src ./src
+COPY Docs /workspace/Docs
 
-# Deterministic non-production values required by the backend test suite.
+# Deterministic non-production values matching the normal backend CI lane.
+# The dedicated clean-MySQL migration smoke test skips here and executes only
+# when DB_URL points at a MySQL integration environment.
 ENV DB_URL="jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1" \
     DB_USERNAME="sa" \
     DB_PASSWORD="" \
@@ -24,6 +28,7 @@ ENV DB_URL="jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1" \
     CPAY_KEY_ENCRYPTION_KEY="Y2ktb25seS1ub3QtYS1wcm9kdWN0aW9uLWtleQ=="
 
 RUN mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
+RUN unzip -l target/cito-fresh-*.jar | grep -q "BOOT-INF/lib/logstash-logback-encoder-"
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
@@ -34,8 +39,8 @@ ENV HTTP_PORT=8081 \
     JAVA_OPTS="-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxRAMPercentage=50 -XX:MinRAMPercentage=25"
 
 EXPOSE 8081
-COPY --from=build --chown=appuser:appuser /workspace/target/*.jar /app/cpay-backend.jar
-COPY --chown=appuser:appuser start.sh /app/start.sh
+COPY --from=build --chown=appuser:appuser /workspace/InitializrSpringbootProjectFresh/target/*.jar /app/cpay-backend.jar
+COPY --chown=appuser:appuser InitializrSpringbootProjectFresh/start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 USER appuser
