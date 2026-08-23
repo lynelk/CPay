@@ -99,7 +99,8 @@ public class EmbeddedCitoController {
                     embeddedService.downstreamMerchants(
                             sessionContext.requireMerchantId(request)));
         } catch (PaymentGatewayException e) {
-            return bad("EMBEDDED_PARTNER_NOT_FOUND", e.getMessage());
+            // A merchant with no partner profile is in a normal first-use state, not an error.
+            return ResponseEntity.ok(List.of());
         }
     }
 
@@ -125,7 +126,7 @@ public class EmbeddedCitoController {
             return ResponseEntity.ok(
                     embeddedService.delegations(sessionContext.requireMerchantId(request)));
         } catch (PaymentGatewayException e) {
-            return bad("EMBEDDED_PARTNER_NOT_FOUND", e.getMessage());
+            return ResponseEntity.ok(List.of());
         }
     }
 
