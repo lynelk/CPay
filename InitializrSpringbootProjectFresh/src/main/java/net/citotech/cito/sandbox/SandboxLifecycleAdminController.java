@@ -3,6 +3,7 @@ package net.citotech.cito.sandbox;
 import java.util.List;
 import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,48 +31,59 @@ public class SandboxLifecycleAdminController {
 
     @PostMapping("/go-live-requests/{requestId}/decision")
     public Map<String, Object> decision(
-            @PathVariable long requestId, @RequestBody DecisionRequest request) {
+            @PathVariable long requestId,
+            @RequestBody DecisionRequest request,
+            Authentication authentication) {
         return service.advanceGoLiveRequest(
-                requestId, request.action(), request.actor(), request.notes());
+                requestId, request.action(), actor(authentication), request.notes());
     }
 
     @PostMapping("/merchants/{merchantId}/promote-configuration")
     public Map<String, Object> promote(
-            @PathVariable long merchantId, @RequestBody PromotionRequest request) {
+            @PathVariable long merchantId,
+            @RequestBody PromotionRequest request,
+            Authentication authentication) {
         return service.promoteConfiguration(
-                merchantId, request.goLiveRequestId(), request.actor());
+                merchantId, request.goLiveRequestId(), actor(authentication));
     }
 
     @PostMapping("/merchants/{merchantId}/rollout")
     public Map<String, Object> rollout(
-            @PathVariable long merchantId, @RequestBody RolloutRequest request) {
+            @PathVariable long merchantId,
+            @RequestBody RolloutRequest request,
+            Authentication authentication) {
         return service.setRolloutStage(
-                merchantId, request.stage(), request.actor(), request.dailyLimit());
+                merchantId, request.stage(), actor(authentication), request.dailyLimit());
     }
 
     @PostMapping("/merchants/{merchantId}/live-smoke-test")
     public Map<String, Object> smokeTest(
-            @PathVariable long merchantId, @RequestBody SmokeTestRequest request) {
+            @PathVariable long merchantId,
+            @RequestBody SmokeTestRequest request,
+            Authentication authentication) {
         return service.verifyLiveSmokeTest(
                 merchantId,
                 request.merchantNumber(),
                 request.transactionReference(),
-                request.actor());
+                actor(authentication));
     }
 
     @PostMapping("/verify-isolation")
-    public Map<String, Object> verifyIsolation(@RequestBody IsolationRequest request) {
-        return service.verifyIsolation(request.actor());
+    public Map<String, Object> verifyIsolation(Authentication authentication) {
+        return service.verifyIsolation(actor(authentication));
     }
 
-    public record DecisionRequest(String action, String actor, String notes) {}
+    private String actor(Authentication authentication) {
+        return authentication == null || authentication.getName() == null
+                ? "authenticated-admin"
+                : authentication.getName();
+    }
 
-    public record PromotionRequest(Long goLiveRequestId, String actor) {}
+    public record DecisionRequest(String action, String notes) {}
 
-    public record RolloutRequest(String stage, String actor, Integer dailyLimit) {}
+    public record PromotionRequest(Long goLiveRequestId) {}
 
-    public record SmokeTestRequest(
-            String merchantNumber, String transactionReference, String actor) {}
+    public record RolloutRequest(String stage, Integer dailyLimit) {}
 
-    public record IsolationRequest(String actor) {}
+    public record SmokeTestRequest(String merchantNumber, String transactionReference) {}
 }
