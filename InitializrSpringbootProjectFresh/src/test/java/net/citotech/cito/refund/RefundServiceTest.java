@@ -32,24 +32,44 @@ import org.springframework.transaction.PlatformTransactionManager;
 @SuppressWarnings({"rawtypes", "unchecked"})
 class RefundServiceTest {
 
+    private static final BigDecimal APPROVAL_THRESHOLD = new BigDecimal("500000");
+
     @Test
     void rejectsARefundThatExceedsTheUnrefundedBalance() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
         DoubleEntryLedgerService ledgerService = mock(DoubleEntryLedgerService.class);
 
-        MerchantNotificationPreferenceService notificationPreferenceService = mock(MerchantNotificationPreferenceService.class);
+        MerchantNotificationPreferenceService notificationPreferenceService =
+                mock(MerchantNotificationPreferenceService.class);
         stubNoExistingRefund(jdbcTemplate);
         stubOriginalPayin(jdbcTemplate, 1L, 1000.0);
         stubRefundedSoFar(jdbcTemplate, new BigDecimal("400"));
 
-        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService, notificationPreferenceService);
+        RefundService service =
+                new RefundService(
+                        jdbcTemplate,
+                        transactionManager,
+                        ledgerService,
+                        notificationPreferenceService,
+                        APPROVAL_THRESHOLD);
 
-        assertThatThrownBy(() -> service.requestRefund(merchant(), "PAY-1", "REF-1", new BigDecimal("700"), "too much"))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining("exceeds the unrefunded balance");
+        assertThatThrownBy(
+                        () ->
+                                service.requestRefund(
+                                        merchant(),
+                                        "PAY-1",
+                                        "REF-1",
+                                        new BigDecimal("700"),
+                                        "too much"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("exceeds the unrefunded balance");
 
-        verify(jdbcTemplate, never()).update(contains("INSERT INTO refunds"), any(MapSqlParameterSource.class), any());
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO refunds"),
+                        any(MapSqlParameterSource.class),
+                        any());
     }
 
     @Test
@@ -58,16 +78,29 @@ class RefundServiceTest {
         PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
         DoubleEntryLedgerService ledgerService = mock(DoubleEntryLedgerService.class);
 
-        MerchantNotificationPreferenceService notificationPreferenceService = mock(MerchantNotificationPreferenceService.class);
+        MerchantNotificationPreferenceService notificationPreferenceService =
+                mock(MerchantNotificationPreferenceService.class);
         stubNoExistingRefund(jdbcTemplate);
-        when(jdbcTemplate.query(contains("merchant_transactions_log"), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        contains("merchant_transactions_log"),
+                        any(MapSqlParameterSource.class),
+                        any(RowMapper.class)))
+                .thenReturn(List.of());
 
-        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService, notificationPreferenceService);
+        RefundService service =
+                new RefundService(
+                        jdbcTemplate,
+                        transactionManager,
+                        ledgerService,
+                        notificationPreferenceService,
+                        APPROVAL_THRESHOLD);
 
-        assertThatThrownBy(() -> service.requestRefund(merchant(), "PAY-MISSING", "REF-1", null, "reason"))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining("No successful payin found");
+        assertThatThrownBy(
+                        () ->
+                                service.requestRefund(
+                                        merchant(), "PAY-MISSING", "REF-1", null, "reason"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("No successful payin found");
     }
 
     @Test
@@ -84,33 +117,55 @@ class RefundServiceTest {
             when(refundRow.getLong("original_transaction_id")).thenReturn(1L);
             when(refundRow.getString("original_merchant_ref")).thenReturn("PAY-1");
             when(refundRow.getObject("payout_transaction_id")).thenReturn(null);
-            when(refundRow.getBigDecimal("requested_amount")).thenReturn(new BigDecimal("500"));
+            when(refundRow.getBigDecimal("requested_amount"))
+                    .thenReturn(new BigDecimal("500"));
             when(refundRow.getString("refund_status")).thenReturn("COMPLETED");
             when(refundRow.getString("reason")).thenReturn("reason");
             when(refundRow.getString("failure_message")).thenReturn(null);
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
-        when(jdbcTemplate.query(contains("FROM refunds"), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenAnswer(invocation -> {
-                RowMapper mapper = invocation.getArgument(2);
-                return List.of(mapper.mapRow(refundRow, 1));
-            });
+        when(jdbcTemplate.query(
+                        contains("FROM refunds"),
+                        any(MapSqlParameterSource.class),
+                        any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            return List.of(mapper.mapRow(refundRow, 1));
+                        });
 
-        MerchantNotificationPreferenceService notificationPreferenceService = mock(MerchantNotificationPreferenceService.class);
-        RefundService service = new RefundService(jdbcTemplate, transactionManager, ledgerService, notificationPreferenceService);
-        RefundRecord result = service.requestRefund(merchant(), "PAY-1", "REF-1", new BigDecimal("500"), "reason");
+        MerchantNotificationPreferenceService notificationPreferenceService =
+                mock(MerchantNotificationPreferenceService.class);
+        RefundService service =
+                new RefundService(
+                        jdbcTemplate,
+                        transactionManager,
+                        ledgerService,
+                        notificationPreferenceService,
+                        APPROVAL_THRESHOLD);
+        RefundRecord result =
+                service.requestRefund(
+                        merchant(), "PAY-1", "REF-1", new BigDecimal("500"), "reason");
 
         assertThat(result.status()).isEqualTo(RefundStatus.COMPLETED);
-        verify(jdbcTemplate, never()).update(contains("INSERT INTO refunds"), any(MapSqlParameterSource.class), any());
+        verify(jdbcTemplate, never())
+                .update(
+                        contains("INSERT INTO refunds"),
+                        any(MapSqlParameterSource.class),
+                        any());
     }
 
     private void stubNoExistingRefund(NamedParameterJdbcTemplate jdbcTemplate) {
-        when(jdbcTemplate.query(contains("FROM refunds"), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        contains("FROM refunds"),
+                        any(MapSqlParameterSource.class),
+                        any(RowMapper.class)))
+                .thenReturn(List.of());
     }
 
-    private void stubOriginalPayin(NamedParameterJdbcTemplate jdbcTemplate, long txId, double amount) {
+    private void stubOriginalPayin(
+            NamedParameterJdbcTemplate jdbcTemplate, long txId, double amount) {
         ResultSet row = mock(ResultSet.class);
         try {
             when(row.getLong("id")).thenReturn(txId);
@@ -141,16 +196,24 @@ class RefundServiceTest {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
-        when(jdbcTemplate.query(contains("merchant_transactions_log"), any(MapSqlParameterSource.class), any(RowMapper.class)))
-            .thenAnswer(invocation -> {
-                RowMapper mapper = invocation.getArgument(2);
-                return List.of(mapper.mapRow(row, 1));
-            });
+        when(jdbcTemplate.query(
+                        contains("merchant_transactions_log"),
+                        any(MapSqlParameterSource.class),
+                        any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            return List.of(mapper.mapRow(row, 1));
+                        });
     }
 
-    private void stubRefundedSoFar(NamedParameterJdbcTemplate jdbcTemplate, BigDecimal amount) {
-        when(jdbcTemplate.queryForObject(contains("SUM(requested_amount)"), any(MapSqlParameterSource.class), org.mockito.ArgumentMatchers.eq(BigDecimal.class)))
-            .thenReturn(amount);
+    private void stubRefundedSoFar(
+            NamedParameterJdbcTemplate jdbcTemplate, BigDecimal amount) {
+        when(jdbcTemplate.queryForObject(
+                        contains("SUM(requested_amount)"),
+                        any(MapSqlParameterSource.class),
+                        org.mockito.ArgumentMatchers.eq(BigDecimal.class)))
+                .thenReturn(amount);
     }
 
     private Merchant merchant() {
