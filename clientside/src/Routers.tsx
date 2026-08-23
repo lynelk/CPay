@@ -1,11 +1,10 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Login from './components/Login';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 
 // Public and authenticated surfaces are code-split so each entry point stays focused and light.
 const CitoLandingPage = lazy(() => import('./components/CitoLandingPage'));
-const LoginMerchant = lazy(() => import('./components/LoginMerchant'));
-const MerchantSignup = lazy(() => import('./components/MerchantSignup'));
+const CitoAccessGateway = lazy(() => import('./components/CitoAccessGateway'));
+const CitoSignupGateway = lazy(() => import('./components/CitoSignupGateway'));
 const VerifyEmail = lazy(() => import('./components/VerifyEmail'));
 const Layout = lazy(() => import('./components/Layout'));
 const LayoutMerchant = lazy(() => import('./components/LayoutMerchant'));
@@ -22,11 +21,11 @@ function Routers(): React.ReactElement {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<CitoLandingPage />} />
-          <Route path="/login" element={<LoginMerchant />} />
-          <Route path="/signup" element={<MerchantSignup />} />
+          <Route path="/login" element={<CitoAccessGateway />} />
+          <Route path="/signup" element={<CitoSignupGateway />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
-          <Route path="/portal" element={<Login />} />
+          <Route path="/portal" element={<Navigate to="/login?realm=platform" replace />} />
           <Route path="/dashboard/*" element={<Layout />} />
           <Route path="/dashboardMerchant/*" element={<LayoutMerchant />} />
           <Route path="/operations" element={<OperationsConsole />} />
