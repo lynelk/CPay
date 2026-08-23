@@ -18,11 +18,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v2/merchant-self-service/marketplace")
 public class MarketplaceSplitController {
     private final MarketplaceSplitService splitService;
+    private final MarketplaceSplitSimulationService simulationService;
     private final MerchantSessionContext sessionContext;
 
     public MarketplaceSplitController(
-            MarketplaceSplitService splitService, MerchantSessionContext sessionContext) {
+            MarketplaceSplitService splitService,
+            MarketplaceSplitSimulationService simulationService,
+            MerchantSessionContext sessionContext) {
         this.splitService = splitService;
+        this.simulationService = simulationService;
         this.sessionContext = sessionContext;
     }
 
@@ -95,9 +99,8 @@ public class MarketplaceSplitController {
             @RequestBody Map<String, Object> body, HttpServletRequest request) {
         try {
             return ResponseEntity.ok(
-                    splitService.executeSplit(
+                    simulationService.simulate(
                             sessionContext.requireMerchantId(request),
-                            "SIM-" + System.nanoTime(),
                             text(body.get("splitRuleReference")),
                             text(body.get("currencyCode")),
                             decimal(body.get("grossAmount"))));
