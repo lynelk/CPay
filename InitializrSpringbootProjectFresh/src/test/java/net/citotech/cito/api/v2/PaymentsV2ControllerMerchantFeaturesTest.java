@@ -21,7 +21,9 @@ import net.citotech.cito.api.v2.dto.AccountValidationRequest;
 import net.citotech.cito.api.v2.dto.AccountValidationResponse;
 import net.citotech.cito.api.v2.dto.StatementExportResponse;
 import net.citotech.cito.api.v2.dto.StatementExportResponse.StatementRow;
+import net.citotech.cito.merchant.MerchantEnvironmentService;
 import net.citotech.cito.payout.PayoutControlService;
+import net.citotech.cito.sandbox.SandboxProductionGuardService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,6 +41,9 @@ class PaymentsV2ControllerMerchantFeaturesTest {
     private final MerchantStatementExportService statementExportService =
             mock(MerchantStatementExportService.class);
     private final PayoutControlService payoutControlService = mock(PayoutControlService.class);
+    private final MerchantEnvironmentService environmentService = mock(MerchantEnvironmentService.class);
+    private final SandboxProductionGuardService productionGuard =
+            mock(SandboxProductionGuardService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -93,8 +98,8 @@ class PaymentsV2ControllerMerchantFeaturesTest {
                 .andExpect(status().isOk())
                 .andExpect(
                         header().string(
-                                        HttpHeaders.CONTENT_DISPOSITION,
-                                        "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.csv\""))
+                                HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.csv\""))
                 .andExpect(content().string("id,created_on\n1,2026-07-16 09:30:00\n"));
     }
 
@@ -126,12 +131,12 @@ class PaymentsV2ControllerMerchantFeaturesTest {
                 .andExpect(status().isOk())
                 .andExpect(
                         header().string(
-                                        HttpHeaders.CONTENT_DISPOSITION,
-                                        "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.xlsx\""))
+                                HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"cpay-statement-M100-2026-07-01-to-2026-07-16.xlsx\""))
                 .andExpect(
                         header().string(
-                                        HttpHeaders.CONTENT_TYPE,
-                                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                                HttpHeaders.CONTENT_TYPE,
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .andExpect(content().bytes(xlsxBytes));
     }
 
@@ -171,6 +176,8 @@ class PaymentsV2ControllerMerchantFeaturesTest {
                         accountValidationService,
                         statementExportService,
                         payoutControlService,
+                        environmentService,
+                        productionGuard,
                         objectMapper);
         return MockMvcBuilders.standaloneSetup(controller).build();
     }
