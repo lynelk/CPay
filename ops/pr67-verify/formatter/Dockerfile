@@ -18,12 +18,10 @@ WORKDIR /work/repo/InitializrSpringbootProjectFresh
 RUN mvn -B spotless:apply --no-transfer-progress
 
 WORKDIR /work/repo
-RUN git diff --name-only -- 'InitializrSpringbootProjectFresh/src/**/*.java' > /work/formatted-files.txt \
+RUN git diff --name-only -- InitializrSpringbootProjectFresh/src/ \
+      | grep '\.java$' > /work/formatted-files.txt \
     && test -s /work/formatted-files.txt \
-    && tar -czf /work/formatted-java.tar.gz -T /work/formatted-files.txt \
-    && echo 'FMT_TAR_BEGIN' \
-    && base64 -w 12000 /work/formatted-java.tar.gz | sed 's/^/FMT_TAR_CHUNK|/' \
-    && echo 'FMT_TAR_END'
+    && tar -czf /work/formatted-java.tar.gz -T /work/formatted-files.txt
 
 FROM nginx:1.27-alpine
 LABEL purpose="pr67-spotless-artifact"
@@ -31,4 +29,4 @@ COPY --from=format /work/formatted-java.tar.gz /usr/share/nginx/html/formatted-j
 COPY --from=format /work/formatted-files.txt /usr/share/nginx/html/formatted-files.txt
 RUN printf 'PR 67 Spotless formatting artifact ready\n' > /usr/share/nginx/html/index.html
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["sh", "-c", "echo FMT_TAR_BEGIN; base64 /usr/share/nginx/html/formatted-java.tar.gz | tr -d '\\n' | fold -w 3000 | sed 's/^/FMT_TAR_CHUNK|/'; echo FMT_TAR_END; exec nginx -g 'daemon off;'"]
