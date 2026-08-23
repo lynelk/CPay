@@ -1,0 +1,177 @@
+.cito-access-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 48px 20px;
+  background:
+    radial-gradient(circle at top right, rgba(17, 152, 196, 0.13), transparent 36%),
+    var(--cpay-brand-soft-gray, #f5f7fa);
+  color: var(--cpay-brand-navy, #163b5c);
+}
+
+.cito-access-panel {
+  width: min(920px, 100%);
+  padding: clamp(28px, 5vw, 56px);
+  border: 1px solid rgba(22, 59, 92, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 70px rgba(22, 59, 92, 0.12);
+}
+
+.cito-access-brand {
+  display: inline-flex;
+  margin-bottom: 32px;
+  font-family: Montserrat, sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--cpay-brand-teal, #1198c4);
+  text-decoration: none;
+}
+
+.cito-access-eyebrow {
+  margin: 0 0 10px;
+  color: var(--cpay-brand-teal, #1198c4);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.cito-access-panel h1 {
+  margin: 0;
+  max-width: 700px;
+  font-family: Montserrat, sans-serif;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1.05;
+}
+
+.cito-access-lead {
+  max-width: 760px;
+  margin: 18px 0 32px;
+  color: var(--cpay-brand-slate, #667085);
+  line-height: 1.7;
+}
+
+.cito-access-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.cito-access-option {
+  display: flex;
+  min-height: 180px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 26px;
+  border: 1px solid rgba(22, 59, 92, 0.14);
+  border-radius: 20px;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.cito-access-option:hover,
+.cito-access-option:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--cpay-brand-teal, #1198c4);
+  box-shadow: 0 14px 36px rgba(17, 152, 196, 0.1);
+  outline: none;
+}
+
+.cito-access-option strong { font-size: 20px; }
+.cito-access-option span { color: var(--cpay-brand-slate, #667085); line-height: 1.55; }
+.cito-access-option small { margin-top: auto; color: var(--cpay-brand-teal, #1198c4); font-weight: 700; }
+
+.cito-access-notice,
+.cito-access-success,
+.cito-access-error {
+  margin-top: 22px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  line-height: 1.55;
+}
+
+.cito-access-notice { background: rgba(17, 152, 196, 0.07); color: #38556c; }
+.cito-access-success { background: rgba(31, 143, 78, 0.1); color: #186a3b; }
+.cito-access-error { background: rgba(188, 42, 42, 0.09); color: #8c2525; }
+
+.cito-access-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  margin-top: 24px;
+  align-items: center;
+  color: var(--cpay-brand-slate, #667085);
+}
+
+.cito-access-actions a { color: var(--cpay-brand-teal, #1198c4); font-weight: 700; text-decoration: none; }
+
+.cito-access-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.cito-access-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 700;
+  color: #34495e;
+}
+
+.cito-access-form label:last-of-type { grid-column: 1 / -1; }
+
+.cito-access-form input,
+.cito-access-form select,
+.cito-access-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(22, 59, 92, 0.22);
+  border-radius: 12px;
+  padding: 13px 14px;
+  background: #fff;
+  color: #18374f;
+  font: inherit;
+}
+
+.cito-access-form input:focus,
+.cito-access-form select:focus,
+.cito-access-form textarea:focus {
+  border-color: var(--cpay-brand-teal, #1198c4);
+  outline: 3px solid rgba(17, 152, 196, 0.13);
+}
+
+.cito-access-submit {
+  grid-column: 1 / -1;
+  width: fit-content;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 20px;
+  background: var(--cpay-brand-teal, #1198c4);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cito-access-submit:disabled { opacity: 0.6; cursor: progress; }
+
+.cito-access-panel footer {
+  margin-top: 34px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(22, 59, 92, 0.1);
+  color: var(--cpay-brand-slate, #667085);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .cito-access-shell { padding: 20px 12px; align-items: start; }
+  .cito-access-panel { padding: 28px 20px; border-radius: 20px; }
+  .cito-access-options,
+  .cito-access-form { grid-template-columns: 1fr; }
+  .cito-access-form label:last-of-type,
+  .cito-access-submit { grid-column: auto; }
+  .cito-access-option { min-height: 0; }
+}
