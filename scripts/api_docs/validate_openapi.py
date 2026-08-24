@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict, dependency-light validation for the committed CPay OpenAPI contract."""
+"""Strict, dependency-light validation for committed OpenAPI contracts."""
 from __future__ import annotations
 
 import argparse
@@ -10,9 +10,46 @@ import yaml
 from openapi_spec_validator import validate_spec
 
 
+class UniqueKeySafeLoader(yaml.SafeLoader):
+    """Safe YAML loader that fails closed on duplicate mapping keys."""
+
+
+def construct_unique_mapping(loader: UniqueKeySafeLoader, node: yaml.MappingNode, deep: bool = False):
+    mapping: dict[Any, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        try:
+            duplicate = key in mapping
+        except TypeError as exc:
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                f"found unhashable mapping key: {key!r}",
+                key_node.start_mark,
+            ) from exc
+        if duplicate:
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                f"found duplicate key: {key!r}",
+                key_node.start_mark,
+            )
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+UniqueKeySafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    construct_unique_mapping,
+)
+
+
 def load(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as handle:
-        value = yaml.safe_load(handle)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            value = yaml.load(handle, Loader=UniqueKeySafeLoader)
+    except yaml.YAMLError as exc:
+        raise SystemExit(f"{path}: invalid YAML: {exc}") from exc
     if not isinstance(value, dict):
         raise SystemExit(f"{path}: root must be an object")
     return value
@@ -51,7 +88,7 @@ def main() -> None:
     errors: list[str] = []
 
     if not str(spec.get("openapi", "")).startswith("3."):
-        errors.append("CPay API contract must use OpenAPI 3.x")
+        errors.append("OpenAPI contract must use OpenAPI 3.x")
     info = spec.get("info") or {}
     for field in ("title", "version", "description"):
         if not info.get(field):
