@@ -1,0 +1,504 @@
+openapi: 3.0.3
+info:
+  title: Cito Platform API
+  version: 2.0.0
+  description: >-
+    Session-authenticated merchant platform APIs that sit alongside the CPay payments
+    contract. Cito is the platform; CPay is the payments capability within it.
+servers:
+  - url: /api/v2
+security:
+  - MerchantSession: []
+tags:
+  - name: Cito Services
+  - name: Developer Control Plane
+  - name: Intelligent Routing
+  - name: Marketplace
+  - name: Recurring Payments
+  - name: Refunds
+  - name: Virtual Accounts
+  - name: Analytics
+  - name: Embedded Cito
+  - name: Integrations
+paths:
+  /api/v2/merchant-self-service/cito/service-catalog:
+    get:
+      tags: [Cito Services]
+      summary: List the Cito service catalog
+      operationId: citoServiceCatalog
+      responses: {'200': {description: Service catalog}, '401': {$ref: '#/components/responses/Unauthorized'}}
+  /api/v2/merchant-self-service/cito/entitlements:
+    get:
+      tags: [Cito Services]
+      summary: List merchant service entitlements
+      operationId: citoMerchantEntitlements
+      responses: {'200': {description: Merchant entitlements}, '401': {$ref: '#/components/responses/Unauthorized'}}
+  /api/v2/merchant-self-service/cito/entitlements/check:
+    get:
+      tags: [Cito Services]
+      summary: Check entitlement for a service and environment
+      operationId: citoEntitlementCheck
+      parameters:
+        - {name: serviceCode, in: query, required: true, schema: {type: string}}
+        - {name: environment, in: query, required: false, schema: {type: string, enum: [SANDBOX, PRODUCTION], default: SANDBOX}}
+      responses: {'200': {description: Entitlement decision}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/developer/projects:
+    get:
+      tags: [Developer Control Plane]
+      summary: List developer projects
+      operationId: listDeveloperProjects
+      responses: {'200': {description: Projects}}
+    post:
+      tags: [Developer Control Plane]
+      summary: Create a developer project
+      operationId: createDeveloperProject
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Project created}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/developer/environments/activate:
+    post:
+      tags: [Developer Control Plane]
+      summary: Activate a project environment
+      operationId: activateDeveloperEnvironment
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Environment activated}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/developer/service-accounts:
+    get:
+      tags: [Developer Control Plane]
+      summary: List service accounts for a project
+      operationId: listDeveloperServiceAccounts
+      parameters: [{name: projectReference, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Service accounts}}
+    post:
+      tags: [Developer Control Plane]
+      summary: Create a scoped service account
+      operationId: createDeveloperServiceAccount
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Service account created}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/developer/credentials:
+    get:
+      tags: [Developer Control Plane]
+      summary: List credentials for a service account
+      operationId: listDeveloperCredentials
+      parameters: [{name: serviceAccountReference, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Credentials}}
+    post:
+      tags: [Developer Control Plane]
+      summary: Issue a credential
+      operationId: issueDeveloperCredential
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Credential issued}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/developer/credentials/revoke:
+    post:
+      tags: [Developer Control Plane]
+      summary: Revoke a developer credential
+      operationId: revokeDeveloperCredential
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Credential revoked}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/developer/test-events:
+    post:
+      tags: [Developer Control Plane]
+      summary: Create a developer test event
+      operationId: createDeveloperTestEvent
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Test event created}}
+  /api/v2/merchant-self-service/developer/request-log:
+    get:
+      tags: [Developer Control Plane]
+      summary: Read project request logs
+      operationId: developerRequestLog
+      parameters:
+        - {name: projectReference, in: query, required: true, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, default: 50}}
+      responses: {'200': {description: Request log}}
+  /api/v2/merchant-self-service/developer/readiness:
+    get:
+      tags: [Developer Control Plane]
+      summary: Get project production readiness
+      operationId: developerReadiness
+      parameters: [{name: projectReference, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Readiness result}}
+  /api/v2/merchant-self-service/developer/scope-readiness:
+    get:
+      tags: [Developer Control Plane]
+      summary: Get production scope entitlement readiness
+      operationId: developerScopeReadiness
+      parameters: [{name: projectReference, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Scope readiness result}}
+  /api/v2/merchant-self-service/routing/simulate:
+    post:
+      tags: [Intelligent Routing]
+      summary: Simulate an intelligent payment-routing decision
+      operationId: simulateIntelligentRouting
+      parameters:
+        - {name: operation, in: query, required: true, schema: {type: string}}
+        - {name: environment, in: query, required: false, schema: {type: string, default: SANDBOX}}
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Routing simulation}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/routing/policy:
+    post:
+      tags: [Intelligent Routing]
+      summary: Create or update a routing policy
+      operationId: saveRoutingPolicy
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Routing policy saved}}
+  /api/v2/merchant-self-service/routing/rule:
+    post:
+      tags: [Intelligent Routing]
+      summary: Create or update a routing rule
+      operationId: saveRoutingRule
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Routing rule saved}}
+  /api/v2/merchant-self-service/routing/decisions:
+    get:
+      tags: [Intelligent Routing]
+      summary: List recent routing decisions
+      operationId: listRoutingDecisions
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, default: 50}}]
+      responses: {'200': {description: Routing decisions}}
+  /api/v2/merchant-self-service/marketplace/subaccounts:
+    get:
+      tags: [Marketplace]
+      summary: List marketplace subaccounts
+      operationId: listMarketplaceSubaccounts
+      responses: {'200': {description: Subaccounts}}
+    post:
+      tags: [Marketplace]
+      summary: Create a marketplace subaccount
+      operationId: createMarketplaceSubaccount
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Subaccount created}}
+  /api/v2/merchant-self-service/marketplace/subaccounts/status:
+    post:
+      tags: [Marketplace]
+      summary: Change marketplace subaccount status
+      operationId: updateMarketplaceSubaccountStatus
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Subaccount updated}}
+  /api/v2/merchant-self-service/marketplace/split-rules:
+    get:
+      tags: [Marketplace]
+      summary: List split rules
+      operationId: listMarketplaceSplitRules
+      responses: {'200': {description: Split rules}}
+    post:
+      tags: [Marketplace]
+      summary: Create a split-payment rule
+      operationId: createMarketplaceSplitRule
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Split rule created}}
+  /api/v2/merchant-self-service/marketplace/split-rules/simulate:
+    post:
+      tags: [Marketplace]
+      summary: Simulate a split-payment rule
+      operationId: simulateMarketplaceSplit
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Split simulation}}
+  /api/v2/merchant-self-service/marketplace/executions:
+    get:
+      tags: [Marketplace]
+      summary: List split-payment executions
+      operationId: listMarketplaceExecutions
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, default: 50}}]
+      responses: {'200': {description: Executions}}
+  /api/v2/merchant-self-service/marketplace/refund-allocations:
+    get:
+      tags: [Marketplace]
+      summary: List refund allocations for a marketplace refund
+      operationId: listMarketplaceRefundAllocations
+      parameters: [{name: refundReference, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Refund allocations}}
+  /api/v2/merchant-self-service/marketplace/recovery-events:
+    get:
+      tags: [Marketplace]
+      summary: List marketplace recovery events
+      operationId: listMarketplaceRecoveryEvents
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, default: 50}}]
+      responses: {'200': {description: Recovery events}}
+  /api/v2/merchant-self-service/recurring/plans:
+    get:
+      tags: [Recurring Payments]
+      summary: List recurring payment plans
+      operationId: listRecurringPlans
+      responses: {'200': {description: Plans}}
+    post:
+      tags: [Recurring Payments]
+      summary: Create a recurring payment plan
+      operationId: createRecurringPlan
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Plan created}}
+  /api/v2/merchant-self-service/recurring/mandates:
+    get:
+      tags: [Recurring Payments]
+      summary: List payment mandates
+      operationId: listRecurringMandates
+      responses: {'200': {description: Mandates}}
+    post:
+      tags: [Recurring Payments]
+      summary: Create a payment mandate
+      operationId: createRecurringMandate
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Mandate created}}
+  /api/v2/merchant-self-service/recurring/subscriptions:
+    get:
+      tags: [Recurring Payments]
+      summary: List subscriptions
+      operationId: listRecurringSubscriptions
+      responses: {'200': {description: Subscriptions}}
+    post:
+      tags: [Recurring Payments]
+      summary: Create a subscription
+      operationId: createRecurringSubscription
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Subscription created}}
+  /api/v2/merchant-self-service/recurring/subscriptions/status:
+    post:
+      tags: [Recurring Payments]
+      summary: Change subscription status
+      operationId: updateRecurringSubscriptionStatus
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Subscription updated}}
+  /api/v2/merchant-self-service/recurring/charges:
+    get:
+      tags: [Recurring Payments]
+      summary: List recurring charges
+      operationId: listRecurringCharges
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, default: 50}}]
+      responses: {'200': {description: Charges}}
+  /api/v2/merchant-self-service/refunds:
+    get:
+      tags: [Refunds]
+      summary: List merchant-workspace refunds
+      operationId: listMerchantWorkspaceRefunds
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, default: 50}}]
+      responses: {'200': {description: Refunds}}
+    post:
+      tags: [Refunds]
+      summary: Request a full or partial refund from the merchant workspace
+      operationId: requestMerchantWorkspaceRefund
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'202': {description: Refund accepted}, '400': {$ref: '#/components/responses/BadRequest'}}
+  /api/v2/merchant-self-service/refunds/timeline:
+    get:
+      tags: [Refunds]
+      summary: Read a transaction financial timeline
+      operationId: merchantRefundTimeline
+      parameters:
+        - {name: transactionReference, in: query, required: true, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, default: 100}}
+      responses: {'200': {description: Financial timeline}}
+  /api/v2/merchant-self-service/refunds/split-allocations:
+    get:
+      tags: [Refunds]
+      summary: Read split allocations for a refund
+      operationId: merchantRefundSplitAllocations
+      parameters: [{name: refundReference, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Split allocations}}
+  /api/v2/merchant-self-service/virtual-accounts:
+    get:
+      tags: [Virtual Accounts]
+      summary: List virtual accounts
+      operationId: listVirtualAccounts
+      parameters: [{name: environment, in: query, required: false, schema: {type: string}}]
+      responses: {'200': {description: Virtual accounts}}
+    post:
+      tags: [Virtual Accounts]
+      summary: Issue a virtual account
+      operationId: issueVirtualAccount
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Virtual account issued}}
+  /api/v2/merchant-self-service/virtual-accounts/close:
+    post:
+      tags: [Virtual Accounts]
+      summary: Close a virtual account
+      operationId: closeVirtualAccount
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Virtual account closed}}
+  /api/v2/merchant-self-service/virtual-accounts/transfers:
+    get:
+      tags: [Virtual Accounts]
+      summary: List virtual-account transfers
+      operationId: listVirtualAccountTransfers
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, default: 50}}]
+      responses: {'200': {description: Transfers}}
+  /api/v2/merchant-self-service/analytics/daily:
+    get:
+      tags: [Analytics]
+      summary: Get daily merchant analytics
+      operationId: merchantAnalyticsDaily
+      parameters:
+        - {name: from, in: query, required: false, schema: {type: string, format: date}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date}}
+      responses: {'200': {description: Daily analytics}}
+  /api/v2/merchant-self-service/analytics/providers:
+    get:
+      tags: [Analytics]
+      summary: Get provider-level merchant analytics
+      operationId: merchantAnalyticsProviders
+      parameters:
+        - {name: from, in: query, required: false, schema: {type: string, format: date}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date}}
+      responses: {'200': {description: Provider analytics}}
+  /api/v2/merchant-self-service/analytics/recommendations:
+    get:
+      tags: [Analytics]
+      summary: List merchant recommendations
+      operationId: merchantAnalyticsRecommendations
+      responses: {'200': {description: Recommendations}}
+  /api/v2/merchant-self-service/analytics/recommendations/acknowledge:
+    post:
+      tags: [Analytics]
+      summary: Acknowledge a recommendation
+      operationId: acknowledgeMerchantRecommendation
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Recommendation acknowledged}}
+  /api/v2/merchant-self-service/analytics/refresh:
+    post:
+      tags: [Analytics]
+      summary: Refresh recent merchant intelligence aggregates
+      operationId: refreshMerchantAnalytics
+      responses: {'200': {description: Analytics refreshed}}
+  /api/v2/merchant-self-service/embedded/partner:
+    post:
+      tags: [Embedded Cito]
+      summary: Create or update the embedded-Cito partner profile
+      operationId: ensureEmbeddedPartner
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Partner profile}}
+  /api/v2/merchant-self-service/embedded/brand:
+    post:
+      tags: [Embedded Cito]
+      summary: Configure embedded branding
+      operationId: saveEmbeddedBrand
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Brand configuration}}
+  /api/v2/merchant-self-service/embedded/onboarding-sessions:
+    post:
+      tags: [Embedded Cito]
+      summary: Create an embedded onboarding session
+      operationId: createEmbeddedOnboardingSession
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Onboarding session}}
+  /api/v2/merchant-self-service/embedded/downstream-merchants:
+    get:
+      tags: [Embedded Cito]
+      summary: List downstream merchants
+      operationId: listEmbeddedDownstreamMerchants
+      responses: {'200': {description: Downstream merchants}}
+    post:
+      tags: [Embedded Cito]
+      summary: Link a downstream merchant
+      operationId: linkEmbeddedDownstreamMerchant
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Merchant linked}}
+  /api/v2/merchant-self-service/embedded/delegations:
+    get:
+      tags: [Embedded Cito]
+      summary: List delegated services
+      operationId: listEmbeddedDelegations
+      responses: {'200': {description: Delegations}}
+    post:
+      tags: [Embedded Cito]
+      summary: Delegate a Cito service to a downstream merchant
+      operationId: createEmbeddedDelegation
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Delegation created}}
+  /api/v2/merchant-self-service/embedded/commissions:
+    post:
+      tags: [Embedded Cito]
+      summary: Create or update a partner commission rule
+      operationId: saveEmbeddedCommission
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Commission rule}}
+  /api/v2/merchant-self-service/integrations/catalog:
+    get:
+      tags: [Integrations]
+      summary: List available integration connectors
+      operationId: integrationCatalog
+      responses: {'200': {description: Connector catalog}}
+  /api/v2/merchant-self-service/integrations/installations:
+    get:
+      tags: [Integrations]
+      summary: List installed integrations
+      operationId: listIntegrationInstallations
+      responses: {'200': {description: Installations}}
+    post:
+      tags: [Integrations]
+      summary: Install a connector
+      operationId: installIntegration
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Connector installed}}
+  /api/v2/merchant-self-service/integrations/installations/uninstall:
+    post:
+      tags: [Integrations]
+      summary: Uninstall a connector
+      operationId: uninstallIntegration
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Connector uninstalled}}
+  /api/v2/merchant-self-service/integrations/mappings:
+    get:
+      tags: [Integrations]
+      summary: List field mappings for an installation
+      operationId: listIntegrationMappings
+      parameters: [{name: installationReference, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Mappings}}
+    post:
+      tags: [Integrations]
+      summary: Add an integration field mapping
+      operationId: createIntegrationMapping
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Mapping created}}
+  /api/v2/merchant-self-service/integrations/subscriptions:
+    post:
+      tags: [Integrations]
+      summary: Subscribe an integration to an event
+      operationId: createIntegrationSubscription
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Subscription created}}
+  /api/v2/merchant-self-service/integrations/jobs:
+    get:
+      tags: [Integrations]
+      summary: List integration jobs
+      operationId: listIntegrationJobs
+      parameters:
+        - {name: installationReference, in: query, required: true, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, default: 50}}
+      responses: {'200': {description: Jobs}}
+    post:
+      tags: [Integrations]
+      summary: Queue an integration job
+      operationId: queueIntegrationJob
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses: {'200': {description: Job queued}}
+components:
+  securitySchemes:
+    MerchantSession:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+      description: Session established by Cito sign-in. Entitlements are enforced per merchant, service and environment.
+  requestBodies:
+    GenericJson:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+  responses:
+    BadRequest:
+      description: Request rejected by validation, entitlement, or business rules
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    Unauthorized:
+      description: A valid Cito merchant session is required
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
