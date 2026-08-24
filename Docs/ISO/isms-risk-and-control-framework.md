@@ -46,7 +46,7 @@ Risks are scored before and after treatment.
 - 10-15: high
 - 16-25: critical
 
-Critical risks require executive/security review before the affected production activity continues unless an incident commander authorizes a documented emergency containment action. High residual risks require explicit risk-owner acceptance with an expiry/review date.
+Critical risks require executive/security review before the affected production activity continues unless an incident commander authorizes a documented emergency containment action. High residual risks require explicit risk-owner acceptance with an expiry/review date before production continuation is authorized. Until that acceptance is actually recorded, the governance register must mark the risk `BLOCKED_PENDING_ACCEPTANCE`, identify the accountable acceptance owner and due date, and set `productionContinuationAuthorized` to `false`. This is a fail-closed governance state, not a substitute for an approval.
 
 ## 5. Risk lifecycle
 
@@ -61,7 +61,8 @@ Each material risk records:
 - selected treatment and action owner;
 - due date;
 - residual likelihood/impact;
-- acceptance approver/date when applicable;
+- acceptance approver/date and expiry when applicable;
+- explicit pending-acceptance state when a high residual risk has not yet been accepted;
 - next review date;
 - status.
 

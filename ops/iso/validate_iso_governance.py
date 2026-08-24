@@ -12,6 +12,7 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+ROOT_RESOLVED = ROOT.resolve()
 REGISTER = ROOT / "ops" / "iso" / "governance.json"
 
 REQUIRED_STANDARDS = {
@@ -31,7 +32,9 @@ VALID_IMPLEMENTATION = {"IMPLEMENTED", "PARTIAL", "PLANNED", "NOT_APPLICABLE"}
 VALID_RISK_STATUS = {"OPEN", "ACCEPTED", "CLOSED"}
 VALID_RISK_TREATMENT = {"AVOID", "REDUCE", "TRANSFER", "ACCEPT"}
 VALID_CLASSIFICATION = {"PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"}
+VALID_SERVICE_TIERS = {"TIER_0", "TIER_1", "TIER_2", "TIER_3"}
 CRITICAL_TIERS = {"TIER_0", "TIER_1"}
+HIGH_RISK_DECISIONS = {"ACCEPTED", "BLOCKED_PENDING_ACCEPTANCE"}
 
 errors: list[str] = []
 
@@ -68,12 +71,25 @@ def require_future_due(value: str | None, context: str) -> None:
         fail(f"{context}: overdue since {parsed.isoformat()}")
 
 
+def require_repo_file(raw: str, context: str) -> None:
+    candidate = Path(raw)
+    if candidate.is_absolute():
+        fail(f"{context}: evidence path must be repository-relative: {raw}")
+        return
+    resolved = (ROOT / candidate).resolve()
+    try:
+        resolved.relative_to(ROOT_RESOLVED)
+    except ValueError:
+        fail(f"{context}: evidence path escapes repository: {raw}")
+        return
+    if not resolved.is_file():
+        fail(f"{context}: evidence file does not exist or is not a file: {raw}")
+
+
 def require_evidence(paths: list[str], context: str) -> None:
     require(bool(paths), f"{context}: evidence is required")
     for raw in paths:
-        p = ROOT / raw
-        if not p.exists():
-            fail(f"{context}: evidence path does not exist: {raw}")
+        require_repo_file(raw, context)
 
 
 def unique_ids(items: list[dict], context: str) -> set[str]:
@@ -130,7 +146,7 @@ for obj in objectives:
     oid = obj.get("id", "<unknown>")
     for field in ("domain", "name", "ownerRole", "metric", "target", "measurementSource", "reviewCadence"):
         require(bool(obj.get(field)), f"{oid}: {field} is required")
-    parse_date(obj.get("nextReviewAt"), oid)
+    require_not_stale(obj.get("nextReviewAt"), oid)
 
 services = data.get("services") or []
 service_ids = unique_ids(services, "services")
@@ -139,18 +155,27 @@ for svc in services:
     sid = svc.get("id", "<unknown>")
     require(bool(svc.get("name")), f"{sid}: name is required")
     require(bool(svc.get("ownerRole")), f"{sid}: ownerRole is required")
-    require(bool(svc.get("tier")), f"{sid}: tier is required")
+    tier = svc.get("tier")
+    require(tier in VALID_SERVICE_TIERS, f"{sid}: tier must be one of {sorted(VALID_SERVICE_TIERS)}")
     require(svc.get("dataClassification") in VALID_CLASSIFICATION, f"{sid}: invalid dataClassification")
     require(isinstance(svc.get("dependencies"), list) and bool(svc.get("dependencies")), f"{sid}: dependencies required")
     require(bool(svc.get("slo")), f"{sid}: slo is required")
-    if svc.get("tier") in CRITICAL_TIERS:
+    if tier in CRITICAL_TIERS:
         require(isinstance(svc.get("rtoMinutes"), int) and svc["rtoMinutes"] > 0, f"{sid}: positive rtoMinutes required")
         require(isinstance(svc.get("rpoMinutes"), int) and svc["rpoMinutes"] >= 0, f"{sid}: non-negative rpoMinutes required")
         require(bool(svc.get("continuityProcedure")), f"{sid}: continuityProcedure required")
+        require(isinstance(svc.get("customersUsers"), list) and bool(svc.get("customersUsers")), f"{sid}: customersUsers required for critical service")
+        require(bool(svc.get("businessOutcome")), f"{sid}: businessOutcome required for critical service")
+        require(bool(svc.get("supportHours")), f"{sid}: supportHours required for critical service")
+        require(bool(svc.get("escalationPath")), f"{sid}: escalationPath required for critical service")
+        mtd = svc.get("maximumTolerableDisruptionMinutes")
+        require(isinstance(mtd, int) and mtd > 0, f"{sid}: positive maximumTolerableDisruptionMinutes required")
+        if isinstance(mtd, int) and isinstance(svc.get("rtoMinutes"), int):
+            require(mtd >= svc["rtoMinutes"], f"{sid}: maximum tolerable disruption cannot be shorter than RTO")
     for field in ("continuityProcedure", "monitoringEvidence"):
         raw = svc.get(field)
-        if raw and not (ROOT / raw).exists():
-            fail(f"{sid}: {field} path does not exist: {raw}")
+        if raw:
+            require_repo_file(raw, f"{sid}.{field}")
 
 risks = data.get("risks") or []
 unique_ids(risks, "risks")
@@ -167,9 +192,27 @@ for risk in risks:
         require(bool(risk.get("treatmentAction")), f"{rid}: open risk requires treatmentAction")
         require_future_due(risk.get("dueAt"), f"{rid}.dueAt")
         require_not_stale(risk.get("nextReviewAt"), rid)
+
+    residual_score = 0
+    if isinstance(risk.get("residualLikelihood"), int) and isinstance(risk.get("residualImpact"), int):
+        residual_score = risk["residualLikelihood"] * risk["residualImpact"]
+
+    if residual_score >= 10:
+        decision = risk.get("highRiskDecision")
+        require(decision in HIGH_RISK_DECISIONS, f"{rid}: high residual risk requires explicit acceptance or BLOCKED_PENDING_ACCEPTANCE")
+        if decision == "ACCEPTED":
+            require(bool(risk.get("acceptedByRole")), f"{rid}: accepted high risk requires acceptedByRole")
+            parse_date(risk.get("acceptedAt"), f"{rid}.acceptedAt")
+            require_not_stale(risk.get("acceptanceExpiresAt"), f"{rid}.acceptanceExpiresAt")
+        elif decision == "BLOCKED_PENDING_ACCEPTANCE":
+            require(bool(risk.get("acceptanceOwnerRole")), f"{rid}: pending high-risk acceptance requires acceptanceOwnerRole")
+            require_future_due(risk.get("acceptanceDueAt"), f"{rid}.acceptanceDueAt")
+            require(risk.get("productionContinuationAuthorized") is False, f"{rid}: pending high-risk acceptance must explicitly prohibit production continuation authorization")
+
     if risk.get("treatment") == "ACCEPT" or risk.get("status") == "ACCEPTED":
         require(bool(risk.get("acceptedByRole")), f"{rid}: accepted risk requires acceptedByRole")
         parse_date(risk.get("acceptedAt"), f"{rid}.acceptedAt")
+        require_not_stale(risk.get("acceptanceExpiresAt"), f"{rid}.acceptanceExpiresAt")
 
 controls = data.get("controls") or []
 unique_ids(controls, "controls")
@@ -190,8 +233,7 @@ for ctl in controls:
         require_evidence(evidence, cid)
     else:
         for raw in evidence:
-            if not (ROOT / raw).exists():
-                fail(f"{cid}: evidence path does not exist: {raw}")
+            require_repo_file(raw, cid)
     if ctl.get("implementation") in {"PARTIAL", "PLANNED"}:
         require(bool(ctl.get("action")), f"{cid}: {ctl.get('implementation')} requires action")
         require_future_due(ctl.get("dueAt"), f"{cid}.dueAt")
@@ -223,8 +265,7 @@ required_docs = [
     "Docs/ISO/internal-audit-management-review.md",
 ]
 for raw in required_docs:
-    if not (ROOT / raw).is_file():
-        fail(f"required IMS document missing: {raw}")
+    require_repo_file(raw, "required IMS document")
 
 if errors:
     print("ISO governance validation FAILED", file=sys.stderr)

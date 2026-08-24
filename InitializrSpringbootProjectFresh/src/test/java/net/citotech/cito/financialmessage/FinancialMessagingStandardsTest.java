@@ -6,9 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import javax.xml.XMLConstants;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
 import org.junit.jupiter.api.Test;
 
 class FinancialMessagingStandardsTest {
@@ -33,9 +38,13 @@ class FinancialMessagingStandardsTest {
         fields.put(2, "4111111111111111");
         fields.put(3, "000000");
         fields.put(14, "2912");
+        fields.put(34, "4111111111111111");
         fields.put(35, "4111111111111111=29122010000012345678");
         fields.put(52, "0123456789ABCDEF");
         fields.put(55, "9F2608DEADBEEFCAFEBABE");
+        fields.put(102, "CUSTOMER-ACCOUNT-123");
+        fields.put(103, "BENEFICIARY-ACCOUNT-456");
+        fields.put(127, "PROFILE-PRIVATE-AUTH-DATA");
 
         var sanitized = Iso8583MessageSanitizer.sanitize("0200", fields);
 
@@ -43,9 +52,13 @@ class FinancialMessagingStandardsTest {
         assertEquals("************1111", sanitized.fields().get(2));
         assertEquals("000000", sanitized.fields().get(3));
         assertEquals("[REDACTED-EXPIRY]", sanitized.fields().get(14));
+        assertEquals("[REDACTED-EXTENDED-PAN]", sanitized.fields().get(34));
         assertEquals("[REDACTED-TRACK-DATA]", sanitized.fields().get(35));
         assertEquals("[REDACTED-PIN-BLOCK]", sanitized.fields().get(52));
         assertEquals("[REDACTED-EMV-DATA]", sanitized.fields().get(55));
+        assertEquals("[REDACTED-ACCOUNT-IDENTIFIER]", sanitized.fields().get(102));
+        assertEquals("[REDACTED-ACCOUNT-IDENTIFIER]", sanitized.fields().get(103));
+        assertEquals("[REDACTED-UNCLASSIFIED-DE-127]", sanitized.fields().get(127));
         assertEquals("4111111111111111", fields.get(2));
         assertThrows(UnsupportedOperationException.class, () -> sanitized.fields().put(4, "100"));
     }
@@ -68,7 +81,8 @@ class FinancialMessagingStandardsTest {
         byte[] normal =
                 "<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:test\"><MessageId>ABC</MessageId></Document>"
                         .getBytes(StandardCharsets.UTF_8);
-        assertEquals("Document", Iso20022XmlValidator.parseSecure(normal).getDocumentElement().getLocalName());
+        assertEquals(
+                "Document", Iso20022XmlValidator.parseSecure(normal).getDocumentElement().getLocalName());
 
         byte[] xxe =
                 ("<?xml version=\"1.0\"?>"
@@ -76,5 +90,36 @@ class FinancialMessagingStandardsTest {
                                 + "<Document>&ext;</Document>")
                         .getBytes(StandardCharsets.UTF_8);
         assertThrows(IllegalArgumentException.class, () -> Iso20022XmlValidator.parseSecure(xxe));
+    }
+
+    @Test
+    void iso20022SchemaValidationFailsClosedOnOrdinaryValidationErrors() throws Exception {
+        String xsd =
+                """
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+                  <xs:element name="Document">
+                    <xs:complexType>
+                      <xs:sequence>
+                        <xs:element name="Amount" type="xs:integer"/>
+                      </xs:sequence>
+                    </xs:complexType>
+                  </xs:element>
+                </xs:schema>
+                """;
+        SchemaFactory schemaFactory =
+                SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+        schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+        Schema schema = schemaFactory.newSchema(new StreamSource(new StringReader(xsd)));
+
+        byte[] valid = "<Document><Amount>42</Amount></Document>".getBytes(StandardCharsets.UTF_8);
+        assertEquals(
+                "Document",
+                Iso20022XmlValidator.validate(valid, schema).getDocumentElement().getLocalName());
+
+        byte[] invalid =
+                "<Document><Amount>not-a-number</Amount></Document>"
+                        .getBytes(StandardCharsets.UTF_8);
+        assertThrows(IllegalArgumentException.class, () -> Iso20022XmlValidator.validate(invalid, schema));
     }
 }

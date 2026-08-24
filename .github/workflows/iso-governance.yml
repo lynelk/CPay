@@ -20,11 +20,29 @@ jobs:
         run: python3 ops/iso/validate_iso_governance.py
       - name: Prohibit unsupported certification claims in controlled ISO documents
         run: |
-          set -euo pipefail
-          if grep -R -nEi '(^|[^a-z])(is|are|we are|cito is|cpay is)[[:space:]]+ISO[[:space:]-]+certified' Docs/ISO ops/iso; then
-            echo "Unsupported ISO certification claim found in controlled IMS material" >&2
-            exit 1
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          pattern = re.compile(
+              r"\b(?:cito|cpay|we|the\s+(?:cito\s+)?(?:platform|gateway|service))\s+"
+              r"(?:is|are)\s+ISO(?:\s*/\s*IEC)?(?:[\s-]+\d{4,5}(?:[-:]\d{1,4})?)?[\s-]+certified\b",
+              re.IGNORECASE,
+          )
+          findings = []
+          for root in (Path("Docs/ISO"), Path("ops/iso")):
+              for path in root.rglob("*"):
+                  if not path.is_file() or path.suffix.lower() not in {".md", ".json", ".py", ".txt"}:
+                      continue
+                  for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                      if pattern.search(line):
+                          findings.append(f"{path}:{line_number}: {line.strip()}")
+          if findings:
+              print("Unsupported ISO certification claim found in controlled IMS material", file=sys.stderr)
+              print("\n".join(findings), file=sys.stderr)
+              raise SystemExit(1)
+          PY
 
   financial-message-boundaries:
     name: ISO 20022 / 8583 / 9362 safety boundary
