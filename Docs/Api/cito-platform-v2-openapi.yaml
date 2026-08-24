@@ -3,13 +3,16 @@ info:
   title: Cito Platform API
   version: 2.0.0
   description: >-
-    Session-authenticated merchant platform APIs that sit alongside the CPay payments
-    contract. Cito is the platform; CPay is the payments capability within it.
+    Merchant platform APIs that sit alongside the CPay payments contract. Operations use
+    the authentication mechanism declared by the contract, including Cito merchant sessions
+    and signed merchant requests where explicitly specified. Cito is the platform; CPay is
+    the payments capability within it.
 servers:
   - url: /api/v2
 security:
   - MerchantSession: []
 tags:
+  - name: Identity & Validation
   - name: Cito Services
   - name: Developer Control Plane
   - name: Intelligent Routing
@@ -21,6 +24,19 @@ tags:
   - name: Embedded Cito
   - name: Integrations
 paths:
+  /api/v2/identity/capabilities:
+    get:
+      tags: [Identity & Validation]
+      summary: List merchant-visible identity provider capabilities
+      operationId: getMerchantIdentityCapabilities
+      security:
+        - CPayV2Signature: []
+      parameters:
+        - {name: merchantNumber, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Identity provider capabilities without PII}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/UnauthorizedSignedRequest'}
   /api/v2/merchant-self-service/cito/service-catalog:
     get:
       tags: [Cito Services]
@@ -471,6 +487,11 @@ paths:
       responses: {'200': {description: Job queued}}
 components:
   securitySchemes:
+    CPayV2Signature:
+      type: apiKey
+      in: header
+      name: X-CPay-Signature
+      description: Signature-based merchant authentication enforced by the CPay/Cito v2 request security service.
     MerchantSession:
       type: apiKey
       in: cookie
@@ -492,6 +513,11 @@ components:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     Unauthorized:
       description: A valid Cito merchant session is required
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    UnauthorizedSignedRequest:
+      description: A valid signed merchant request is required
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
