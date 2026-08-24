@@ -1,5 +1,8 @@
 server {
-    listen ${PORT};
+    # Railway private networking is IPv6-first. Bind explicitly on both stacks
+    # so health checks and public proxy traffic can reach nginx reliably.
+    listen ${PORT} default_server;
+    listen [::]:${PORT} default_server;
     server_name _;
 
     root /usr/share/nginx/html;
