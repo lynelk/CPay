@@ -1489,6 +1489,7 @@ paths:
           description: Open compliance cases
     post:
       summary: Open a compliance case
+      operationId: createComplianceCase
       requestBody:
         required: true
         content:
@@ -2650,6 +2651,7 @@ paths:
   /api/v2/admin/finance-operations/settlements/{id}:
     get:
       summary: Read settlement batch with items
+      operationId: getFinanceSettlementBatch
       parameters:
       - $ref: '#/components/parameters/IdPath'
       responses:
@@ -2660,6 +2662,7 @@ paths:
   /api/v2/admin/finance-operations/settlements/{id}/items:
     post:
       summary: Add a settlement item
+      operationId: addFinanceSettlementItem
       parameters:
       - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -2674,6 +2677,7 @@ paths:
   /api/v2/admin/finance-operations/settlements/{id}/transition:
     post:
       summary: Transition settlement lifecycle state
+      operationId: transitionFinanceSettlementBatch
       parameters:
       - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -2704,6 +2708,7 @@ paths:
   /api/v2/admin/finance-operations/treasury/positions:
     get:
       summary: List treasury positions
+      operationId: listFinanceTreasuryPositions
       parameters:
       - in: query
         name: merchantId
@@ -2720,6 +2725,7 @@ paths:
           description: Treasury positions returned
     post:
       summary: Record treasury position snapshot
+      operationId: recordFinanceTreasuryPosition
       requestBody:
         required: true
         content:
@@ -2732,6 +2738,7 @@ paths:
   /api/v2/admin/finance-operations/reconciliation/exceptions:
     get:
       summary: List reconciliation exceptions
+      operationId: listFinanceReconciliationExceptions
       parameters:
       - in: query
         name: status
@@ -2747,6 +2754,7 @@ paths:
           description: Reconciliation exceptions returned
     post:
       summary: Create reconciliation exception
+      operationId: createFinanceReconciliationException
       requestBody:
         required: true
         content:
@@ -2759,6 +2767,7 @@ paths:
   /api/v2/admin/finance-operations/reconciliation/exceptions/{id}/resolve:
     post:
       summary: Resolve reconciliation exception
+      operationId: resolveFinanceReconciliationException
       parameters:
       - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -2783,6 +2792,7 @@ paths:
   /api/v2/admin/finance-operations/daily-close:
     post:
       summary: Open daily close record
+      operationId: openFinanceDailyClose
       requestBody:
         required: true
         content:
@@ -2803,6 +2813,7 @@ paths:
   /api/v2/admin/finance-operations/daily-close/{businessDate}:
     get:
       summary: Read daily close by business date
+      operationId: getFinanceDailyClose
       parameters:
       - in: path
         name: businessDate
@@ -2818,6 +2829,7 @@ paths:
   /api/v2/admin/finance-operations/daily-close/{id}/decision:
     post:
       summary: Record daily close decision or closure gate status
+      operationId: decideFinanceDailyClose
       parameters:
       - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -2832,6 +2844,7 @@ paths:
   /api/v2/admin/finance-operations/reports/exports:
     get:
       summary: List report export requests
+      operationId: listFinanceReportExports
       parameters:
       - in: query
         name: status
@@ -2847,6 +2860,7 @@ paths:
           description: Report exports returned
     post:
       summary: Request finance or operations report export
+      operationId: requestFinanceReportExport
       requestBody:
         required: true
         content:
@@ -2859,6 +2873,7 @@ paths:
   /api/v2/admin/finance-operations/incidents:
     get:
       summary: List operations incidents
+      operationId: listFinanceIncidents
       parameters:
       - in: query
         name: status
@@ -2874,6 +2889,7 @@ paths:
           description: Incidents returned
     post:
       summary: Create operations incident
+      operationId: createFinanceIncident
       requestBody:
         required: true
         content:
@@ -2886,6 +2902,7 @@ paths:
   /api/v2/admin/finance-operations/incidents/{id}/events:
     post:
       summary: Add incident timeline event
+      operationId: addFinanceIncidentEvent
       parameters:
       - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -2900,6 +2917,7 @@ paths:
   /api/v2/product-experience/merchant/{merchantId}/onboarding:
     get:
       summary: Read merchant onboarding workflow and steps
+      operationId: getMerchantOnboarding
       parameters:
       - $ref: '#/components/parameters/MerchantIdPath'
       responses:
@@ -2909,6 +2927,7 @@ paths:
           description: Onboarding workflow not found
     post:
       summary: Create or update merchant onboarding workflow
+      operationId: upsertMerchantOnboarding
       parameters:
       - $ref: '#/components/parameters/MerchantIdPath'
       requestBody:
@@ -2923,6 +2942,7 @@ paths:
   /api/v2/product-experience/merchant/{merchantId}/onboarding/steps:
     post:
       summary: Create or update onboarding step
+      operationId: upsertMerchantOnboardingStep
       parameters:
       - $ref: '#/components/parameters/MerchantIdPath'
       requestBody:
@@ -2937,6 +2957,7 @@ paths:
   /api/v2/product-experience/developer/applications:
     get:
       summary: List developer portal applications
+      operationId: listDeveloperApplications
       parameters:
       - in: query
         name: merchantId
@@ -2953,6 +2974,7 @@ paths:
           description: Developer applications returned
     post:
       summary: Create developer portal application
+      operationId: createDeveloperApplication
       requestBody:
         required: true
         content:
@@ -2965,6 +2987,7 @@ paths:
   /api/v2/product-experience/developer/applications/{applicationId}/api-keys:
     post:
       summary: Register developer API key metadata
+      operationId: createDeveloperApiKey
       parameters:
       - in: path
         name: applicationId
@@ -2984,6 +3007,7 @@ paths:
   /api/v2/product-experience/payment-links:
     get:
       summary: List payment links
+      operationId: listProductPaymentLinks
       parameters:
       - in: query
         name: merchantId
@@ -3000,6 +3024,7 @@ paths:
           description: Payment links returned
     post:
       summary: Create payment link lifecycle record
+      operationId: createProductPaymentLink
       requestBody:
         required: true
         content:
@@ -3012,6 +3037,7 @@ paths:
   /api/v2/product-experience/checkout/sessions:
     post:
       summary: Create hosted checkout session record
+      operationId: createCheckoutSession
       requestBody:
         required: true
         content:
@@ -3024,6 +3050,7 @@ paths:
   /api/v2/product-experience/invoices:
     get:
       summary: List invoices
+      operationId: listProductInvoices
       parameters:
       - in: query
         name: merchantId
@@ -3040,6 +3067,7 @@ paths:
           description: Invoices returned
     post:
       summary: Create invoice lifecycle record
+      operationId: createProductInvoice
       requestBody:
         required: true
         content:
@@ -3052,6 +3080,7 @@ paths:
   /api/v2/product-experience/invoices/{invoiceId}/line-items:
     post:
       summary: Add invoice line item
+      operationId: addProductInvoiceLineItem
       parameters:
       - in: path
         name: invoiceId
@@ -3071,6 +3100,7 @@ paths:
   /api/v2/product-experience/channel-journeys:
     get:
       summary: List channel journey guides
+      operationId: listChannelJourneys
       parameters:
       - in: query
         name: channelCode
@@ -3086,6 +3116,7 @@ paths:
           description: Channel journey guides returned
     post:
       summary: Create channel journey guide
+      operationId: upsertChannelJourney
       requestBody:
         required: true
         content:
@@ -3098,6 +3129,7 @@ paths:
   /api/v2/product-experience/dashboard/widgets:
     get:
       summary: List dashboard widgets
+      operationId: listDashboardWidgets
       parameters:
       - in: query
         name: audience
@@ -3108,6 +3140,7 @@ paths:
           description: Dashboard widgets returned
     post:
       summary: Create or update dashboard widget
+      operationId: upsertDashboardWidget
       requestBody:
         required: true
         content:
@@ -3120,6 +3153,7 @@ paths:
   /api/v2/product-experience/sandbox-guides:
     get:
       summary: List sandbox guides
+      operationId: listSandboxGuides
       parameters:
       - in: query
         name: status
@@ -3130,6 +3164,7 @@ paths:
           description: Sandbox guides returned
     post:
       summary: Create sandbox guide
+      operationId: upsertSandboxGuide
       requestBody:
         required: true
         content:
@@ -3142,6 +3177,7 @@ paths:
   /api/v2/product-experience/go-live/{merchantId}:
     get:
       summary: Read merchant go-live checklist and items
+      operationId: getGoLiveReadiness
       parameters:
       - $ref: '#/components/parameters/MerchantIdPath'
       responses:
@@ -3149,6 +3185,7 @@ paths:
           description: Go-live checklist returned
     post:
       summary: Create or update merchant go-live checklist
+      operationId: upsertGoLiveReadiness
       parameters:
       - $ref: '#/components/parameters/MerchantIdPath'
       requestBody:
@@ -3163,6 +3200,7 @@ paths:
   /api/v2/product-experience/go-live/{merchantId}/items:
     post:
       summary: Create or update go-live checklist item
+      operationId: upsertGoLiveReadinessItem
       parameters:
       - $ref: '#/components/parameters/MerchantIdPath'
       requestBody:
@@ -3177,6 +3215,7 @@ paths:
   /api/v2/admin/kyb/profiles:
     get:
       summary: List merchant KYB profiles for admin review
+      operationId: listKybProfiles
       parameters:
       - name: status
         in: query
@@ -3187,6 +3226,7 @@ paths:
           description: KYB profile list
     post:
       summary: Create or update a merchant KYB profile
+      operationId: upsertKybProfile
       requestBody:
         required: true
         content:
@@ -3199,6 +3239,7 @@ paths:
   /api/v2/admin/kyb/profiles/{merchantNumber}/decision:
     post:
       summary: Record an admin KYB decision
+      operationId: decideKybProfile
       parameters:
       - name: merchantNumber
         in: path
@@ -3217,6 +3258,7 @@ paths:
   /api/v2/admin/compliance/cases/{caseReference}:
     get:
       summary: Read a compliance case and event timeline
+      operationId: getComplianceCase
       parameters:
       - name: caseReference
         in: path
@@ -3229,6 +3271,7 @@ paths:
   /api/v2/admin/compliance/cases/{caseReference}/decision:
     post:
       summary: Record a compliance case decision or hold/release transition
+      operationId: decideComplianceCaseByReference
       parameters:
       - name: caseReference
         in: path
@@ -3247,6 +3290,7 @@ paths:
   /api/v2/admin/compliance/screening-results:
     post:
       summary: Record an external or internal screening result
+      operationId: recordComplianceScreeningResult
       requestBody:
         required: true
         content:
@@ -3259,6 +3303,7 @@ paths:
   /api/v2/admin/compliance/monitoring-alerts:
     post:
       summary: Record a transaction monitoring alert
+      operationId: createComplianceMonitoringAlert
       requestBody:
         required: true
         content:
@@ -3271,6 +3316,7 @@ paths:
   /api/v2/admin/regulatory/evidence-exports:
     post:
       summary: Request a regulatory evidence export
+      operationId: createRegulatoryEvidenceExport
       requestBody:
         required: true
         content:
@@ -3283,6 +3329,7 @@ paths:
   /api/v2/cross-border/corridors:
     get:
       summary: List configured cross-border corridors
+      operationId: listCrossBorderCorridors
       parameters:
       - name: status
         in: query
@@ -3294,6 +3341,7 @@ paths:
   /api/v2/admin/cross-border/corridors:
     post:
       summary: Create or update a corridor
+      operationId: upsertCrossBorderCorridor
       requestBody:
         required: true
         content:
@@ -3306,6 +3354,7 @@ paths:
   /api/v2/admin/cross-border/corridor-routes:
     post:
       summary: Create or update a corridor route
+      operationId: upsertCrossBorderCorridorRoute
       requestBody:
         required: true
         content:
@@ -3318,6 +3367,7 @@ paths:
   /api/v2/beneficiaries:
     post:
       summary: Create or update a beneficiary and optional instrument
+      operationId: createBeneficiary
       requestBody:
         required: true
         content:
@@ -3330,6 +3380,7 @@ paths:
   /api/v2/beneficiaries/{beneficiaryReference}:
     get:
       summary: Read beneficiary details and instruments
+      operationId: getBeneficiary
       parameters:
       - name: beneficiaryReference
         in: path
@@ -3342,6 +3393,7 @@ paths:
   /api/v2/beneficiaries/{beneficiaryReference}/instruments:
     post:
       summary: Add a payout instrument to a beneficiary
+      operationId: addBeneficiaryInstrument
       parameters:
       - name: beneficiaryReference
         in: path
@@ -3360,6 +3412,7 @@ paths:
   /api/v2/fx/quotes/{quoteReference}:
     get:
       summary: Read an FX quote
+      operationId: getFxQuote
       parameters:
       - name: quoteReference
         in: path
@@ -3372,6 +3425,7 @@ paths:
   /api/v2/cross-border/transfers/{transferReference}:
     get:
       summary: Read a cross-border transfer and event timeline
+      operationId: getCrossBorderTransfer
       parameters:
       - name: transferReference
         in: path
@@ -3384,6 +3438,7 @@ paths:
   /api/v2/admin/cross-border/transfers/{transferReference}/transition:
     post:
       summary: Move a cross-border transfer through its lifecycle
+      operationId: transitionCrossBorderTransfer
       parameters:
       - name: transferReference
         in: path
@@ -3402,6 +3457,7 @@ paths:
   /api/v2/admin/cross-border/settlement-batches:
     post:
       summary: Create a corridor settlement batch
+      operationId: createCrossBorderSettlementBatch
       requestBody:
         required: true
         content:
@@ -3414,6 +3470,7 @@ paths:
   /api/v2/admin/cross-border/treasury-exposure:
     post:
       summary: Record a treasury exposure snapshot
+      operationId: recordCrossBorderTreasuryExposure
       requestBody:
         required: true
         content:
@@ -3426,6 +3483,7 @@ paths:
   /api/v2/admin/cross-border/reports:
     post:
       summary: Request a cross-border reporting run
+      operationId: createCrossBorderReport
       requestBody:
         required: true
         content:
