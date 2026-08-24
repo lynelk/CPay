@@ -1,0 +1,41 @@
+name: One-time CPay OpenAPI structural repair
+
+on:
+  push:
+    branches:
+      - feature/iso-integrated-management-system
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Repair known duplicated-components corruption
+        run: python3 scripts/api_docs/repair_cpay_openapi_structure.py
+      - name: Validate repaired YAML parses
+        run: |
+          python3 - <<'PY'
+          import yaml
+          with open('Docs/Api/cpay-v2-openapi.yaml', encoding='utf-8') as handle:
+              value = yaml.safe_load(handle)
+          assert isinstance(value, dict)
+          assert 'paths' in value and 'components' in value
+          PY
+      - name: Commit structural repair when needed
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Docs/Api/cpay-v2-openapi.yaml; then
+            echo 'No structural repair required'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Docs/Api/cpay-v2-openapi.yaml
+          git commit -m 'fix(api): repair CPay OpenAPI document structure'
+          git push origin HEAD:feature/iso-integrated-management-system
