@@ -14,13 +14,13 @@ FROM nginx:1.27-alpine
 
 COPY --from=build /app/build /usr/share/nginx/html
 COPY default.conf.template /etc/nginx/templates/default.conf.template
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-# Railway routes to the PORT environment variable. We standardize the frontend
-# on 8080 while still letting Railway override it when required.
 ENV PORT=8080
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --quiet --tries=1 --spider "http://127.0.0.1:${PORT}/healthz" || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/start.sh"]
