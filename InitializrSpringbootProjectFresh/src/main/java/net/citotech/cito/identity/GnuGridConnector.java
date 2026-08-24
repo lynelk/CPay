@@ -4,6 +4,9 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.HttpRequestResponse;
 import net.citotech.cito.security.CanonicalRequestSigner;
@@ -12,17 +15,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * GnuGrid NIN verification adapter (S5 pilot, gated by {@code identity-gnugrid}).
- *
- * <p>Mirrors the channel-adapter pattern: with no endpoint configured the connector resolves
- * requests through deterministic sandbox scenarios (NINs ending {@code 00011} fail, all others
- * verify); in production the request is POSTed to {@code {baseUrl}/v1/verifications} through {@link
- * Common#doHttpRequest} (same shared outbound executor as every provider call, so TLS, timeouts,
- * correlation-id propagation, and Micrometer metrics apply). Provider responses are read with
- * org.json like the rest of the legacy provider code.
- *
- * <p>No raw PII ever leaves this class in an error message: failures report the HTTP status and a
- * generic reason only.
+ * GnuGrid identity-verification adapter. Provider coverage is configuration-driven so CPay can
+ * expose additional official document types without changing NOLI. The default remains Uganda NIN.
  */
 @Component
 public class GnuGridConnector implements IdentityVerificationConnector {
@@ -33,6 +27,12 @@ public class GnuGridConnector implements IdentityVerificationConnector {
 
     private final String baseUrl;
     private final String apiKey;
+
+    @Value("${cpay.identity.gnugrid.supported-types:NIN}")
+    private String supportedTypes = "NIN";
+
+    @Value("${cpay.identity.gnugrid.supported-countries:UG}")
+    private String supportedCountries = "UG";
 
     public GnuGridConnector(
             @Value("${cpay.identity.gnugrid.base-url:}") String baseUrl,
@@ -57,8 +57,18 @@ public class GnuGridConnector implements IdentityVerificationConnector {
     }
 
     @Override
+    public boolean supports(String identityType, String country) {
+        return configuredSet(supportedTypes).contains(normalize(identityType))
+                && configuredSet(supportedCountries).contains(normalize(country));
+    }
+
+    @Override
     public IdentityRecords.VerifiedIdentity verify(
             IdentityRecords.IdentityVerificationRequest request) {
+        if (!supports(request.identityType(), request.country())) {
+            throw new IdentityVerificationException(
+                    "configured identity provider does not support this document type/country");
+        }
         String ref = request.requestReference();
         if (baseUrl.isEmpty()) {
             return sandbox(request);
@@ -80,8 +90,7 @@ public class GnuGridConnector implements IdentityVerificationConnector {
             }
             String reason =
                     status == 0
-                            ? "provider unreachable: "
-                                    + safeProviderMessage(httpResponse.getErrorMessage())
+                            ? "provider unreachable: " + safeProviderMessage(httpResponse.getErrorMessage())
                             : "provider rejected the request (HTTP " + status + ")";
             throw new IdentityVerificationException(reason);
         } catch (IdentityVerificationException e) {
@@ -109,16 +118,14 @@ public class GnuGridConnector implements IdentityVerificationConnector {
 
     @Override
     public boolean validateCallbackHeaders(Map<String, String> callbackHeaders) {
-        // No signing secret configured for this provider yet; no verifiable material to check
-        // against (mirrors PaymentChannelAdapter#verifyCallback's permissive default).
         return true;
     }
 
     private IdentityRecords.VerifiedIdentity sandbox(
             IdentityRecords.IdentityVerificationRequest request) {
-        String nin = request.nin().trim();
+        String identityNumber = request.identityNumber().trim();
         String ref = request.requestReference();
-        if (nin.endsWith(SANDBOX_FAIL_SUFFIX)) {
+        if (identityNumber.endsWith(SANDBOX_FAIL_SUFFIX)) {
             return IdentityRecords.VerifiedIdentity.failed(
                     ref, PROVIDER_CODE, "sandbox-" + ref, "SANDBOX_NOT_VERIFIED");
         }
@@ -140,40 +147,47 @@ public class GnuGridConnector implements IdentityVerificationConnector {
             return IdentityRecords.VerifiedIdentity.failed(
                     ref, PROVIDER_CODE, providerReference, body);
         }
-        String fullName =
-                firstNonBlank(
-                        json.optString("fullName", ""),
-                        json.optString("firstName", ""),
-                        json.optString("lastName", ""));
-        String expires = json.optString("expiresAt", "");
+        String fullName = firstNonBlank(
+                json.optString("fullName", ""),
+                json.optString("firstName", ""),
+                json.optString("lastName", ""));
         return IdentityRecords.VerifiedIdentity.matched(
                 ref,
                 PROVIDER_CODE,
                 providerReference,
                 maskName(fullName),
                 Instant.now(),
-                parseExpiry(expires),
+                parseExpiry(json.optString("expiresAt", "")),
                 body);
     }
 
     private String requestBody(IdentityRecords.IdentityVerificationRequest request) {
-        StringBuilder body = new StringBuilder();
-        body.append("{\"reference\":\"")
-                .append(esc(request.requestReference()))
-                .append("\",\"nin\":\"")
-                .append(esc(request.nin().trim()))
-                .append("\",\"fullName\":\"")
-                .append(esc(request.fullName()))
-                .append("\",\"msisdn\":\"")
-                .append(esc(request.msisdn()))
-                .append("\"}");
+        JSONObject body = new JSONObject();
+        body.put("reference", request.requestReference());
+        body.put("identityType", request.identityType());
+        body.put("country", request.country());
+        body.put("identityNumber", request.identityNumber());
+        if ("NIN".equalsIgnoreCase(request.identityType())) {
+            body.put("nin", request.identityNumber());
+        }
+        body.put("fullName", request.fullName() == null ? "" : request.fullName());
+        body.put("msisdn", request.msisdn() == null ? "" : request.msisdn());
         return body.toString();
     }
 
+    private Set<String> configuredSet(String csv) {
+        return Stream.of(csv == null ? new String[0] : csv.split(","))
+                .map(this::normalize)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
     private Instant parseExpiry(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
+        if (value == null || value.isBlank()) return null;
         try {
             return Instant.parse(value.trim());
         } catch (Exception e) {
@@ -182,46 +196,30 @@ public class GnuGridConnector implements IdentityVerificationConnector {
     }
 
     private String safeProviderMessage(String message) {
-        if (message == null || message.isBlank()) {
-            return "no provider detail";
-        }
+        if (message == null || message.isBlank()) return "no provider detail";
         return message.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9 ._-]", "");
     }
 
     private String firstNonBlank(String... values) {
         for (String value : values) {
-            if (value != null && !value.isBlank()) {
-                return value.trim();
-            }
+            if (value != null && !value.isBlank()) return value.trim();
         }
         return "";
     }
 
-    private String esc(String value) {
-        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
-
     static String maskName(String fullName) {
-        if (fullName == null || fullName.isBlank()) {
-            return "";
-        }
+        if (fullName == null || fullName.isBlank()) return "";
         String trimmed = fullName.trim();
-        if (trimmed.length() <= 2) {
-            return trimmed.charAt(0) + "*";
-        }
+        if (trimmed.length() <= 2) return trimmed.charAt(0) + "*";
         return trimmed.substring(0, 1)
                 + "*".repeat(trimmed.length() - 2)
                 + trimmed.substring(trimmed.length() - 1);
     }
 
     static String maskMsisdn(String msisdn) {
-        if (msisdn == null || msisdn.isBlank()) {
-            return "";
-        }
+        if (msisdn == null || msisdn.isBlank()) return "";
         String digits = msisdn.replaceAll("[^0-9]", "");
-        if (digits.length() <= 5) {
-            return "*".repeat(Math.max(1, digits.length()));
-        }
+        if (digits.length() <= 5) return "*".repeat(Math.max(1, digits.length()));
         return digits.substring(0, 3)
                 + "*".repeat(digits.length() - 5)
                 + digits.substring(digits.length() - 2);
