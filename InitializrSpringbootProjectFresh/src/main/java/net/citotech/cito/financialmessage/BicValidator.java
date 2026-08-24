@@ -32,7 +32,8 @@ public final class BicValidator {
         }
         String normalized = compact(value);
         if (!STRUCTURE.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("BIC must be a structurally valid 8 or 11 character ISO 9362 identifier");
+            throw new IllegalArgumentException(
+                    "BIC must be a structurally valid 8 or 11 character ISO 9362 identifier");
         }
         return normalized;
     }

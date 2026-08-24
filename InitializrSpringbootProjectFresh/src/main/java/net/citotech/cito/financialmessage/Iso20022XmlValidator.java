@@ -51,7 +51,8 @@ public final class Iso20022XmlValidator {
     }
 
     /**
-     * Validates XML against a caller-supplied, controlled schema after applying secure parser rules.
+     * Validates XML against a caller-supplied, controlled schema after applying secure parser
+     * rules.
      */
     public static Document validate(byte[] xml, Schema schema) {
         Objects.requireNonNull(schema, "schema");

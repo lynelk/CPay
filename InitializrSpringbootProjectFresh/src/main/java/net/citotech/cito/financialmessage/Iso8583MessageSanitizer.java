@@ -33,7 +33,8 @@ public final class Iso8583MessageSanitizer {
 
     public static SanitizedIso8583 sanitize(String mti, Map<Integer, String> fields) {
         if (mti == null || !MTI.matcher(mti).matches()) {
-            throw new IllegalArgumentException("ISO 8583 MTI must contain exactly four decimal digits");
+            throw new IllegalArgumentException(
+                    "ISO 8583 MTI must contain exactly four decimal digits");
         }
         if (fields == null) {
             throw new IllegalArgumentException("ISO 8583 fields are required");

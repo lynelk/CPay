@@ -82,7 +82,8 @@ class FinancialMessagingStandardsTest {
                 "<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:test\"><MessageId>ABC</MessageId></Document>"
                         .getBytes(StandardCharsets.UTF_8);
         assertEquals(
-                "Document", Iso20022XmlValidator.parseSecure(normal).getDocumentElement().getLocalName());
+                "Document",
+                Iso20022XmlValidator.parseSecure(normal).getDocumentElement().getLocalName());
 
         byte[] xxe =
                 ("<?xml version=\"1.0\"?>"
@@ -106,8 +107,7 @@ class FinancialMessagingStandardsTest {
                   </xs:element>
                 </xs:schema>
                 """;
-        SchemaFactory schemaFactory =
-                SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+        SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
         schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
         schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
         Schema schema = schemaFactory.newSchema(new StreamSource(new StringReader(xsd)));
@@ -120,6 +120,8 @@ class FinancialMessagingStandardsTest {
         byte[] invalid =
                 "<Document><Amount>not-a-number</Amount></Document>"
                         .getBytes(StandardCharsets.UTF_8);
-        assertThrows(IllegalArgumentException.class, () -> Iso20022XmlValidator.validate(invalid, schema));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> Iso20022XmlValidator.validate(invalid, schema));
     }
 }
