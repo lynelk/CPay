@@ -51,27 +51,48 @@ public class MerchantIdentityVerificationController {
         try {
             VerifyRequest input = objectMapper.readValue(body, VerifyRequest.class);
             if (blank(input.merchantNumber())) {
-                return error(HttpStatus.BAD_REQUEST, "INVALID_IDENTITY_REQUEST", "merchantNumber is required.");
+                return error(
+                        HttpStatus.BAD_REQUEST,
+                        "INVALID_IDENTITY_REQUEST",
+                        "merchantNumber is required.");
             }
             Merchant merchant = securityService.verify(request, body, input.merchantNumber());
             if (merchant.getId() == null || merchant.getId() <= 0) {
-                return error(HttpStatus.UNAUTHORIZED, "INVALID_MERCHANT", "Merchant identity is unavailable.");
+                return error(
+                        HttpStatus.UNAUTHORIZED,
+                        "INVALID_MERCHANT",
+                        "Merchant identity is unavailable.");
             }
+
+            String identityNumber = firstNonBlank(input.identityNumber(), input.nin());
+            String identityType = blank(input.identityType()) ? "NIN" : input.identityType();
+            String country = blank(input.country()) ? "UG" : input.country();
             Map<String, Object> result =
                     verificationService.verify(
                             merchant.getId(),
-                            input.nin(),
+                            identityType,
+                            country,
+                            identityNumber,
                             input.fullName(),
                             input.msisdn(),
                             input.consentGranted(),
                             blank(input.requestedBy()) ? "MERCHANT_API" : input.requestedBy().trim());
             return ResponseEntity.ok(safeView(result));
         } catch (V2RequestSecurityException e) {
-            return error(HttpStatus.UNAUTHORIZED, "INVALID_SIGNATURE", "Request authentication failed.");
+            return error(
+                    HttpStatus.UNAUTHORIZED,
+                    "INVALID_SIGNATURE",
+                    "Request authentication failed.");
         } catch (PaymentGatewayException | IllegalArgumentException e) {
-            return error(HttpStatus.BAD_REQUEST, "IDENTITY_VERIFICATION_REJECTED", e.getMessage());
+            return error(
+                    HttpStatus.BAD_REQUEST,
+                    "IDENTITY_VERIFICATION_REJECTED",
+                    e.getMessage());
         } catch (Exception e) {
-            return error(HttpStatus.BAD_REQUEST, "INVALID_IDENTITY_REQUEST", "Identity verification request could not be processed.");
+            return error(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_IDENTITY_REQUEST",
+                    "Identity verification request could not be processed.");
         }
     }
 
@@ -83,14 +104,22 @@ public class MerchantIdentityVerificationController {
         try {
             Merchant merchant = securityService.verify(request, "", merchantNumber);
             if (merchant.getId() == null || merchant.getId() <= 0) {
-                return error(HttpStatus.UNAUTHORIZED, "INVALID_MERCHANT", "Merchant identity is unavailable.");
+                return error(
+                        HttpStatus.UNAUTHORIZED,
+                        "INVALID_MERCHANT",
+                        "Merchant identity is unavailable.");
             }
             Map<String, Object> row = verificationService.findRequestByReference(reference);
             if (row == null || !sameMerchant(row.get("merchant_id"), merchant.getId())) {
-                return error(HttpStatus.NOT_FOUND, "IDENTITY_REQUEST_NOT_FOUND", "Identity verification request was not found.");
+                return error(
+                        HttpStatus.NOT_FOUND,
+                        "IDENTITY_REQUEST_NOT_FOUND",
+                        "Identity verification request was not found.");
             }
             Map<String, Object> view = new LinkedHashMap<>();
             view.put("requestReference", row.get("request_reference"));
+            view.put("identityType", row.get("identity_type"));
+            view.put("country", row.get("identity_country"));
             view.put("subjectNameMasked", row.get("subject_name"));
             view.put("subjectMsisdnMasked", row.get("subject_msisdn"));
             view.put("identityNumberMask", row.get("identity_number_mask"));
@@ -102,15 +131,23 @@ public class MerchantIdentityVerificationController {
             view.put("updatedAt", row.get("updated_at"));
             return ResponseEntity.ok(view);
         } catch (V2RequestSecurityException e) {
-            return error(HttpStatus.UNAUTHORIZED, "INVALID_SIGNATURE", "Request authentication failed.");
+            return error(
+                    HttpStatus.UNAUTHORIZED,
+                    "INVALID_SIGNATURE",
+                    "Request authentication failed.");
         } catch (Exception e) {
-            return error(HttpStatus.BAD_REQUEST, "INVALID_IDENTITY_REQUEST", "Identity verification status could not be read.");
+            return error(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_IDENTITY_REQUEST",
+                    "Identity verification status could not be read.");
         }
     }
 
     private Map<String, Object> safeView(Map<String, Object> result) {
         Map<String, Object> view = new LinkedHashMap<>();
         view.put("requestReference", result.get("requestReference"));
+        view.put("identityType", result.get("identityType"));
+        view.put("country", result.get("country"));
         view.put("subjectNameMasked", result.get("subjectNameMasked"));
         view.put("subjectMsisdnMasked", result.get("subjectMsisdnMasked"));
         view.put("identityNumberMask", result.get("identityNumberMask"));
@@ -118,6 +155,14 @@ public class MerchantIdentityVerificationController {
         view.put("providerReference", result.get("providerReference"));
         view.put("requestedBy", result.get("requestedBy"));
         return view;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (!blank(value)) return value.trim();
+        }
+        return null;
     }
 
     private boolean sameMerchant(Object value, long merchantId) {
@@ -133,13 +178,26 @@ public class MerchantIdentityVerificationController {
         return value == null || value.trim().isEmpty();
     }
 
-    private ResponseEntity<Map<String, Object>> error(HttpStatus status, String code, String message) {
+    private ResponseEntity<Map<String, Object>> error(
+            HttpStatus status, String code, String message) {
         return ResponseEntity.status(status)
-                .body(Map.of("code", code, "message", message == null ? "Request rejected" : message));
+                .body(
+                        Map.of(
+                                "code",
+                                code,
+                                "message",
+                                message == null ? "Request rejected" : message));
     }
 
+    /**
+     * Generic merchant identity request. {@code nin} is retained as a legacy alias so existing NIN
+     * clients keep working while newer clients send identityType/country/identityNumber.
+     */
     public record VerifyRequest(
             String merchantNumber,
+            String identityType,
+            String country,
+            String identityNumber,
             String nin,
             String fullName,
             String msisdn,
