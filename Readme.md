@@ -1,6 +1,22 @@
-# CPay — Core Payments Gateway
+# Cito — Cito Gateway
 
-CPay is an IaaS gateway platform for managing mobile money collections, payouts, hosted checkout, payment links, transaction status checks, balances, callbacks, reconciliation, merchant channel setup, communication delivery, compliance operations, and operational monitoring from one central system. In simple terms, CPay helps a business connect to providers such as MTN MoMo, Airtel Money, Airtel OpenAPI, Safaricom M-Pesa, and Yo! Payments through one gateway instead of building and managing every integration separately. It supports both merchant-facing APIs and internal operations teams that need visibility over transactions, callbacks, provider activity, reconciliation, treasury positions, compliance evidence, and readiness controls.
+Cito — One Gateway. Multiple Payment Networks. Complete Control.
+
+Cito is a modern, extensible payments gateway designed to help businesses, fintechs, platforms, and developers collect, send, manage, reconcile, and monitor payments through a single integration.
+
+Instead of building separate connections to every payment provider, Cito provides the CPay module, which provides a unified gateway for services such as MTN MoMo, Airtel Money, Airtel OpenAPI, Safaricom M-Pesa, and Yo! Payments, with an adapter-based architecture that makes additional providers easier to integrate.
+
+Cito goes far beyond basic payment processing. It combines collections, payouts, transaction tracking, balance management, payment links, hosted checkout, invoices and request-to-pay, merchant webhooks, batch payouts, reconciliation, treasury monitoring, compliance/KYB workflows, communications, billing, and operational monitoring within one platform.
+
+For developers, Cito offers structured v1 and v2 APIs, request signing, idempotency protection, webhooks, sandbox environments, provider adapters, OpenAPI resources, and integration documentation. For merchants, it provides self-service onboarding, payment-channel configuration, sandbox-to-production controls, webhook management, transaction visibility, and payment tools without requiring constant administrator intervention.
+
+Security and reliability are built into the platform through capabilities such as signed requests and callbacks, replay protection, fraud and risk controls, step-up MFA for high-value payouts, encrypted credentials, maker-checker approvals, distributed processing controls, reconciliation safeguards, auditability, and double-entry ledger support.
+
+What sets Cito apart is its broader vision: it is not merely another payment API. It is a payments infrastructure and operations platform designed to connect merchants, payment networks, finance teams, compliance teams, developers, and administrators through one coherent system. Its modular architecture also extends into Billing-as-a-Service, SMS and email delivery, merchant usage metering, vending and ChargeNow integrations, regulatory reporting foundations, and provider certification workflows, making CPay suitable for businesses building much more than a checkout screen.
+
+Why Cito? Because integrations should not mean rebuilding the same provider connections, reconciliation logic, security controls, callbacks, billing systems, and operational tooling every time. Cito provides the foundation once, so developers can focus on building the products that run on top of it.
+**
+Cito: connect once, transact everywhere, operate with confidence..**
 
 ## What CPay does
 
