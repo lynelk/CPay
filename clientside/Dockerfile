@@ -1,36 +1,26 @@
-# Stage 1: Build with Node.js
+# Production frontend image for Railway.
+# Vite builds the Cito SPA into /app/build; nginx serves it and proxies
+# same-origin API requests to the CPay backend over Railway private networking.
 FROM node:20.19.0-alpine AS build
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
+COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copy source
 COPY . .
+RUN npm run typecheck && npm run build
 
-# Build
-RUN npm run build
+FROM nginx:1.27-alpine
 
-# Stage 2: Runtime with Vite preview
-FROM node:20.19.0-alpine
-WORKDIR /app
+COPY --from=build /app/build /usr/share/nginx/html
+COPY default.conf.template /etc/nginx/templates/default.conf.template
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-# Create non-root user (use different UID if 1000 is taken)
-RUN addgroup -g 1001 appuser && adduser -D -u 1001 -G appuser appuser
+ENV PORT=8080
+EXPOSE 8080
 
-# Copy built files from build stage
-COPY --from=build --chown=appuser:appuser /app/dist ./dist
-COPY --from=build --chown=appuser:appuser /app/package*.json ./
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider "http://127.0.0.1:${PORT}/healthz" || exit 1
 
-# Install only production dependencies
-RUN npm ci --only=production
-
-EXPOSE 3000
-
-USER appuser
-
-# Use vite preview for development or production
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["/start.sh"]
