@@ -10,32 +10,32 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAPI 3 documentation configuration.
+ * OpenAPI 3 documentation configuration for the Cito platform.
  *
- * <p>The interactive Swagger UI is available at {@code /swagger-ui.html} when
- * the application is running.  The raw OpenAPI JSON is served at
- * {@code /v3/api-docs}.
+ * <p>CPay is the payments module inside Cito, so payment-specific paths, signing headers and
+ * integration contracts retain the CPay name while platform-level documentation is branded Cito.
  */
 @Configuration
 public class OpenApiConfig {
 
+    /**
+     * Method name retained for compatibility with any internal bean-name references. The published
+     * API identity is Cito.
+     */
     @Bean
     public OpenAPI cpayOpenAPI() {
         return new OpenAPI()
-                .info(new Info()
-                        .title("CPay Payment Gateway API")
-                        .description(
-                                "REST API for CPay – a multi-gateway mobile money payment platform "
-                                + "supporting MTN MoMo, Airtel Money, Safaricom M-Pesa, and SMS.")
-                        .version("v1")
-                        .contact(new Contact()
-                                .name("CPay Support")
-                                .email("support@cpay.example.com"))
-                        .license(new License()
-                                .name("Proprietary")
-                                .url("https://cpay.example.com/license")))
-                .servers(List.of(
-                        new Server().url("/").description("Current server")));
+                .info(
+                        new Info()
+                                .title("Cito Platform API")
+                                .description(
+                                        "REST API for Cito, the multi-tenant commerce and service platform. "
+                                                + "Payment collection, payout, refund, settlement and payment-provider "
+                                                + "capabilities are exposed through the CPay payments module; existing "
+                                                + "CPay payment signing headers and compatibility contracts are retained.")
+                                .version("v2")
+                                .contact(new Contact().name("Cito Support"))
+                                .license(new License().name("Proprietary")))
+                .servers(List.of(new Server().url("/").description("Current Cito server")));
     }
 }
-

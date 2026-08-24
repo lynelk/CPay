@@ -26,6 +26,7 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -154,6 +155,7 @@ public class SecurityConfig {
                                         .httpStrictTransportSecurity(
                                                 hsts ->
                                                         hsts.includeSubDomains(true)
+                                                                .preload(true)
                                                                 .maxAgeInSeconds(31536000))
                                         .contentSecurityPolicy(
                                                 csp ->
@@ -166,9 +168,23 @@ public class SecurityConfig {
                                                                         + "connect-src 'self'"
                                                                         + connectSrcExtra()
                                                                         + "; "
+                                                                        + "object-src 'none'; "
                                                                         + "frame-ancestors 'self'; "
                                                                         + "base-uri 'self'; "
-                                                                        + "form-action 'self'")))
+                                                                        + "form-action 'self'"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "Permissions-Policy",
+                                                        "camera=(), microphone=(), geolocation=(), usb=(), payment=(self)"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "Cross-Origin-Opener-Policy", "same-origin"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "Cross-Origin-Resource-Policy", "same-origin"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "X-Permitted-Cross-Domain-Policies", "none")))
                 .authorizeHttpRequests(
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
@@ -193,7 +209,9 @@ public class SecurityConfig {
                                         .anyRequest()
                                         .denyAll())
                 .sessionManagement(
-                        session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+                        session ->
+                                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                                        .sessionFixation(fixation -> fixation.migrateSession()))
                 .addFilterBefore(legacySessionAuthorizationFilter, AuthorizationFilter.class)
                 .addFilterAfter(
                         citoMerchantFeatureAuthorizationFilter,
@@ -252,14 +270,15 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration trustedConfig = new CorsConfiguration();
         trustedConfig.setAllowedOrigins(expandLoopbackAliases(allowedOrigins));
-        trustedConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        trustedConfig.setAllowedMethods(
+                Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         trustedConfig.setAllowedHeaders(
                 List.of(
                         "Authorization",
