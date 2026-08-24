@@ -14,6 +14,7 @@ function CitoAccessGateway(): React.ReactElement {
   const [searchParams] = useSearchParams();
   const realm = realmFrom(searchParams.get('realm'));
 
+  // Keep old deep links working while the canonical entry points move to /partner and /admin.
   if (realm === 'merchant') return <LoginMerchant />;
   if (realm === 'platform') return <Login />;
 
@@ -29,15 +30,15 @@ function CitoAccessGateway(): React.ReactElement {
         </p>
 
         <div className="cito-access-options">
-          <Link className="cito-access-option" to="/login?realm=merchant">
-            <strong>Business or Merchant</strong>
-            <span>Access payments, reconciliation, billing, integrations, and merchant operations.</span>
-            <small>Continue to merchant sign in →</small>
+          <Link className="cito-access-option" to="/partner">
+            <strong>Business, Merchant or Customer</strong>
+            <span>Access payments, reconciliation, billing, integrations, and partner operations.</span>
+            <small>Continue to partner portal →</small>
           </Link>
-          <Link className="cito-access-option" to="/login?realm=platform">
+          <Link className="cito-access-option" to="/admin">
             <strong>Cito team or Administrator</strong>
             <span>For approved platform, operations, finance, compliance, support, and administration accounts.</span>
-            <small>Continue to platform sign in →</small>
+            <small>Continue to administration →</small>
           </Link>
         </div>
 
