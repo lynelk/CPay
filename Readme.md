@@ -18,7 +18,7 @@ Why Cito? Because integrations should not mean rebuilding the same provider conn
 **
 Cito: connect once, transact everywhere, operate with confidence..**
 
-## What CPay does
+## What Cito does
 
 | Capability | What it means |
 |---|---|
@@ -54,7 +54,7 @@ Provider adapters can execute through merchant-configured endpoint URLs. In prod
 
 New providers should be added through the gateway adapter pattern described in `Docs/Gateway-adapter-guide.md`.
 
-## Who uses CPay
+## Who uses Cito
 
 | User group | Main need |
 |---|---|
@@ -76,7 +76,7 @@ Sdk/                                Signing helpers and OpenAPI code-generation 
 
 ## API overview
 
-CPay currently has two API generations.
+Cito currently has two API generations.
 
 ### v1 API
 
@@ -259,7 +259,7 @@ Readiness documentation is available in:
 
 Architecture decisions are recorded in `Docs/Adr/`, and release notes are tracked in `Changelog.md`.
 
-Manual signoff is still required for real provider sandbox certification, staging migration validation, merchant callback verification, finance signoff, security review, production monitoring setup, and regulatory or compliance approval. Code can support evidence. It cannot issue approvals, because apparently institutions remain stubbornly human.
+Manual sign-off is still required for real provider sandbox certification, staging migration validation, merchant callback verification, finance sign-off, security review, production monitoring setup, and regulatory or compliance approval. Code can support evidence. It cannot issue approvals because apparently institutions remain stubbornly human.
 
 ## Security model
 
@@ -455,4 +455,4 @@ The main focus areas are:
 
 ## Final note
 
-CPay now has a stronger production-oriented software foundation: merchant self-service, channel setup, provider endpoint execution, sandbox controls, payment links, rate limiting, callback task claims, operating-control visibility, compliance/KYB review surfaces, treasury views, communication routing, vending workflows, and readiness documentation. It should still not be treated as production-certified until all provider, finance, security, and compliance gates are completed.
+Cito now has a stronger production-oriented software foundation: merchant self-service, channel setup, provider endpoint execution, sandbox controls, payment links, rate limiting, callback task claims, operating-control visibility, compliance/KYB review surfaces, treasury views, communication routing, vending workflows, and readiness documentation. It should still not be treated as production-certified until all provider, finance, security, and compliance gates are completed.
