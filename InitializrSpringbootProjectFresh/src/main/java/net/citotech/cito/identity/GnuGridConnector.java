@@ -57,9 +57,13 @@ public class GnuGridConnector implements IdentityVerificationConnector {
     }
 
     @Override
-    public boolean supports(String identityType, String country) {
-        return configuredSet(supportedTypes).contains(normalize(identityType))
-                && configuredSet(supportedCountries).contains(normalize(country));
+    public Set<String> supportedIdentityTypes() {
+        return configuredSet(supportedTypes);
+    }
+
+    @Override
+    public Set<String> supportedCountries() {
+        return configuredSet(supportedCountries);
     }
 
     @Override
