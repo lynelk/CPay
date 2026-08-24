@@ -48,16 +48,19 @@ def main() -> None:
     spec = load(args.spec)
     validate_spec(spec)
 
+    errors: list[str] = []
+
     if not str(spec.get("openapi", "")).startswith("3."):
-        raise SystemExit("CPay API contract must use OpenAPI 3.x")
+        errors.append("CPay API contract must use OpenAPI 3.x")
     info = spec.get("info") or {}
     for field in ("title", "version", "description"):
         if not info.get(field):
-            raise SystemExit(f"info.{field} is required")
+            errors.append(f"info.{field} is required")
 
     paths = spec.get("paths")
     if not isinstance(paths, dict) or not paths:
-        raise SystemExit("paths must contain at least one operation")
+        errors.append("paths must contain at least one operation")
+        paths = {}
 
     operation_ids: dict[str, str] = {}
     methods = {"get", "post", "put", "patch", "delete", "options", "head", "trace"}
@@ -69,26 +72,35 @@ def main() -> None:
             if method.lower() not in methods or not isinstance(operation, dict):
                 continue
             operation_count += 1
+            location = f"{method.upper()} {route}"
             operation_id = operation.get("operationId")
             if not operation_id:
-                raise SystemExit(f"{method.upper()} {route}: operationId is required")
-            if operation_id in operation_ids:
-                raise SystemExit(
-                    f"duplicate operationId {operation_id!r}: {operation_ids[operation_id]} and {method.upper()} {route}"
+                errors.append(f"{location}: operationId is required")
+            elif operation_id in operation_ids:
+                errors.append(
+                    f"duplicate operationId {operation_id!r}: {operation_ids[operation_id]} and {location}"
                 )
-            operation_ids[operation_id] = f"{method.upper()} {route}"
+            else:
+                operation_ids[operation_id] = location
             if not operation.get("summary"):
-                raise SystemExit(f"{method.upper()} {route}: summary is required")
+                errors.append(f"{location}: summary is required")
             if not operation.get("responses"):
-                raise SystemExit(f"{method.upper()} {route}: responses are required")
+                errors.append(f"{location}: responses are required")
 
+    unresolved_refs: set[str] = set()
     for node in walk(spec):
         ref = node.get("$ref")
         if isinstance(ref, str) and ref.startswith("#/"):
             try:
                 resolve_local_ref(spec, ref)
             except KeyError:
-                raise SystemExit(f"unresolved local $ref: {ref}") from None
+                unresolved_refs.add(ref)
+    for ref in sorted(unresolved_refs):
+        errors.append(f"unresolved local $ref: {ref}")
+
+    if errors:
+        details = "\n".join(f"- {error}" for error in errors)
+        raise SystemExit(f"OpenAPI validation failed with {len(errors)} defect(s):\n{details}")
 
     print(
         f"OpenAPI validation passed: version={info.get('version')} paths={len(paths)} operations={operation_count}"
