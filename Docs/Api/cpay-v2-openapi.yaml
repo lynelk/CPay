@@ -2280,13 +2280,6 @@ paths:
       responses:
         '200':
           description: Secret rotation status
-  /api/v2/admin/finance-operations/settlements:
-    get:
-      summary: List settlement batches
-      parameters:
-      - in: query
-        name: status
-        schema:
   /api/v2/admin/communication/campaigns:
     post:
       summary: Create a draft communication campaign with a recipient list
