@@ -103,6 +103,7 @@ jobs:
             ./clientside
 
           docker buildx build \
+            -f ./Dockerfile.nginx \
             -t cpay-nginx:pr-${{ github.event.pull_request.number }} \
             -o type=docker \
             .
