@@ -39,6 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           git fetch origin "${TARGET_BRANCH}"
+          git fetch origin 01a966446f20d8bebcf9eaf39d34b4b5ec42076a
           git checkout "${TARGET_BRANCH}"
           git show 01a966446f20d8bebcf9eaf39d34b4b5ec42076a:clientside/src/shared/api/hooks.ts > clientside/src/shared/api/hooks.ts
           python - <<'PY'
