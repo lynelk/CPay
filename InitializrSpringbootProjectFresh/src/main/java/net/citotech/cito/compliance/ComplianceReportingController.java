@@ -49,23 +49,6 @@ public class ComplianceReportingController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping(path = "/cases")
-    public List<Map<String, Object>> cases() {
-        return caseService.listOpenCases();
-    }
-
-    @PostMapping(path = "/cases/{id}/decision")
-    public ResponseEntity<?> decideCase(
-            @PathVariable("id") long id,
-            @RequestParam(name = "decision", defaultValue = "REVIEWED") String decision,
-            @RequestParam(name = "reason", required = false) String reason,
-            @RequestParam(name = "actor", required = false) String actor) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("id", id);
-        response.put("updated", caseService.decideCase(id, decision, reason, actor));
-        return ResponseEntity.ok(response);
-    }
-
     @GetMapping(path = "/profiles")
     public List<Map<String, Object>> profiles(
             @RequestParam(name = "status", required = false) String status) {
