@@ -37,6 +37,12 @@ Repository alignment is not certification. No document, CI result or internal ap
 
 ISO 20022 and ISO 8583 implementation also does not imply network or scheme certification. A network-specific message profile, connectivity test pack and counterparty/scheme signoff are required before claiming conformance for a production interface.
 
+## Current release-governance status
+
+High residual risks are not auto-accepted by CI or by repository maintainers. When `ops/iso/governance.json` marks a risk `BLOCKED_PENDING_ACCEPTANCE`, production continuation for the affected risk remains unauthorized until the accountable risk owner records a time-bounded acceptance or the treatment reduces the residual score below the high-risk threshold. This is an explicit operating restriction, not a documentation defect.
+
+Manual/external controls such as provider certification, production recovery evidence, legal/regulatory determinations, personnel/physical controls and accredited certification remain incomplete until their accountable owners supply evidence. Automation must preserve those gaps rather than manufacture approval records.
+
 ## Controlled document hierarchy
 
 1. `Integrated-management-system-manual.md` defines policy, governance and the management cycle.
@@ -55,7 +61,7 @@ Existing runbooks and architecture documents remain authoritative for execution 
 
 - Every material control has an accountable owner role and evidence reference.
 - Every critical service has a service owner, target availability/SLO, RTO, RPO and dependency record.
-- Every material risk has treatment, residual-risk rating, review date and explicit acceptance where residual risk remains high.
+- Every material risk has treatment, residual-risk rating, review date and explicit acceptance or blocking disposition where residual risk remains high.
 - Every production change records security, quality, service, continuity, privacy, financial-integrity and interoperability impact.
 - Every major incident produces a post-incident review and corrective-action record.
 - Every management-system document has a review cadence; stale governance metadata fails the ISO governance CI job.
