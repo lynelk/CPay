@@ -111,8 +111,8 @@ Follow each contract's pagination, limit and cursor rules. Balances, statements 
 | Pay hosted checkout | `POST /api/v2/checkout/{token}/pay` |
 | Create invoice/request-to-pay | `POST /api/v2/invoices` |
 | List invoices | `GET /api/v2/invoices?merchantNumber=...` |
-| Send invoice | `POST /api/v2/invoices/{reference}/send` |
-| Cancel invoice | `POST /api/v2/invoices/{reference}/cancel` |
+| Send invoice | `POST /api/v2/invoices/{reference}/actions/send` |
+| Cancel invoice | `POST /api/v2/invoices/{reference}/actions/cancel` |
 | Pay invoice | `POST /api/v2/invoices/pay/{token}` |
 
 Public payment tokens are credentials. Avoid logging or unnecessarily exposing them.
