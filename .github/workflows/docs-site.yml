@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -28,40 +28,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: One-time repair of webhook client on PR head
-        if: github.event_name == 'pull_request'
-        env:
-          TARGET_BRANCH: ${{ github.event.pull_request.head.ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin "${TARGET_BRANCH}"
-          git fetch origin 01a966446f20d8bebcf9eaf39d34b4b5ec42076a
-          git checkout "${TARGET_BRANCH}"
-          git show 01a966446f20d8bebcf9eaf39d34b4b5ec42076a:clientside/src/shared/api/hooks.ts > /tmp/hooks-verified.ts
-          cp /tmp/hooks-verified.ts clientside/src/shared/api/hooks.ts
-          python - <<'PY'
-          from pathlib import Path
-          source = Path('/tmp/hooks-verified.ts').read_text(encoding='utf-8')
-          old = '`/api/v2/admin/webhooks/${endpointId}/rotate-secret`'
-          new = '`/api/v2/admin/webhooks/endpoints/${endpointId}/rotate-secret`'
-          if source.count(old) != 1:
-              raise SystemExit(f'expected exactly one old webhook rotation route, found {source.count(old)}')
-          expected = source.replace(old, new, 1)
-          Path('/tmp/hooks-expected.ts').write_text(expected, encoding='utf-8')
-          Path('clientside/src/shared/api/hooks.ts').write_text(expected, encoding='utf-8')
-          PY
-          cmp --silent /tmp/hooks-expected.ts clientside/src/shared/api/hooks.ts
-          test "$(wc -l < clientside/src/shared/api/hooks.ts)" -gt 1000
-          git diff --check
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add clientside/src/shared/api/hooks.ts
-          git commit -m "fix: migrate admin webhook rotation client"
-          git push origin "HEAD:${TARGET_BRANCH}"
 
       - name: Upload docs verification artifact
         uses: actions/upload-artifact@v7
