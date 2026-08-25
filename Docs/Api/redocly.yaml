@@ -13,7 +13,7 @@ rules:
   operation-operationId: error
   operation-summary: error
   path-declaration-must-exist: error
-  spec: error
+  struct: error
 
 ignore:
   - Docs/Api/generated/**
