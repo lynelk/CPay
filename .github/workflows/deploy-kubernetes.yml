@@ -1,11 +1,6 @@
-name: Deploy to Production
+name: Deploy to Kubernetes
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       image-backend:
@@ -42,22 +37,12 @@ jobs:
       - name: Determine images
         id: images
         run: |
-          if [ -n "${{ github.event.inputs.image-backend }}" ]; then
-            echo "backend=${{ github.event.inputs.image-backend }}" >> $GITHUB_OUTPUT
-            echo "frontend=${{ github.event.inputs.image-frontend }}" >> $GITHUB_OUTPUT
-          else
-            echo "backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
+          echo "backend=${{ github.event.inputs.image-backend }}" >> "$GITHUB_OUTPUT"
+          echo "frontend=${{ github.event.inputs.image-frontend }}" >> "$GITHUB_OUTPUT"
 
       - name: Determine environment
         id: env
-        run: |
-          if [ -n "${{ github.event.inputs.environment }}" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          else
-            echo "environment=production" >> $GITHUB_OUTPUT
-          fi
+        run: echo "environment=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
 
   deploy-kubernetes:
     name: Deploy to Kubernetes
@@ -66,27 +51,45 @@ jobs:
     environment: ${{ needs.prepare-deployment.outputs.environment }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
         with:
           version: "latest"
+
+      - name: Validate deployment configuration
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in KUBE_CONFIG MYSQL_ROOT_PASSWORD MYSQL_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured for the selected GitHub environment"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Configure kubectl context
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
           KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE || 'cpay' }}
         run: |
-          mkdir -p $HOME/.kube
-          echo "$KUBE_CONFIG" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+          set -euo pipefail
+          mkdir -p "$HOME/.kube"
+          echo "$KUBE_CONFIG" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
           kubectl cluster-info
           kubectl get nodes
 
       - name: Create namespace
-        run: |
-          kubectl create namespace ${{ vars.KUBE_NAMESPACE || 'cpay' }} --dry-run=client -o yaml | kubectl apply -f -
+        run: kubectl create namespace ${{ vars.KUBE_NAMESPACE || 'cpay' }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create image pull secret
         env:
@@ -95,9 +98,9 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           kubectl create secret docker-registry ghcr-secret \
-            --docker-server=${{ env.REGISTRY }} \
-            --docker-username=${{ env.DOCKER_USERNAME }} \
-            --docker-password=${{ env.DOCKER_PASSWORD }} \
+            --docker-server=${DOCKER_REGISTRY} \
+            --docker-username=${DOCKER_USERNAME} \
+            --docker-password=${DOCKER_PASSWORD} \
             -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
@@ -170,18 +173,12 @@ jobs:
                     mountPath: /var/lib/mysql
                   livenessProbe:
                     exec:
-                      command:
-                      - mysqladmin
-                      - ping
-                      - -h127.0.0.1
+                      command: ["mysqladmin", "ping", "-h127.0.0.1"]
                     initialDelaySeconds: 30
                     periodSeconds: 10
                   readinessProbe:
                     exec:
-                      command:
-                      - mysqladmin
-                      - ping
-                      - -h127.0.0.1
+                      command: ["mysqladmin", "ping", "-h127.0.0.1"]
                     initialDelaySeconds: 5
                     periodSeconds: 10
                 volumes:
@@ -451,24 +448,22 @@ jobs:
         run: |
           FRONTEND_POD=$(kubectl get pod -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} -l app=frontend -o jsonpath='{.items[0].metadata.name}')
           BACKEND_POD=$(kubectl get pod -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} -l app=backend -o jsonpath='{.items[0].metadata.name}')
-          
-          echo "Testing backend health..."
-          kubectl exec -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} $BACKEND_POD -- \
-            wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1
-          
-          echo "Testing frontend..."
-          kubectl exec -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} $FRONTEND_POD -- \
-            wget --quiet --tries=1 --spider http://localhost:3000 || exit 1
 
-      - name: Notify deployment success
+          echo "Testing backend health..."
+          kubectl exec -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} "$BACKEND_POD" -- \
+            wget --quiet --tries=1 --spider http://localhost:8081/actuator/health
+
+          echo "Testing frontend..."
+          kubectl exec -n ${{ vars.KUBE_NAMESPACE || 'cpay' }} "$FRONTEND_POD" -- \
+            wget --quiet --tries=1 --spider http://localhost:3000
+
+      - name: Report deployment success
         if: success()
         run: |
-          echo "✅ Deployment to ${{ needs.prepare-deployment.outputs.environment }} successful!"
+          echo "Deployment to ${{ needs.prepare-deployment.outputs.environment }} successful."
           echo "Backend: ${{ needs.prepare-deployment.outputs.backend-image }}"
           echo "Frontend: ${{ needs.prepare-deployment.outputs.frontend-image }}"
 
-      - name: Notify deployment failure
+      - name: Report deployment failure
         if: failure()
-        run: |
-          echo "❌ Deployment to ${{ needs.prepare-deployment.outputs.environment }} failed!"
-          exit 1
+        run: echo "::error::Deployment to ${{ needs.prepare-deployment.outputs.environment }} failed"

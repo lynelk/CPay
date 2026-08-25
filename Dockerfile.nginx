@@ -1,4 +1,4 @@
-FROM nginx:latest-alpine
+FROM nginx:1.27-alpine
 
 # Create non-root user
 RUN addgroup -g 1003 appuser && adduser -D -u 1003 -G appuser appuser
