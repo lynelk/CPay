@@ -1,8 +1,11 @@
 openapi: 3.0.3
 info:
   title: CPay Gateway API
-  version: 1.9.0
+  version: 1.9.1
   description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay. Includes P1-P4 production maturity finance, compliance, cross-border, developer-experience, and automation surfaces.
+servers:
+  - url: /
+    description: Current CPay deployment host
 security:
 - CPayV2Signature: []
 paths:
@@ -248,7 +251,7 @@ paths:
                   $ref: '#/components/schemas/InvoiceResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/v2/invoices/{reference}/send:
+  /api/v2/invoices/{reference}/actions/send:
     post:
       summary: Send an invoice to its payer
       operationId: sendInvoice
@@ -274,7 +277,7 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/v2/invoices/{reference}/cancel:
+  /api/v2/invoices/{reference}/actions/cancel:
     post:
       summary: Cancel an invoice
       operationId: cancelInvoice
@@ -991,7 +994,7 @@ paths:
       responses:
         '200':
           description: Registered webhook endpoints
-  /api/v2/admin/webhooks/{endpointId}/rotate-secret:
+  /api/v2/admin/webhooks/endpoints/{endpointId}/rotate-secret:
     post:
       summary: Rotate a merchant webhook signing secret
       operationId: rotateWebhookSecret
@@ -1478,18 +1481,109 @@ paths:
       responses:
         '200':
           description: Compliance summary
+  /api/v2/admin/compliance/report:
+    get:
+      summary: Get the compliance reporting view for an optional date range
+      operationId: complianceReport
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Compliance report
+  /api/v2/admin/compliance/profiles:
+    get:
+      summary: List compliance profiles
+      operationId: listComplianceProfiles
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Compliance profiles
+    post:
+      summary: Create or update a compliance profile
+      operationId: upsertComplianceProfile
+      security:
+      - AdminBasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - entityId
+              properties:
+                entityId:
+                  type: integer
+                  format: int64
+                entityType:
+                  type: string
+                  default: MERCHANT
+                profileType:
+                  type: string
+                  default: KYC
+                tier:
+                  type: string
+                  default: STANDARD
+                status:
+                  type: string
+                  default: PENDING
+                riskRating:
+                  type: string
+                  default: UNKNOWN
+                requiredDocumentsJson:
+                  type: string
+                decisionReason:
+                  type: string
+                verifiedBy:
+                  type: string
+      responses:
+        '200':
+          description: Compliance profile upsert result
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v2/admin/compliance/cases:
     get:
-      summary: List open compliance cases
+      summary: List compliance cases
       operationId: listComplianceCases
       security:
       - AdminBasicAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: subjectReference
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Open compliance cases
     post:
       summary: Open a compliance case
       operationId: createComplianceCase
+      security:
+      - AdminBasicAuth: []
       requestBody:
         required: true
         content:
@@ -1499,27 +1593,6 @@ paths:
       responses:
         '200':
           description: Case opened
-  /api/v2/admin/compliance/cases/{id}/decision:
-    post:
-      summary: Close a compliance case with a decision
-      operationId: decideComplianceCase
-      security:
-      - AdminBasicAuth: []
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: decision
-        in: query
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Decision result
   /api/v2/admin/provider-certification/summary:
     get:
       summary: Get provider certification evidence coverage
@@ -3252,6 +3325,8 @@ paths:
     get:
       summary: Read a compliance case and event timeline
       operationId: getComplianceCase
+      security:
+      - AdminBasicAuth: []
       parameters:
       - name: caseReference
         in: path
@@ -3265,6 +3340,8 @@ paths:
     post:
       summary: Record a compliance case decision or hold/release transition
       operationId: decideComplianceCaseByReference
+      security:
+      - AdminBasicAuth: []
       parameters:
       - name: caseReference
         in: path
