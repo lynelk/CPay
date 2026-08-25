@@ -7,7 +7,7 @@ Cito is the platform. CPay is the payments capability within Cito. The API docum
 | Contract | File | Audience | Primary authentication |
 | --- | --- | --- | --- |
 | CPay Payments API | `Docs/Api/cpay-v2-openapi.yaml` | Server-to-server payment integrations, operations and payment-adjacent admin surfaces | CPay v2 request signature or explicitly documented admin/public auth |
-| Cito Platform API | `Docs/Api/cito-platform-v2-openapi.yaml` | Signed-in merchant workspace, platform services, developer control plane and merchant capability APIs | Cito merchant session plus service/environment entitlements |
+| Cito Platform API | `Docs/Api/cito-platform-v2-openapi.yaml` | Signed-in merchant workspace, platform services, developer control plane and merchant capability APIs | Cito merchant session, with signed CPay/Cito v2 requests on operations that explicitly declare that mechanism |
 
 Supporting documentation remains authoritative for behavior that does not belong cleanly inside OpenAPI schemas:
 
@@ -21,8 +21,9 @@ Supporting documentation remains authoritative for behavior that does not belong
 
 ## Platform API groups
 
-The Cito Platform contract currently includes merchant self-service APIs for:
+The Cito Platform contract currently includes merchant APIs for:
 
+- merchant-visible identity and validation provider capability discovery;
 - service catalog and merchant entitlements;
 - developer projects, service accounts, credentials, test events, request logs and readiness;
 - intelligent payment routing simulation, policies, rules and decisions;
@@ -41,7 +42,7 @@ Every pull request that changes API-facing Java code is checked in two ways:
 1. it must include an API documentation change; and
 2. every path declared by a changed Spring controller must exist in at least one authoritative OpenAPI contract.
 
-Both OpenAPI contracts are parsed, structurally validated and linted. CI then generates separate browsable references for CPay Payments and the wider Cito Platform and stores them as source-commit-specific build artifacts.
+Both OpenAPI contracts are parsed, structurally validated and linted. Contract validation reports the full discovered quality-defect set, including missing operation IDs, rather than stopping at the first defect. CI then generates separate browsable references for CPay Payments and the wider Cito Platform and stores them as source-commit-specific build artifacts.
 
 This is intentionally stricter than the earlier advisory-only drift scan. A new controller can no longer be merged merely because somebody edited an unrelated documentation file, which was an impressively human loophole while it lasted.
 
