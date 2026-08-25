@@ -277,7 +277,7 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/v2/invoices/{reference}/cancel:
+  /api/v2/invoices/{reference}/actions/cancel:
     post:
       summary: Cancel an invoice
       operationId: cancelInvoice
