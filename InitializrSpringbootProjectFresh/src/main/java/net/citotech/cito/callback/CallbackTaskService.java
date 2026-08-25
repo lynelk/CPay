@@ -17,14 +17,23 @@ public class CallbackTaskService {
     private final CallbackSigningService signingService;
     private final GatewayMetrics metrics;
 
-    public CallbackTaskService(CallbackTaskRepository repository, CallbackClaimRepository claimRepository, CallbackSigningService signingService, GatewayMetrics metrics) {
+    public CallbackTaskService(
+            CallbackTaskRepository repository,
+            CallbackClaimRepository claimRepository,
+            CallbackSigningService signingService,
+            GatewayMetrics metrics) {
         this.repository = repository;
         this.claimRepository = claimRepository;
         this.signingService = signingService;
         this.metrics = metrics;
     }
 
-    public void enqueue(long merchantId, String transactionId, String referenceValue, String targetUrl, String requestBody) {
+    public void enqueue(
+            long merchantId,
+            String transactionId,
+            String referenceValue,
+            String targetUrl,
+            String requestBody) {
         repository.enqueue(merchantId, transactionId, referenceValue, targetUrl, requestBody);
     }
 
@@ -46,21 +55,35 @@ public class CallbackTaskService {
         try {
             CallbackSigningService.SignedCallback signed = signingService.sign(task);
             Map<String, String> headers = callbackHeaders(task, signed);
-            HttpRequestResponse response = Common.doHttpRequest("POST", task.targetUrl, task.requestBody, headers);
-            if (response != null && response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+            HttpRequestResponse response =
+                    Common.doHttpRequest("POST", task.targetUrl, task.requestBody, headers);
+            if (response != null
+                    && response.getStatusCode() >= 200
+                    && response.getStatusCode() < 300) {
                 metrics.incrementCallbackDelivery("DONE");
                 repository.markDone(task.id);
             } else {
                 metrics.incrementCallbackDelivery(nextStatus(task.attemptCount, task.attemptLimit));
-                repository.markNext(task.id, task.attemptCount, task.attemptLimit, nextRun(task.attemptCount), response == null ? "No response" : response.toString());
+                repository.markNext(
+                        task.id,
+                        task.attemptCount,
+                        task.attemptLimit,
+                        nextRun(task.attemptCount),
+                        response == null ? "No response" : response.toString());
             }
         } catch (Exception e) {
             metrics.incrementCallbackDelivery(nextStatus(task.attemptCount, task.attemptLimit));
-            repository.markNext(task.id, task.attemptCount, task.attemptLimit, nextRun(task.attemptCount), e.getMessage());
+            repository.markNext(
+                    task.id,
+                    task.attemptCount,
+                    task.attemptLimit,
+                    nextRun(task.attemptCount),
+                    e.getMessage());
         }
     }
 
-    Map<String, String> callbackHeaders(CallbackTask task, CallbackSigningService.SignedCallback signed) {
+    Map<String, String> callbackHeaders(
+            CallbackTask task, CallbackSigningService.SignedCallback signed) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("X-CPay-Signature", signed.signature);
