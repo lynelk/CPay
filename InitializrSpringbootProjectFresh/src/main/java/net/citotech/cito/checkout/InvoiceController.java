@@ -93,7 +93,7 @@ public class InvoiceController {
         }
     }
 
-    @PostMapping(path = "/api/v2/invoices/{reference}/cancel")
+    @PostMapping(path = "/api/v2/invoices/{reference}/actions/cancel")
     public ResponseEntity<?> cancel(
             @PathVariable("reference") String reference,
             @RequestParam("merchantNumber") String merchantNumber,
