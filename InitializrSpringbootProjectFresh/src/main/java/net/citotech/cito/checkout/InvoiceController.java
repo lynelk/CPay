@@ -73,7 +73,7 @@ public class InvoiceController {
         }
     }
 
-    @PostMapping(path = "/api/v2/invoices/{reference}/send")
+    @PostMapping(path = "/api/v2/invoices/{reference}/actions/send")
     public ResponseEntity<?> send(@PathVariable("reference") String reference,
                                   @RequestParam("merchantNumber") String merchantNumber,
                                   HttpServletRequest servletRequest) {
