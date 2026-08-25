@@ -128,8 +128,8 @@ Create an invoice:
 Operational routes:
 
 - `GET /api/v2/invoices?merchantNumber=256770000000`
-- `POST /api/v2/invoices/{reference}/send`
-- `POST /api/v2/invoices/{reference}/cancel`
+- `POST /api/v2/invoices/{reference}/actions/send`
+- `POST /api/v2/invoices/{reference}/actions/cancel`
 
 The public pay route is token based:
 
@@ -236,7 +236,7 @@ verified before go-live:
 
 Rotate a merchant's webhook signing secret (returned once):
 
-`POST /api/v2/admin/webhooks/12/rotate-secret`
+`POST /api/v2/admin/webhooks/endpoints/12/rotate-secret`
 
 Replay a failed/delivered webhook delivery:
 
