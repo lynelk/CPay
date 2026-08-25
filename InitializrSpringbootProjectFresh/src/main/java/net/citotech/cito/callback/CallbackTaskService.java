@@ -45,11 +45,7 @@ public class CallbackTaskService {
     private void deliver(CallbackTask task) {
         try {
             CallbackSigningService.SignedCallback signed = signingService.sign(task);
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Content-Type", "application/json");
-            headers.put("X-CPay-Signature", signed.signature);
-            headers.put("X-CPay-Nonce", signed.nonce);
-            headers.put("X-CPay-Timestamp", signed.timestamp);
+            Map<String, String> headers = callbackHeaders(task, signed);
             HttpRequestResponse response = Common.doHttpRequest("POST", task.targetUrl, task.requestBody, headers);
             if (response != null && response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
                 metrics.incrementCallbackDelivery("DONE");
@@ -64,6 +60,21 @@ public class CallbackTaskService {
         }
     }
 
+    Map<String, String> callbackHeaders(CallbackTask task, CallbackSigningService.SignedCallback signed) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("X-CPay-Signature", signed.signature);
+        headers.put("X-CPay-Signature-Version", "callback-v1");
+        headers.put("X-CPay-Nonce", signed.nonce);
+        headers.put("X-CPay-Timestamp", signed.timestamp);
+        // These values are part of the callback signature canonical string. They must travel
+        // with the request so a merchant can independently verify the signature.
+        headers.put("X-CPay-Callback-Task-Id", String.valueOf(task.id));
+        headers.put("X-CPay-Merchant-Id", String.valueOf(task.merchantId));
+        headers.put("X-CPay-Reference", task.referenceValue == null ? "" : task.referenceValue);
+        return headers;
+    }
+
     private String nextStatus(int attempts, int attemptLimit) {
         return attempts + 1 >= attemptLimit ? "PARKED" : "RETRY";
     }
@@ -76,4 +87,3 @@ public class CallbackTaskService {
         return Instant.now().plus(Duration.ofHours(1));
     }
 }
-
