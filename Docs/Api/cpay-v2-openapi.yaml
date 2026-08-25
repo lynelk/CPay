@@ -1,8 +1,11 @@
 openapi: 3.0.3
 info:
   title: CPay Gateway API
-  version: 1.9.0
+  version: 1.9.1
   description: Merchant payment, callback operations, reconciliation, finance, and operations endpoints for CPay. Includes P1-P4 production maturity finance, compliance, cross-border, developer-experience, and automation surfaces.
+servers:
+  - url: /
+    description: Current CPay deployment host
 security:
 - CPayV2Signature: []
 paths:
@@ -248,7 +251,7 @@ paths:
                   $ref: '#/components/schemas/InvoiceResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/v2/invoices/{reference}/send:
+  /api/v2/invoices/{reference}/actions/send:
     post:
       summary: Send an invoice to its payer
       operationId: sendInvoice
@@ -991,7 +994,7 @@ paths:
       responses:
         '200':
           description: Registered webhook endpoints
-  /api/v2/admin/webhooks/{endpointId}/rotate-secret:
+  /api/v2/admin/webhooks/endpoints/{endpointId}/rotate-secret:
     post:
       summary: Rotate a merchant webhook signing secret
       operationId: rotateWebhookSecret
@@ -1480,16 +1483,29 @@ paths:
           description: Compliance summary
   /api/v2/admin/compliance/cases:
     get:
-      summary: List open compliance cases
+      summary: List compliance cases
       operationId: listComplianceCases
       security:
       - AdminBasicAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: subjectReference
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Open compliance cases
     post:
       summary: Open a compliance case
       operationId: createComplianceCase
+      security:
+      - AdminBasicAuth: []
       requestBody:
         required: true
         content:
@@ -1499,27 +1515,6 @@ paths:
       responses:
         '200':
           description: Case opened
-  /api/v2/admin/compliance/cases/{id}/decision:
-    post:
-      summary: Close a compliance case with a decision
-      operationId: decideComplianceCase
-      security:
-      - AdminBasicAuth: []
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: decision
-        in: query
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Decision result
   /api/v2/admin/provider-certification/summary:
     get:
       summary: Get provider certification evidence coverage
@@ -3252,6 +3247,8 @@ paths:
     get:
       summary: Read a compliance case and event timeline
       operationId: getComplianceCase
+      security:
+      - AdminBasicAuth: []
       parameters:
       - name: caseReference
         in: path
@@ -3265,6 +3262,8 @@ paths:
     post:
       summary: Record a compliance case decision or hold/release transition
       operationId: decideComplianceCaseByReference
+      security:
+      - AdminBasicAuth: []
       parameters:
       - name: caseReference
         in: path
