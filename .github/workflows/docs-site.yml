@@ -41,20 +41,22 @@ jobs:
           git fetch origin "${TARGET_BRANCH}"
           git fetch origin 01a966446f20d8bebcf9eaf39d34b4b5ec42076a
           git checkout "${TARGET_BRANCH}"
-          git show 01a966446f20d8bebcf9eaf39d34b4b5ec42076a:clientside/src/shared/api/hooks.ts > clientside/src/shared/api/hooks.ts
+          git show 01a966446f20d8bebcf9eaf39d34b4b5ec42076a:clientside/src/shared/api/hooks.ts > /tmp/hooks-verified.ts
+          cp /tmp/hooks-verified.ts clientside/src/shared/api/hooks.ts
           python - <<'PY'
           from pathlib import Path
-          p = Path('clientside/src/shared/api/hooks.ts')
-          s = p.read_text(encoding='utf-8')
+          source = Path('/tmp/hooks-verified.ts').read_text(encoding='utf-8')
           old = '`/api/v2/admin/webhooks/${endpointId}/rotate-secret`'
           new = '`/api/v2/admin/webhooks/endpoints/${endpointId}/rotate-secret`'
-          if s.count(old) != 1:
-              raise SystemExit(f'expected exactly one old webhook rotation route, found {s.count(old)}')
-          s = s.replace(old, new, 1)
-          p.write_text(s, encoding='utf-8')
+          if source.count(old) != 1:
+              raise SystemExit(f'expected exactly one old webhook rotation route, found {source.count(old)}')
+          expected = source.replace(old, new, 1)
+          Path('/tmp/hooks-expected.ts').write_text(expected, encoding='utf-8')
+          Path('clientside/src/shared/api/hooks.ts').write_text(expected, encoding='utf-8')
           PY
+          cmp --silent /tmp/hooks-expected.ts clientside/src/shared/api/hooks.ts
+          test "$(wc -l < clientside/src/shared/api/hooks.ts)" -gt 1000
           git diff --check
-          test "$(git diff --numstat -- clientside/src/shared/api/hooks.ts | awk '{print $1+$2}')" = "2"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add clientside/src/shared/api/hooks.ts
