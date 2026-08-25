@@ -1481,6 +1481,84 @@ paths:
       responses:
         '200':
           description: Compliance summary
+  /api/v2/admin/compliance/report:
+    get:
+      summary: Get the compliance reporting view for an optional date range
+      operationId: complianceReport
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Compliance report
+  /api/v2/admin/compliance/profiles:
+    get:
+      summary: List compliance profiles
+      operationId: listComplianceProfiles
+      security:
+      - AdminBasicAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Compliance profiles
+    post:
+      summary: Create or update a compliance profile
+      operationId: upsertComplianceProfile
+      security:
+      - AdminBasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - entityId
+              properties:
+                entityId:
+                  type: integer
+                  format: int64
+                entityType:
+                  type: string
+                  default: MERCHANT
+                profileType:
+                  type: string
+                  default: KYC
+                tier:
+                  type: string
+                  default: STANDARD
+                status:
+                  type: string
+                  default: PENDING
+                riskRating:
+                  type: string
+                  default: UNKNOWN
+                requiredDocumentsJson:
+                  type: string
+                decisionReason:
+                  type: string
+                verifiedBy:
+                  type: string
+      responses:
+        '200':
+          description: Compliance profile upsert result
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v2/admin/compliance/cases:
     get:
       summary: List compliance cases
