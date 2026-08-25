@@ -48,3 +48,5 @@ jobs:
           git add clientside/src/shared/api/hooks.ts
           git commit -m "fix: migrate admin webhook rotation client"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+
+# rerun repair after connector truncation was detected
