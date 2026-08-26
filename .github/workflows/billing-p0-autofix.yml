@@ -29,6 +29,23 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Remove obsolete projection-only patch anchor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/scripts/billing_p0_hardening.py')
+          s = p.read_text()
+          marker = 'replace_once(\n    admin,\n    """                        + \\"activation_status AS activationStatus,\\"'
+          start = s.find(marker)
+          if start < 0:
+              raise SystemExit('Projection patch marker was not found')
+          next_marker = 'replace_once(\n    admin,\n    """    private void ensureChargingAccount'
+          end = s.find(next_marker, start)
+          if end < 0:
+              raise SystemExit('Projection patch end marker was not found')
+          p.write_text(s[:start] + s[end:])
+          PY
+
       - name: Apply deterministic P0 patch
         run: python3 .github/scripts/billing_p0_hardening.py
 
