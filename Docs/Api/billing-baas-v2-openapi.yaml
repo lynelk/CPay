@@ -265,4 +265,4 @@ components:
       required: [projectReference, environment, displayName, scopes]
       properties: { projectReference: { type: string }, environment: { type: string }, displayName: { type: string }, scopes: { type: array, items: { type: string } }, requestsPerMinute: { type: integer }, expiresAt: { type: string, format: date-time } }
     CreditLimitRequest: { type: object, required: [creditLimit], properties: { creditLimit: { type: number, minimum: 0 } } }
-    TopUpRequest: { type: object, required: [amount, verifiedPaymentReference], properties: { amount: { type: number, exclusiveMinimum: 0 }, verifiedPaymentReference: { type: string } } }
+    TopUpRequest: { type: object, required: [amount, verifiedPaymentReference], properties: { amount: { type: number, minimum: 0, exclusiveMinimum: true }, verifiedPaymentReference: { type: string } } }
