@@ -3,6 +3,7 @@
 -- tax under a newer rule and gives every charging decision an immutable commercial snapshot.
 
 ALTER TABLE `billing_charge_reservations`
+  ADD COLUMN `usage_quantity` DECIMAL(19,4) NOT NULL DEFAULT 1 AFTER `entitlement_code`,
   ADD COLUMN `authorized_net_amount` DECIMAL(19,4) NOT NULL DEFAULT 0 AFTER `authorized_amount`,
   ADD COLUMN `authorized_tax_amount` DECIMAL(19,4) NOT NULL DEFAULT 0 AFTER `authorized_net_amount`,
   ADD COLUMN `tax_rule_version_id` BIGINT UNSIGNED NULL AFTER `authorized_tax_amount`,
