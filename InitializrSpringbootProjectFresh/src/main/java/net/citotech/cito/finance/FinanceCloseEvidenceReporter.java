@@ -1,7 +1,6 @@
 package net.citotech.cito.finance;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -173,6 +172,7 @@ public class FinanceCloseEvidenceReporter implements ApplicationRunner {
         if (message == null) {
             return "unavailable";
         }
-        return message.replaceAll("[\\r\\n]+", " ").replaceAll("(?i)(password|secret|token)=[^ ,;]+", "$1=[redacted]");
+        return message.replaceAll("[\\r\\n]+", " ")
+                .replaceAll("(?i)(password|secret|token)=[^ ,;]+", "$1=[redacted]");
     }
 }
