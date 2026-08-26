@@ -1,19 +1,23 @@
 package net.citotech.cito.billing.invoicing;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import net.citotech.cito.billing.tax.BillingTaxSnapshot;
+import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/** JDBC access for periodic billing invoices and their controlled correction/collection lifecycle. */
+/** JDBC access for periodic billing invoices and their governed financial lifecycle. */
 @Repository
 public class BillingInvoiceRepository {
+    private static final String DEFAULT_TAX_CODE = "STANDARD";
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     public BillingInvoiceRepository(NamedParameterJdbcTemplate jdbcTemplate) {
@@ -148,6 +152,87 @@ public class BillingInvoiceRepository {
                 p);
     }
 
+    public BillingTaxSnapshot calculateAndSnapshotTax(
+            long billingInvoiceId,
+            long billingTenantId,
+            String currency,
+            LocalDate periodEnd,
+            BigDecimal taxableAmount) {
+        List<BillingTaxSnapshot> existing =
+                jdbcTemplate.query(
+                        "SELECT tax_rule_version_id,tax_code,taxable_amount,tax_rate,tax_amount,currency "
+                                + "FROM billing_invoice_tax_snapshots WHERE billing_invoice_id=:id",
+                        new MapSqlParameterSource("id", billingInvoiceId),
+                        (rs, rowNum) ->
+                                new BillingTaxSnapshot(
+                                        rs.getLong("tax_rule_version_id"),
+                                        rs.getString("tax_code"),
+                                        rs.getBigDecimal("taxable_amount"),
+                                        rs.getBigDecimal("tax_rate"),
+                                        rs.getBigDecimal("tax_amount"),
+                                        rs.getString("currency")));
+        if (!existing.isEmpty()) {
+            BillingTaxSnapshot snapshot = existing.get(0);
+            if (snapshot.taxableAmount().compareTo(taxableAmount) != 0) {
+                throw new PaymentGatewayException(
+                        "Billing invoice tax snapshot already exists for a different taxable amount");
+            }
+            return snapshot;
+        }
+
+        MapSqlParameterSource p = new MapSqlParameterSource();
+        p.addValue("billing_tenant_id", billingTenantId);
+        p.addValue("tax_code", DEFAULT_TAX_CODE);
+        p.addValue("currency", currency);
+        p.addValue("as_of", Timestamp.valueOf(periodEnd.atTime(23, 59, 59)));
+        List<BillingTaxSnapshot> rules =
+                jdbcTemplate.query(
+                        "SELECT id,tax_code,rate FROM billing_tax_rule_versions "
+                                + "WHERE status='APPROVED' AND tax_code=:tax_code AND currency=:currency "
+                                + "AND effective_from<=:as_of AND (effective_to IS NULL OR effective_to>:as_of) "
+                                + "AND (billing_tenant_id=:billing_tenant_id OR billing_tenant_id IS NULL) "
+                                + "ORDER BY CASE WHEN billing_tenant_id=:billing_tenant_id THEN 0 ELSE 1 END,effective_from DESC LIMIT 1",
+                        p,
+                        (rs, rowNum) -> {
+                            BigDecimal rate = rs.getBigDecimal("rate");
+                            BigDecimal taxAmount =
+                                    taxableAmount.multiply(rate).setScale(4, RoundingMode.HALF_UP);
+                            return new BillingTaxSnapshot(
+                                    rs.getLong("id"),
+                                    rs.getString("tax_code"),
+                                    taxableAmount,
+                                    rate,
+                                    taxAmount,
+                                    currency);
+                        });
+        if (rules.isEmpty()) {
+            throw new PaymentGatewayException(
+                    "No approved billing tax rule for tenant "
+                            + billingTenantId
+                            + ", currency "
+                            + currency
+                            + ", tax code "
+                            + DEFAULT_TAX_CODE
+                            + " as of "
+                            + periodEnd);
+        }
+        BillingTaxSnapshot snapshot = rules.get(0);
+        MapSqlParameterSource s = new MapSqlParameterSource();
+        s.addValue("billing_invoice_id", billingInvoiceId);
+        s.addValue("tax_rule_version_id", snapshot.taxRuleVersionId());
+        s.addValue("tax_code", snapshot.taxCode());
+        s.addValue("taxable_amount", snapshot.taxableAmount());
+        s.addValue("tax_rate", snapshot.taxRate());
+        s.addValue("tax_amount", snapshot.taxAmount());
+        s.addValue("currency", snapshot.currency());
+        jdbcTemplate.update(
+                "INSERT INTO billing_invoice_tax_snapshots "
+                        + "(billing_invoice_id,tax_rule_version_id,tax_code,taxable_amount,tax_rate,tax_amount,currency) "
+                        + "VALUES (:billing_invoice_id,:tax_rule_version_id,:tax_code,:taxable_amount,:tax_rate,:tax_amount,:currency)",
+                s);
+        return snapshot;
+    }
+
     public void updateTaxAndTotals(
             long billingInvoiceId,
             BigDecimal subtotalAmount,
@@ -160,11 +245,11 @@ public class BillingInvoiceRepository {
         p.addValue("total_amount", totalAmount);
         int updated =
                 jdbcTemplate.update(
-                        "UPDATE billing_invoices SET subtotal_amount=:subtotal_amount, tax_amount=:tax_amount, "
+                        "UPDATE billing_invoices SET subtotal_amount=:subtotal_amount,tax_amount=:tax_amount, "
                                 + "total_amount=:total_amount WHERE id=:id AND status='DRAFT'",
                         p);
         if (updated == 0) {
-            throw new IllegalStateException("Billing invoice is no longer DRAFT: " + billingInvoiceId);
+            throw new PaymentGatewayException("Billing invoice is no longer DRAFT: " + billingInvoiceId);
         }
     }
 
@@ -175,8 +260,8 @@ public class BillingInvoiceRepository {
         p.addValue("finalized_by", finalizedBy);
         p.addValue("ledger_transaction_id", ledgerTransactionId);
         return jdbcTemplate.update(
-                "UPDATE billing_invoices SET status='FINALIZED', finalized_at=CURRENT_TIMESTAMP, "
-                        + "finalized_by=:finalized_by, ledger_transaction_id=:ledger_transaction_id, "
+                "UPDATE billing_invoices SET status='FINALIZED',finalized_at=CURRENT_TIMESTAMP, "
+                        + "finalized_by=:finalized_by,ledger_transaction_id=:ledger_transaction_id, "
                         + "outstanding_amount=total_amount WHERE id=:id AND status='DRAFT'",
                 p);
     }
@@ -187,8 +272,7 @@ public class BillingInvoiceRepository {
         p.addValue("delivered_by", deliveredBy);
         return jdbcTemplate.update(
                 "UPDATE billing_invoices SET delivered_at=COALESCE(delivered_at,CURRENT_TIMESTAMP), "
-                        + "delivered_by=COALESCE(delivered_by,:delivered_by) "
-                        + "WHERE id=:id AND status='FINALIZED'",
+                        + "delivered_by=COALESCE(delivered_by,:delivered_by) WHERE id=:id AND status='FINALIZED'",
                 p);
     }
 
@@ -198,9 +282,8 @@ public class BillingInvoiceRepository {
         p.addValue("voided_by", voidedBy);
         p.addValue("void_reason", reason);
         return jdbcTemplate.update(
-                "UPDATE billing_invoices SET status='VOID', voided_at=CURRENT_TIMESTAMP, "
-                        + "voided_by=:voided_by, void_reason=:void_reason, outstanding_amount=0 "
-                        + "WHERE id=:id AND status='FINALIZED'",
+                "UPDATE billing_invoices SET status='VOID',voided_at=CURRENT_TIMESTAMP,voided_by=:voided_by, "
+                        + "void_reason=:void_reason,outstanding_amount=0 WHERE id=:id AND status='FINALIZED'",
                 p);
     }
 
@@ -209,7 +292,7 @@ public class BillingInvoiceRepository {
         p.addValue("id", billingInvoiceId);
         p.addValue("closed_by", closedBy);
         return jdbcTemplate.update(
-                "UPDATE billing_invoices SET closed_at=CURRENT_TIMESTAMP, closed_by=:closed_by "
+                "UPDATE billing_invoices SET closed_at=CURRENT_TIMESTAMP,closed_by=:closed_by "
                         + "WHERE id=:id AND status IN ('FINALIZED','VOID') AND outstanding_amount=0 AND closed_at IS NULL",
                 p);
     }
