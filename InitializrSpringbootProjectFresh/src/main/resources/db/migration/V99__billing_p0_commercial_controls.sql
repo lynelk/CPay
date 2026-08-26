@@ -56,20 +56,27 @@ CREATE TABLE IF NOT EXISTS `billing_fx_snapshots` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `billing_invoices`
+  ADD COLUMN `outstanding_amount` DECIMAL(19,4) NOT NULL DEFAULT 0 AFTER `total_amount`,
   ADD COLUMN `delivered_at` TIMESTAMP NULL AFTER `finalized_by`,
   ADD COLUMN `delivered_by` VARCHAR(191) NULL AFTER `delivered_at`,
   ADD COLUMN `voided_at` TIMESTAMP NULL AFTER `delivered_by`,
   ADD COLUMN `voided_by` VARCHAR(191) NULL AFTER `voided_at`,
   ADD COLUMN `void_reason` VARCHAR(500) NULL AFTER `voided_by`,
   ADD COLUMN `closed_at` TIMESTAMP NULL AFTER `void_reason`,
-  ADD COLUMN `closed_by` VARCHAR(191) NULL AFTER `closed_at`,
-  ADD COLUMN `outstanding_amount` DECIMAL(19,4) NOT NULL DEFAULT 0 AFTER `total_amount`;
+  ADD COLUMN `closed_by` VARCHAR(191) NULL AFTER `closed_at`;
+
+-- V48 created credit notes as immediately posted objects. Make that state explicit so later maker-
+-- checker workflows can stage a note without changing historical rows' meaning.
+ALTER TABLE `billing_credit_notes`
+  ADD COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'POSTED' AFTER `reason`,
+  ADD COLUMN `approved_by` VARCHAR(191) NULL AFTER `issued_by`,
+  ADD COLUMN `approved_at` TIMESTAMP NULL AFTER `approved_by`;
 
 -- Backfill outstanding balances without changing immutable finalized totals.
 UPDATE `billing_invoices` i
 SET i.`outstanding_amount` = GREATEST(
   i.`total_amount`
-  - COALESCE((SELECT SUM(a.`allocated_amount`) FROM `billing_payment_allocations` a WHERE a.`billing_invoice_id` = i.`id`), 0)
+  - COALESCE((SELECT SUM(a.`amount`) FROM `billing_payment_allocations` a WHERE a.`billing_invoice_id` = i.`id`), 0)
   - COALESCE((SELECT SUM(c.`amount`) FROM `billing_credit_notes` c WHERE c.`billing_invoice_id` = i.`id` AND c.`status` = 'POSTED'), 0),
   0
 )
