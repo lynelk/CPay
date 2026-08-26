@@ -27,6 +27,7 @@ public class BillingBaasApiKeyService {
             String environment,
             String requiredScope,
             String requestId,
+            String httpMethod,
             String routeTemplate) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new PaymentGatewayException("X-Cito-Api-Key is required");
@@ -85,7 +86,7 @@ public class BillingBaasApiKeyService {
                 "UPDATE developer_credentials SET last_used_at=CURRENT_TIMESTAMP "
                         + "WHERE secret_hash=:secret_hash",
                 p);
-        recordRequest(context, requestId, routeTemplate);
+        recordRequest(context, requestId, httpMethod, routeTemplate);
         return context;
     }
 
@@ -117,7 +118,10 @@ public class BillingBaasApiKeyService {
     }
 
     private void recordRequest(
-            BillingBaasContext context, String requestId, String routeTemplate) {
+            BillingBaasContext context,
+            String requestId,
+            String httpMethod,
+            String routeTemplate) {
         String safeRequestId =
                 requestId == null || requestId.isBlank()
                         ? java.util.UUID.randomUUID().toString()
@@ -125,12 +129,13 @@ public class BillingBaasApiKeyService {
         jdbcTemplate.update(
                 "INSERT INTO developer_api_request_log "
                         + "(merchant_id,project_id,service_account_id,request_id,http_method,route_template,environment) "
-                        + "VALUES (:merchant,:project,:service_account,:request_id,'POST',:route,:environment)",
+                        + "VALUES (:merchant,:project,:service_account,:request_id,:method,:route,:environment)",
                 new MapSqlParameterSource()
                         .addValue("merchant", context.merchantId())
                         .addValue("project", context.developerProjectId())
                         .addValue("service_account", context.serviceAccountId())
                         .addValue("request_id", safeRequestId)
+                        .addValue("method", requiredMethod(httpMethod))
                         .addValue("route", routeTemplate)
                         .addValue("environment", context.environment()));
     }
@@ -155,6 +160,13 @@ public class BillingBaasApiKeyService {
             throw new PaymentGatewayException("Invalid BaaS billing scope");
         }
         return normalized;
+    }
+
+    private String requiredMethod(String value) {
+        if (value == null || value.isBlank()) {
+            return "UNKNOWN";
+        }
+        return value.trim().toUpperCase(Locale.ROOT);
     }
 
     private String sha256(String value) {
