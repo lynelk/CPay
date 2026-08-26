@@ -196,7 +196,11 @@ class BillingTraceChainServiceTestcontainersTest {
         BillingCompletenessGateService gateService =
                 new BillingCompletenessGateService(jdbcTemplate, invoiceRepository);
         return new BillingInvoiceService(
-                invoiceRepository, gateService, ledgerAccountTemplateService);
+                invoiceRepository,
+                gateService,
+                ledgerAccountTemplateService,
+                new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService(
+                        jdbcTemplate));
     }
 
     private String insertUsageEventAndRatedCharge(

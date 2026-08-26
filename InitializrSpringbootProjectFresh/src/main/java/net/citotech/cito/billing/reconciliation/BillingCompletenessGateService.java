@@ -161,7 +161,7 @@ public class BillingCompletenessGateService {
     public boolean isFinalizationReady(long billingInvoiceId) {
         List<Map<String, Object>> gates =
                 jdbcTemplate.queryForList(
-                        "SELECT gate_status,waiver_reason,source_watermark_failure_count,material_exception_count "
+                        "SELECT gate_status,waiver_reason,unstaged_charge_count,source_watermark_failure_count,material_exception_count "
                                 + "FROM billing_completeness_gates WHERE billing_invoice_id=:id",
                         new MapSqlParameterSource("id", billingInvoiceId));
         if (gates.isEmpty()
@@ -174,17 +174,25 @@ public class BillingCompletenessGateService {
             return false;
         }
         Map<String, Object> gate = gates.get(0);
+        int currentUnstaged =
+                invoiceRepository.countUnstagedCustomerCharges(
+                        invoice.billingTenantId(),
+                        invoice.currency(),
+                        invoice.periodStart(),
+                        invoice.periodEnd());
         int currentWatermarkFailures = countIncompleteWatermarks(invoice);
         int currentExceptions = countOpenExceptions(invoice.billingTenantId(), invoice.id(), false);
+        int approvedUnstaged = number(gate.get("unstaged_charge_count"));
         int approvedWatermarkFailures = number(gate.get("source_watermark_failure_count"));
         int approvedExceptions = number(gate.get("material_exception_count"));
         boolean waived =
                 gate.get("waiver_reason") != null
                         && !String.valueOf(gate.get("waiver_reason")).isBlank();
         if (!waived) {
-            return currentWatermarkFailures == 0 && currentExceptions == 0;
+            return currentUnstaged == 0 && currentWatermarkFailures == 0 && currentExceptions == 0;
         }
-        return currentWatermarkFailures <= approvedWatermarkFailures
+        return currentUnstaged <= approvedUnstaged
+                && currentWatermarkFailures <= approvedWatermarkFailures
                 && currentExceptions <= approvedExceptions;
     }
 
@@ -213,8 +221,10 @@ public class BillingCompletenessGateService {
         p.addValue("period_end", Timestamp.valueOf(invoice.periodEnd().atTime(23, 59, 59)));
         Integer count =
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM billing_source_watermarks "
-                                + "WHERE billing_tenant_id=:tenant AND expected_through_at<=:period_end AND status<>'COMPLETE'",
+                        "SELECT CASE WHEN COUNT(*)=0 THEN 1 ELSE SUM(CASE "
+                                + "WHEN status<>'COMPLETE' OR observed_through_at IS NULL OR observed_through_at<:period_end "
+                                + "THEN 1 ELSE 0 END) END FROM billing_source_watermarks "
+                                + "WHERE billing_tenant_id=:tenant",
                         p,
                         Integer.class);
         return count == null ? 0 : count;

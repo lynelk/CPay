@@ -59,6 +59,18 @@ public class BillingInvoiceRepository {
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
+    public Optional<BillingInvoiceRecord> findForUpdate(long billingInvoiceId) {
+        List<BillingInvoiceRecord> rows =
+                jdbcTemplate.query(
+                        "SELECT id, billing_tenant_id, invoice_number, currency, period_start, period_end, "
+                                + "status, subtotal_amount, tax_amount, total_amount, finalized_at, "
+                                + "finalized_by, ledger_transaction_id "
+                                + "FROM billing_invoices WHERE id = :id FOR UPDATE",
+                        new MapSqlParameterSource("id", billingInvoiceId),
+                        this::mapInvoice);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
     public BigDecimal findOutstandingAmount(long billingInvoiceId) {
         BigDecimal amount =
                 jdbcTemplate.queryForObject(
@@ -332,13 +344,13 @@ public class BillingInvoiceRepository {
                 p);
     }
 
-    public void reduceOutstanding(long billingInvoiceId, BigDecimal amount) {
+    public int reduceOutstanding(long billingInvoiceId, BigDecimal amount) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("id", billingInvoiceId);
         p.addValue("amount", amount);
-        jdbcTemplate.update(
-                "UPDATE billing_invoices SET outstanding_amount=GREATEST(outstanding_amount-:amount,0) "
-                        + "WHERE id=:id AND status='FINALIZED'",
+        return jdbcTemplate.update(
+                "UPDATE billing_invoices SET outstanding_amount=outstanding_amount-:amount "
+                        + "WHERE id=:id AND status='FINALIZED' AND outstanding_amount>=:amount",
                 p);
     }
 

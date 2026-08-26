@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -60,14 +61,7 @@ public class BillingBaasChargingService {
         BillingAccount account = resolveAccount(context.billingTenantId(), accountReference, ccy);
         ChargeView replay = findByIdempotency(context.billingTenantId(), idem);
         if (replay != null) {
-            if (replay.billingAccountId() != account.id()
-                    || replay.authorizedNetAmount().compareTo(net) != 0
-                    || !replay.serviceCode().equals(service)
-                    || replay.usageQuantity().compareTo(quantity) != 0
-                    || !sameNullable(replay.entitlementCode(), blankToNull(entitlementCode))) {
-                throw new PaymentGatewayException(
-                        "Charging idempotency key already exists with different attributes");
-            }
+            validateReplay(replay, account.id(), service, entitlementCode, quantity, net);
             return replay;
         }
 
@@ -86,6 +80,8 @@ public class BillingBaasChargingService {
         long chargingAccountId = ensureChargingAccount(context.billingTenantId(), account);
         ChargingAccount chargingAccount =
                 lockChargingAccount(context.billingTenantId(), chargingAccountId);
+        sweepExpiredReservations(context, chargingAccountId);
+        chargingAccount = lockChargingAccount(context.billingTenantId(), chargingAccountId);
         BigDecimal available =
                 chargingAccount
                         .prepaidBalance()
@@ -116,15 +112,24 @@ public class BillingBaasChargingService {
                         .addValue("tax_rate", taxRule.rate())
                         .addValue("idempotency", idem)
                         .addValue("expires_at", Timestamp.from(expiry));
-        jdbcTemplate.update(
-                "INSERT INTO billing_charge_reservations "
-                        + "(billing_tenant_id,billing_customer_id,charging_account_id,reservation_reference,"
-                        + "service_code,entitlement_code,usage_quantity,currency,authorized_amount,"
-                        + "authorized_net_amount,authorized_tax_amount,tax_rule_version_id,tax_code,tax_rate,"
-                        + "idempotency_key,expires_at) VALUES (:tenant,:customer,:charging_account,:reservation,"
-                        + ":service,:entitlement,:quantity,:currency,:gross,:net,:tax,:tax_rule,:tax_code,"
-                        + ":tax_rate,:idempotency,:expires_at)",
-                p);
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO billing_charge_reservations "
+                            + "(billing_tenant_id,billing_customer_id,charging_account_id,reservation_reference,"
+                            + "service_code,entitlement_code,usage_quantity,currency,authorized_amount,"
+                            + "authorized_net_amount,authorized_tax_amount,tax_rule_version_id,tax_code,tax_rate,"
+                            + "idempotency_key,expires_at) VALUES (:tenant,:customer,:charging_account,:reservation,"
+                            + ":service,:entitlement,:quantity,:currency,:gross,:net,:tax,:tax_rule,:tax_code,"
+                            + ":tax_rate,:idempotency,:expires_at)",
+                    p);
+        } catch (DuplicateKeyException duplicate) {
+            ChargeView winner = findByIdempotency(context.billingTenantId(), idem);
+            if (winner == null) {
+                throw duplicate;
+            }
+            validateReplay(winner, account.id(), service, entitlementCode, quantity, net);
+            return winner;
+        }
         jdbcTemplate.update(
                 "UPDATE billing_charging_accounts SET reserved_amount=reserved_amount+:gross,"
                         + "lock_version=lock_version+1 WHERE id=:charging_account AND billing_tenant_id=:tenant",
@@ -167,6 +172,8 @@ public class BillingBaasChargingService {
         if (account.creditUsed().add(credit).compareTo(account.creditLimit()) > 0) {
             throw new PaymentGatewayException("Charging credit limit would be exceeded");
         }
+
+        consumeEntitlementAtomically(context.billingTenantId(), reservation);
 
         Split prepaidSplit = splitFunding(reservation, prepaid);
         Split creditSplit =
@@ -243,7 +250,6 @@ public class BillingBaasChargingService {
                 prepaidLedger != null ? prepaidLedger : creditLedger,
                 "commit:" + reservation.reservationReference(),
                 "BaaS:" + context.serviceAccountId());
-        consumeEntitlement(context.billingTenantId(), reservation);
         return committedView(context.billingTenantId(), reservation.reservationReference());
     }
 
@@ -361,6 +367,42 @@ public class BillingBaasChargingService {
 
     private void expireAuthorizedReservation(BillingBaasContext context, ChargeView reservation) {
         releaseReservation(context, reservation, "EXPIRE", "EXPIRED");
+    }
+
+    private void sweepExpiredReservations(BillingBaasContext context, long chargingAccountId) {
+        List<String> expired =
+                jdbcTemplate.query(
+                        "SELECT reservation_reference FROM billing_charge_reservations "
+                                + "WHERE billing_tenant_id=:tenant AND charging_account_id=:account "
+                                + "AND status='AUTHORIZED' AND expires_at<=CURRENT_TIMESTAMP FOR UPDATE",
+                        new MapSqlParameterSource()
+                                .addValue("tenant", context.billingTenantId())
+                                .addValue("account", chargingAccountId),
+                        (rs, rowNum) -> rs.getString(1));
+        for (String reference : expired) {
+            ChargeView reservation = lockReservation(context.billingTenantId(), reference);
+            if ("AUTHORIZED".equals(reservation.status())
+                    && !reservation.expiresAt().isAfter(Instant.now())) {
+                expireAuthorizedReservation(context, reservation);
+            }
+        }
+    }
+
+    private void validateReplay(
+            ChargeView replay,
+            long billingAccountId,
+            String service,
+            String entitlementCode,
+            BigDecimal quantity,
+            BigDecimal net) {
+        if (replay.billingAccountId() != billingAccountId
+                || replay.authorizedNetAmount().compareTo(net) != 0
+                || !replay.serviceCode().equals(service)
+                || replay.usageQuantity().compareTo(quantity) != 0
+                || !sameNullable(replay.entitlementCode(), blankToNull(entitlementCode))) {
+            throw new PaymentGatewayException(
+                    "Charging idempotency key already exists with different attributes");
+        }
     }
 
     private BillingAccount resolveAccount(
@@ -497,7 +539,7 @@ public class BillingBaasChargingService {
     private BigDecimal entitlementConsumed(long tenantId, long customerId, String entitlementCode) {
         BigDecimal value =
                 jdbcTemplate.queryForObject(
-                        "SELECT COALESCE(consumed_quantity,0) FROM billing_entitlement_usage "
+                        "SELECT COALESCE(SUM(consumed_quantity),0) FROM billing_entitlement_usage "
                                 + "WHERE billing_tenant_id=:tenant AND billing_customer_id=:customer "
                                 + "AND entitlement_code=:entitlement AND period_key=:period",
                         new MapSqlParameterSource()
@@ -509,21 +551,58 @@ public class BillingBaasChargingService {
         return value == null ? BigDecimal.ZERO : value;
     }
 
-    private void consumeEntitlement(long tenantId, ChargeView reservation) {
+    private void consumeEntitlementAtomically(long tenantId, ChargeView reservation) {
         if (reservation.entitlementCode() == null || reservation.entitlementCode().isBlank()) {
             return;
         }
-        jdbcTemplate.update(
-                "INSERT INTO billing_entitlement_usage "
-                        + "(billing_tenant_id,billing_customer_id,entitlement_code,period_key,consumed_quantity) "
-                        + "VALUES (:tenant,:customer,:entitlement,:period,:quantity) "
-                        + "ON DUPLICATE KEY UPDATE consumed_quantity=consumed_quantity+:quantity",
+        List<Map<String, Object>> grants =
+                jdbcTemplate.queryForList(
+                        "SELECT g.id,g.limit_quantity FROM billing_entitlement_grants g "
+                                + "JOIN billing_subscriptions s ON s.id=g.billing_subscription_id "
+                                + "WHERE g.billing_tenant_id=:tenant AND g.billing_customer_id=:customer "
+                                + "AND g.entitlement_code=:entitlement AND g.status='ACTIVE' "
+                                + "AND g.valid_from<=CURRENT_TIMESTAMP AND (g.valid_to IS NULL OR g.valid_to>CURRENT_TIMESTAMP) "
+                                + "AND s.status='ACTIVE' AND s.service_code=:service LIMIT 1 FOR UPDATE",
+                        new MapSqlParameterSource()
+                                .addValue("tenant", tenantId)
+                                .addValue("customer", reservation.billingCustomerId())
+                                .addValue("entitlement", reservation.entitlementCode())
+                                .addValue("service", reservation.serviceCode()));
+        if (grants.isEmpty()) {
+            throw new PaymentGatewayException("Required BaaS entitlement is not active at commit");
+        }
+        String period = periodKey(reservation.createdAt());
+        MapSqlParameterSource p =
                 new MapSqlParameterSource()
                         .addValue("tenant", tenantId)
                         .addValue("customer", reservation.billingCustomerId())
                         .addValue("entitlement", reservation.entitlementCode())
-                        .addValue("period", periodKey())
-                        .addValue("quantity", reservation.usageQuantity()));
+                        .addValue("period", period)
+                        .addValue("quantity", reservation.usageQuantity());
+        jdbcTemplate.update(
+                "INSERT IGNORE INTO billing_entitlement_usage "
+                        + "(billing_tenant_id,billing_customer_id,entitlement_code,period_key,consumed_quantity) "
+                        + "VALUES (:tenant,:customer,:entitlement,:period,0)",
+                p);
+        BigDecimal consumed =
+                jdbcTemplate.queryForObject(
+                        "SELECT consumed_quantity FROM billing_entitlement_usage "
+                                + "WHERE billing_tenant_id=:tenant AND billing_customer_id=:customer "
+                                + "AND entitlement_code=:entitlement AND period_key=:period FOR UPDATE",
+                        p,
+                        BigDecimal.class);
+        BigDecimal current = consumed == null ? BigDecimal.ZERO : consumed;
+        Object limitValue = grants.get(0).get("limit_quantity");
+        if (limitValue != null
+                && current.add(reservation.usageQuantity()).compareTo((BigDecimal) limitValue)
+                        > 0) {
+            throw new PaymentGatewayException("BaaS entitlement usage limit would be exceeded");
+        }
+        jdbcTemplate.update(
+                "UPDATE billing_entitlement_usage SET consumed_quantity=consumed_quantity+:quantity "
+                        + "WHERE billing_tenant_id=:tenant AND billing_customer_id=:customer "
+                        + "AND entitlement_code=:entitlement AND period_key=:period",
+                p);
     }
 
     private void reverseEntitlementUsage(long tenantId, ChargeView reservation) {
@@ -538,7 +617,7 @@ public class BillingBaasChargingService {
                         .addValue("tenant", tenantId)
                         .addValue("customer", reservation.billingCustomerId())
                         .addValue("entitlement", reservation.entitlementCode())
-                        .addValue("period", periodKey())
+                        .addValue("period", periodKey(reservation.createdAt()))
                         .addValue("quantity", reservation.usageQuantity()));
     }
 
@@ -557,7 +636,7 @@ public class BillingBaasChargingService {
                         + "r.authorized_amount,r.authorized_net_amount,r.authorized_tax_amount,r.tax_rule_version_id,"
                         + "r.tax_code,r.tax_rate,r.committed_amount,r.committed_net_amount,r.committed_tax_amount,"
                         + "r.prepaid_committed_amount,r.credit_committed_amount,r.released_amount,r.status,"
-                        + "r.idempotency_key,r.expires_at FROM billing_charge_reservations r "
+                        + "r.idempotency_key,r.expires_at,r.created_at FROM billing_charge_reservations r "
                         + "JOIN billing_charging_accounts ca ON ca.id=r.charging_account_id "
                         + "WHERE r.billing_tenant_id=:tenant AND r.reservation_reference=:reservation"
                         + (lock ? " FOR UPDATE" : "");
@@ -613,7 +692,8 @@ public class BillingBaasChargingService {
                 rs.getBigDecimal("released_amount"),
                 rs.getString("status"),
                 rs.getString("idempotency_key"),
-                rs.getTimestamp("expires_at").toInstant());
+                rs.getTimestamp("expires_at").toInstant(),
+                rs.getTimestamp("created_at").toInstant());
     }
 
     private CommitView committedView(long tenantId, String reservationReference) {
@@ -725,6 +805,10 @@ public class BillingBaasChargingService {
         return YearMonth.now(ZoneOffset.UTC).toString();
     }
 
+    private String periodKey(Instant instant) {
+        return YearMonth.from(instant.atZone(ZoneOffset.UTC)).toString();
+    }
+
     private BigDecimal money(BigDecimal value, String field) {
         return positive(value, field).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
@@ -806,7 +890,8 @@ public class BillingBaasChargingService {
             BigDecimal releasedAmount,
             String status,
             String idempotencyKey,
-            Instant expiresAt) {}
+            Instant expiresAt,
+            Instant createdAt) {}
 
     public record CommitView(
             String reservationReference,
