@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
 import net.citotech.cito.billing.reconciliation.BillingCompletenessGateService;
-import net.citotech.cito.billing.tax.BillingTaxService;
 import net.citotech.cito.billing.tax.BillingTaxSnapshot;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.stereotype.Service;
@@ -18,17 +17,14 @@ public class BillingInvoiceService {
     private final BillingInvoiceRepository repository;
     private final BillingCompletenessGateService completenessGateService;
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService;
-    private final BillingTaxService taxService;
 
     public BillingInvoiceService(
             BillingInvoiceRepository repository,
             BillingCompletenessGateService completenessGateService,
-            BillingLedgerAccountTemplateService ledgerAccountTemplateService,
-            BillingTaxService taxService) {
+            BillingLedgerAccountTemplateService ledgerAccountTemplateService) {
         this.repository = repository;
         this.completenessGateService = completenessGateService;
         this.ledgerAccountTemplateService = ledgerAccountTemplateService;
-        this.taxService = taxService;
     }
 
     @Transactional
@@ -73,11 +69,6 @@ public class BillingInvoiceService {
         return unstaged.size();
     }
 
-    /**
-     * Finalization is fail-closed: an approved completeness gate and an explicitly approved,
-     * effective-dated tax rule are both required. The exact tax rule and amount are snapshotted
-     * before the balanced receivable/revenue/tax ledger entry is posted.
-     */
     @Transactional
     public long finalizeInvoice(long billingInvoiceId, String finalizedBy) {
         requireActor(finalizedBy, "Billing invoice finalize requires a finalizer");
@@ -94,7 +85,7 @@ public class BillingInvoiceService {
             throw new PaymentGatewayException("Billing invoice must contain a positive subtotal");
         }
         BillingTaxSnapshot tax =
-                taxService.calculateAndSnapshot(
+                repository.calculateAndSnapshotTax(
                         billingInvoiceId,
                         invoice.billingTenantId(),
                         invoice.currency(),
@@ -133,10 +124,6 @@ public class BillingInvoiceService {
         }
     }
 
-    /**
-     * Applies a payment once. Replaying the same invoice/payment reference is a no-op and never
-     * posts a second ledger transaction.
-     */
     @Transactional
     public long applyPayment(
             long billingInvoiceId, String paymentReference, BigDecimal amount, String appliedBy) {
@@ -173,10 +160,6 @@ public class BillingInvoiceService {
         return txId;
     }
 
-    /**
-     * Maker-checker credit note. Partial credits reverse revenue and tax in the same proportion as
-     * the original invoice; the finalized invoice itself remains immutable.
-     */
     @Transactional
     public long issueCreditNote(
             long billingInvoiceId,
@@ -225,10 +208,6 @@ public class BillingInvoiceService {
         return txId;
     }
 
-    /**
-     * Voids only a completely unpaid finalized invoice, after a full maker-checker credit reversal.
-     * Paid invoices require refund/collection handling rather than silently deleting settled cash.
-     */
     @Transactional
     public long voidInvoice(
             long billingInvoiceId, String reason, String requestedBy, String approvedBy) {
