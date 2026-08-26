@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
 
 class BillingBaasP0HardeningTest {
 
@@ -73,6 +74,21 @@ class BillingBaasP0HardeningTest {
         assertThat(transactional).isNotNull();
         assertThat(Arrays.asList(transactional.noRollbackFor()))
                 .contains(BillingBaasChargingService.ChargingReservationExpiredException.class);
+    }
+
+    @Test
+    void chargeAuthorizationUsesUnambiguousCollectionRoute() throws Exception {
+        Method authorize =
+                BillingBaasController.class.getMethod(
+                        "authorizeCharge",
+                        String.class,
+                        String.class,
+                        String.class,
+                        BillingBaasController.AuthorizeChargeRequest.class);
+        PostMapping mapping = authorize.getAnnotation(PostMapping.class);
+
+        assertThat(mapping).isNotNull();
+        assertThat(mapping.value()).containsExactly("/charges");
     }
 
     @Test
