@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.junit.jupiter.api.Test;
@@ -71,6 +73,21 @@ class BillingBaasP0HardeningTest {
         assertThat(transactional).isNotNull();
         assertThat(Arrays.asList(transactional.noRollbackFor()))
                 .contains(BillingBaasChargingService.ChargingReservationExpiredException.class);
+    }
+
+    @Test
+    void allMutableBaasLedgerLinkOperationsRemainTenantScoped() throws IOException {
+        Path source =
+                Path.of(
+                        "src/main/java/net/citotech/cito/billing/baas/BillingBaasChargingService.java");
+        String java = Files.readString(source, StandardCharsets.UTF_8);
+
+        assertThat(java)
+                .contains("WHERE id=:id AND billing_tenant_id=:tenant AND link_status='POSTED'")
+                .contains("WHERE billing_tenant_id=:tenant AND reservation_reference=:reservation")
+                .contains(
+                        "WHERE r.billing_tenant_id=:tenant AND r.reservation_reference=:reservation")
+                .contains("WHERE billing_tenant_id=:tenant AND idempotency_key=:idempotency");
     }
 
     @Test

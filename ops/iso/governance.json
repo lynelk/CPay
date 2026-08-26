@@ -10,55 +10,590 @@
     "certificationStatus": "NOT_CERTIFIED"
   },
   "standards": [
-    {"id":"ISO-9001","edition":"2015+Amd1:2024","kind":"CERTIFIABLE_MANAGEMENT_SYSTEM","applicability":"APPLICABLE","ownerRole":"IMS_LEAD","nextReviewAt":"2026-10-31","note":"Reassess when the replacement edition is published/adopted."},
-    {"id":"ISO-IEC-27001","edition":"2022","kind":"CERTIFIABLE_MANAGEMENT_SYSTEM","applicability":"APPLICABLE","ownerRole":"SECURITY_OWNER","nextReviewAt":"2026-11-30"},
-    {"id":"ISO-IEC-27000","edition":"2026","kind":"GUIDANCE_VOCABULARY","applicability":"APPLICABLE","ownerRole":"SECURITY_OWNER","nextReviewAt":"2027-08-24"},
-    {"id":"ISO-IEC-20000-1","edition":"2018","kind":"CERTIFIABLE_MANAGEMENT_SYSTEM","applicability":"APPLICABLE","ownerRole":"SERVICE_OWNER","nextReviewAt":"2027-03-31"},
-    {"id":"ISO-IEC-27032","edition":"2023","kind":"GUIDANCE","applicability":"APPLICABLE","ownerRole":"SECURITY_OWNER","nextReviewAt":"2027-03-31"},
-    {"id":"ISO-22301","edition":"2019","kind":"CERTIFIABLE_MANAGEMENT_SYSTEM","applicability":"APPLICABLE","ownerRole":"CONTINUITY_OWNER","nextReviewAt":"2027-03-31"},
-    {"id":"ISO-20022","edition":"PROFILE_CONTROLLED","kind":"FINANCIAL_MESSAGE_STANDARD","applicability":"CONDITIONAL","ownerRole":"PAYMENTS_ARCHITECT","nextReviewAt":"2026-11-30","note":"Applicable per bank/clearing/counterparty interface and exact usage guideline/schema version."},
-    {"id":"ISO-8583","edition":"2023","kind":"FINANCIAL_MESSAGE_STANDARD","applicability":"CONDITIONAL","ownerRole":"PAYMENTS_ARCHITECT","nextReviewAt":"2026-11-30","note":"Applicable only to card/switch/network profiles that actually use ISO 8583."},
-    {"id":"ISO-9362","edition":"2022","kind":"IDENTIFIER_STANDARD","applicability":"CONDITIONAL","ownerRole":"PAYMENTS_ARCHITECT","nextReviewAt":"2027-03-31","note":"Applied wherever BIC identifiers are accepted or emitted."},
-    {"id":"ISO-32212","edition":"2026","kind":"SUSTAINABLE_FINANCE_STANDARD","applicability":"CONDITIONAL","ownerRole":"COMPLIANCE_OWNER","nextReviewAt":"2026-10-31","note":"Legal/entity applicability determination and materiality evidence required."}
+    {
+      "id": "ISO-9001",
+      "edition": "2015+Amd1:2024",
+      "kind": "CERTIFIABLE_MANAGEMENT_SYSTEM",
+      "applicability": "APPLICABLE",
+      "ownerRole": "IMS_LEAD",
+      "nextReviewAt": "2026-10-31",
+      "note": "Reassess when the replacement edition is published/adopted."
+    },
+    {
+      "id": "ISO-IEC-27001",
+      "edition": "2022",
+      "kind": "CERTIFIABLE_MANAGEMENT_SYSTEM",
+      "applicability": "APPLICABLE",
+      "ownerRole": "SECURITY_OWNER",
+      "nextReviewAt": "2026-11-30"
+    },
+    {
+      "id": "ISO-IEC-27000",
+      "edition": "2026",
+      "kind": "GUIDANCE_VOCABULARY",
+      "applicability": "APPLICABLE",
+      "ownerRole": "SECURITY_OWNER",
+      "nextReviewAt": "2027-08-24"
+    },
+    {
+      "id": "ISO-IEC-20000-1",
+      "edition": "2018",
+      "kind": "CERTIFIABLE_MANAGEMENT_SYSTEM",
+      "applicability": "APPLICABLE",
+      "ownerRole": "SERVICE_OWNER",
+      "nextReviewAt": "2027-03-31"
+    },
+    {
+      "id": "ISO-IEC-27032",
+      "edition": "2023",
+      "kind": "GUIDANCE",
+      "applicability": "APPLICABLE",
+      "ownerRole": "SECURITY_OWNER",
+      "nextReviewAt": "2027-03-31"
+    },
+    {
+      "id": "ISO-22301",
+      "edition": "2019",
+      "kind": "CERTIFIABLE_MANAGEMENT_SYSTEM",
+      "applicability": "APPLICABLE",
+      "ownerRole": "CONTINUITY_OWNER",
+      "nextReviewAt": "2027-03-31"
+    },
+    {
+      "id": "ISO-20022",
+      "edition": "PROFILE_CONTROLLED",
+      "kind": "FINANCIAL_MESSAGE_STANDARD",
+      "applicability": "CONDITIONAL",
+      "ownerRole": "PAYMENTS_ARCHITECT",
+      "nextReviewAt": "2026-11-30",
+      "note": "Applicable per bank/clearing/counterparty interface and exact usage guideline/schema version."
+    },
+    {
+      "id": "ISO-8583",
+      "edition": "2023",
+      "kind": "FINANCIAL_MESSAGE_STANDARD",
+      "applicability": "CONDITIONAL",
+      "ownerRole": "PAYMENTS_ARCHITECT",
+      "nextReviewAt": "2026-11-30",
+      "note": "Applicable only to card/switch/network profiles that actually use ISO 8583."
+    },
+    {
+      "id": "ISO-9362",
+      "edition": "2022",
+      "kind": "IDENTIFIER_STANDARD",
+      "applicability": "CONDITIONAL",
+      "ownerRole": "PAYMENTS_ARCHITECT",
+      "nextReviewAt": "2027-03-31",
+      "note": "Applied wherever BIC identifiers are accepted or emitted."
+    },
+    {
+      "id": "ISO-32212",
+      "edition": "2026",
+      "kind": "SUSTAINABLE_FINANCE_STANDARD",
+      "applicability": "CONDITIONAL",
+      "ownerRole": "COMPLIANCE_OWNER",
+      "nextReviewAt": "2026-10-31",
+      "note": "Legal/entity applicability determination and materiality evidence required."
+    }
   ],
   "objectives": [
-    {"id":"OBJ-Q-01","domain":"QUALITY","name":"Production change success","ownerRole":"ENGINEERING_OWNER","metric":"change_failure_rate","target":"<=5% per rolling 90 days","measurementSource":"deployment and incident records","reviewCadence":"MONTHLY","nextReviewAt":"2026-09-30"},
-    {"id":"OBJ-S-01","domain":"SECURITY","name":"Critical vulnerability remediation","ownerRole":"SECURITY_OWNER","metric":"critical_vulnerability_age","target":"no unaccepted actively exploited/critical Internet-facing finding beyond 72 hours","measurementSource":"CodeQL, OWASP/dependency and vulnerability register","reviewCadence":"WEEKLY","nextReviewAt":"2026-09-01"},
-    {"id":"OBJ-SM-01","domain":"SERVICE_MANAGEMENT","name":"Critical service availability","ownerRole":"SERVICE_OWNER","metric":"tier1_monthly_availability","target":">=99.9% unless an approved service-specific target is stricter","measurementSource":"production monitoring/SLO reports","reviewCadence":"MONTHLY","nextReviewAt":"2026-09-30"},
-    {"id":"OBJ-BC-01","domain":"BUSINESS_CONTINUITY","name":"Recovery assurance","ownerRole":"CONTINUITY_OWNER","metric":"restore_drill_success","target":"100% monthly restore drills completed with corrective action for missed RTO/RPO","measurementSource":"Backup-restore DR exercise evidence","reviewCadence":"MONTHLY","nextReviewAt":"2026-09-30"},
-    {"id":"OBJ-FIN-01","domain":"FINANCIAL_INTEGRITY","name":"Daily reconciliation close","ownerRole":"FINANCE_OWNER","metric":"material_unexplained_variance","target":"0 unresolved material variances at approved close","measurementSource":"reconciliation/settlement close records","reviewCadence":"DAILY","nextReviewAt":"2026-08-25"},
-    {"id":"OBJ-IR-01","domain":"INCIDENT","name":"SEV1 acknowledgement","ownerRole":"OPERATIONS_OWNER","metric":"sev1_acknowledgement_time","target":"<=10 minutes","measurementSource":"incident and paging timestamps","reviewCadence":"MONTHLY","nextReviewAt":"2026-09-30"}
+    {
+      "id": "OBJ-Q-01",
+      "domain": "QUALITY",
+      "name": "Production change success",
+      "ownerRole": "ENGINEERING_OWNER",
+      "metric": "change_failure_rate",
+      "target": "<=5% per rolling 90 days",
+      "measurementSource": "deployment and incident records",
+      "reviewCadence": "MONTHLY",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "OBJ-S-01",
+      "domain": "SECURITY",
+      "name": "Critical vulnerability remediation",
+      "ownerRole": "SECURITY_OWNER",
+      "metric": "critical_vulnerability_age",
+      "target": "no unaccepted actively exploited/critical Internet-facing finding beyond 72 hours",
+      "measurementSource": "CodeQL, OWASP/dependency and vulnerability register",
+      "reviewCadence": "WEEKLY",
+      "nextReviewAt": "2026-09-01"
+    },
+    {
+      "id": "OBJ-SM-01",
+      "domain": "SERVICE_MANAGEMENT",
+      "name": "Critical service availability",
+      "ownerRole": "SERVICE_OWNER",
+      "metric": "tier1_monthly_availability",
+      "target": ">=99.9% unless an approved service-specific target is stricter",
+      "measurementSource": "production monitoring/SLO reports",
+      "reviewCadence": "MONTHLY",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "OBJ-BC-01",
+      "domain": "BUSINESS_CONTINUITY",
+      "name": "Recovery assurance",
+      "ownerRole": "CONTINUITY_OWNER",
+      "metric": "restore_drill_success",
+      "target": "100% monthly restore drills completed with corrective action for missed RTO/RPO",
+      "measurementSource": "Backup-restore DR exercise evidence",
+      "reviewCadence": "MONTHLY",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "OBJ-FIN-01",
+      "domain": "FINANCIAL_INTEGRITY",
+      "name": "Daily reconciliation close",
+      "ownerRole": "FINANCE_OWNER",
+      "metric": "material_unexplained_variance",
+      "target": "0 unresolved material variances at approved close",
+      "measurementSource": "reconciliation/settlement close records",
+      "reviewCadence": "DAILY",
+      "nextReviewAt": "2026-08-27",
+      "lastReviewedAt": "2026-08-26",
+      "reviewOutcome": "EVIDENCE_PENDING",
+      "reviewEvidence": "ops/iso/evidence/finance-objective-review-2026-08-26.md"
+    },
+    {
+      "id": "OBJ-IR-01",
+      "domain": "INCIDENT",
+      "name": "SEV1 acknowledgement",
+      "ownerRole": "OPERATIONS_OWNER",
+      "metric": "sev1_acknowledgement_time",
+      "target": "<=10 minutes",
+      "measurementSource": "incident and paging timestamps",
+      "reviewCadence": "MONTHLY",
+      "nextReviewAt": "2026-09-30"
+    }
   ],
   "services": [
-    {"id":"SVC-CPAY-CORE","name":"CPay payment orchestration","tier":"TIER_1","ownerRole":"PAYMENTS_SERVICE_OWNER","customersUsers":["CPay merchants","payer/payee applications","Cito payment operations"],"businessOutcome":"Accept, route, track and reconcile merchant payment instructions safely","supportHours":"24x7 for production incidents","escalationPath":"PAYMENTS_SERVICE_OWNER -> OPERATIONS_OWNER -> EXECUTIVE_SPONSOR","slo":"99.9% monthly availability","rtoMinutes":60,"rpoMinutes":15,"maximumTolerableDisruptionMinutes":120,"dataClassification":"RESTRICTED","dependencies":["Production MySQL","mobile-money/payment providers","Cito authentication","network/DNS/TLS","callback workers"],"continuityProcedure":"Docs/Runbooks/Production-incident-response.md","monitoringEvidence":"Docs/Observability.md"},
-    {"id":"SVC-LEDGER","name":"CPay ledger and financial integrity","tier":"TIER_0","ownerRole":"FINANCE_OWNER","customersUsers":["CPay payment services","finance and reconciliation operations","authorized audit/compliance users"],"businessOutcome":"Maintain balanced, traceable financial postings and a recoverable financial source of truth","supportHours":"24x7 for production integrity incidents","escalationPath":"FINANCE_OWNER -> OPERATIONS_OWNER -> EXECUTIVE_SPONSOR","slo":"integrity-first; no known unbalanced posting","rtoMinutes":120,"rpoMinutes":15,"maximumTolerableDisruptionMinutes":240,"dataClassification":"RESTRICTED","dependencies":["Production MySQL","reconciliation controls","finance maker-checker"],"continuityProcedure":"Docs/Runbooks/Backup-restore-dr.md","monitoringEvidence":"Docs/Runbooks/Reconciliation-finance-daily-close.md"},
-    {"id":"SVC-IDENTITY","name":"Cito identity and validation","tier":"TIER_2","ownerRole":"IDENTITY_SERVICE_OWNER","slo":"99.5% monthly availability","rtoMinutes":240,"rpoMinutes":60,"dataClassification":"RESTRICTED","dependencies":["Production MySQL","configured validation/identity providers","Cito authentication"],"continuityProcedure":"Docs/Runbooks/Production-incident-response.md","monitoringEvidence":"Docs/Observability.md"},
-    {"id":"SVC-PORTALS","name":"Cito merchant and admin portals","tier":"TIER_2","ownerRole":"SERVICE_OWNER","slo":"99.5% monthly availability","rtoMinutes":240,"rpoMinutes":60,"dataClassification":"CONFIDENTIAL","dependencies":["Cito backend","authentication","frontend hosting/CDN","DNS/TLS"],"continuityProcedure":"Docs/Runbooks/Production-incident-response.md","monitoringEvidence":"Docs/Observability.md"}
+    {
+      "id": "SVC-CPAY-CORE",
+      "name": "CPay payment orchestration",
+      "tier": "TIER_1",
+      "ownerRole": "PAYMENTS_SERVICE_OWNER",
+      "customersUsers": [
+        "CPay merchants",
+        "payer/payee applications",
+        "Cito payment operations"
+      ],
+      "businessOutcome": "Accept, route, track and reconcile merchant payment instructions safely",
+      "supportHours": "24x7 for production incidents",
+      "escalationPath": "PAYMENTS_SERVICE_OWNER -> OPERATIONS_OWNER -> EXECUTIVE_SPONSOR",
+      "slo": "99.9% monthly availability",
+      "rtoMinutes": 60,
+      "rpoMinutes": 15,
+      "maximumTolerableDisruptionMinutes": 120,
+      "dataClassification": "RESTRICTED",
+      "dependencies": [
+        "Production MySQL",
+        "mobile-money/payment providers",
+        "Cito authentication",
+        "network/DNS/TLS",
+        "callback workers"
+      ],
+      "continuityProcedure": "Docs/Runbooks/Production-incident-response.md",
+      "monitoringEvidence": "Docs/Observability.md"
+    },
+    {
+      "id": "SVC-LEDGER",
+      "name": "CPay ledger and financial integrity",
+      "tier": "TIER_0",
+      "ownerRole": "FINANCE_OWNER",
+      "customersUsers": [
+        "CPay payment services",
+        "finance and reconciliation operations",
+        "authorized audit/compliance users"
+      ],
+      "businessOutcome": "Maintain balanced, traceable financial postings and a recoverable financial source of truth",
+      "supportHours": "24x7 for production integrity incidents",
+      "escalationPath": "FINANCE_OWNER -> OPERATIONS_OWNER -> EXECUTIVE_SPONSOR",
+      "slo": "integrity-first; no known unbalanced posting",
+      "rtoMinutes": 120,
+      "rpoMinutes": 15,
+      "maximumTolerableDisruptionMinutes": 240,
+      "dataClassification": "RESTRICTED",
+      "dependencies": [
+        "Production MySQL",
+        "reconciliation controls",
+        "finance maker-checker"
+      ],
+      "continuityProcedure": "Docs/Runbooks/Backup-restore-dr.md",
+      "monitoringEvidence": "Docs/Runbooks/Reconciliation-finance-daily-close.md"
+    },
+    {
+      "id": "SVC-IDENTITY",
+      "name": "Cito identity and validation",
+      "tier": "TIER_2",
+      "ownerRole": "IDENTITY_SERVICE_OWNER",
+      "slo": "99.5% monthly availability",
+      "rtoMinutes": 240,
+      "rpoMinutes": 60,
+      "dataClassification": "RESTRICTED",
+      "dependencies": [
+        "Production MySQL",
+        "configured validation/identity providers",
+        "Cito authentication"
+      ],
+      "continuityProcedure": "Docs/Runbooks/Production-incident-response.md",
+      "monitoringEvidence": "Docs/Observability.md"
+    },
+    {
+      "id": "SVC-PORTALS",
+      "name": "Cito merchant and admin portals",
+      "tier": "TIER_2",
+      "ownerRole": "SERVICE_OWNER",
+      "slo": "99.5% monthly availability",
+      "rtoMinutes": 240,
+      "rpoMinutes": 60,
+      "dataClassification": "CONFIDENTIAL",
+      "dependencies": [
+        "Cito backend",
+        "authentication",
+        "frontend hosting/CDN",
+        "DNS/TLS"
+      ],
+      "continuityProcedure": "Docs/Runbooks/Production-incident-response.md",
+      "monitoringEvidence": "Docs/Observability.md"
+    }
   ],
   "risks": [
-    {"id":"R-ISO-001","title":"Management controls operate without a consolidated evidence cycle","ownerRole":"IMS_LEAD","affectedService":"ALL","inherentLikelihood":4,"inherentImpact":4,"treatment":"REDUCE","treatmentAction":"Operate this IMS, quarterly management review and risk-based internal audit programme","dueAt":"2026-11-30","residualLikelihood":2,"residualImpact":4,"status":"OPEN","nextReviewAt":"2026-09-30"},
-    {"id":"R-ISO-002","title":"Critical supplier/provider outage or certification gap disrupts payment service","ownerRole":"OPERATIONS_OWNER","affectedService":"SVC-CPAY-CORE","inherentLikelihood":4,"inherentImpact":5,"treatment":"REDUCE","treatmentAction":"Provider certification, routing/health controls, escalation paths, continuity exercises and supplier review","dueAt":"2026-10-31","residualLikelihood":3,"residualImpact":4,"status":"OPEN","nextReviewAt":"2026-09-30","highRiskDecision":"BLOCKED_PENDING_ACCEPTANCE","acceptanceOwnerRole":"OPERATIONS_OWNER","acceptanceDueAt":"2026-09-30","productionContinuationAuthorized":false},
-    {"id":"R-ISO-003","title":"Financial-message profile mismatch causes rejected or misinterpreted transactions","ownerRole":"PAYMENTS_ARCHITECT","affectedService":"SVC-CPAY-CORE","inherentLikelihood":3,"inherentImpact":5,"treatment":"REDUCE","treatmentAction":"Profile-controlled ISO 20022/8583 adapter contracts, test vectors, redaction and external certification","dueAt":"2026-12-31","residualLikelihood":2,"residualImpact":4,"status":"OPEN","nextReviewAt":"2026-09-30"},
-    {"id":"R-ISO-004","title":"Backups exist but recovery evidence does not meet evolving production RPO/RTO","ownerRole":"CONTINUITY_OWNER","affectedService":"SVC-LEDGER","inherentLikelihood":3,"inherentImpact":5,"treatment":"REDUCE","treatmentAction":"Monthly restore drill, production traffic BIA and tighter RPO engineering where required","dueAt":"2026-10-31","residualLikelihood":2,"residualImpact":5,"status":"OPEN","nextReviewAt":"2026-09-30","highRiskDecision":"BLOCKED_PENDING_ACCEPTANCE","acceptanceOwnerRole":"CONTINUITY_OWNER","acceptanceDueAt":"2026-09-30","productionContinuationAuthorized":false},
-    {"id":"R-ISO-005","title":"ISO 32212 or sustainability claims are made without legal applicability/data evidence","ownerRole":"COMPLIANCE_OWNER","affectedService":"ALL","inherentLikelihood":2,"inherentImpact":3,"treatment":"REDUCE","treatmentAction":"Require formal applicability/materiality decision and evidence-backed external claims","dueAt":"2026-10-31","residualLikelihood":1,"residualImpact":3,"status":"OPEN","nextReviewAt":"2026-09-30"}
+    {
+      "id": "R-ISO-001",
+      "title": "Management controls operate without a consolidated evidence cycle",
+      "ownerRole": "IMS_LEAD",
+      "affectedService": "ALL",
+      "inherentLikelihood": 4,
+      "inherentImpact": 4,
+      "treatment": "REDUCE",
+      "treatmentAction": "Operate this IMS, quarterly management review and risk-based internal audit programme",
+      "dueAt": "2026-11-30",
+      "residualLikelihood": 2,
+      "residualImpact": 4,
+      "status": "OPEN",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "R-ISO-002",
+      "title": "Critical supplier/provider outage or certification gap disrupts payment service",
+      "ownerRole": "OPERATIONS_OWNER",
+      "affectedService": "SVC-CPAY-CORE",
+      "inherentLikelihood": 4,
+      "inherentImpact": 5,
+      "treatment": "REDUCE",
+      "treatmentAction": "Provider certification, routing/health controls, escalation paths, continuity exercises and supplier review",
+      "dueAt": "2026-10-31",
+      "residualLikelihood": 3,
+      "residualImpact": 4,
+      "status": "OPEN",
+      "nextReviewAt": "2026-09-30",
+      "highRiskDecision": "BLOCKED_PENDING_ACCEPTANCE",
+      "acceptanceOwnerRole": "OPERATIONS_OWNER",
+      "acceptanceDueAt": "2026-09-30",
+      "productionContinuationAuthorized": false
+    },
+    {
+      "id": "R-ISO-003",
+      "title": "Financial-message profile mismatch causes rejected or misinterpreted transactions",
+      "ownerRole": "PAYMENTS_ARCHITECT",
+      "affectedService": "SVC-CPAY-CORE",
+      "inherentLikelihood": 3,
+      "inherentImpact": 5,
+      "treatment": "REDUCE",
+      "treatmentAction": "Profile-controlled ISO 20022/8583 adapter contracts, test vectors, redaction and external certification",
+      "dueAt": "2026-12-31",
+      "residualLikelihood": 2,
+      "residualImpact": 4,
+      "status": "OPEN",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "R-ISO-004",
+      "title": "Backups exist but recovery evidence does not meet evolving production RPO/RTO",
+      "ownerRole": "CONTINUITY_OWNER",
+      "affectedService": "SVC-LEDGER",
+      "inherentLikelihood": 3,
+      "inherentImpact": 5,
+      "treatment": "REDUCE",
+      "treatmentAction": "Monthly restore drill, production traffic BIA and tighter RPO engineering where required",
+      "dueAt": "2026-10-31",
+      "residualLikelihood": 2,
+      "residualImpact": 5,
+      "status": "OPEN",
+      "nextReviewAt": "2026-09-30",
+      "highRiskDecision": "BLOCKED_PENDING_ACCEPTANCE",
+      "acceptanceOwnerRole": "CONTINUITY_OWNER",
+      "acceptanceDueAt": "2026-09-30",
+      "productionContinuationAuthorized": false
+    },
+    {
+      "id": "R-ISO-005",
+      "title": "ISO 32212 or sustainability claims are made without legal applicability/data evidence",
+      "ownerRole": "COMPLIANCE_OWNER",
+      "affectedService": "ALL",
+      "inherentLikelihood": 2,
+      "inherentImpact": 3,
+      "treatment": "REDUCE",
+      "treatmentAction": "Require formal applicability/materiality decision and evidence-backed external claims",
+      "dueAt": "2026-10-31",
+      "residualLikelihood": 1,
+      "residualImpact": 3,
+      "status": "OPEN",
+      "nextReviewAt": "2026-09-30"
+    }
   ],
   "controls": [
-    {"id":"CTL-GOV-01","domain":"GOVERNANCE","standards":["ISO-9001","ISO-IEC-27001","ISO-IEC-20000-1","ISO-22301"],"applicability":"APPLICABLE","implementation":"IMPLEMENTED","ownerRole":"IMS_LEAD","evidence":["Docs/ISO/Integrated-management-system-manual.md","ops/iso/governance.json"],"nextReviewAt":"2026-11-30"},
-    {"id":"CTL-SDLC-01","domain":"SECURE_QUALITY_SDLC","standards":["ISO-9001","ISO-IEC-27001"],"applicability":"APPLICABLE","implementation":"IMPLEMENTED","ownerRole":"ENGINEERING_OWNER","evidence":[".github/workflows/ci.yml","Docs/Production-code-controls.md","Docs/Testing-strategy.md"],"nextReviewAt":"2026-11-30"},
-    {"id":"CTL-VULN-01","domain":"VULNERABILITY_MANAGEMENT","standards":["ISO-IEC-27001","ISO-IEC-27032"],"applicability":"APPLICABLE","implementation":"IMPLEMENTED","ownerRole":"SECURITY_OWNER","evidence":[".github/workflows/ci.yml",".github/dependabot.yml","Docs/CITO_SECURITY_ARCHITECTURE.md"],"nextReviewAt":"2026-10-31"},
-    {"id":"CTL-IR-01","domain":"INCIDENT_PROBLEM_MANAGEMENT","standards":["ISO-IEC-27001","ISO-IEC-20000-1","ISO-IEC-27032","ISO-22301"],"applicability":"APPLICABLE","implementation":"IMPLEMENTED","ownerRole":"OPERATIONS_OWNER","evidence":["Docs/Runbooks/Production-incident-response.md","Docs/Runbooks/Operations-alerts.md"],"nextReviewAt":"2026-10-31"},
-    {"id":"CTL-BC-01","domain":"BACKUP_RECOVERY_CONTINUITY","standards":["ISO-IEC-27001","ISO-IEC-20000-1","ISO-22301"],"applicability":"APPLICABLE","implementation":"PARTIAL","ownerRole":"CONTINUITY_OWNER","evidence":["Docs/Runbooks/Backup-restore-dr.md"],"action":"Record and review production BIA/exercise evidence and tighten RPO where transaction volume requires","dueAt":"2026-10-31","nextReviewAt":"2026-09-30"},
-    {"id":"CTL-FIN-01","domain":"FINANCIAL_INTEGRITY","standards":["ISO-9001","ISO-IEC-27001","ISO-IEC-20000-1"],"applicability":"APPLICABLE","implementation":"IMPLEMENTED","ownerRole":"FINANCE_OWNER","evidence":["Docs/Runbooks/Reconciliation-finance-daily-close.md","InitializrSpringbootProjectFresh/src/main/resources/db/migration/V33__maker_checker_finance_close.sql","InitializrSpringbootProjectFresh/src/main/resources/db/migration/V65__payment_state_transition_audit.sql"],"nextReviewAt":"2026-10-31"},
-    {"id":"CTL-MSG-20022","domain":"FINANCIAL_MESSAGING","standards":["ISO-20022","ISO-9362"],"applicability":"CONDITIONAL","implementation":"PARTIAL","ownerRole":"PAYMENTS_ARCHITECT","evidence":["Docs/ISO/financial-messaging-interoperability.md"],"action":"Complete per-counterparty profiles and external certification before enabling any ISO 20022 production interface","dueAt":"2026-12-31","nextReviewAt":"2026-09-30"},
-    {"id":"CTL-MSG-8583","domain":"FINANCIAL_MESSAGING","standards":["ISO-8583"],"applicability":"CONDITIONAL","implementation":"PARTIAL","ownerRole":"PAYMENTS_ARCHITECT","evidence":["Docs/ISO/financial-messaging-interoperability.md"],"action":"Complete network-specific data dictionary/packager, HSM/security profile and certification before enabling an ISO 8583 production interface","dueAt":"2026-12-31","nextReviewAt":"2026-09-30"},
-    {"id":"CTL-SUP-01","domain":"SUPPLIER_MANAGEMENT","standards":["ISO-9001","ISO-IEC-27001","ISO-IEC-20000-1","ISO-22301"],"applicability":"APPLICABLE","implementation":"PARTIAL","ownerRole":"SUPPLIER_OWNER","evidence":["Docs/Runbooks/Provider-certification-checklist.md","Docs/Runbooks/Provider-sandbox-and-statement-validation.md"],"action":"Complete documented annual critical-supplier risk/performance/continuity reviews","dueAt":"2026-11-30","nextReviewAt":"2026-09-30"},
-    {"id":"CTL-NZ-01","domain":"NET_ZERO_TRANSITION","standards":["ISO-32212"],"applicability":"CONDITIONAL","implementation":"PLANNED","ownerRole":"COMPLIANCE_OWNER","evidence":["Docs/ISO/net-zero-transition-planning.md"],"action":"Complete legal applicability/materiality assessment before claiming alignment beyond governance readiness","dueAt":"2026-10-31","nextReviewAt":"2026-09-30"}
+    {
+      "id": "CTL-GOV-01",
+      "domain": "GOVERNANCE",
+      "standards": [
+        "ISO-9001",
+        "ISO-IEC-27001",
+        "ISO-IEC-20000-1",
+        "ISO-22301"
+      ],
+      "applicability": "APPLICABLE",
+      "implementation": "IMPLEMENTED",
+      "ownerRole": "IMS_LEAD",
+      "evidence": [
+        "Docs/ISO/Integrated-management-system-manual.md",
+        "ops/iso/governance.json"
+      ],
+      "nextReviewAt": "2026-11-30"
+    },
+    {
+      "id": "CTL-SDLC-01",
+      "domain": "SECURE_QUALITY_SDLC",
+      "standards": [
+        "ISO-9001",
+        "ISO-IEC-27001"
+      ],
+      "applicability": "APPLICABLE",
+      "implementation": "IMPLEMENTED",
+      "ownerRole": "ENGINEERING_OWNER",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "Docs/Production-code-controls.md",
+        "Docs/Testing-strategy.md"
+      ],
+      "nextReviewAt": "2026-11-30"
+    },
+    {
+      "id": "CTL-VULN-01",
+      "domain": "VULNERABILITY_MANAGEMENT",
+      "standards": [
+        "ISO-IEC-27001",
+        "ISO-IEC-27032"
+      ],
+      "applicability": "APPLICABLE",
+      "implementation": "IMPLEMENTED",
+      "ownerRole": "SECURITY_OWNER",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        ".github/dependabot.yml",
+        "Docs/CITO_SECURITY_ARCHITECTURE.md"
+      ],
+      "nextReviewAt": "2026-10-31"
+    },
+    {
+      "id": "CTL-IR-01",
+      "domain": "INCIDENT_PROBLEM_MANAGEMENT",
+      "standards": [
+        "ISO-IEC-27001",
+        "ISO-IEC-20000-1",
+        "ISO-IEC-27032",
+        "ISO-22301"
+      ],
+      "applicability": "APPLICABLE",
+      "implementation": "IMPLEMENTED",
+      "ownerRole": "OPERATIONS_OWNER",
+      "evidence": [
+        "Docs/Runbooks/Production-incident-response.md",
+        "Docs/Runbooks/Operations-alerts.md"
+      ],
+      "nextReviewAt": "2026-10-31"
+    },
+    {
+      "id": "CTL-BC-01",
+      "domain": "BACKUP_RECOVERY_CONTINUITY",
+      "standards": [
+        "ISO-IEC-27001",
+        "ISO-IEC-20000-1",
+        "ISO-22301"
+      ],
+      "applicability": "APPLICABLE",
+      "implementation": "PARTIAL",
+      "ownerRole": "CONTINUITY_OWNER",
+      "evidence": [
+        "Docs/Runbooks/Backup-restore-dr.md"
+      ],
+      "action": "Record and review production BIA/exercise evidence and tighten RPO where transaction volume requires",
+      "dueAt": "2026-10-31",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "CTL-FIN-01",
+      "domain": "FINANCIAL_INTEGRITY",
+      "standards": [
+        "ISO-9001",
+        "ISO-IEC-27001",
+        "ISO-IEC-20000-1"
+      ],
+      "applicability": "APPLICABLE",
+      "implementation": "IMPLEMENTED",
+      "ownerRole": "FINANCE_OWNER",
+      "evidence": [
+        "Docs/Runbooks/Reconciliation-finance-daily-close.md",
+        "InitializrSpringbootProjectFresh/src/main/resources/db/migration/V33__maker_checker_finance_close.sql",
+        "InitializrSpringbootProjectFresh/src/main/resources/db/migration/V65__payment_state_transition_audit.sql"
+      ],
+      "nextReviewAt": "2026-10-31"
+    },
+    {
+      "id": "CTL-MSG-20022",
+      "domain": "FINANCIAL_MESSAGING",
+      "standards": [
+        "ISO-20022",
+        "ISO-9362"
+      ],
+      "applicability": "CONDITIONAL",
+      "implementation": "PARTIAL",
+      "ownerRole": "PAYMENTS_ARCHITECT",
+      "evidence": [
+        "Docs/ISO/financial-messaging-interoperability.md"
+      ],
+      "action": "Complete per-counterparty profiles and external certification before enabling any ISO 20022 production interface",
+      "dueAt": "2026-12-31",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "CTL-MSG-8583",
+      "domain": "FINANCIAL_MESSAGING",
+      "standards": [
+        "ISO-8583"
+      ],
+      "applicability": "CONDITIONAL",
+      "implementation": "PARTIAL",
+      "ownerRole": "PAYMENTS_ARCHITECT",
+      "evidence": [
+        "Docs/ISO/financial-messaging-interoperability.md"
+      ],
+      "action": "Complete network-specific data dictionary/packager, HSM/security profile and certification before enabling an ISO 8583 production interface",
+      "dueAt": "2026-12-31",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "CTL-SUP-01",
+      "domain": "SUPPLIER_MANAGEMENT",
+      "standards": [
+        "ISO-9001",
+        "ISO-IEC-27001",
+        "ISO-IEC-20000-1",
+        "ISO-22301"
+      ],
+      "applicability": "APPLICABLE",
+      "implementation": "PARTIAL",
+      "ownerRole": "SUPPLIER_OWNER",
+      "evidence": [
+        "Docs/Runbooks/Provider-certification-checklist.md",
+        "Docs/Runbooks/Provider-sandbox-and-statement-validation.md"
+      ],
+      "action": "Complete documented annual critical-supplier risk/performance/continuity reviews",
+      "dueAt": "2026-11-30",
+      "nextReviewAt": "2026-09-30"
+    },
+    {
+      "id": "CTL-NZ-01",
+      "domain": "NET_ZERO_TRANSITION",
+      "standards": [
+        "ISO-32212"
+      ],
+      "applicability": "CONDITIONAL",
+      "implementation": "PLANNED",
+      "ownerRole": "COMPLIANCE_OWNER",
+      "evidence": [
+        "Docs/ISO/net-zero-transition-planning.md"
+      ],
+      "action": "Complete legal applicability/materiality assessment before claiming alignment beyond governance readiness",
+      "dueAt": "2026-10-31",
+      "nextReviewAt": "2026-09-30"
+    }
   ],
   "suppliers": [
-    {"id":"SUP-MTN","name":"MTN mobile money","criticality":"CRITICAL","ownerRole":"PROVIDER_OPERATIONS_OWNER","service":"SVC-CPAY-CORE","reviewCadence":"QUARTERLY","nextReviewAt":"2026-09-30","requiredEvidence":["sandbox/production certification","support/escalation contact","incident/SLA review","continuity/dependency assessment"]},
-    {"id":"SUP-AIRTEL","name":"Airtel / Airtel OpenAPI","criticality":"CRITICAL","ownerRole":"PROVIDER_OPERATIONS_OWNER","service":"SVC-CPAY-CORE","reviewCadence":"QUARTERLY","nextReviewAt":"2026-09-30","requiredEvidence":["sandbox/production certification","support/escalation contact","incident/SLA review","continuity/dependency assessment"]},
-    {"id":"SUP-SAFARICOM","name":"Safaricom / M-Pesa","criticality":"CRITICAL","ownerRole":"PROVIDER_OPERATIONS_OWNER","service":"SVC-CPAY-CORE","reviewCadence":"QUARTERLY","nextReviewAt":"2026-09-30","requiredEvidence":["sandbox/production certification","support/escalation contact","incident/SLA review","continuity/dependency assessment"]},
-    {"id":"SUP-CLOUD","name":"Production cloud/runtime platform","criticality":"CRITICAL","ownerRole":"OPERATIONS_OWNER","service":"ALL","reviewCadence":"QUARTERLY","nextReviewAt":"2026-09-30","requiredEvidence":["availability/performance review","security/access review","backup/portability assessment","incident/escalation route"]},
-    {"id":"SUP-GITHUB","name":"Source control and CI platform","criticality":"HIGH","ownerRole":"ENGINEERING_OWNER","service":"ALL","reviewCadence":"ANNUAL","nextReviewAt":"2027-06-30","requiredEvidence":["access review","repository security settings","dependency/CI governance review"]}
+    {
+      "id": "SUP-MTN",
+      "name": "MTN mobile money",
+      "criticality": "CRITICAL",
+      "ownerRole": "PROVIDER_OPERATIONS_OWNER",
+      "service": "SVC-CPAY-CORE",
+      "reviewCadence": "QUARTERLY",
+      "nextReviewAt": "2026-09-30",
+      "requiredEvidence": [
+        "sandbox/production certification",
+        "support/escalation contact",
+        "incident/SLA review",
+        "continuity/dependency assessment"
+      ]
+    },
+    {
+      "id": "SUP-AIRTEL",
+      "name": "Airtel / Airtel OpenAPI",
+      "criticality": "CRITICAL",
+      "ownerRole": "PROVIDER_OPERATIONS_OWNER",
+      "service": "SVC-CPAY-CORE",
+      "reviewCadence": "QUARTERLY",
+      "nextReviewAt": "2026-09-30",
+      "requiredEvidence": [
+        "sandbox/production certification",
+        "support/escalation contact",
+        "incident/SLA review",
+        "continuity/dependency assessment"
+      ]
+    },
+    {
+      "id": "SUP-SAFARICOM",
+      "name": "Safaricom / M-Pesa",
+      "criticality": "CRITICAL",
+      "ownerRole": "PROVIDER_OPERATIONS_OWNER",
+      "service": "SVC-CPAY-CORE",
+      "reviewCadence": "QUARTERLY",
+      "nextReviewAt": "2026-09-30",
+      "requiredEvidence": [
+        "sandbox/production certification",
+        "support/escalation contact",
+        "incident/SLA review",
+        "continuity/dependency assessment"
+      ]
+    },
+    {
+      "id": "SUP-CLOUD",
+      "name": "Production cloud/runtime platform",
+      "criticality": "CRITICAL",
+      "ownerRole": "OPERATIONS_OWNER",
+      "service": "ALL",
+      "reviewCadence": "QUARTERLY",
+      "nextReviewAt": "2026-09-30",
+      "requiredEvidence": [
+        "availability/performance review",
+        "security/access review",
+        "backup/portability assessment",
+        "incident/escalation route"
+      ]
+    },
+    {
+      "id": "SUP-GITHUB",
+      "name": "Source control and CI platform",
+      "criticality": "HIGH",
+      "ownerRole": "ENGINEERING_OWNER",
+      "service": "ALL",
+      "reviewCadence": "ANNUAL",
+      "nextReviewAt": "2027-06-30",
+      "requiredEvidence": [
+        "access review",
+        "repository security settings",
+        "dependency/CI governance review"
+      ]
+    }
   ]
 }

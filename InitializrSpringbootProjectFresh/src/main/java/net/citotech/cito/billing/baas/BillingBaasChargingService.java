@@ -685,8 +685,10 @@ public class BillingBaasChargingService {
                     "BaaS charge reversal " + reservationReference);
             jdbcTemplate.update(
                     "UPDATE billing_charge_ledger_links SET link_status='REVERSED',reversed_at=CURRENT_TIMESTAMP "
-                            + "WHERE id=:id AND link_status='POSTED'",
-                    new MapSqlParameterSource("id", link.get("id")));
+                            + "WHERE id=:id AND billing_tenant_id=:tenant AND link_status='POSTED'",
+                    new MapSqlParameterSource()
+                            .addValue("id", link.get("id"))
+                            .addValue("tenant", context.billingTenantId()));
         }
     }
 
