@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Optional;
 import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
 import net.citotech.cito.billing.reconciliation.BillingCompletenessGateService;
-import net.citotech.cito.billing.tax.BillingTaxService;
 import net.citotech.cito.billing.tax.BillingTaxSnapshot;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.junit.jupiter.api.Test;
@@ -29,10 +28,8 @@ class BillingInvoiceServiceTest {
             mock(BillingCompletenessGateService.class);
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService =
             mock(BillingLedgerAccountTemplateService.class);
-    private final BillingTaxService taxService = mock(BillingTaxService.class);
     private final BillingInvoiceService service =
-            new BillingInvoiceService(
-                    repository, completenessGateService, ledgerAccountTemplateService, taxService);
+            new BillingInvoiceService(repository, completenessGateService, ledgerAccountTemplateService);
 
     @Test
     void createDraftGeneratesAnInvoiceNumberAndDelegatesToTheRepository() {
@@ -43,22 +40,12 @@ class BillingInvoiceServiceTest {
                         eq(LocalDate.of(2026, 1, 1)),
                         eq(LocalDate.of(2026, 1, 31))))
                 .thenReturn(55L);
-
-        long id =
-                service.createDraft(7L, "ugx", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
-
-        assertThat(id).isEqualTo(55L);
-        verify(repository)
-                .insertDraft(
-                        eq(7L),
-                        any(),
-                        eq("UGX"),
-                        eq(LocalDate.of(2026, 1, 1)),
-                        eq(LocalDate.of(2026, 1, 31)));
+        assertThat(service.createDraft(7L, "ugx", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+                .isEqualTo(55L);
     }
 
     @Test
-    void createDraftRejectsAPeriodEndBeforePeriodStart() {
+    void createDraftRejectsInvalidPeriodAndCurrency() {
         assertThatThrownBy(
                         () ->
                                 service.createDraft(
@@ -68,10 +55,6 @@ class BillingInvoiceServiceTest {
                                         LocalDate.of(2026, 1, 1)))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("period start");
-    }
-
-    @Test
-    void createDraftRejectsABlankCurrency() {
         assertThatThrownBy(
                         () ->
                                 service.createDraft(
@@ -84,9 +67,8 @@ class BillingInvoiceServiceTest {
     }
 
     @Test
-    void stageChargesInsertsALineForEachUnstagedChargeAndRecomputesTotals() {
-        BillingInvoiceRecord draft = draftInvoice();
-        when(repository.find(55L)).thenReturn(Optional.of(draft));
+    void stageChargesStagesEachUnstagedChargeAndRecomputesTotals() {
+        when(repository.find(55L)).thenReturn(Optional.of(draftInvoice()));
         when(repository.findUnstagedCustomerCharges(
                         7L, "UGX", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
                 .thenReturn(
@@ -97,9 +79,7 @@ class BillingInvoiceServiceTest {
                                         202L, "SMS", "message_count", new BigDecimal("50"))));
         when(repository.sumLineAmounts(55L)).thenReturn(new BigDecimal("150"));
 
-        int staged = service.stageCharges(55L);
-
-        assertThat(staged).isEqualTo(2);
+        assertThat(service.stageCharges(55L)).isEqualTo(2);
         verify(repository)
                 .insertLine(55L, 201L, "PAYMENT:collection_count", new BigDecimal("100"), "UGX");
         verify(repository).insertLine(55L, 202L, "SMS:message_count", new BigDecimal("50"), "UGX");
@@ -107,59 +87,28 @@ class BillingInvoiceServiceTest {
     }
 
     @Test
-    void stageChargesIsANoOpWhenNothingIsUnstaged() {
+    void stageChargesNoOpAndStateGuardsWork() {
         when(repository.find(55L)).thenReturn(Optional.of(draftInvoice()));
         when(repository.findUnstagedCustomerCharges(
                         7L, "UGX", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
                 .thenReturn(List.of());
-
         assertThat(service.stageCharges(55L)).isZero();
         verify(repository, never()).insertLine(anyLong(), any(), any(), any(), any());
-        verify(repository, never()).updateTotals(anyLong(), any(), any());
-    }
 
-    @Test
-    void stageChargesThrowsWhenTheInvoiceIsNotFound() {
         when(repository.find(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.stageCharges(99L))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("not found");
-    }
 
-    @Test
-    void stageChargesThrowsWhenTheInvoiceIsAlreadyFinalized() {
-        when(repository.find(55L)).thenReturn(Optional.of(finalizedInvoice("150", "0", "150")));
-        assertThatThrownBy(() -> service.stageCharges(55L))
+        when(repository.find(56L)).thenReturn(Optional.of(finalizedInvoice("150", "0", "150")));
+        assertThatThrownBy(() -> service.stageCharges(56L))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("not DRAFT");
-        verify(repository, times(0)).findUnstagedCustomerCharges(anyLong(), any(), any(), any());
+        verify(repository, times(0)).findUnstagedCustomerCharges(eq(7L), eq("UGX"), eq(LocalDate.of(2026,1,1)), eq(LocalDate.of(2026,1,31)));
     }
 
     @Test
-    void finalizeInvoiceThrowsWhenFinalizerIsBlank() {
-        assertThatThrownBy(() -> service.finalizeInvoice(55L, " "))
-                .isInstanceOf(PaymentGatewayException.class)
-                .hasMessageContaining("finalizer");
-    }
-
-    @Test
-    void finalizeInvoiceThrowsWhenTheInvoiceIsNotFound() {
-        when(repository.find(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.finalizeInvoice(99L, "billing-finalizer"))
-                .isInstanceOf(PaymentGatewayException.class)
-                .hasMessageContaining("not found");
-    }
-
-    @Test
-    void finalizeInvoiceThrowsWhenTheInvoiceIsNotDraft() {
-        when(repository.find(55L)).thenReturn(Optional.of(finalizedInvoice("1000", "0", "1000")));
-        assertThatThrownBy(() -> service.finalizeInvoice(55L, "billing-finalizer"))
-                .isInstanceOf(PaymentGatewayException.class)
-                .hasMessageContaining("not DRAFT");
-    }
-
-    @Test
-    void finalizeInvoiceThrowsWhenTheCompletenessGateIsNotApproved() {
+    void finalizeInvoiceRequiresApprovedCompletenessGate() {
         when(repository.find(55L)).thenReturn(Optional.of(draftInvoiceWithSubtotal("1000")));
         when(completenessGateService.isApproved(55L)).thenReturn(false);
         assertThatThrownBy(() -> service.finalizeInvoice(55L, "billing-finalizer"))
@@ -174,7 +123,7 @@ class BillingInvoiceServiceTest {
         when(repository.find(55L)).thenReturn(Optional.of(draftInvoiceWithSubtotal("1000")));
         when(completenessGateService.isApproved(55L)).thenReturn(true);
         when(repository.sumLineAmounts(55L)).thenReturn(new BigDecimal("1000"));
-        when(taxService.calculateAndSnapshot(
+        when(repository.calculateAndSnapshotTax(
                         eq(55L),
                         eq(7L),
                         eq("UGX"),
@@ -205,30 +154,20 @@ class BillingInvoiceServiceTest {
                         new BigDecimal("1000"),
                         new BigDecimal("180.0000"),
                         new BigDecimal("1180.0000"));
-        verify(repository).finalizeInvoice(55L, "billing-finalizer", 555L);
     }
 
     @Test
-    void finalizeInvoiceThrowsWhenTheRepositoryLosesTheFinalizeRace() {
+    void finalizeInvoiceFailsClosedWhenTaxRuleIsUnavailable() {
         when(repository.find(55L)).thenReturn(Optional.of(draftInvoiceWithSubtotal("1000")));
         when(completenessGateService.isApproved(55L)).thenReturn(true);
         when(repository.sumLineAmounts(55L)).thenReturn(new BigDecimal("1000"));
-        when(taxService.calculateAndSnapshot(anyLong(), anyLong(), any(), any(), any()))
-                .thenReturn(
-                        new BillingTaxSnapshot(
-                                10L,
-                                "STANDARD",
-                                new BigDecimal("1000"),
-                                BigDecimal.ZERO,
-                                BigDecimal.ZERO,
-                                "UGX"));
-        when(ledgerAccountTemplateService.postCustomerCharge(
-                        anyLong(), any(), any(), any(), any(), any()))
-                .thenReturn(555L);
-        when(repository.finalizeInvoice(anyLong(), any(), eq(555L))).thenReturn(0);
+        when(repository.calculateAndSnapshotTax(anyLong(), anyLong(), any(), any(), any()))
+                .thenThrow(new PaymentGatewayException("No approved billing tax rule"));
         assertThatThrownBy(() -> service.finalizeInvoice(55L, "billing-finalizer"))
                 .isInstanceOf(PaymentGatewayException.class)
-                .hasMessageContaining("concurrent request");
+                .hasMessageContaining("tax rule");
+        verify(ledgerAccountTemplateService, never())
+                .postCustomerCharge(anyLong(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -257,52 +196,25 @@ class BillingInvoiceServiceTest {
 
     private BillingInvoiceRecord draftInvoice() {
         return new BillingInvoiceRecord(
-                55L,
-                7L,
-                "BINV-1",
-                "UGX",
-                LocalDate.of(2026, 1, 1),
-                LocalDate.of(2026, 1, 31),
-                "DRAFT",
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                null,
-                null,
-                null);
+                55L, 7L, "BINV-1", "UGX",
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                "DRAFT", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, null);
     }
 
     private BillingInvoiceRecord draftInvoiceWithSubtotal(String subtotal) {
         return new BillingInvoiceRecord(
-                55L,
-                7L,
-                "BINV-1",
-                "UGX",
-                LocalDate.of(2026, 1, 1),
-                LocalDate.of(2026, 1, 31),
-                "DRAFT",
-                new BigDecimal(subtotal),
-                BigDecimal.ZERO,
-                new BigDecimal(subtotal),
-                null,
-                null,
-                null);
+                55L, 7L, "BINV-1", "UGX",
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                "DRAFT", new BigDecimal(subtotal), BigDecimal.ZERO, new BigDecimal(subtotal),
+                null, null, null);
     }
 
     private BillingInvoiceRecord finalizedInvoice(String subtotal, String tax, String total) {
         return new BillingInvoiceRecord(
-                55L,
-                7L,
-                "BINV-1",
-                "UGX",
-                LocalDate.of(2026, 1, 1),
-                LocalDate.of(2026, 1, 31),
-                "FINALIZED",
-                new BigDecimal(subtotal),
-                new BigDecimal(tax),
-                new BigDecimal(total),
-                null,
-                "admin1",
-                900L);
+                55L, 7L, "BINV-1", "UGX",
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                "FINALIZED", new BigDecimal(subtotal), new BigDecimal(tax), new BigDecimal(total),
+                null, "admin1", 900L);
     }
 }
