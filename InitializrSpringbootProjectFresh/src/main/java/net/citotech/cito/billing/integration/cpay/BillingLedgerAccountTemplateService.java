@@ -160,26 +160,58 @@ public class BillingLedgerAccountTemplateService {
             BigDecimal amount,
             String usageReference,
             String memo) {
-        List<LedgerEntryCommand> entries =
-                List.of(
-                        entry(
-                                storedValueLiabilityAccount(billingTenantId, currency),
-                                "Billing stored-value liability",
-                                "STORED_VALUE_LIABILITY",
-                                billingTenantId,
-                                "DR",
-                                amount,
-                                currency,
-                                memo),
-                        entry(
-                                billingRevenueAccount(currency),
-                                "CPay billing revenue",
-                                "REVENUE",
-                                null,
-                                "CR",
-                                amount,
-                                currency,
-                                memo));
+        return postPrepaidConsumptionWithTax(
+                billingTenantId,
+                currency,
+                amount,
+                BigDecimal.ZERO,
+                usageReference,
+                memo);
+    }
+
+    @Transactional
+    public long postPrepaidConsumptionWithTax(
+            long billingTenantId,
+            String currency,
+            BigDecimal revenueAmount,
+            BigDecimal taxAmount,
+            String usageReference,
+            String memo) {
+        BigDecimal tax = taxAmount == null ? BigDecimal.ZERO : taxAmount;
+        BigDecimal gross = revenueAmount.add(tax);
+        List<LedgerEntryCommand> entries = new ArrayList<>();
+        entries.add(
+                entry(
+                        storedValueLiabilityAccount(billingTenantId, currency),
+                        "Billing stored-value liability",
+                        "STORED_VALUE_LIABILITY",
+                        billingTenantId,
+                        "DR",
+                        gross,
+                        currency,
+                        memo));
+        entries.add(
+                entry(
+                        billingRevenueAccount(currency),
+                        "CPay billing revenue",
+                        "REVENUE",
+                        null,
+                        "CR",
+                        revenueAmount,
+                        currency,
+                        memo));
+        if (tax.compareTo(BigDecimal.ZERO) > 0) {
+            entries.add(
+                    entry(
+                            taxPayableAccount(billingTenantId, currency),
+                            "Billing tax payable",
+                            "TAX_LIABILITY",
+                            billingTenantId,
+                            "CR",
+                            tax,
+                            currency,
+                            memo));
+        }
         return postAndLink(
                 "billing-consumption:" + usageReference,
                 "BILLING_CONSUMPTION",
@@ -246,11 +278,6 @@ public class BillingLedgerAccountTemplateService {
                 memo);
     }
 
-    /**
-     * Reverses the exact revenue/tax split represented by a credit note and reduces receivables by
-     * the gross credit. This prevents tax payable from being stranded when a taxed invoice is
-     * corrected or voided.
-     */
     @Transactional
     public long postCreditNoteWithTax(
             long billingTenantId,
@@ -341,6 +368,24 @@ public class BillingLedgerAccountTemplateService {
                 billingTenantId,
                 BillingLedgerLinkType.CHARGE,
                 feeReference);
+    }
+
+    @Transactional
+    public long reverseBillingTransaction(
+            long billingTenantId,
+            String originalTransactionReference,
+            String reversalTransactionReference,
+            String billingReference,
+            String reason) {
+        long txId =
+                ledgerService.reverse(
+                        originalTransactionReference, reversalTransactionReference, reason);
+        linkWriter.write(
+                txId,
+                billingTenantId,
+                BillingLedgerLinkType.REVERSAL,
+                billingReference + ":reversal");
+        return txId;
     }
 
     private long postAndLink(
