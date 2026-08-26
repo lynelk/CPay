@@ -29,25 +29,8 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Remove obsolete projection-only patch anchor
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('.github/scripts/billing_p0_hardening.py')
-          s = p.read_text()
-          marker = 'replace_once(\n    admin,\n    """                        + \\"activation_status AS activationStatus,\\"'
-          start = s.find(marker)
-          if start < 0:
-              raise SystemExit('Projection patch marker was not found')
-          next_marker = 'replace_once(\n    admin,\n    """    private void ensureChargingAccount'
-          end = s.find(next_marker, start)
-          if end < 0:
-              raise SystemExit('Projection patch end marker was not found')
-          p.write_text(s[:start] + s[end:])
-          PY
-
-      - name: Apply deterministic P0 patch
-        run: python3 .github/scripts/billing_p0_hardening.py
+      - name: Assert P0 hardening migration exists
+        run: test -f InitializrSpringbootProjectFresh/src/main/resources/db/migration/V102__billing_baas_p0_hardening.sql
 
       - name: Apply repository formatting
         working-directory: InitializrSpringbootProjectFresh
@@ -60,14 +43,14 @@ jobs:
       - name: Reject whitespace errors
         run: git diff --check
 
-      - name: Commit validated hardening
+      - name: Commit validated formatting and tests
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add InitializrSpringbootProjectFresh
           if git diff --cached --quiet; then
-            echo 'No validated source changes to commit.'
+            echo 'No source/test formatting changes to commit.'
             exit 0
           fi
-          git commit -m 'fix(billing): close BaaS P0 hardening gaps [billing-p0-autofix]'
+          git commit -m 'test(billing): verify BaaS P0 hardening controls [billing-p0-autofix]'
           git push origin HEAD:billing-p0-baas-hardening-20260826
