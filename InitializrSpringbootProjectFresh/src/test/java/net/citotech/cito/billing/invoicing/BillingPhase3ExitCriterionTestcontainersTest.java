@@ -87,7 +87,11 @@ class BillingPhase3ExitCriterionTestcontainersTest {
                 new BillingCompletenessGateService(jdbcTemplate, invoiceRepository);
         BillingInvoiceService invoiceService =
                 new BillingInvoiceService(
-                        invoiceRepository, gateService, ledgerAccountTemplateService);
+                        invoiceRepository,
+                        gateService,
+                        ledgerAccountTemplateService,
+                        new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService(
+                                jdbcTemplate));
         BillingTraceChainService traceChainService = new BillingTraceChainService(jdbcTemplate);
         long billingTenantId = 99L;
         String sourceReference = "TX-PHASE3-CAPSTONE-" + java.util.UUID.randomUUID();

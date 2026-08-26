@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
 import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
+import net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService;
 import net.citotech.cito.billing.reconciliation.BillingCompletenessGateService;
 import net.citotech.cito.billing.tax.BillingTaxSnapshot;
 import net.citotech.cito.gateway.PaymentGatewayException;
@@ -17,14 +18,17 @@ public class BillingInvoiceService {
     private final BillingInvoiceRepository repository;
     private final BillingCompletenessGateService completenessGateService;
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService;
+    private final BillingPaymentFundingService fundingService;
 
     public BillingInvoiceService(
             BillingInvoiceRepository repository,
             BillingCompletenessGateService completenessGateService,
-            BillingLedgerAccountTemplateService ledgerAccountTemplateService) {
+            BillingLedgerAccountTemplateService ledgerAccountTemplateService,
+            BillingPaymentFundingService fundingService) {
         this.repository = repository;
         this.completenessGateService = completenessGateService;
         this.ledgerAccountTemplateService = ledgerAccountTemplateService;
+        this.fundingService = fundingService;
     }
 
     @Transactional
@@ -138,8 +142,17 @@ public class BillingInvoiceService {
         if (paymentReference == null || paymentReference.isBlank()) {
             throw new PaymentGatewayException("Billing payment reference is required");
         }
-        BillingInvoiceRecord invoice = requireFinalizedInvoice(billingInvoiceId);
-        if (repository.paymentAllocationExists(billingInvoiceId, paymentReference.trim())) {
+        BillingInvoiceRecord invoice = requireFinalizedInvoiceLocked(billingInvoiceId);
+        BillingPaymentFundingService.FundingClaim claim =
+                fundingService.claim(
+                        invoice.billingTenantId(),
+                        paymentReference,
+                        invoice.currency(),
+                        amount,
+                        false,
+                        "INVOICE",
+                        String.valueOf(billingInvoiceId));
+        if (claim.alreadyClaimed()) {
             return 0L;
         }
         BigDecimal outstanding = repository.findOutstandingAmount(billingInvoiceId);
@@ -147,21 +160,27 @@ public class BillingInvoiceService {
             throw new PaymentGatewayException(
                     "Billing payment allocation exceeds invoice outstanding amount");
         }
+        String allocationReference =
+                invoice.invoiceNumber() + ":" + claim.sourceTransactionReference();
         long txId =
-                ledgerAccountTemplateService.postInvoicePayment(
+                ledgerAccountTemplateService.postInvoicePaymentFromMerchantCollection(
                         invoice.billingTenantId(),
+                        claim.merchantId(),
                         invoice.currency(),
                         amount,
-                        invoice.invoiceNumber() + ":" + paymentReference.trim(),
+                        allocationReference,
                         "Payment allocated to " + invoice.invoiceNumber());
         repository.insertPaymentAllocation(
                 invoice.billingTenantId(),
                 billingInvoiceId,
-                paymentReference.trim(),
+                claim.sourceTransactionReference(),
                 amount,
                 invoice.currency(),
                 txId);
-        repository.reduceOutstanding(billingInvoiceId, amount);
+        if (repository.reduceOutstanding(billingInvoiceId, amount) != 1) {
+            throw new PaymentGatewayException(
+                    "Billing invoice outstanding amount changed concurrently");
+        }
         repository.closeIfSettled(billingInvoiceId, appliedBy.trim());
         return txId;
     }
@@ -183,7 +202,7 @@ public class BillingInvoiceService {
         if (reason == null || reason.isBlank()) {
             throw new PaymentGatewayException("Billing credit-note reason is required");
         }
-        BillingInvoiceRecord invoice = requireFinalizedInvoice(billingInvoiceId);
+        BillingInvoiceRecord invoice = requireFinalizedInvoiceLocked(billingInvoiceId);
         BigDecimal outstanding = repository.findOutstandingAmount(billingInvoiceId);
         if (grossAmount.compareTo(outstanding) > 0) {
             throw new PaymentGatewayException(
@@ -210,7 +229,10 @@ public class BillingInvoiceService {
                 txId,
                 issuedBy.trim(),
                 approvedBy.trim());
-        repository.reduceOutstanding(billingInvoiceId, grossAmount);
+        if (repository.reduceOutstanding(billingInvoiceId, grossAmount) != 1) {
+            throw new PaymentGatewayException(
+                    "Billing invoice outstanding amount changed concurrently");
+        }
         repository.closeIfSettled(billingInvoiceId, approvedBy.trim());
         return txId;
     }
@@ -252,6 +274,25 @@ public class BillingInvoiceService {
                     "Billing invoice "
                             + billingInvoiceId
                             + " is not DRAFT (status="
+                            + invoice.status()
+                            + ")");
+        }
+        return invoice;
+    }
+
+    private BillingInvoiceRecord requireFinalizedInvoiceLocked(long billingInvoiceId) {
+        BillingInvoiceRecord invoice =
+                repository
+                        .findForUpdate(billingInvoiceId)
+                        .orElseThrow(
+                                () ->
+                                        new PaymentGatewayException(
+                                                "Billing invoice not found: " + billingInvoiceId));
+        if (!"FINALIZED".equals(invoice.status())) {
+            throw new PaymentGatewayException(
+                    "Billing invoice "
+                            + billingInvoiceId
+                            + " is not FINALIZED (status="
                             + invoice.status()
                             + ")");
         }
