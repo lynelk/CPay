@@ -1,0 +1,111 @@
+name: Verify CPay financial integrity repairs
+
+on:
+  push:
+    branches:
+      - fix/p0-financial-integrity-20260826
+    paths:
+      - .github/workflows/retry3-financial-integrity-20260826.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-financial-integrity-20260826
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: InitializrSpringbootProjectFresh/pom.xml
+      - name: Apply repairs and align tests
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          import textwrap
+
+          source = Path('.github/workflows/fix-financial-integrity-20260826.yml').read_text()
+          start = source.index('          from pathlib import Path\n')
+          end = source.index('\n          PY', start)
+          program = textwrap.dedent(source[start:end])
+          exec(compile(program, '<cpay-financial-integrity>', 'exec'), {'__name__': '__main__'})
+
+          root = Path('InitializrSpringbootProjectFresh/src/test/java/net/citotech/cito')
+          unit = root / 'billing/invoicing/BillingInvoiceServiceTest.java'
+          text = unit.read_text()
+          text = text.replace(
+              '    private final BillingInvoiceService service =\n            new BillingInvoiceService(\n                    repository, completenessGateService, ledgerAccountTemplateService);',
+              '    private final net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService fundingService =\n            mock(net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService.class);\n    private final BillingInvoiceService service =\n            new BillingInvoiceService(\n                    repository, completenessGateService, ledgerAccountTemplateService, fundingService);'
+          )
+          replay = re.compile(
+              r'    @Test\n    void paymentReplayDoesNotPostTwice\(\) \{.*?\n    \}\n',
+              re.S,
+          )
+          replacement = '''    @Test
+    void paymentReplayDoesNotPostTwice() {
+        when(repository.findForUpdate(55L))
+                .thenReturn(Optional.of(finalizedInvoice("1000", "180", "1180")));
+        when(fundingService.claim(
+                        7L,
+                        "PAY-1",
+                        "UGX",
+                        new BigDecimal("100"),
+                        false,
+                        "INVOICE",
+                        "55"))
+                .thenReturn(
+                        new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService.FundingClaim(
+                                91L, 3L, "PAY-1", "UGX", new BigDecimal("100"), true));
+        assertThat(service.applyPayment(55L, "PAY-1", new BigDecimal("100"), "ops")).isZero();
+        verify(ledgerAccountTemplateService, never())
+                .postInvoicePaymentFromMerchantCollection(
+                        anyLong(), anyLong(), any(), any(), any(), any());
+    }
+'''
+          text, count = replay.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('payment replay test was not patched')
+          unit.write_text(text)
+
+          constructor = re.compile(
+              r'new BillingInvoiceService\(\s*invoiceRepository,\s*gateService,\s*ledgerAccountTemplateService\s*\)'
+          )
+          for rel in (
+              'billing/export/BillingTraceChainServiceTestcontainersTest.java',
+              'billing/invoicing/BillingInvoiceFinalizeWorkflowTestcontainersTest.java',
+              'billing/invoicing/BillingPhase3ExitCriterionTestcontainersTest.java',
+          ):
+              path = root / rel
+              body = path.read_text()
+              body, count = constructor.subn(
+                  'new BillingInvoiceService(\n                invoiceRepository, gateService, ledgerAccountTemplateService,\n                new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService(jdbcTemplate))',
+                  body,
+                  count=1,
+              )
+              if count != 1:
+                  raise SystemExit(f'constructor not patched: {rel}')
+              path.write_text(body)
+          PY
+      - name: Full backend verification
+        working-directory: InitializrSpringbootProjectFresh
+        run: |
+          mvn -q spotless:apply
+          mvn -q -DskipTests=false test
+          mvn -q -DskipTests=false verify
+      - name: Commit verified repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/fix-financial-integrity-20260826.yml .github/workflows/retry-financial-integrity-20260826.yml .github/workflows/retry2-financial-integrity-20260826.yml .github/workflows/retry3-financial-integrity-20260826.yml
+          git add InitializrSpringbootProjectFresh
+          git commit -m "fix(billing): enforce P0 financial integrity invariants"
+          git push origin HEAD:fix/p0-financial-integrity-20260826
