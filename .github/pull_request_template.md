@@ -1,13 +1,57 @@
 ## Summary
 
-Describe the change and the user or operational problem it solves.
+Describe the change, the user/operational problem it solves, and the measurable acceptance criteria.
 
 ## Verification
 
 - [ ] Backend build/tests pass for affected code.
 - [ ] Frontend typecheck/tests/build pass for affected UI.
-- [ ] Flyway versions are unique and migrations are additive/reversible where applicable.
+- [ ] Flyway versions are unique and migrations are additive/reversible or have a tested recovery plan where applicable.
 - [ ] Security, tenant isolation, money movement and audit implications were reviewed.
+- [ ] Post-deployment verification and rollback/containment steps are documented.
+
+## Integrated management-system impact
+
+For each item, check it or explain why it is not applicable. Do not silently leave a material impact unassessed.
+
+### Quality / ISO 9001
+
+- [ ] Customer, merchant, developer or internal requirements and acceptance criteria are clear.
+- [ ] Defect/regression risk and required test evidence are identified.
+- [ ] Documentation, support and training impacts are addressed.
+- [ ] Relevant quality/SLO objective or measurement is updated when behavior changes materially.
+
+### Information security / ISO/IEC 27001 and ISO/IEC 27032
+
+- [ ] Authentication, authorization, tenant isolation and privileged-access impacts are reviewed.
+- [ ] Data classification, privacy, retention, logging and cryptographic/key impacts are reviewed.
+- [ ] Threat/abuse cases, dependency/vulnerability exposure and security monitoring are covered.
+- [ ] New or materially changed residual risk is recorded in the risk/control system with an owner.
+
+### Service management / ISO/IEC 20000-1
+
+- [ ] Service owner, SLO/availability/capacity/monitoring/support implications are reviewed.
+- [ ] Incident/problem/change/release/configuration implications are documented.
+- [ ] Supplier/provider SLA, escalation or operational-procedure changes are addressed.
+
+### Business continuity / ISO 22301
+
+- [ ] RTO/RPO, critical dependency and recovery implications are reviewed.
+- [ ] Backup/restore/DR or continuity procedures are updated when recovery behavior changes.
+- [ ] A continuity/rollback exercise is included when the change can materially affect Tier 0/1 recovery.
+
+### Financial integrity and interoperability
+
+- [ ] Ledger, settlement, reconciliation, amount/currency precision, idempotency and reversal/refund impacts are reviewed.
+- [ ] ISO 20022 profile/schema/usage-guideline changes are documented and tested where applicable.
+- [ ] ISO 8583 MTI/data-dictionary/security/network-profile changes are documented and certified where applicable.
+- [ ] BIC/ISO 9362 inputs are structurally validated and authoritative registry/counterparty verification remains external where required.
+- [ ] Sensitive ISO 8583/card/payment-authentication data cannot enter normal logs or repository evidence.
+
+### Climate / ISO 32212 and management-system context
+
+- [ ] Material climate/sustainability or supplier-transition impact has been assessed, or is explicitly not applicable.
+- [ ] No sustainability/net-zero/conformity claim is introduced without approved evidence and applicability review.
 
 ## Sandbox parity
 
@@ -21,16 +65,18 @@ Every production capability should have a sandbox test path unless an explicit r
 - [ ] Sandbox reset/snapshot behavior covers any new sandbox-owned state.
 - [ ] Certification/readiness checks were extended when the feature is a go-live dependency.
 
-If any sandbox item does not apply, explain why rather than silently leaving it unchecked.
-
-## Documentation
+## Documentation and controlled records
 
 - [ ] OpenAPI annotations/schemas/examples reflect new or changed public APIs.
 - [ ] Developer guides/runbooks are updated for new integration behavior.
 - [ ] Swagger/OpenAPI remains usable on the sandbox deployment.
 - [ ] Breaking changes include migration/versioning guidance.
+- [ ] IMS/control/risk/service/supplier records are updated when the change affects them.
+- [ ] Evidence references do not contain production secrets, raw identity documents or restricted payment-authentication data.
 
 ## Deployment
 
 - [ ] The change is safe to advance `main` → `sandbox` after CI.
-- [ ] Sandbox verification evidence is recorded before manual `sandbox` → `production` promotion.
+- [ ] Sandbox/staging verification evidence is recorded before manual promotion to production.
+- [ ] Production configuration changes are peer-reviewed and secret values remain outside source control.
+- [ ] High-risk or emergency changes identify the required retrospective problem/CAPA review.

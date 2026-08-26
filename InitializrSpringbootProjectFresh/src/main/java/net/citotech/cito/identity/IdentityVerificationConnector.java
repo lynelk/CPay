@@ -1,16 +1,9 @@
 package net.citotech.cito.identity;
 
 import java.util.Map;
+import java.util.Set;
 
-/**
- * Contract for third-party identity-verification providers.
- *
- * <p>S5 pilot: a GnuGrid NIN adapter is the first implementation. Providers are stateless with
- * respect to CPay's database - they translate an {@link
- * IdentityRecords.IdentityVerificationRequest} into an {@link IdentityRecords.VerifiedIdentity}
- * result and (for async providers) accept a callback. Adapters must never persist raw PII
- * themselves; any storage is owned by {@link IdentityVerificationService}.
- */
+/** Contract for third-party identity-verification providers. */
 public interface IdentityVerificationConnector {
 
     /** Stable machine code, for example {@code gnugrid}. */
@@ -22,6 +15,29 @@ public interface IdentityVerificationConnector {
     /** Whether this provider can deliver results via an outbound callback. */
     boolean supportsAsync();
 
+    /** Document types this configured connector may authoritatively verify. */
+    default Set<String> supportedIdentityTypes() {
+        return Set.of("NIN");
+    }
+
+    /** ISO alpha-2 countries this configured connector may authoritatively verify. */
+    default Set<String> supportedCountries() {
+        return Set.of("UG");
+    }
+
+    /**
+     * Whether this connector can satisfy the synchronous verification operation for the requested
+     * document type/country. Async-only providers remain visible through the capability methods but
+     * are not selected by the synchronous /verify flow.
+     */
+    default boolean supports(String identityType, String country) {
+        return supportsSync()
+                && identityType != null
+                && country != null
+                && supportedIdentityTypes().stream().anyMatch(identityType::equalsIgnoreCase)
+                && supportedCountries().stream().anyMatch(country::equalsIgnoreCase);
+    }
+
     /**
      * Synchronously verifies an identity.
      *
@@ -30,19 +46,10 @@ public interface IdentityVerificationConnector {
      */
     IdentityRecords.VerifiedIdentity verify(IdentityRecords.IdentityVerificationRequest request);
 
-    /**
-     * Parses a provider callback payload into a verification result. Implementations must
-     * defensively validate the payload; {@link #validateCallbackHeaders(Map)} is invoked by the
-     * callback endpoint and must be passed the raw callback headers it returned true for.
-     */
+    /** Parses a provider callback payload into a verification result. */
     IdentityRecords.VerifiedIdentity parseCallback(
             String callbackBody, Map<String, String> callbackHeaders);
 
-    /**
-     * Validates the authenticity of a callback before {@link #parseCallback} is trusted.
-     *
-     * @return true when the callback is authentic, or when this provider carries no verification
-     *     material to check against (mirrors {@code PaymentChannelAdapter#verifyCallback}).
-     */
+    /** Validates callback authenticity before the callback result is trusted. */
     boolean validateCallbackHeaders(Map<String, String> callbackHeaders);
 }

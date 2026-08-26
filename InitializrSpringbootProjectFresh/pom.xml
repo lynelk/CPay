@@ -12,8 +12,8 @@
     <groupId>net.citotech</groupId>
     <artifactId>cito-fresh</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>cpayadmin-fresh</name>
-    <description>Fresh Spring Boot scaffold for the existing CPay backend logic</description>
+    <name>cito-platform</name>
+    <description>Cito multi-tenant platform with the CPay payments module</description>
 
     <properties>
         <java.version>21</java.version>
@@ -114,7 +114,8 @@
         <!-- Audit H1: routes any remaining java.util.logging output (our own not-yet-converted
              classes, and third-party libraries) through the same SLF4J/Logback pipeline as the
              rest of the app, instead of a second, differently-formatted logging path. Installed at
-             startup by CpayadminApplication. -->
+             startup by CpayadminApplication (retained as the legacy boot-entry class for
+             compatibility while the product identity is Cito). -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>jul-to-slf4j</artifactId>

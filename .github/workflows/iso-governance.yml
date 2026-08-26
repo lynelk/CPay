@@ -1,0 +1,88 @@
+name: ISO Governance and Financial Messaging
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  iso-governance:
+    name: ISO governance register
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate integrated management system metadata
+        run: python3 ops/iso/validate_iso_governance.py
+      - name: Prohibit unsupported certification claims in controlled ISO documents
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          pattern = re.compile(
+              r"\b(?:cito|cpay|we|the\s+(?:cito\s+)?(?:platform|gateway|service))\s+"
+              r"(?:is|are)\s+ISO(?:\s*/\s*IEC)?(?:[\s-]+\d{4,5}(?:[-:]\d{1,4})?)?[\s-]+certified\b",
+              re.IGNORECASE,
+          )
+          findings = []
+          for root in (Path("Docs/ISO"), Path("ops/iso")):
+              for path in root.rglob("*"):
+                  if not path.is_file() or path.suffix.lower() not in {".md", ".json", ".py", ".txt"}:
+                      continue
+                  for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                      if pattern.search(line):
+                          findings.append(f"{path}:{line_number}: {line.strip()}")
+          if findings:
+              print("Unsupported ISO certification claim found in controlled IMS material", file=sys.stderr)
+              print("\n".join(findings), file=sys.stderr)
+              raise SystemExit(1)
+          PY
+
+  financial-message-boundaries:
+    name: ISO 20022 / 8583 / 9362 safety boundary
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: InitializrSpringbootProjectFresh
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Run financial messaging boundary tests
+        run: mvn -B test --no-transfer-progress -Dtest=FinancialMessagingStandardsTest
+      - name: Verify no production ISO profile is implied by the generic boundary
+        working-directory: .
+        run: |
+          set -euo pipefail
+          test -s Docs/ISO/financial-messaging-interoperability.md
+          grep -q "network/profile-specific" Docs/ISO/financial-messaging-interoperability.md
+          grep -q "authoritative" Docs/ISO/financial-messaging-interoperability.md
+
+  backend-full-verify:
+    name: Backend full Maven verify
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: InitializrSpringbootProjectFresh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Compile, test, package and enforce formatting
+        run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false

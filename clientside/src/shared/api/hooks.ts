@@ -1483,7 +1483,7 @@ export function useAdminRotateWebhookSecretMutation() {
   return useMutation({
     mutationFn: (endpointId: number) =>
       request<{ code?: string; secret?: string }>(
-        `/api/v2/admin/webhooks/${endpointId}/rotate-secret`,
+        `/api/v2/admin/webhooks/endpoints/${endpointId}/rotate-secret`,
         { method: 'POST' },
       ),
     onSuccess: () => {

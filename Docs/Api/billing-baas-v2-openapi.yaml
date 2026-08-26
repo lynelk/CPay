@@ -1,0 +1,274 @@
+openapi: 3.0.3
+info:
+  title: CPay Billing BaaS API
+  version: 2.0.0
+  description: Governed tenant-scoped Billing-as-a-Service contract for merchant charging, commercial lifecycle, entitlements, protected actions, and administrative provisioning.
+servers:
+  - url: /
+    description: Current CPay deployment host
+tags:
+  - name: Billing BaaS
+  - name: Billing BaaS Admin
+security:
+  - CitoApiKey: []
+paths:
+  /api/v2/native/billing/baas/customers:
+    get:
+      tags: [Billing BaaS]
+      summary: List tenant billing customers
+      operationId: listBillingBaasCustomers
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    post:
+      tags: [Billing BaaS]
+      summary: Create a tenant billing customer
+      operationId: createBillingBaasCustomer
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/accounts:
+    post:
+      tags: [Billing BaaS]
+      summary: Create a billing account
+      operationId: createBillingBaasAccount
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AccountRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/contracts:
+    post:
+      tags: [Billing BaaS]
+      summary: Create a draft billing contract
+      operationId: createBillingBaasContract
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ContractRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/contracts/{reference}/submit:
+    post:
+      tags: [Billing BaaS]
+      summary: Submit a draft contract for approval
+      operationId: submitBillingBaasContract
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/contracts/{reference}/approve:
+    post:
+      tags: [Billing BaaS]
+      summary: Approve a submitted contract using a distinct service account
+      operationId: approveBillingBaasContract
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/contracts/{reference}/activate:
+    post:
+      tags: [Billing BaaS]
+      summary: Activate an approved effective contract
+      operationId: activateBillingBaasContract
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/subscriptions:
+    post:
+      tags: [Billing BaaS]
+      summary: Create a subscription under an active contract
+      operationId: createBillingBaasSubscription
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/subscriptions/{reference}/activate:
+    post:
+      tags: [Billing BaaS]
+      summary: Activate a subscription
+      operationId: activateBillingBaasSubscription
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/subscriptions/{reference}/pause:
+    post:
+      tags: [Billing BaaS]
+      summary: Pause a subscription
+      operationId: pauseBillingBaasSubscription
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/subscriptions/{reference}/cancel:
+    post:
+      tags: [Billing BaaS]
+      summary: Cancel a subscription
+      operationId: cancelBillingBaasSubscription
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/subscriptions/{reference}/entitlements:
+    post:
+      tags: [Billing BaaS]
+      summary: Grant a subscription entitlement
+      operationId: grantBillingBaasEntitlement
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EntitlementRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/charges:
+    post:
+      tags: [Billing BaaS]
+      summary: Authorize and reserve a tax-aware online charge
+      operationId: authorizeBillingBaasCharge
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AuthorizeChargeRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/charges/{reference}/commit:
+    post:
+      tags: [Billing BaaS]
+      summary: Commit an authorized charge and consume entitlement usage
+      operationId: commitBillingBaasCharge
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/charges/{reference}/release:
+    post:
+      tags: [Billing BaaS]
+      summary: Release an uncommitted charge reservation
+      operationId: releaseBillingBaasCharge
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/charges/{reference}/reverse:
+    post:
+      tags: [Billing BaaS]
+      summary: Reverse a committed charge using an approved protected action
+      operationId: reverseBillingBaasCharge
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/charges/{reference}:
+    get:
+      tags: [Billing BaaS]
+      summary: Read a tenant-scoped charge reservation
+      operationId: getBillingBaasCharge
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/protected-actions:
+    post:
+      tags: [Billing BaaS]
+      summary: Request maker-checker approval for a protected billing action
+      operationId: requestBillingBaasProtectedAction
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProtectedActionRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/native/billing/baas/protected-actions/{id}/approve:
+    post:
+      tags: [Billing BaaS]
+      summary: Approve a protected action with a distinct service account
+      operationId: approveBillingBaasProtectedAction
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/ActionId' }]
+      requestBody: { required: false, content: { application/json: { schema: { $ref: '#/components/schemas/DecisionRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/admin/billing/baas/tenants/{tenantId}/profile:
+    get:
+      tags: [Billing BaaS Admin]
+      summary: Read tenant BaaS production-readiness profile
+      operationId: getBillingBaasTenantProfile
+      security: [{ AdminSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/admin/billing/baas/tenants/{tenantId}/profile/review:
+    post:
+      tags: [Billing BaaS Admin]
+      summary: Record legal, commercial, tax and funds-flow review statuses
+      operationId: reviewBillingBaasTenantProfile
+      security: [{ AdminSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileReviewRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/admin/billing/baas/tenants/{tenantId}/profile/activate:
+    post:
+      tags: [Billing BaaS Admin]
+      summary: Activate a tenant for production after approved reviews and separation of duties
+      operationId: activateBillingBaasTenantProfile
+      security: [{ AdminSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/admin/billing/baas/tenants/{tenantId}/credentials:
+    post:
+      tags: [Billing BaaS Admin]
+      summary: Provision a scoped BaaS service-account credential
+      operationId: provisionBillingBaasCredential
+      security: [{ AdminSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CredentialRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/admin/billing/baas/tenants/{tenantId}/accounts/{accountReference}/credit-limit:
+    post:
+      tags: [Billing BaaS Admin]
+      summary: Set a governed billing account credit limit
+      operationId: setBillingBaasCreditLimit
+      security: [{ AdminSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/AccountReference' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreditLimitRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/v2/admin/billing/baas/tenants/{tenantId}/accounts/{accountReference}/top-ups:
+    post:
+      tags: [Billing BaaS Admin]
+      summary: Credit prepaid balance using proof of a settled same-tenant CPay PAYIN
+      operationId: topUpBillingBaasAccount
+      security: [{ AdminSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/AccountReference' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TopUpRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+components:
+  securitySchemes:
+    CitoApiKey:
+      type: apiKey
+      in: header
+      name: X-Cito-Api-Key
+    AdminSession:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CitoEnvironment: { name: X-Cito-Environment, in: header, required: true, schema: { type: string, enum: [sandbox, production] } }
+    RequestId: { name: X-Request-Id, in: header, required: false, schema: { type: string } }
+    Reference: { name: reference, in: path, required: true, schema: { type: string } }
+    ActionId: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    TenantId: { name: tenantId, in: path, required: true, schema: { type: integer, format: int64 } }
+    AccountReference: { name: accountReference, in: path, required: true, schema: { type: string } }
+  responses:
+    Ok:
+      description: Request completed
+      content: { application/json: { schema: { type: object, additionalProperties: true } } }
+    BadRequest:
+      description: Request rejected by billing controls
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    Unauthorized:
+      description: Missing or invalid credentials
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  schemas:
+    ErrorResponse: { type: object, properties: { code: { type: string }, message: { type: string } } }
+    CustomerRequest:
+      type: object
+      required: [externalReference, displayName]
+      properties: { externalReference: { type: string }, displayName: { type: string }, legalName: { type: string }, email: { type: string, format: email }, metadataJson: { type: string } }
+    AccountRequest:
+      type: object
+      required: [customerReference, accountReference, currency]
+      properties: { customerReference: { type: string }, accountReference: { type: string }, currency: { type: string, minLength: 3, maxLength: 3 } }
+    ContractRequest:
+      type: object
+      required: [customerReference, contractReference, currency, effectiveFrom]
+      properties: { customerReference: { type: string }, contractReference: { type: string }, currency: { type: string }, effectiveFrom: { type: string, format: date-time }, effectiveTo: { type: string, format: date-time }, termsJson: { type: string } }
+    SubscriptionRequest:
+      type: object
+      required: [customerReference, accountReference, contractReference, subscriptionReference, serviceCode, planCode]
+      properties: { customerReference: { type: string }, accountReference: { type: string }, contractReference: { type: string }, subscriptionReference: { type: string }, serviceCode: { type: string }, planCode: { type: string }, quantity: { type: number }, startsAt: { type: string, format: date-time }, endsAt: { type: string, format: date-time } }
+    EntitlementRequest:
+      type: object
+      required: [entitlementCode]
+      properties: { entitlementCode: { type: string }, limitQuantity: { type: number }, validFrom: { type: string, format: date-time }, validTo: { type: string, format: date-time } }
+    AuthorizeChargeRequest:
+      type: object
+      required: [billingAccountReference, serviceCode, usageQuantity, netAmount, currency, idempotencyKey]
+      properties: { billingAccountReference: { type: string }, serviceCode: { type: string }, entitlementCode: { type: string }, usageQuantity: { type: number }, netAmount: { type: number }, currency: { type: string }, idempotencyKey: { type: string }, expiresAt: { type: string, format: date-time } }
+    ProtectedActionRequest:
+      type: object
+      required: [actionType, resourceType, resourceReference]
+      properties: { actionType: { type: string }, resourceType: { type: string }, resourceReference: { type: string } }
+    DecisionRequest: { type: object, properties: { reason: { type: string } } }
+    ProfileReviewRequest:
+      type: object
+      required: [legalStatus, commercialStatus, taxStatus, fundsFlowStatus]
+      properties: { legalStatus: { type: string }, commercialStatus: { type: string }, taxStatus: { type: string }, fundsFlowStatus: { type: string } }
+    CredentialRequest:
+      type: object
+      required: [projectReference, environment, displayName, scopes]
+      properties: { projectReference: { type: string }, environment: { type: string }, displayName: { type: string }, scopes: { type: array, items: { type: string } }, requestsPerMinute: { type: integer }, expiresAt: { type: string, format: date-time } }
+    CreditLimitRequest: { type: object, required: [creditLimit], properties: { creditLimit: { type: number, minimum: 0 } } }
+    TopUpRequest: { type: object, required: [amount, verifiedPaymentReference], properties: { amount: { type: number, minimum: 0, exclusiveMinimum: true }, verifiedPaymentReference: { type: string } } }

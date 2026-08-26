@@ -26,6 +26,7 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -131,7 +132,8 @@ public class SecurityConfig {
             LegacySessionAuthorizationFilter legacySessionAuthorizationFilter,
             CitoMerchantFeatureAuthorizationFilter citoMerchantFeatureAuthorizationFilter)
             throws Exception {
-        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
+        CsrfTokenRequestAttributeHandler csrfRequestHandler =
+                new CsrfTokenRequestAttributeHandler();
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(
@@ -154,6 +156,7 @@ public class SecurityConfig {
                                         .httpStrictTransportSecurity(
                                                 hsts ->
                                                         hsts.includeSubDomains(true)
+                                                                .preload(true)
                                                                 .maxAgeInSeconds(31536000))
                                         .contentSecurityPolicy(
                                                 csp ->
@@ -166,9 +169,26 @@ public class SecurityConfig {
                                                                         + "connect-src 'self'"
                                                                         + connectSrcExtra()
                                                                         + "; "
+                                                                        + "object-src 'none'; "
                                                                         + "frame-ancestors 'self'; "
                                                                         + "base-uri 'self'; "
-                                                                        + "form-action 'self'")))
+                                                                        + "form-action 'self'"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "Permissions-Policy",
+                                                        "camera=(), microphone=(), geolocation=(), usb=(), payment=(self)"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "Cross-Origin-Opener-Policy",
+                                                        "same-origin"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "Cross-Origin-Resource-Policy",
+                                                        "same-origin"))
+                                        .addHeaderWriter(
+                                                new StaticHeadersWriter(
+                                                        "X-Permitted-Cross-Domain-Policies",
+                                                        "none")))
                 .authorizeHttpRequests(
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
@@ -178,7 +198,8 @@ public class SecurityConfig {
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ACTUATOR")
                                         .requestMatchers(
-                                                PUBLIC_ANONYMOUS_API_PATTERNS.toArray(String[]::new))
+                                                PUBLIC_ANONYMOUS_API_PATTERNS.toArray(
+                                                        String[]::new))
                                         .permitAll()
                                         .requestMatchers(
                                                 PUBLIC_SIGNED_API_PATTERNS.toArray(String[]::new))
@@ -193,7 +214,9 @@ public class SecurityConfig {
                                         .anyRequest()
                                         .denyAll())
                 .sessionManagement(
-                        session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+                        session ->
+                                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                                        .sessionFixation(fixation -> fixation.migrateSession()))
                 .addFilterBefore(legacySessionAuthorizationFilter, AuthorizationFilter.class)
                 .addFilterAfter(
                         citoMerchantFeatureAuthorizationFilter,
@@ -252,18 +275,21 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration trustedConfig = new CorsConfiguration();
         trustedConfig.setAllowedOrigins(expandLoopbackAliases(allowedOrigins));
-        trustedConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        trustedConfig.setAllowedMethods(
+                Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         trustedConfig.setAllowedHeaders(
                 List.of(
                         "Authorization",
                         "Content-Type",
+                        "X-Cito-Api-Key",
+                        "X-Cito-Environment",
                         "X-CSRF-TOKEN",
                         "X-CPay-Merchant",
                         "X-CPay-Signature",
@@ -318,9 +344,7 @@ public class SecurityConfig {
     }
 
     private boolean isLoopbackHost(String host) {
-        return "localhost".equalsIgnoreCase(host)
-                || "127.0.0.1".equals(host)
-                || "::1".equals(host);
+        return "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "::1".equals(host);
     }
 
     private void validateCredentials(String username, String password, String message) {

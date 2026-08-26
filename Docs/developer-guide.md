@@ -1,74 +1,42 @@
-# CPay Developer Guide
+# Cito Developer Guide
 
-This guide is the onboarding path for a third-party developer integrating with CPay's
-v2 gateway: collections, payouts, hosted checkout, payment links, request-to-pay
-invoices, status checks, balances, callbacks, statements, cross-border transfers,
-and merchant self-service capabilities. Detailed references live in the linked
-documents; this page is the 30-minute version.
+This is the onboarding path for developers integrating with Cito. **Cito is the platform; CPay is the payments capability within Cito.** The API documentation is split by product and security boundary so developers can determine the correct contract and authentication model before implementation.
 
-> Documentation freshness: API documentation is now managed as code. Any API-affecting
-> pull request is required by CI to update the OpenAPI/reference material in the same
-> change. See `Docs/Api/AUTO_UPDATE_POLICY.md`.
+> Documentation freshness: API documentation is managed as code. API-facing pull requests are validated against the committed OpenAPI contracts and changed Spring controller paths are hard-gated to appear in at least one authoritative contract.
 
-## 1. Overview
+## 1. Choose the correct API contract
 
-CPay is a multi-tenant payments and channel-management gateway for MTN MoMo, Airtel
-Money, Airtel OpenAPI, Safaricom M-Pesa, Yo! Payments, communications, vending, and
-identity/validation integrations. Two payment API generations run side-by-side:
-
-| Generation | Base path | Auth | Status |
+| Contract | Source | Use it for | Primary authentication |
 | --- | --- | --- | --- |
-| v1 (legacy) | `/api` / `/api/v1` | RSA signature in JSON body | Supported, stable, no new payment features |
-| **v2 (recommended)** | `/api/v2` | RSA signature over canonical request data | New payment integrations go here |
+| CPay Payments API | `Docs/Api/cpay-v2-openapi.yaml` | collections, payouts, refunds, balances, statements, checkout, invoices, FX/cross-border and payment-adjacent operations | CPay v2 canonical request signature, or endpoint-specific admin/public auth |
+| Cito Platform API | `Docs/Api/cito-platform-v2-openapi.yaml` | merchant platform services, entitlements, developer control plane, routing, marketplace, recurring payments, virtual accounts, analytics, embedded Cito and integrations | authenticated Cito merchant session plus service/environment entitlements |
 
-Always build new payment integrations against v2 unless an endpoint is explicitly
-available only on the legacy surface. CPay also contains merchant-session, public-token,
-provider-callback, and internal/admin APIs; those surfaces use different security models
-and must not be treated as interchangeable with signed merchant APIs.
+The unified catalog is `Docs/Api/README.md`.
 
 ## 2. Environments
 
-| Environment | Base URL | Purpose |
-| --- | --- | --- |
-| Sandbox | deployment-provided sandbox URL | Testing with provider sandboxes or controlled CPay simulations |
-| Production | deployment-provided production URL | Live traffic after channel certification and approval |
+Use the environment URLs supplied by the active deployment or merchant onboarding material. Do not hard-code example documentation hostnames into production clients.
 
-Do not hard-code example hostnames from documentation into production clients. Obtain the
-current environment URLs from the merchant onboarding material or portal.
-
-Sandbox behaviour is documented in `Docs/sandbox-guide.md`. The merchant portal also
-exposes configured sandbox guidance, test data, idempotency expectations, and environment
-selection where enabled.
-
-Use the optional environment header where the merchant deployment supports both sandbox
-and production configuration:
+Where supported, the environment selector is:
 
 ```http
 X-CPay-Environment: SANDBOX
 ```
 
-Production transaction controls, channel readiness, risk controls, and merchant feature
-activation can restrict what a merchant may execute even when the endpoint exists in the
-OpenAPI contract.
+Production access can additionally depend on merchant entitlements, channel readiness, risk controls, compliance controls, transaction limits and approval policy.
 
-## 3. Authentication (v2 signing)
+## 3. CPay v2 server-to-server signing
 
-Signed v2 requests are verified using the merchant's RSA public key registered with CPay.
-The client keeps the private key and uses it to sign the canonical request. The canonical
-format is specified in `Docs/Api-v2-signing.md` and implemented in the SDK examples.
+Signed CPay payment requests are verified using the merchant RSA public key registered with Cito/CPay. The client retains the private key.
 
-The current verification implementation reads these headers:
+Current verifier headers:
 
 - `X-CPay-Signature-Version` - currently `v2`
 - `X-CPay-Timestamp` - ISO-8601 instant
 - `X-CPay-Nonce` - unique per merchant request
 - `X-CPay-Signature` - base64 RSA-SHA256 signature over the canonical request
 
-The merchant identity is supplied to request verification from the API request body or
-query parameter as required by the operation. Do not rely on an additional merchant-number
-header unless a specific endpoint contract explicitly defines one.
-
-Canonical request input:
+The canonical request is:
 
 ```text
 METHOD
@@ -79,216 +47,190 @@ NONCE
 BODY_SHA256_HEX
 ```
 
-For GET requests, include query parameters in canonical order and hash the empty body.
-For POST requests, hash the exact raw request body sent on the wire. Reformatting JSON
-after signing changes the body hash.
+The merchant identity is supplied by the operation's body or query context. Do not assume a merchant-number header is part of verification unless that specific endpoint contract defines it. See `Docs/Api-v2-signing.md`.
 
-## 4. Idempotency
+## 4. Cito merchant-session APIs
 
-Financial write endpoints such as collect, payout, and refund should use an idempotency
-key:
+The Cito Platform API is designed for the authenticated merchant workspace. A successful Cito sign-in establishes the merchant session; controllers then resolve the signed-in user and merchant context. Individual services can also require an active merchant entitlement for the requested environment.
+
+Current merchant platform groups include:
+
+- `/api/v2/merchant-self-service/cito` - service catalog and entitlements
+- `/api/v2/merchant-self-service/developer` - projects, service accounts, credentials, test events, request logs and readiness
+- `/api/v2/merchant-self-service/routing` - intelligent routing policies, rules, simulation and decisions
+- `/api/v2/merchant-self-service/marketplace` - subaccounts, split rules, executions and refund allocations
+- `/api/v2/merchant-self-service/recurring` - plans, mandates, subscriptions and charges
+- `/api/v2/merchant-self-service/refunds` - merchant-workspace refund lifecycle and financial timeline
+- `/api/v2/merchant-self-service/virtual-accounts` - virtual-account issuance, closure and transfer visibility
+- `/api/v2/merchant-self-service/analytics` - merchant intelligence and recommendations
+- `/api/v2/merchant-self-service/embedded` - partner, branding, onboarding, delegation and commission controls
+- `/api/v2/merchant-self-service/integrations` - connector catalog, installations, mappings, subscriptions and jobs
+
+Do not reuse CPay RSA-signing assumptions for these session-scoped endpoints unless an operation explicitly says so.
+
+## 5. Idempotency and safe retries
+
+Financial writes should use an idempotency key:
 
 ```http
 X-CPay-Idempotency-Key: <opaque-client-supplied-key>
 ```
 
-- Same key + same request body -> the original result is returned without re-execution.
-- Same key + different request body -> treat the response as an idempotency conflict and
-  do not automatically create a replacement transaction.
-- Reuse the same merchant reference and idempotency key when retrying after a client-side
-  network failure whose server outcome is unknown.
+- Same key + same request body: return the original result without re-execution.
+- Same key + different body: treat as an idempotency conflict.
+- If the client loses the response after sending a money-moving request, retry with the same reference, same key and exact request body.
 
-Legacy v1 money routes retain their backward-compatible replay-protection behavior where
-enabled. New clients should use the v2 contract.
+Do not create a second payout, refund or transfer merely because the original request is still pending.
 
-## 5. Collect
+## 6. Collections and payouts
 
-`POST /api/v2/native/payments/collect`
+Primary CPay v2 payment routes include:
 
-Flow summary:
+- `POST /api/v2/native/payments/collect`
+- `POST /api/v2/native/payments/payout`
+- compatibility orchestration routes under `/api/v2/payments/...` where documented
 
-1. Merchant submits payer MSISDN, amount, currency, country, channel, reference, and
-   callback information.
-2. CPay validates the merchant, request signature, nonce/timestamp, channel readiness,
-   merchant controls, and provider route.
-3. CPay returns an accepted/pending result for asynchronous processing.
-4. Final state arrives through the configured callback/webhook; status polling is a
-   recovery mechanism rather than the primary completion signal.
+Payouts can be subject to transaction, aggregate, beneficiary, balance, compliance and maker-checker controls. `APPROVAL_PENDING` is non-terminal. Persist the original reference and wait for approval/execution rather than submitting a replacement payout.
 
-See `Docs/Api-v2-examples.md` for request-signing examples.
+## 7. Status, balances, statements and refunds
 
-## 6. Payout
+Common payment integration routes include:
 
-`POST /api/v2/native/payments/payout`
+- `GET /api/v2/payments/{reference}?merchantNumber=...`
+- `GET /api/v2/balances?merchantNumber=...`
+- `GET /api/v2/statements?...`
+- `POST /api/v2/refunds`
 
-Payouts are risk-controlled. Depending on merchant configuration, a payout can execute
-immediately or be parked for maker-checker approval. A response such as
-`APPROVAL_PENDING` is non-terminal: retain the original reference/idempotency key and wait
-for approval and subsequent execution. Do not create a replacement payout merely because
-money has not moved yet.
+Follow each contract's pagination, limit and cursor rules. Balances, statements and financial timelines are sensitive merchant data.
 
-Per-transaction, daily/monthly, beneficiary-velocity, balance/reservation, compliance, and
-other configured controls may be evaluated before provider execution.
-
-## 7. Status, balances, and statements
-
-- `GET /api/v2/payments/{reference}?merchantNumber=...` - transaction status
-- `GET /api/v2/balances?merchantNumber=...` - available balances
-- `GET /api/v2/statements?...` - statement/export API where enabled
-
-List/export endpoints must be integrated using their documented limit/cursor rules rather
-than assuming an unbounded result set. Treat balances and statements as sensitive merchant
-data.
-
-## 8. Payment links and invoices
-
-Payment links and invoices return tokenized customer-facing payment routes.
+## 8. Checkout, payment links and invoices
 
 | Action | Endpoint |
 | --- | --- |
-| Create a payment link | `POST /api/v2/payment-links` |
-| Pay a payment link | `POST /api/v2/checkout/{token}/pay` |
-| Create an invoice/request-to-pay | `POST /api/v2/invoices` |
+| Create payment link | `POST /api/v2/payment-links` |
+| Pay hosted checkout | `POST /api/v2/checkout/{token}/pay` |
+| Create invoice/request-to-pay | `POST /api/v2/invoices` |
 | List invoices | `GET /api/v2/invoices?merchantNumber=...` |
-| Send an invoice | `POST /api/v2/invoices/{reference}/send` |
-| Cancel an invoice | `POST /api/v2/invoices/{reference}/cancel` |
-| Pay an invoice | `POST /api/v2/invoices/pay/{token}` |
+| Send invoice | `POST /api/v2/invoices/{reference}/actions/send` |
+| Cancel invoice | `POST /api/v2/invoices/{reference}/actions/cancel` |
+| Pay invoice | `POST /api/v2/invoices/pay/{token}` |
 
-Public token endpoints do not use merchant RSA signing. Treat payment/invoice tokens as
-secrets: do not log or expose them unnecessarily.
+Public payment tokens are credentials. Avoid logging or unnecessarily exposing them.
 
-## 9. Communications and validation capabilities
+## 9. Developer control plane
 
-CPay now contains provider-neutral communications and identity/validation infrastructure.
-The merchant contract is capability-oriented: merchants activate CPay capabilities such as
-a communication channel or a validation check, while provider selection, credentials,
-health routing, retries, and failover remain internal platform concerns.
+The Cito developer control plane provides merchant-scoped developer projects, environments, service accounts, scoped credentials, test events, request logs and readiness checks.
 
-Communication processing includes durable outbox delivery, provider health controls,
-retry/failover handling, SMS compatibility, and WhatsApp provider support. Identification
-and validation includes provider routing, versioned policy evaluation, tenant-scoped
-verified-profile handling, metering, provider health, and validation webhook events.
+Production environment activation can require scope entitlement readiness. Service accounts should be granted the minimum service scopes required by the integration. Credential creation and revocation are privileged configuration operations even when exposed through the merchant workspace.
 
-Only use an endpoint for these capabilities when it is present in the current committed
-OpenAPI contract and enabled for the merchant. Do not couple a client to an underlying
-provider credential or provider-specific response shape unless CPay explicitly exposes it
-as part of the public contract.
+## 10. Intelligent routing and marketplace services
 
-## 10. Callbacks / webhooks
+Intelligent routing allows entitled merchants to simulate routing, define policies/rules and inspect routing decisions. Marketplace services support subaccounts, split-payment rules, split simulations, execution history and refund allocation visibility.
 
-Callbacks are delivered to registered merchant endpoints and must be verified before the
-merchant changes business state or fulfills an order. Event types and envelope details are
-specified in `Docs/Webhook-events.md`.
+Routing simulation is not itself money movement. A later payment execution using the selected route remains subject to the normal payment, risk and entitlement controls.
 
-Integration rules:
+## 11. Recurring payments and virtual accounts
 
-- verify the documented signature before processing;
-- enforce timestamp/replay rules where the callback contract includes them;
-- make webhook consumption idempotent because duplicate deliveries are normal in reliable
-  delivery systems;
-- return a successful 2xx response only after the event has been durably accepted;
-- use delivery logs/replay tooling instead of manually fabricating replacement events.
+Recurring-payment APIs cover plans, customer mandates, subscriptions, subscription status and charge history. Virtual-account APIs cover account issuance, listing, closure and inbound transfer visibility.
 
-## 11. Errors
+Treat mandate creation, recurring execution configuration and virtual-account lifecycle actions as financially sensitive operations and audit them accordingly.
 
-The preferred v2 baseline is the `ApiErrorResponse` shape containing stable `code`, a
-safe `message`, and `traceId`. Some older/internal controllers still use simpler response
-maps; the OpenAPI operation is authoritative for the surface being integrated.
+## 12. Analytics, embedded Cito and integrations
 
-Do not branch business logic on human-readable message text. Use stable error/status codes,
-HTTP status, and documented `retryable` semantics where present. Error recovery guidance is
-catalogued in `Docs/Error-catalog.md`.
+Merchant analytics exposes daily/provider aggregates, recommendations and acknowledgement/refresh operations. Embedded Cito supports partner configuration, branding, onboarding sessions, downstream merchant linkage, service delegation and commission rules. The integration marketplace supports connector installations, field mappings, event subscriptions and queued integration jobs.
 
-## 12. Retry behaviour
+Connector credentials and configuration remain internal references where possible. Clients should not depend on provider-specific credential shapes unless an endpoint explicitly exposes them.
 
-| Case | Behaviour |
+## 13. Webhooks and callbacks
+
+Verify callback signatures before changing business state or fulfilling an order. Make webhook consumption idempotent because duplicate delivery is normal in a reliable asynchronous system. Return 2xx only after the event has been durably accepted. Use delivery logs and replay tooling rather than fabricating replacement events.
+
+See `Docs/Webhook-events.md`.
+
+## 14. Errors and retry behavior
+
+Prefer stable error codes, HTTP status and documented retry semantics over human-readable message text. The preferred v2 envelope contains `code`, `message` and `traceId`; some older or internal controllers still use simpler maps, so the operation contract is authoritative.
+
+| Case | Recommended behavior |
 | --- | --- |
-| Client network failure with unknown server outcome | Retry with the same idempotency key and exact request body |
-| Provider timeout/unavailable | Follow returned transaction status and callback/status guidance; do not invent a second reference |
-| Callback delivery failure | CPay delivery/replay handling applies; merchant receiver remains idempotent |
-| Validation/input error | Correct the request; blind retry is not useful |
-| Authentication/replay rejection | Rebuild timestamp/nonce/signature; never reuse a nonce |
+| Unknown outcome after client network failure | Retry same request with same idempotency key |
+| Provider unavailable/timeout | Follow returned transaction state and callback/status guidance |
+| Validation error | Correct the request; do not blind-retry |
+| Authentication/replay rejection | Rebuild timestamp, nonce and signature; never reuse a nonce |
+| Entitlement failure | Request/activate the required service entitlement rather than retrying unchanged |
 
-## 13. Reconciliation basics
+See `Docs/Error-catalog.md`.
 
-Provider statements are validated and imported through the reconciliation workbench.
-Finance close and reconciliation approval are privileged maker-checker operations and are
-not public merchant automation targets. See
-`Docs/Runbooks/Reconciliation-finance-daily-close.md`.
+## 15. Cross-border transfers
 
-## 14. Cross-border transfers
-
-Where enabled, the flow is FX quote -> transfer intent -> compliance/treasury controls ->
-delivery.
+Where enabled, the flow is FX quote -> transfer intent -> compliance/treasury controls -> delivery.
 
 - `POST /api/v2/fx/quotes`
 - `POST /api/v2/cross-border/transfers`
-- internal treasury operations are intentionally separate from the merchant quickstart
 
-A quote does not itself move money. Creating/authorizing a transfer is a high-impact action
-and should require explicit user approval in AI/agent integrations.
+An FX quote does not move money. Creating or authorizing a transfer is a high-impact action and should require explicit user approval in AI/agent integrations.
 
-## 15. AI and automated clients
+## 16. Security expectations
 
-Automated clients should read the OpenAPI operation schemas and honor CPay risk metadata.
-Recommended policy:
+The current platform lineage strengthens production safety with fail-closed configuration checks, hardened session/security-header defaults, stronger password hashing and independent account/network login throttling budgets. API clients should preserve that posture rather than weakening it at integration boundaries.
+
+Minimum integration expectations:
+
+- least-privilege credentials and scopes;
+- no production private keys in client logs or general AI context;
+- explicit human approval for money movement and privileged control changes;
+- replay protection and idempotency for financial writes;
+- verified webhooks before fulfillment;
+- tenant isolation in all cached or persisted integration state;
+- audit trails for credential, entitlement, payout, refund, recurring and admin actions.
+
+## 17. AI and automated clients
+
+Suggested execution policy:
 
 | Risk class | Examples | Autonomous execution |
 | --- | --- | --- |
-| `read_only` | health, channels, status | allowed within authorization scope |
-| `read_only_sensitive` | balances, statements | scoped access and audit trail |
-| `quote_only` | FX quote | may be automated when requested |
-| `communication_send` | billable SMS/WhatsApp/customer contact | require user/business authorization |
-| `validation_check` | identity/KYC checks | require lawful purpose, consent/policy controls and scoped access |
-| `money_movement` | payout, refund, cross-border transfer | explicit human approval before execution |
-| `secret_management` | webhook/provider secret rotation | privileged human workflow only |
+| `read_only` | service catalog, health, channels, status | allowed within authorization scope |
+| `read_only_sensitive` | balances, statements, financial timelines | scoped access and audit trail |
+| `quote_only` | routing simulation, FX quote | may be automated when requested |
+| `communication_send` | customer messaging | require user/business authorization |
+| `validation_check` | identity/KYC checks | lawful purpose, consent/policy and scoped access |
+| `money_movement` | payout, refund, cross-border transfer | explicit approval before execution |
+| `secret_management` | credential or webhook-secret rotation | privileged workflow |
 | `finance_close` / `admin_control` | reconciliation approval, close, repair | never general autonomous execution |
 
-Never provide an AI agent with unrestricted production private keys or privileged admin
-credentials. Give it the minimum credential scope needed for the intended workflow.
+## 18. Go-live checklist
 
-## 16. Go-live checklist
+- [ ] Correct API contract selected for every integration surface
+- [ ] RSA signing fixture passes for CPay server-to-server requests
+- [ ] Merchant session and entitlement behavior tested for Cito platform APIs
+- [ ] Callback verification, duplicate delivery and replay handling tested
+- [ ] Sandbox collect, payout, status, balance and failure scenarios passed where payments are enabled
+- [ ] Idempotency tested under timeout and retry conditions
+- [ ] Provider/channel readiness and required merchant entitlements confirmed
+- [ ] Recurring, virtual-account, marketplace, embedded or integration features tested if enabled
+- [ ] Reconciliation/statement handling tested for integrations that settle money
+- [ ] Production transaction limits, maker-checker controls and compliance requirements reviewed
+- [ ] Monitoring covers provider failures, callback backlog, failed jobs and reconciliation exceptions
+- [ ] Production activation approved
 
-A merchant should not take production traffic until every applicable item below is
-complete:
+## 19. Documentation lifecycle
 
-- [ ] RSA key pair generated; merchant public key registered; private key stored securely
-- [ ] Deterministic signing fixture passes
-- [ ] Callback URL verified and duplicate/replay handling tested
-- [ ] Sandbox collect, payout, status, balance, and failure scenarios passed
-- [ ] Provider/channel capability certified or explicitly approved
-- [ ] Hosted checkout, payment links, invoices, communications, validation, vending, or
-      cross-border flows tested if those capabilities are enabled
-- [ ] Idempotency behavior tested under client timeout/retry conditions
-- [ ] Reconciliation and statement handling tested where the integration settles money
-- [ ] Production credentials configured; IP/network controls applied where required
-- [ ] Production transaction limits and approval controls reviewed
-- [ ] Monitoring covers provider failures, webhook backlog, reconciliation exceptions, and
-      critical asynchronous queues
-- [ ] Business/compliance approval and production activation completed
+The repository validates both authoritative OpenAPI contracts on every relevant change. For pull requests, changed Spring controller paths must be present in at least one contract. Both contracts are linted and separate browsable HTML references are generated from the exact source commit.
 
-## 17. Documentation lifecycle
-
-The repository automatically validates the OpenAPI contract and generates a browsable API
-reference whenever API-affecting code or documentation changes. Pull requests that modify
-API-facing controllers, DTOs, security, webhook, communication, identity, compliance,
-cross-border, or vending code must include matching API documentation changes. CI fails
-when that requirement is not met.
-
-This removes the need for a separate manual request to refresh documentation after each
-incremental application improvement. The developer making an intentional API change still
-owns the semantics of that change; automation validates, detects drift, and rebuilds the
-reference rather than guessing business behavior.
-
-See `Docs/Api/AUTO_UPDATE_POLICY.md` for the release gates and implementation rules.
+Generated HTML is not the source of truth. The committed YAML and supporting documentation are.
 
 ## References
 
-- OpenAPI source of truth: `Docs/Api/cpay-v2-openapi.yaml`
-- Documentation auto-update policy: `Docs/Api/AUTO_UPDATE_POLICY.md`
+- Unified API catalog: `Docs/Api/README.md`
+- CPay Payments OpenAPI: `Docs/Api/cpay-v2-openapi.yaml`
+- Cito Platform OpenAPI: `Docs/Api/cito-platform-v2-openapi.yaml`
+- Documentation lifecycle: `Docs/Api/AUTO_UPDATE_POLICY.md`
 - Signing: `Docs/Api-v2-signing.md`
 - Examples: `Docs/Api-v2-examples.md`
 - Webhooks: `Docs/Webhook-events.md`
 - Errors: `Docs/Error-catalog.md`
 - Sandbox: `Docs/sandbox-guide.md`
-- Migration for v1 users: `Docs/v1-to-v2-migration.md`
+- v1 migration: `Docs/v1-to-v2-migration.md`
+- Platform/module boundary: `Docs/CITO_BRAND_AND_MODULE_BOUNDARY.md`
+- Security architecture: `Docs/CITO_SECURITY_ARCHITECTURE.md`

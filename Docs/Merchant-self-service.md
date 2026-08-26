@@ -80,8 +80,8 @@ v2 API calls:
 POST /api/v2/payment-links
 POST /api/v2/invoices
 GET  /api/v2/invoices?merchantNumber=...
-POST /api/v2/invoices/{reference}/send
-POST /api/v2/invoices/{reference}/cancel
+POST /api/v2/invoices/{reference}/actions/send
+POST /api/v2/invoices/{reference}/actions/cancel
 ```
 
 Customers pay through tokenized hosted checkout routes:
@@ -135,8 +135,8 @@ POST /api/v2/merchant-self-service/channels/submit
 POST /api/v2/payment-links
 POST /api/v2/invoices
 GET  /api/v2/invoices?merchantNumber=...
-POST /api/v2/invoices/{reference}/send
-POST /api/v2/invoices/{reference}/cancel
+POST /api/v2/invoices/{reference}/actions/send
+POST /api/v2/invoices/{reference}/actions/cancel
 
 GET  /api/v2/merchant-self-service/webhooks
 POST /api/v2/merchant-self-service/webhooks

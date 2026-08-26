@@ -50,7 +50,7 @@ public class MerchantWebhookController {
         return ResponseEntity.ok(webhookService.listEndpoints(merchantId));
     }
 
-    @PostMapping(path = "/{endpointId}/rotate-secret")
+    @PostMapping(path = "/endpoints/{endpointId}/rotate-secret")
     public ResponseEntity<?> rotate(@PathVariable("endpointId") long endpointId) {
         try {
             return ResponseEntity.ok(webhookService.rotateSecret(endpointId));

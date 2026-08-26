@@ -17,14 +17,23 @@ public class CallbackTaskService {
     private final CallbackSigningService signingService;
     private final GatewayMetrics metrics;
 
-    public CallbackTaskService(CallbackTaskRepository repository, CallbackClaimRepository claimRepository, CallbackSigningService signingService, GatewayMetrics metrics) {
+    public CallbackTaskService(
+            CallbackTaskRepository repository,
+            CallbackClaimRepository claimRepository,
+            CallbackSigningService signingService,
+            GatewayMetrics metrics) {
         this.repository = repository;
         this.claimRepository = claimRepository;
         this.signingService = signingService;
         this.metrics = metrics;
     }
 
-    public void enqueue(long merchantId, String transactionId, String referenceValue, String targetUrl, String requestBody) {
+    public void enqueue(
+            long merchantId,
+            String transactionId,
+            String referenceValue,
+            String targetUrl,
+            String requestBody) {
         repository.enqueue(merchantId, transactionId, referenceValue, targetUrl, requestBody);
     }
 
@@ -45,23 +54,48 @@ public class CallbackTaskService {
     private void deliver(CallbackTask task) {
         try {
             CallbackSigningService.SignedCallback signed = signingService.sign(task);
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Content-Type", "application/json");
-            headers.put("X-CPay-Signature", signed.signature);
-            headers.put("X-CPay-Nonce", signed.nonce);
-            headers.put("X-CPay-Timestamp", signed.timestamp);
-            HttpRequestResponse response = Common.doHttpRequest("POST", task.targetUrl, task.requestBody, headers);
-            if (response != null && response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+            Map<String, String> headers = callbackHeaders(task, signed);
+            HttpRequestResponse response =
+                    Common.doHttpRequest("POST", task.targetUrl, task.requestBody, headers);
+            if (response != null
+                    && response.getStatusCode() >= 200
+                    && response.getStatusCode() < 300) {
                 metrics.incrementCallbackDelivery("DONE");
                 repository.markDone(task.id);
             } else {
                 metrics.incrementCallbackDelivery(nextStatus(task.attemptCount, task.attemptLimit));
-                repository.markNext(task.id, task.attemptCount, task.attemptLimit, nextRun(task.attemptCount), response == null ? "No response" : response.toString());
+                repository.markNext(
+                        task.id,
+                        task.attemptCount,
+                        task.attemptLimit,
+                        nextRun(task.attemptCount),
+                        response == null ? "No response" : response.toString());
             }
         } catch (Exception e) {
             metrics.incrementCallbackDelivery(nextStatus(task.attemptCount, task.attemptLimit));
-            repository.markNext(task.id, task.attemptCount, task.attemptLimit, nextRun(task.attemptCount), e.getMessage());
+            repository.markNext(
+                    task.id,
+                    task.attemptCount,
+                    task.attemptLimit,
+                    nextRun(task.attemptCount),
+                    e.getMessage());
         }
+    }
+
+    Map<String, String> callbackHeaders(
+            CallbackTask task, CallbackSigningService.SignedCallback signed) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("X-CPay-Signature", signed.signature);
+        headers.put("X-CPay-Signature-Version", "callback-v1");
+        headers.put("X-CPay-Nonce", signed.nonce);
+        headers.put("X-CPay-Timestamp", signed.timestamp);
+        // These values are part of the callback signature canonical string. They must travel
+        // with the request so a merchant can independently verify the signature.
+        headers.put("X-CPay-Callback-Task-Id", String.valueOf(task.id));
+        headers.put("X-CPay-Merchant-Id", String.valueOf(task.merchantId));
+        headers.put("X-CPay-Reference", task.referenceValue == null ? "" : task.referenceValue);
+        return headers;
     }
 
     private String nextStatus(int attempts, int attemptLimit) {
@@ -76,4 +110,3 @@ public class CallbackTaskService {
         return Instant.now().plus(Duration.ofHours(1));
     }
 }
-
