@@ -79,6 +79,12 @@ public class BillingInvoiceService {
                             + billingInvoiceId
                             + " completeness gate is not approved - submit and approve it first");
         }
+        if (!completenessGateService.isFinalizationReady(billingInvoiceId)) {
+            throw new PaymentGatewayException(
+                    "Billing invoice "
+                            + billingInvoiceId
+                            + " completeness controls changed after approval - re-submit the gate");
+        }
 
         BigDecimal subtotal = repository.sumLineAmounts(billingInvoiceId);
         if (subtotal.signum() <= 0) {
