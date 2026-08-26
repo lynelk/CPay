@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail a PR when paths in changed Spring controllers are absent from all OpenAPI contracts."""
+"""Fail a PR when paths in changed Spring controllers are absent from committed OpenAPI contracts."""
 from __future__ import annotations
 
 import re
@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path("InitializrSpringbootProjectFresh/src/main/java")
+API_ROOT = Path("Docs/Api")
 MAPPING = re.compile(r"@(GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping|RequestMapping)\s*(?:\((.*?)\))?", re.DOTALL)
 QUOTED = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
 CLASS_DECL = re.compile(r"\bclass\s+[A-Za-z0-9_]+")
@@ -61,9 +62,20 @@ def changed_controllers(base: str, head: str) -> list[Path]:
     return files
 
 
+def all_contracts(requested: list[str]) -> list[str]:
+    """Use explicit contracts plus every committed OpenAPI contract in Docs/Api.
+
+    Pull-request workflow definitions are evaluated from the protected base in some GitHub
+    contexts. Auto-discovery prevents a newly added API contract from being invisible to the
+    controller coverage gate until the workflow file itself has first reached main.
+    """
+    discovered = [str(path) for path in sorted(API_ROOT.glob("*-openapi.yaml"))]
+    return list(dict.fromkeys([*requested, *discovered]))
+
+
 def documented_paths(specs: list[str]) -> set[str]:
     paths: set[str] = set()
-    for spec_path in specs:
+    for spec_path in all_contracts(specs):
         with Path(spec_path).open("r", encoding="utf-8") as handle:
             spec = yaml.safe_load(handle) or {}
         paths.update(normalize(p) for p in (spec.get("paths") or {}).keys())
