@@ -1,0 +1,71 @@
+name: Retry CPay P0 financial integrity repairs
+
+on:
+  push:
+    branches:
+      - fix/p0-financial-integrity-20260826
+    paths:
+      - .github/workflows/retry-financial-integrity-20260826.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-financial-integrity-20260826
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: InitializrSpringbootProjectFresh/pom.xml
+      - name: Apply repair program and update fixtures
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import textwrap
+          workflow = Path('.github/workflows/fix-financial-integrity-20260826.yml').read_text()
+          start = workflow.index("          from pathlib import Path\n")
+          end = workflow.index("\n          PY", start)
+          program = textwrap.dedent(workflow[start:end])
+          exec(compile(program, '<financial-integrity-repair>', 'exec'), {'__name__':'__main__'})
+
+          root = Path('InitializrSpringbootProjectFresh/src/test/java/net/citotech/cito')
+          unit = root/'billing/invoicing/BillingInvoiceServiceTest.java'
+          text = unit.read_text()
+          old = '''    private final BillingInvoiceService service =\n            new BillingInvoiceService(\n                    repository, completenessGateService, ledgerAccountTemplateService);'''
+          new = '''    private final net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService fundingService =\n            mock(net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService.class);\n    private final BillingInvoiceService service =\n            new BillingInvoiceService(\n                    repository, completenessGateService, ledgerAccountTemplateService, fundingService);'''
+          if old not in text: raise SystemExit('unit constructor fixture not found')
+          unit.write_text(text.replace(old,new,1))
+
+          for rel in [
+              'billing/export/BillingTraceChainServiceTestcontainersTest.java',
+              'billing/invoicing/BillingInvoiceFinalizeWorkflowTestcontainersTest.java',
+              'billing/invoicing/BillingPhase3ExitCriterionTestcontainersTest.java',
+          ]:
+              path=root/rel; text=path.read_text()
+              old='''new BillingInvoiceService(\n                invoiceRepository, gateService, ledgerAccountTemplateService)'''
+              new='''new BillingInvoiceService(\n                invoiceRepository, gateService, ledgerAccountTemplateService,\n                new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService(jdbcTemplate))'''
+              if old not in text: raise SystemExit(f'constructor fixture not found: {rel}')
+              path.write_text(text.replace(old,new,1))
+          PY
+      - name: Format and test backend
+        working-directory: InitializrSpringbootProjectFresh
+        run: |
+          mvn -q spotless:apply
+          mvn -q -DskipTests=false test
+      - name: Commit verified repairs
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-financial-integrity-20260826.yml .github/workflows/retry-financial-integrity-20260826.yml
+          git add InitializrSpringbootProjectFresh
+          git commit -m "fix(billing): enforce P0 financial integrity invariants"
+          git push origin HEAD:fix/p0-financial-integrity-20260826
