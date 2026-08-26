@@ -283,6 +283,8 @@ public class SecurityConfig {
                 List.of(
                         "Authorization",
                         "Content-Type",
+                        "X-Cito-Api-Key",
+                        "X-Cito-Environment",
                         "X-CSRF-TOKEN",
                         "X-CPay-Merchant",
                         "X-CPay-Signature",
