@@ -38,7 +38,8 @@ public class BillingCompletenessGateService {
                         invoice.periodStart(),
                         invoice.periodEnd());
         int watermarkFailures = countIncompleteWatermarks(invoice);
-        int materialExceptions = countOpenExceptions(invoice, false);
+        int materialExceptions =
+                countOpenExceptions(invoice.billingTenantId(), invoice.id(), false);
         String result =
                 unstagedCount == 0 && watermarkFailures == 0 && materialExceptions == 0
                         ? RESULT_PASS
@@ -96,7 +97,8 @@ public class BillingCompletenessGateService {
         if (rows.isEmpty()) {
             return 0;
         }
-        String completenessResult = String.valueOf(rows.get(0).get("completeness_result"));
+        Map<String, Object> gate = rows.get(0);
+        String completenessResult = String.valueOf(gate.get("completeness_result"));
         boolean waiver = RESULT_FAIL.equals(completenessResult);
         if (waiver && (waiverReason == null || waiverReason.isBlank())) {
             throw new PaymentGatewayException(
@@ -104,12 +106,10 @@ public class BillingCompletenessGateService {
                             + billingInvoiceId
                             + " requires a waiver reason");
         }
-        BillingInvoiceRecord invoice =
-                invoiceRepository
-                        .find(billingInvoiceId)
-                        .orElseThrow(
-                                () -> new PaymentGatewayException("Billing invoice not found: " + billingInvoiceId));
-        if (waiver && countOpenExceptions(invoice, true) > 0) {
+        if (waiver
+                && countOpenExceptions(
+                                number(gate.get("billing_tenant_id")), billingInvoiceId, true)
+                        > 0) {
             throw new PaymentGatewayException(
                     "CRITICAL billing operational exceptions cannot be waived at invoice finalization");
         }
@@ -133,7 +133,9 @@ public class BillingCompletenessGateService {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("billing_invoice_id", billingInvoiceId);
         p.addValue("rejected_by", rejectedBy.trim());
-        p.addValue("reason", reason == null || reason.isBlank() ? "Rejected by checker" : reason.trim());
+        p.addValue(
+                "reason",
+                reason == null || reason.isBlank() ? "Rejected by checker" : reason.trim());
         return jdbcTemplate.update(
                 "UPDATE billing_completeness_gates SET rejection_reason=:reason "
                         + "WHERE billing_invoice_id=:billing_invoice_id AND gate_status='PENDING_APPROVAL' "
@@ -141,31 +143,45 @@ public class BillingCompletenessGateService {
                 p);
     }
 
-    /**
-     * Approval is revalidated immediately before finalization. A new source failure or material
-     * exception after approval invalidates a clean PASS; a waived FAIL remains valid only while
-     * failure counts do not grow, and a CRITICAL exception always fails closed.
-     */
+    /** Whether the maker-checker gate itself has reached APPROVED. */
     public boolean isApproved(long billingInvoiceId) {
+        List<String> statuses =
+                jdbcTemplate.query(
+                        "SELECT gate_status FROM billing_completeness_gates WHERE billing_invoice_id=:id",
+                        new MapSqlParameterSource("id", billingInvoiceId),
+                        (rs, rowNum) -> rs.getString("gate_status"));
+        return !statuses.isEmpty() && STATUS_APPROVED.equals(statuses.get(0));
+    }
+
+    /**
+     * Revalidates operational completeness immediately before money is posted. A new source
+     * failure or material exception after approval invalidates a clean PASS; a waived FAIL remains
+     * usable only while its failure counts have not grown. CRITICAL exceptions always fail closed.
+     */
+    public boolean isFinalizationReady(long billingInvoiceId) {
         List<Map<String, Object>> gates =
                 jdbcTemplate.queryForList(
                         "SELECT gate_status,waiver_reason,source_watermark_failure_count,material_exception_count "
                                 + "FROM billing_completeness_gates WHERE billing_invoice_id=:id",
                         new MapSqlParameterSource("id", billingInvoiceId));
-        if (gates.isEmpty() || !STATUS_APPROVED.equals(String.valueOf(gates.get(0).get("gate_status")))) {
+        if (gates.isEmpty()
+                || !STATUS_APPROVED.equals(String.valueOf(gates.get(0).get("gate_status")))) {
             return false;
         }
-        BillingInvoiceRecord invoice =
-                invoiceRepository.find(billingInvoiceId).orElse(null);
-        if (invoice == null || countOpenExceptions(invoice, true) > 0) {
+        BillingInvoiceRecord invoice = invoiceRepository.find(billingInvoiceId).orElse(null);
+        if (invoice == null
+                || countOpenExceptions(invoice.billingTenantId(), invoice.id(), true) > 0) {
             return false;
         }
         Map<String, Object> gate = gates.get(0);
         int currentWatermarkFailures = countIncompleteWatermarks(invoice);
-        int currentExceptions = countOpenExceptions(invoice, false);
+        int currentExceptions =
+                countOpenExceptions(invoice.billingTenantId(), invoice.id(), false);
         int approvedWatermarkFailures = number(gate.get("source_watermark_failure_count"));
         int approvedExceptions = number(gate.get("material_exception_count"));
-        boolean waived = gate.get("waiver_reason") != null && !String.valueOf(gate.get("waiver_reason")).isBlank();
+        boolean waived =
+                gate.get("waiver_reason") != null
+                        && !String.valueOf(gate.get("waiver_reason")).isBlank();
         if (!waived) {
             return currentWatermarkFailures == 0 && currentExceptions == 0;
         }
@@ -178,10 +194,16 @@ public class BillingCompletenessGateService {
                 invoiceRepository
                         .find(billingInvoiceId)
                         .orElseThrow(
-                                () -> new PaymentGatewayException("Billing invoice not found: " + billingInvoiceId));
+                                () ->
+                                        new PaymentGatewayException(
+                                                "Billing invoice not found: " + billingInvoiceId));
         if (!invoice.isDraft()) {
             throw new PaymentGatewayException(
-                    "Billing invoice " + billingInvoiceId + " is not DRAFT (status=" + invoice.status() + ")");
+                    "Billing invoice "
+                            + billingInvoiceId
+                            + " is not DRAFT (status="
+                            + invoice.status()
+                            + ")");
         }
         return invoice;
     }
@@ -199,11 +221,12 @@ public class BillingCompletenessGateService {
         return count == null ? 0 : count;
     }
 
-    private int countOpenExceptions(BillingInvoiceRecord invoice, boolean criticalOnly) {
+    private int countOpenExceptions(long billingTenantId, long billingInvoiceId, boolean criticalOnly) {
         MapSqlParameterSource p = new MapSqlParameterSource();
-        p.addValue("tenant", invoice.billingTenantId());
-        p.addValue("invoice", invoice.id());
-        String severity = criticalOnly ? "severity='CRITICAL'" : "severity IN ('MATERIAL','CRITICAL')";
+        p.addValue("tenant", billingTenantId);
+        p.addValue("invoice", billingInvoiceId);
+        String severity =
+                criticalOnly ? "severity='CRITICAL'" : "severity IN ('MATERIAL','CRITICAL')";
         Integer count =
                 jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM billing_operational_exceptions WHERE billing_tenant_id=:tenant "
