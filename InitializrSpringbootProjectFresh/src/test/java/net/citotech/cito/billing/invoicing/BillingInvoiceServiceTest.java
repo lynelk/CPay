@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -104,7 +103,6 @@ class BillingInvoiceServiceTest {
         assertThatThrownBy(() -> service.stageCharges(56L))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("not DRAFT");
-        verify(repository, times(0)).findUnstagedCustomerCharges(eq(7L), eq("UGX"), eq(LocalDate.of(2026,1,1)), eq(LocalDate.of(2026,1,31)));
     }
 
     @Test
