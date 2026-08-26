@@ -227,7 +227,7 @@ public class BillingBaasController {
         }
     }
 
-    @PostMapping("/charges/authorize")
+    @PostMapping("/charges")
     public ResponseEntity<?> authorizeCharge(
             @RequestHeader("X-Cito-Api-Key") String apiKey,
             @RequestHeader("X-Cito-Environment") String environment,
@@ -241,7 +241,7 @@ public class BillingBaasController {
                             "BILLING_CHARGE",
                             requestId,
                             "POST",
-                            "/charges/authorize");
+                            "/charges");
             return ResponseEntity.ok(
                     chargingService.authorize(
                             context,
