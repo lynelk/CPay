@@ -235,13 +235,7 @@ public class BillingBaasController {
             @RequestBody AuthorizeChargeRequest body) {
         try {
             BillingBaasContext context =
-                    context(
-                            apiKey,
-                            environment,
-                            "BILLING_CHARGE",
-                            requestId,
-                            "POST",
-                            "/charges");
+                    context(apiKey, environment, "BILLING_CHARGE", requestId, "POST", "/charges");
             return ResponseEntity.ok(
                     chargingService.authorize(
                             context,
