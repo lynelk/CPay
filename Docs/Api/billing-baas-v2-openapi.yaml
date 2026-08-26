@@ -9,19 +9,21 @@ servers:
 tags:
   - name: Billing BaaS
   - name: Billing BaaS Admin
+security:
+  - CitoApiKey: []
 paths:
   /api/v2/native/billing/baas/customers:
     get:
       tags: [Billing BaaS]
       summary: List tenant billing customers
       operationId: listBillingBaasCustomers
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '401': { $ref: '#/components/responses/Unauthorized' } }
     post:
       tags: [Billing BaaS]
       summary: Create a tenant billing customer
       operationId: createBillingBaasCustomer
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/accounts:
@@ -29,7 +31,7 @@ paths:
       tags: [Billing BaaS]
       summary: Create a billing account
       operationId: createBillingBaasAccount
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AccountRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/contracts:
@@ -37,7 +39,7 @@ paths:
       tags: [Billing BaaS]
       summary: Create a draft billing contract
       operationId: createBillingBaasContract
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ContractRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/contracts/{reference}/submit:
@@ -45,28 +47,28 @@ paths:
       tags: [Billing BaaS]
       summary: Submit a draft contract for approval
       operationId: submitBillingBaasContract
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/contracts/{reference}/approve:
     post:
       tags: [Billing BaaS]
       summary: Approve a submitted contract using a distinct service account
       operationId: approveBillingBaasContract
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/contracts/{reference}/activate:
     post:
       tags: [Billing BaaS]
       summary: Activate an approved effective contract
       operationId: activateBillingBaasContract
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/subscriptions:
     post:
       tags: [Billing BaaS]
       summary: Create a subscription under an active contract
       operationId: createBillingBaasSubscription
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/subscriptions/{reference}/activate:
@@ -74,36 +76,36 @@ paths:
       tags: [Billing BaaS]
       summary: Activate a subscription
       operationId: activateBillingBaasSubscription
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/subscriptions/{reference}/pause:
     post:
       tags: [Billing BaaS]
       summary: Pause a subscription
       operationId: pauseBillingBaasSubscription
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/subscriptions/{reference}/cancel:
     post:
       tags: [Billing BaaS]
       summary: Cancel a subscription
       operationId: cancelBillingBaasSubscription
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/subscriptions/{reference}/entitlements:
     post:
       tags: [Billing BaaS]
       summary: Grant a subscription entitlement
       operationId: grantBillingBaasEntitlement
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EntitlementRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
-  /api/v2/native/billing/baas/charges/authorize:
+  /api/v2/native/billing/baas/charges:
     post:
       tags: [Billing BaaS]
       summary: Authorize and reserve a tax-aware online charge
       operationId: authorizeBillingBaasCharge
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AuthorizeChargeRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/charges/{reference}/commit:
@@ -111,35 +113,35 @@ paths:
       tags: [Billing BaaS]
       summary: Commit an authorized charge and consume entitlement usage
       operationId: commitBillingBaasCharge
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/charges/{reference}/release:
     post:
       tags: [Billing BaaS]
       summary: Release an uncommitted charge reservation
       operationId: releaseBillingBaasCharge
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/charges/{reference}/reverse:
     post:
       tags: [Billing BaaS]
       summary: Reverse a committed charge using an approved protected action
       operationId: reverseBillingBaasCharge
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/charges/{reference}:
     get:
       tags: [Billing BaaS]
       summary: Read a tenant-scoped charge reservation
       operationId: getBillingBaasCharge
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/Reference' }]
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/protected-actions:
     post:
       tags: [Billing BaaS]
       summary: Request maker-checker approval for a protected billing action
       operationId: requestBillingBaasProtectedAction
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProtectedActionRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/native/billing/baas/protected-actions/{id}/approve:
@@ -147,7 +149,7 @@ paths:
       tags: [Billing BaaS]
       summary: Approve a protected action with a distinct service account
       operationId: approveBillingBaasProtectedAction
-      parameters: [{ $ref: '#/components/parameters/CitoApiKey' }, { $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/ActionId' }]
+      parameters: [{ $ref: '#/components/parameters/CitoEnvironment' }, { $ref: '#/components/parameters/RequestId' }, { $ref: '#/components/parameters/ActionId' }]
       requestBody: { required: false, content: { application/json: { schema: { $ref: '#/components/schemas/DecisionRequest' } } } }
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/v2/admin/billing/baas/tenants/{tenantId}/profile:
@@ -204,11 +206,15 @@ paths:
       responses: { '200': { $ref: '#/components/responses/Ok' }, '400': { $ref: '#/components/responses/BadRequest' }, '401': { $ref: '#/components/responses/Unauthorized' } }
 components:
   securitySchemes:
+    CitoApiKey:
+      type: apiKey
+      in: header
+      name: X-Cito-Api-Key
     AdminSession:
       type: http
       scheme: bearer
+      bearerFormat: JWT
   parameters:
-    CitoApiKey: { name: X-Cito-Api-Key, in: header, required: true, schema: { type: string } }
     CitoEnvironment: { name: X-Cito-Environment, in: header, required: true, schema: { type: string, enum: [sandbox, production] } }
     RequestId: { name: X-Request-Id, in: header, required: false, schema: { type: string } }
     Reference: { name: reference, in: path, required: true, schema: { type: string } }
