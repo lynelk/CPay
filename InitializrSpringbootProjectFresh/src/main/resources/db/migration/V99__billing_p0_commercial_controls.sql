@@ -65,14 +65,11 @@ ALTER TABLE `billing_invoices`
   ADD COLUMN `closed_at` TIMESTAMP NULL AFTER `void_reason`,
   ADD COLUMN `closed_by` VARCHAR(191) NULL AFTER `closed_at`;
 
--- V48 created credit notes as immediately posted objects. Make that state explicit so later maker-
--- checker workflows can stage a note without changing historical rows' meaning.
 ALTER TABLE `billing_credit_notes`
   ADD COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'POSTED' AFTER `reason`,
   ADD COLUMN `approved_by` VARCHAR(191) NULL AFTER `issued_by`,
   ADD COLUMN `approved_at` TIMESTAMP NULL AFTER `approved_by`;
 
--- Backfill outstanding balances without changing immutable finalized totals.
 UPDATE `billing_invoices` i
 SET i.`outstanding_amount` = GREATEST(
   i.`total_amount`
@@ -119,3 +116,19 @@ CREATE TABLE IF NOT EXISTS `billing_operational_exceptions` (
   CONSTRAINT `chk_billing_exception_severity` CHECK (`severity` IN ('INFO','WARNING','MATERIAL','CRITICAL')),
   CONSTRAINT `chk_billing_exception_status` CHECK (`status` IN ('OPEN','WAIVED','RESOLVED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `billing_completeness_gates`
+  ADD COLUMN `source_watermark_failure_count` INT NOT NULL DEFAULT 0 AFTER `unstaged_charge_count`,
+  ADD COLUMN `material_exception_count` INT NOT NULL DEFAULT 0 AFTER `source_watermark_failure_count`;
+
+-- Existing production tenants are deliberately initialized fail-closed. Operations must advance
+-- this watermark only after proving the payment producer/outbox/usage pipeline is complete through
+-- expected_through_at. New BaaS tenant provisioning creates the same PENDING watermark.
+INSERT INTO `billing_source_watermarks`
+  (`billing_tenant_id`,`source_code`,`service_code`,`expected_through_at`,`status`)
+SELECT bt.`id`, 'CPAY_PAYMENT', 'PAYMENT', CURRENT_TIMESTAMP, 'PENDING'
+FROM `billing_tenants` bt
+WHERE NOT EXISTS (
+  SELECT 1 FROM `billing_source_watermarks` w
+  WHERE w.`billing_tenant_id`=bt.`id` AND w.`source_code`='CPAY_PAYMENT' AND w.`service_code`='PAYMENT'
+);
