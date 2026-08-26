@@ -1,36 +1,34 @@
 package net.citotech.cito.billing.invoicing;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
 import net.citotech.cito.billing.reconciliation.BillingCompletenessGateService;
+import net.citotech.cito.billing.tax.BillingTaxService;
+import net.citotech.cito.billing.tax.BillingTaxSnapshot;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Draft-invoice creation, charge staging, and finalize for the {@code billing_invoices} domain
- * (Flyway {@code V47}) - the periodic billing statement, distinct from {@code
- * checkout.InvoiceService}'s one-off request-to-pay invoices. {@link #createDraft}/{@link
- * #stageCharges} only ever produce/mutate {@code DRAFT} invoices; {@link #finalizeInvoice} is the
- * one transition out of DRAFT, after which the invoice is immutable (enforced by {@code
- * requireDraftInvoice} rejecting any further staging).
- */
+/** Governed periodic billing-invoice lifecycle. */
 @Service
 public class BillingInvoiceService {
     private final BillingInvoiceRepository repository;
     private final BillingCompletenessGateService completenessGateService;
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService;
+    private final BillingTaxService taxService;
 
     public BillingInvoiceService(
             BillingInvoiceRepository repository,
             BillingCompletenessGateService completenessGateService,
-            BillingLedgerAccountTemplateService ledgerAccountTemplateService) {
+            BillingLedgerAccountTemplateService ledgerAccountTemplateService,
+            BillingTaxService taxService) {
         this.repository = repository;
         this.completenessGateService = completenessGateService;
         this.ledgerAccountTemplateService = ledgerAccountTemplateService;
+        this.taxService = taxService;
     }
 
     @Transactional
@@ -43,30 +41,18 @@ public class BillingInvoiceService {
             throw new PaymentGatewayException(
                     "Billing invoice period start must not be after period end");
         }
-        String invoiceNumber = "BINV-" + UUID.randomUUID();
         return repository.insertDraft(
                 billingTenantId,
-                invoiceNumber,
+                "BINV-" + UUID.randomUUID(),
                 currency.trim().toUpperCase(),
                 periodStart,
                 periodEnd);
     }
 
-    /**
-     * Finds every {@code CUSTOMER_CHARGE} rated charge for this invoice's tenant/currency/period
-     * not already staged onto an invoice line, stages each as a new line, and recomputes the
-     * invoice's subtotal/total. Idempotent: rerunning after a partial success only stages what is
-     * still unstaged, since {@code billing_invoice_lines.billing_rated_charge_id} is unique. Tax is
-     * deliberately left at its default {@code 0} - a real tax adapter is out of scope for this
-     * slice (stub adapters are explicitly acceptable at this stage of the billing plan).
-     *
-     * @return the number of newly staged lines
-     */
     @Transactional
     public int stageCharges(long billingInvoiceId) {
         BillingInvoiceRecord invoice = requireDraftInvoice(billingInvoiceId);
-
-        List<UnstagedRatedCharge> unstaged =
+        var unstaged =
                 repository.findUnstagedCustomerCharges(
                         invoice.billingTenantId(),
                         invoice.currency(),
@@ -80,39 +66,21 @@ public class BillingInvoiceService {
                     charge.ratedAmount(),
                     invoice.currency());
         }
-
         if (!unstaged.isEmpty()) {
             BigDecimal subtotal = repository.sumLineAmounts(billingInvoiceId);
-            BigDecimal total = subtotal.add(invoice.taxAmount());
-            repository.updateTotals(billingInvoiceId, subtotal, total);
+            repository.updateTotals(billingInvoiceId, subtotal, subtotal);
         }
         return unstaged.size();
     }
 
     /**
-     * Finalize workflow: requires the invoice still be DRAFT and its completeness gate {@code
-     * APPROVED} ({@link BillingCompletenessGateService#isApproved}), posts the invoice total to the
-     * ledger via {@link BillingLedgerAccountTemplateService#postCustomerCharge} using the invoice
-     * number as the idempotent charge reference (already unique), then flips the row to {@code
-     * FINALIZED} ({@link BillingInvoiceRepository#finalizeInvoice}, guarded {@code WHERE
-     * status='DRAFT'} for race safety - if two calls race, the ledger post dedupes to the same
-     * transaction id via {@code DoubleEntryLedgerService}'s own idempotency, and whichever caller
-     * loses the DRAFT-guarded update throws, rolling back its entire transaction including any
-     * {@code billing_ledger_links} row the ledger post wrote on its behalf).
-     *
-     * <p>Deliberately does not validate a zero subtotal itself: an invoice with nothing ever staged
-     * trivially passes the completeness gate (zero unstaged charges) but will fail at {@code
-     * DoubleEntryLedgerService.post()}'s own "entry amount must be greater than zero" check before
-     * any row is written, since the whole method is {@code @Transactional} - that failure is the
-     * intended guard, not a gap.
-     *
-     * @return the ledger transaction id the finalize posted
+     * Finalization is fail-closed: an approved completeness gate and an explicitly approved,
+     * effective-dated tax rule are both required. The exact tax rule and amount are snapshotted
+     * before the balanced receivable/revenue/tax ledger entry is posted.
      */
     @Transactional
     public long finalizeInvoice(long billingInvoiceId, String finalizedBy) {
-        if (finalizedBy == null || finalizedBy.isBlank()) {
-            throw new PaymentGatewayException("Billing invoice finalize requires a finalizer");
-        }
+        requireActor(finalizedBy, "Billing invoice finalize requires a finalizer");
         BillingInvoiceRecord invoice = requireDraftInvoice(billingInvoiceId);
         if (!completenessGateService.isApproved(billingInvoiceId)) {
             throw new PaymentGatewayException(
@@ -121,15 +89,28 @@ public class BillingInvoiceService {
                             + " completeness gate is not approved - submit and approve it first");
         }
 
+        BigDecimal subtotal = repository.sumLineAmounts(billingInvoiceId);
+        if (subtotal.signum() <= 0) {
+            throw new PaymentGatewayException("Billing invoice must contain a positive subtotal");
+        }
+        BillingTaxSnapshot tax =
+                taxService.calculateAndSnapshot(
+                        billingInvoiceId,
+                        invoice.billingTenantId(),
+                        invoice.currency(),
+                        invoice.periodEnd(),
+                        subtotal);
+        BigDecimal total = subtotal.add(tax.taxAmount());
+        repository.updateTaxAndTotals(billingInvoiceId, subtotal, tax.taxAmount(), total);
+
         long ledgerTransactionId =
                 ledgerAccountTemplateService.postCustomerCharge(
                         invoice.billingTenantId(),
                         invoice.currency(),
-                        invoice.subtotalAmount(),
-                        invoice.taxAmount(),
+                        subtotal,
+                        tax.taxAmount(),
                         invoice.invoiceNumber(),
                         "Billing invoice " + invoice.invoiceNumber() + " finalized");
-
         int updated =
                 repository.finalizeInvoice(
                         billingInvoiceId, finalizedBy.trim(), ledgerTransactionId);
@@ -142,14 +123,144 @@ public class BillingInvoiceService {
         return ledgerTransactionId;
     }
 
+    @Transactional
+    public void markDelivered(long billingInvoiceId, String deliveredBy) {
+        requireActor(deliveredBy, "Billing invoice delivery requires an actor");
+        requireFinalizedInvoice(billingInvoiceId);
+        if (repository.markDelivered(billingInvoiceId, deliveredBy.trim()) == 0) {
+            throw new PaymentGatewayException(
+                    "Billing invoice could not be marked delivered: " + billingInvoiceId);
+        }
+    }
+
+    /**
+     * Applies a payment once. Replaying the same invoice/payment reference is a no-op and never
+     * posts a second ledger transaction.
+     */
+    @Transactional
+    public long applyPayment(
+            long billingInvoiceId, String paymentReference, BigDecimal amount, String appliedBy) {
+        requireActor(appliedBy, "Billing payment allocation requires an actor");
+        requirePositive(amount, "Billing payment allocation amount must be positive");
+        if (paymentReference == null || paymentReference.isBlank()) {
+            throw new PaymentGatewayException("Billing payment reference is required");
+        }
+        BillingInvoiceRecord invoice = requireFinalizedInvoice(billingInvoiceId);
+        if (repository.paymentAllocationExists(billingInvoiceId, paymentReference.trim())) {
+            return 0L;
+        }
+        BigDecimal outstanding = repository.findOutstandingAmount(billingInvoiceId);
+        if (amount.compareTo(outstanding) > 0) {
+            throw new PaymentGatewayException(
+                    "Billing payment allocation exceeds invoice outstanding amount");
+        }
+        long txId =
+                ledgerAccountTemplateService.postInvoicePayment(
+                        invoice.billingTenantId(),
+                        invoice.currency(),
+                        amount,
+                        invoice.invoiceNumber() + ":" + paymentReference.trim(),
+                        "Payment allocated to " + invoice.invoiceNumber());
+        repository.insertPaymentAllocation(
+                invoice.billingTenantId(),
+                billingInvoiceId,
+                paymentReference.trim(),
+                amount,
+                invoice.currency(),
+                txId);
+        repository.reduceOutstanding(billingInvoiceId, amount);
+        repository.closeIfSettled(billingInvoiceId, appliedBy.trim());
+        return txId;
+    }
+
+    /**
+     * Maker-checker credit note. Partial credits reverse revenue and tax in the same proportion as
+     * the original invoice; the finalized invoice itself remains immutable.
+     */
+    @Transactional
+    public long issueCreditNote(
+            long billingInvoiceId,
+            BigDecimal grossAmount,
+            String reason,
+            String issuedBy,
+            String approvedBy) {
+        requirePositive(grossAmount, "Billing credit-note amount must be positive");
+        requireActor(issuedBy, "Billing credit note requires an issuer");
+        requireActor(approvedBy, "Billing credit note requires an approver");
+        if (issuedBy.trim().equalsIgnoreCase(approvedBy.trim())) {
+            throw new PaymentGatewayException(
+                    "Billing credit-note issuer and approver must be different actors");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new PaymentGatewayException("Billing credit-note reason is required");
+        }
+        BillingInvoiceRecord invoice = requireFinalizedInvoice(billingInvoiceId);
+        BigDecimal outstanding = repository.findOutstandingAmount(billingInvoiceId);
+        if (grossAmount.compareTo(outstanding) > 0) {
+            throw new PaymentGatewayException("Billing credit note exceeds invoice outstanding amount");
+        }
+        BigDecimal taxCredit = proportionalTax(invoice, grossAmount);
+        BigDecimal revenueCredit = grossAmount.subtract(taxCredit);
+        String creditNumber = "BCN-" + UUID.randomUUID();
+        long txId =
+                ledgerAccountTemplateService.postCreditNoteWithTax(
+                        invoice.billingTenantId(),
+                        invoice.currency(),
+                        revenueCredit,
+                        taxCredit,
+                        creditNumber,
+                        "Credit note " + creditNumber + " for " + invoice.invoiceNumber());
+        repository.insertPostedCreditNote(
+                invoice.billingTenantId(),
+                billingInvoiceId,
+                creditNumber,
+                invoice.currency(),
+                grossAmount,
+                reason.trim(),
+                txId,
+                issuedBy.trim(),
+                approvedBy.trim());
+        repository.reduceOutstanding(billingInvoiceId, grossAmount);
+        repository.closeIfSettled(billingInvoiceId, approvedBy.trim());
+        return txId;
+    }
+
+    /**
+     * Voids only a completely unpaid finalized invoice, after a full maker-checker credit reversal.
+     * Paid invoices require refund/collection handling rather than silently deleting settled cash.
+     */
+    @Transactional
+    public long voidInvoice(
+            long billingInvoiceId, String reason, String requestedBy, String approvedBy) {
+        BillingInvoiceRecord invoice = requireFinalizedInvoice(billingInvoiceId);
+        BigDecimal outstanding = repository.findOutstandingAmount(billingInvoiceId);
+        if (outstanding.compareTo(invoice.totalAmount()) != 0) {
+            throw new PaymentGatewayException(
+                    "Only a completely unpaid billing invoice can be voided; use refund/correction workflow for settled invoices");
+        }
+        long creditTx =
+                issueCreditNote(
+                        billingInvoiceId, outstanding, reason, requestedBy, approvedBy);
+        if (repository.markVoid(billingInvoiceId, approvedBy.trim(), reason.trim()) == 0) {
+            throw new PaymentGatewayException("Billing invoice could not be voided: " + billingInvoiceId);
+        }
+        return creditTx;
+    }
+
+    private BigDecimal proportionalTax(BillingInvoiceRecord invoice, BigDecimal grossAmount) {
+        if (invoice.taxAmount() == null
+                || invoice.taxAmount().signum() == 0
+                || invoice.totalAmount() == null
+                || invoice.totalAmount().signum() == 0) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        }
+        return grossAmount
+                .multiply(invoice.taxAmount())
+                .divide(invoice.totalAmount(), 4, RoundingMode.HALF_UP);
+    }
+
     private BillingInvoiceRecord requireDraftInvoice(long billingInvoiceId) {
-        BillingInvoiceRecord invoice =
-                repository
-                        .find(billingInvoiceId)
-                        .orElseThrow(
-                                () ->
-                                        new PaymentGatewayException(
-                                                "Billing invoice not found: " + billingInvoiceId));
+        BillingInvoiceRecord invoice = requireInvoice(billingInvoiceId);
         if (!invoice.isDraft()) {
             throw new PaymentGatewayException(
                     "Billing invoice "
@@ -159,5 +270,39 @@ public class BillingInvoiceService {
                             + ")");
         }
         return invoice;
+    }
+
+    private BillingInvoiceRecord requireFinalizedInvoice(long billingInvoiceId) {
+        BillingInvoiceRecord invoice = requireInvoice(billingInvoiceId);
+        if (!"FINALIZED".equals(invoice.status())) {
+            throw new PaymentGatewayException(
+                    "Billing invoice "
+                            + billingInvoiceId
+                            + " is not FINALIZED (status="
+                            + invoice.status()
+                            + ")");
+        }
+        return invoice;
+    }
+
+    private BillingInvoiceRecord requireInvoice(long billingInvoiceId) {
+        return repository
+                .find(billingInvoiceId)
+                .orElseThrow(
+                        () ->
+                                new PaymentGatewayException(
+                                        "Billing invoice not found: " + billingInvoiceId));
+    }
+
+    private void requireActor(String actor, String message) {
+        if (actor == null || actor.isBlank()) {
+            throw new PaymentGatewayException(message);
+        }
+    }
+
+    private void requirePositive(BigDecimal amount, String message) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new PaymentGatewayException(message);
+        }
     }
 }
