@@ -117,9 +117,23 @@ class BillingInvoiceServiceTest {
     }
 
     @Test
+    void finalizeInvoiceFailsWhenCompletenessChangesAfterApproval() {
+        when(repository.find(55L)).thenReturn(Optional.of(draftInvoiceWithSubtotal("1000")));
+        when(completenessGateService.isApproved(55L)).thenReturn(true);
+        when(completenessGateService.isFinalizationReady(55L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.finalizeInvoice(55L, "billing-finalizer"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("controls changed after approval");
+        verify(ledgerAccountTemplateService, never())
+                .postCustomerCharge(anyLong(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void finalizeInvoiceSnapshotsTaxPostsSplitAndFinalizes() {
         when(repository.find(55L)).thenReturn(Optional.of(draftInvoiceWithSubtotal("1000")));
         when(completenessGateService.isApproved(55L)).thenReturn(true);
+        when(completenessGateService.isFinalizationReady(55L)).thenReturn(true);
         when(repository.sumLineAmounts(55L)).thenReturn(new BigDecimal("1000"));
         when(repository.calculateAndSnapshotTax(
                         eq(55L),
@@ -158,6 +172,7 @@ class BillingInvoiceServiceTest {
     void finalizeInvoiceFailsClosedWhenTaxRuleIsUnavailable() {
         when(repository.find(55L)).thenReturn(Optional.of(draftInvoiceWithSubtotal("1000")));
         when(completenessGateService.isApproved(55L)).thenReturn(true);
+        when(completenessGateService.isFinalizationReady(55L)).thenReturn(true);
         when(repository.sumLineAmounts(55L)).thenReturn(new BigDecimal("1000"));
         when(repository.calculateAndSnapshotTax(anyLong(), anyLong(), any(), any(), any()))
                 .thenThrow(new PaymentGatewayException("No approved billing tax rule"));
@@ -194,25 +209,52 @@ class BillingInvoiceServiceTest {
 
     private BillingInvoiceRecord draftInvoice() {
         return new BillingInvoiceRecord(
-                55L, 7L, "BINV-1", "UGX",
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                "DRAFT", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                null, null, null);
+                55L,
+                7L,
+                "BINV-1",
+                "UGX",
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 1, 31),
+                "DRAFT",
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                null,
+                null,
+                null);
     }
 
     private BillingInvoiceRecord draftInvoiceWithSubtotal(String subtotal) {
         return new BillingInvoiceRecord(
-                55L, 7L, "BINV-1", "UGX",
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                "DRAFT", new BigDecimal(subtotal), BigDecimal.ZERO, new BigDecimal(subtotal),
-                null, null, null);
+                55L,
+                7L,
+                "BINV-1",
+                "UGX",
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 1, 31),
+                "DRAFT",
+                new BigDecimal(subtotal),
+                BigDecimal.ZERO,
+                new BigDecimal(subtotal),
+                null,
+                null,
+                null);
     }
 
     private BillingInvoiceRecord finalizedInvoice(String subtotal, String tax, String total) {
         return new BillingInvoiceRecord(
-                55L, 7L, "BINV-1", "UGX",
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                "FINALIZED", new BigDecimal(subtotal), new BigDecimal(tax), new BigDecimal(total),
-                null, "admin1", 900L);
+                55L,
+                7L,
+                "BINV-1",
+                "UGX",
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 1, 31),
+                "FINALIZED",
+                new BigDecimal(subtotal),
+                new BigDecimal(tax),
+                new BigDecimal(total),
+                null,
+                "admin1",
+                900L);
     }
 }
