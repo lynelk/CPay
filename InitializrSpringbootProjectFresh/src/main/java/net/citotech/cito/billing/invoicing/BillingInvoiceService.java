@@ -186,7 +186,8 @@ public class BillingInvoiceService {
         BillingInvoiceRecord invoice = requireFinalizedInvoice(billingInvoiceId);
         BigDecimal outstanding = repository.findOutstandingAmount(billingInvoiceId);
         if (grossAmount.compareTo(outstanding) > 0) {
-            throw new PaymentGatewayException("Billing credit note exceeds invoice outstanding amount");
+            throw new PaymentGatewayException(
+                    "Billing credit note exceeds invoice outstanding amount");
         }
         BigDecimal taxCredit = proportionalTax(invoice, grossAmount);
         BigDecimal revenueCredit = grossAmount.subtract(taxCredit);
@@ -224,10 +225,10 @@ public class BillingInvoiceService {
                     "Only a completely unpaid billing invoice can be voided; use refund/correction workflow for settled invoices");
         }
         long creditTx =
-                issueCreditNote(
-                        billingInvoiceId, outstanding, reason, requestedBy, approvedBy);
+                issueCreditNote(billingInvoiceId, outstanding, reason, requestedBy, approvedBy);
         if (repository.markVoid(billingInvoiceId, approvedBy.trim(), reason.trim()) == 0) {
-            throw new PaymentGatewayException("Billing invoice could not be voided: " + billingInvoiceId);
+            throw new PaymentGatewayException(
+                    "Billing invoice could not be voided: " + billingInvoiceId);
         }
         return creditTx;
     }

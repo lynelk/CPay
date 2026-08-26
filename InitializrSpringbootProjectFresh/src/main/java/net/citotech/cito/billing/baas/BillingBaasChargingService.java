@@ -22,12 +22,15 @@ public class BillingBaasChargingService {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final BillingLedgerAccountTemplateService ledgerService;
+    private final BillingBaasProtectedActionService protectedActionService;
 
     public BillingBaasChargingService(
             NamedParameterJdbcTemplate jdbcTemplate,
-            BillingLedgerAccountTemplateService ledgerService) {
+            BillingLedgerAccountTemplateService ledgerService,
+            BillingBaasProtectedActionService protectedActionService) {
         this.jdbcTemplate = jdbcTemplate;
         this.ledgerService = ledgerService;
+        this.protectedActionService = protectedActionService;
     }
 
     @Transactional
@@ -50,7 +53,8 @@ public class BillingBaasChargingService {
         String ccy = required(currency, "currency").toUpperCase();
         Instant expiry = expiresAt == null ? Instant.now().plusSeconds(900) : expiresAt;
         if (!expiry.isAfter(Instant.now())) {
-            throw new PaymentGatewayException("Charging authorization expiry must be in the future");
+            throw new PaymentGatewayException(
+                    "Charging authorization expiry must be in the future");
         }
 
         BillingAccount account = resolveAccount(context.billingTenantId(), accountReference, ccy);
@@ -59,7 +63,8 @@ public class BillingBaasChargingService {
             if (replay.billingAccountId() != account.id()
                     || replay.authorizedNetAmount().compareTo(net) != 0
                     || !replay.serviceCode().equals(service)
-                    || replay.usageQuantity().compareTo(quantity) != 0) {
+                    || replay.usageQuantity().compareTo(quantity) != 0
+                    || !sameNullable(replay.entitlementCode(), blankToNull(entitlementCode))) {
                 throw new PaymentGatewayException(
                         "Charging idempotency key already exists with different attributes");
             }
@@ -79,7 +84,8 @@ public class BillingBaasChargingService {
         }
 
         long chargingAccountId = ensureChargingAccount(context.billingTenantId(), account);
-        ChargingAccount chargingAccount = lockChargingAccount(context.billingTenantId(), chargingAccountId);
+        ChargingAccount chargingAccount =
+                lockChargingAccount(context.billingTenantId(), chargingAccountId);
         BigDecimal available =
                 chargingAccount
                         .prepaidBalance()
@@ -87,7 +93,8 @@ public class BillingBaasChargingService {
                         .subtract(chargingAccount.creditUsed())
                         .subtract(chargingAccount.reservedAmount());
         if (available.compareTo(gross) < 0) {
-            throw new PaymentGatewayException("Insufficient BaaS charging balance or credit headroom");
+            throw new PaymentGatewayException(
+                    "Insufficient BaaS charging balance or credit headroom");
         }
 
         String reservationReference = "BCR-" + UUID.randomUUID();
@@ -136,7 +143,7 @@ public class BillingBaasChargingService {
         return findByReference(context.billingTenantId(), reservationReference);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ChargingReservationExpiredException.class)
     public CommitView commit(BillingBaasContext context, String reservationReference) {
         requireContext(context);
         ChargeView reservation = lockReservation(context.billingTenantId(), reservationReference);
@@ -149,7 +156,7 @@ public class BillingBaasChargingService {
         }
         if (!reservation.expiresAt().isAfter(Instant.now())) {
             expireAuthorizedReservation(context, reservation);
-            throw new PaymentGatewayException("Charging reservation has expired");
+            throw new ChargingReservationExpiredException("Charging reservation has expired");
         }
 
         ChargingAccount account =
@@ -266,7 +273,11 @@ public class BillingBaasChargingService {
             throw new PaymentGatewayException(
                     "Only a COMMITTED charging reservation can be reversed");
         }
-        requireApprovedProtectedAction(context.billingTenantId(), reservation.reservationReference());
+        protectedActionService.consumeApproved(
+                context,
+                "CHARGE_REVERSE",
+                "CHARGE_RESERVATION",
+                reservation.reservationReference());
         ChargingAccount account =
                 lockChargingAccount(context.billingTenantId(), reservation.chargingAccountId());
         BigDecimal prepaid = reservation.prepaidCommittedAmount();
@@ -348,12 +359,12 @@ public class BillingBaasChargingService {
                 "BaaS:" + context.serviceAccountId());
     }
 
-    private void expireAuthorizedReservation(
-            BillingBaasContext context, ChargeView reservation) {
+    private void expireAuthorizedReservation(BillingBaasContext context, ChargeView reservation) {
         releaseReservation(context, reservation, "EXPIRE", "EXPIRED");
     }
 
-    private BillingAccount resolveAccount(long tenantId, String externalReference, String currency) {
+    private BillingAccount resolveAccount(
+            long tenantId, String externalReference, String currency) {
         List<BillingAccount> rows =
                 jdbcTemplate.query(
                         "SELECT id,billing_customer_id,currency,credit_limit FROM billing_accounts "
@@ -373,7 +384,8 @@ public class BillingBaasChargingService {
         }
         BillingAccount account = rows.get(0);
         if (!account.currency().equalsIgnoreCase(currency)) {
-            throw new PaymentGatewayException("Charging currency does not match billing account currency");
+            throw new PaymentGatewayException(
+                    "Charging currency does not match billing account currency");
         }
         return account;
     }
@@ -554,7 +566,9 @@ public class BillingBaasChargingService {
                         sql,
                         new MapSqlParameterSource()
                                 .addValue("tenant", tenantId)
-                                .addValue("reservation", required(reservationReference, "reservationReference")),
+                                .addValue(
+                                        "reservation",
+                                        required(reservationReference, "reservationReference")),
                         (rs, rowNum) -> mapCharge(rs));
         if (rows.isEmpty()) {
             throw new PaymentGatewayException("Charging reservation was not found for this tenant");
@@ -617,7 +631,8 @@ public class BillingBaasChargingService {
 
     private Split splitFunding(ChargeView reservation, BigDecimal fundingGross) {
         if (fundingGross.signum() == 0) {
-            return new Split(BigDecimal.ZERO.setScale(MONEY_SCALE), BigDecimal.ZERO.setScale(MONEY_SCALE));
+            return new Split(
+                    BigDecimal.ZERO.setScale(MONEY_SCALE), BigDecimal.ZERO.setScale(MONEY_SCALE));
         }
         if (fundingGross.compareTo(reservation.authorizedAmount()) == 0) {
             return new Split(reservation.authorizedNetAmount(), reservation.authorizedTaxAmount());
@@ -660,7 +675,8 @@ public class BillingBaasChargingService {
         for (Map<String, Object> link : links) {
             String funding = String.valueOf(link.get("funding_type"));
             String original = String.valueOf(link.get("ledger_transaction_reference"));
-            String reversal = "billing-reversal:" + reservationReference + ":" + funding.toLowerCase();
+            String reversal =
+                    "billing-reversal:" + reservationReference + ":" + funding.toLowerCase();
             ledgerService.reverseBillingTransaction(
                     context.billingTenantId(),
                     original,
@@ -671,23 +687,6 @@ public class BillingBaasChargingService {
                     "UPDATE billing_charge_ledger_links SET link_status='REVERSED',reversed_at=CURRENT_TIMESTAMP "
                             + "WHERE id=:id AND link_status='POSTED'",
                     new MapSqlParameterSource("id", link.get("id")));
-        }
-    }
-
-    private void requireApprovedProtectedAction(long tenantId, String reservationReference) {
-        Integer count =
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM billing_protected_action_requests "
-                                + "WHERE billing_tenant_id=:tenant AND action_type='CHARGE_REVERSE' "
-                                + "AND resource_type='CHARGE_RESERVATION' AND resource_reference=:reference "
-                                + "AND status='APPROVED'",
-                        new MapSqlParameterSource()
-                                .addValue("tenant", tenantId)
-                                .addValue("reference", reservationReference),
-                        Integer.class);
-        if (count == null || count == 0) {
-            throw new PaymentGatewayException(
-                    "Charging reversal requires an approved protected-action request");
         }
     }
 
@@ -746,13 +745,29 @@ public class BillingBaasChargingService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    private boolean sameNullable(String left, String right) {
+        if (left == null || left.isBlank()) {
+            return right == null || right.isBlank();
+        }
+        return left.equals(right);
+    }
+
     private void requireContext(BillingBaasContext context) {
         if (context == null || context.billingTenantId() <= 0) {
             throw new PaymentGatewayException("Authenticated BaaS tenant context is required");
         }
     }
 
-    private record BillingAccount(long id, long customerId, String currency, BigDecimal creditLimit) {}
+    static final class ChargingReservationExpiredException extends PaymentGatewayException {
+        private static final long serialVersionUID = 1L;
+
+        ChargingReservationExpiredException(String message) {
+            super(message);
+        }
+    }
+
+    private record BillingAccount(
+            long id, long customerId, String currency, BigDecimal creditLimit) {}
 
     private record ChargingAccount(
             long id,

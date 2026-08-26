@@ -41,13 +41,7 @@ public class BillingBaasController {
             @RequestBody CustomerRequest body) {
         try {
             BillingBaasContext context =
-                    context(
-                            apiKey,
-                            environment,
-                            "BILLING_WRITE",
-                            requestId,
-                            "POST",
-                            "/customers");
+                    context(apiKey, environment, "BILLING_WRITE", requestId, "POST", "/customers");
             return ResponseEntity.ok(
                     commercialService.createCustomer(
                             context,
@@ -68,13 +62,7 @@ public class BillingBaasController {
             @RequestHeader(value = "X-Request-Id", required = false) String requestId) {
         try {
             BillingBaasContext context =
-                    context(
-                            apiKey,
-                            environment,
-                            "BILLING_READ",
-                            requestId,
-                            "GET",
-                            "/customers");
+                    context(apiKey, environment, "BILLING_READ", requestId, "GET", "/customers");
             return ResponseEntity.ok(commercialService.customers(context));
         } catch (PaymentGatewayException e) {
             return error(e);
@@ -89,13 +77,7 @@ public class BillingBaasController {
             @RequestBody AccountRequest body) {
         try {
             BillingBaasContext context =
-                    context(
-                            apiKey,
-                            environment,
-                            "BILLING_WRITE",
-                            requestId,
-                            "POST",
-                            "/accounts");
+                    context(apiKey, environment, "BILLING_WRITE", requestId, "POST", "/accounts");
             return ResponseEntity.ok(
                     commercialService.createAccount(
                             context,
@@ -115,13 +97,7 @@ public class BillingBaasController {
             @RequestBody ContractRequest body) {
         try {
             BillingBaasContext context =
-                    context(
-                            apiKey,
-                            environment,
-                            "BILLING_WRITE",
-                            requestId,
-                            "POST",
-                            "/contracts");
+                    context(apiKey, environment, "BILLING_WRITE", requestId, "POST", "/contracts");
             return ResponseEntity.ok(
                     commercialService.createContract(
                             context,
@@ -436,7 +412,9 @@ public class BillingBaasController {
                         case "submit" -> commercialService.submitContract(context, reference);
                         case "approve" -> commercialService.approveContract(context, reference);
                         case "activate" -> commercialService.activateContract(context, reference);
-                        default -> throw new PaymentGatewayException("Unsupported contract transition");
+                        default ->
+                                throw new PaymentGatewayException(
+                                        "Unsupported contract transition");
                     };
             return ResponseEntity.ok(result);
         } catch (PaymentGatewayException e) {
@@ -461,10 +439,13 @@ public class BillingBaasController {
                             "/subscriptions/{reference}/" + transition);
             Object result =
                     switch (transition) {
-                        case "activate" -> commercialService.activateSubscription(context, reference);
+                        case "activate" ->
+                                commercialService.activateSubscription(context, reference);
                         case "pause" -> commercialService.pauseSubscription(context, reference);
                         case "cancel" -> commercialService.cancelSubscription(context, reference);
-                        default -> throw new PaymentGatewayException("Unsupported subscription transition");
+                        default ->
+                                throw new PaymentGatewayException(
+                                        "Unsupported subscription transition");
                     };
             return ResponseEntity.ok(result);
         } catch (PaymentGatewayException e) {
@@ -480,7 +461,12 @@ public class BillingBaasController {
             String httpMethod,
             String route) {
         return apiKeyService.authenticate(
-                apiKey, environment, scope, requestId, httpMethod, "/api/v2/native/billing/baas" + route);
+                apiKey,
+                environment,
+                scope,
+                requestId,
+                httpMethod,
+                "/api/v2/native/billing/baas" + route);
     }
 
     private ResponseEntity<?> error(PaymentGatewayException e) {
@@ -523,10 +509,7 @@ public class BillingBaasController {
             Instant endsAt) {}
 
     public record EntitlementRequest(
-            String entitlementCode,
-            BigDecimal limitQuantity,
-            Instant validFrom,
-            Instant validTo) {}
+            String entitlementCode, BigDecimal limitQuantity, Instant validFrom, Instant validTo) {}
 
     public record AuthorizeChargeRequest(
             String billingAccountReference,

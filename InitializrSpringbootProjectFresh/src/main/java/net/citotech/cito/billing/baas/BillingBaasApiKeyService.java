@@ -74,7 +74,8 @@ public class BillingBaasApiKeyService {
                                         rs.getString("environment")));
         if (contexts.isEmpty()) {
             throw new PaymentGatewayException(
-                    "BaaS credential is invalid, inactive, out of scope, or not approved for " + env);
+                    "BaaS credential is invalid, inactive, out of scope, or not approved for "
+                            + env);
         }
         if (contexts.size() != 1) {
             throw new PaymentGatewayException(
@@ -118,10 +119,7 @@ public class BillingBaasApiKeyService {
     }
 
     private void recordRequest(
-            BillingBaasContext context,
-            String requestId,
-            String httpMethod,
-            String routeTemplate) {
+            BillingBaasContext context, String requestId, String httpMethod, String routeTemplate) {
         String safeRequestId =
                 requestId == null || requestId.isBlank()
                         ? java.util.UUID.randomUUID().toString()

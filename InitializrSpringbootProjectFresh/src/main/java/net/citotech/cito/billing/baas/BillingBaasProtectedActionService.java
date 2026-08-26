@@ -37,7 +37,9 @@ public class BillingBaasProtectedActionService {
                         + "(billing_tenant_id,action_type,resource_type,resource_reference,requested_by,status) "
                         + "VALUES (:tenant,:action,:resource,:reference,:actor,'PENDING')",
                 p);
-        Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
+        Long id =
+                jdbcTemplate.queryForObject(
+                        "SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
         if (id == null) {
             throw new PaymentGatewayException("Unable to create protected-action request");
         }
@@ -90,17 +92,51 @@ public class BillingBaasProtectedActionService {
         return find(context.billingTenantId(), requestId);
     }
 
+    @Transactional
+    public void consumeApproved(
+            BillingBaasContext context,
+            String actionType,
+            String resourceType,
+            String resourceReference) {
+        String actor = actor(context);
+        MapSqlParameterSource p =
+                new MapSqlParameterSource()
+                        .addValue("tenant", context.billingTenantId())
+                        .addValue("action", required(actionType, "actionType").toUpperCase())
+                        .addValue("resource", required(resourceType, "resourceType").toUpperCase())
+                        .addValue("reference", required(resourceReference, "resourceReference"))
+                        .addValue("actor", actor);
+        int updated =
+                jdbcTemplate.update(
+                        "UPDATE billing_protected_action_requests SET status='CONSUMED',"
+                                + "consumed_by=:actor,consumed_at=CURRENT_TIMESTAMP "
+                                + "WHERE billing_tenant_id=:tenant AND action_type=:action "
+                                + "AND resource_type=:resource AND resource_reference=:reference "
+                                + "AND status='APPROVED' AND requested_by=:actor "
+                                + "AND approved_by IS NOT NULL AND approved_by<>:actor "
+                                + "ORDER BY approved_at ASC LIMIT 1",
+                        p);
+        if (updated == 0) {
+            throw new PaymentGatewayException(
+                    "Protected action requires an unused approval from a different service account");
+        }
+    }
+
     public Map<String, Object> find(long tenantId, long requestId) {
         List<Map<String, Object>> rows =
                 jdbcTemplate.queryForList(
                         "SELECT id,action_type AS actionType,resource_type AS resourceType,"
                                 + "resource_reference AS resourceReference,requested_by AS requestedBy,"
                                 + "requested_at AS requestedAt,status,approved_by AS approvedBy,"
-                                + "approved_at AS approvedAt,decision_reason AS decisionReason "
+                                + "approved_at AS approvedAt,decision_reason AS decisionReason,"
+                                + "consumed_by AS consumedBy,consumed_at AS consumedAt "
                                 + "FROM billing_protected_action_requests WHERE id=:id AND billing_tenant_id=:tenant",
-                        new MapSqlParameterSource().addValue("id", requestId).addValue("tenant", tenantId));
+                        new MapSqlParameterSource()
+                                .addValue("id", requestId)
+                                .addValue("tenant", tenantId));
         if (rows.isEmpty()) {
-            throw new PaymentGatewayException("Protected-action request was not found for this tenant");
+            throw new PaymentGatewayException(
+                    "Protected-action request was not found for this tenant");
         }
         return rows.get(0);
     }

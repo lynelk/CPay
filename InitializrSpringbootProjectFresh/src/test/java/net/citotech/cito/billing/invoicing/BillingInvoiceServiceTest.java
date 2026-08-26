@@ -28,7 +28,8 @@ class BillingInvoiceServiceTest {
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService =
             mock(BillingLedgerAccountTemplateService.class);
     private final BillingInvoiceService service =
-            new BillingInvoiceService(repository, completenessGateService, ledgerAccountTemplateService);
+            new BillingInvoiceService(
+                    repository, completenessGateService, ledgerAccountTemplateService);
 
     @Test
     void createDraftGeneratesAnInvoiceNumberAndDelegatesToTheRepository() {
@@ -39,7 +40,9 @@ class BillingInvoiceServiceTest {
                         eq(LocalDate.of(2026, 1, 1)),
                         eq(LocalDate.of(2026, 1, 31))))
                 .thenReturn(55L);
-        assertThat(service.createDraft(7L, "ugx", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+        assertThat(
+                        service.createDraft(
+                                7L, "ugx", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
                 .isEqualTo(55L);
     }
 

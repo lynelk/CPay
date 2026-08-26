@@ -132,7 +132,8 @@ public class SecurityConfig {
             LegacySessionAuthorizationFilter legacySessionAuthorizationFilter,
             CitoMerchantFeatureAuthorizationFilter citoMerchantFeatureAuthorizationFilter)
             throws Exception {
-        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
+        CsrfTokenRequestAttributeHandler csrfRequestHandler =
+                new CsrfTokenRequestAttributeHandler();
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(
@@ -178,13 +179,16 @@ public class SecurityConfig {
                                                         "camera=(), microphone=(), geolocation=(), usb=(), payment=(self)"))
                                         .addHeaderWriter(
                                                 new StaticHeadersWriter(
-                                                        "Cross-Origin-Opener-Policy", "same-origin"))
+                                                        "Cross-Origin-Opener-Policy",
+                                                        "same-origin"))
                                         .addHeaderWriter(
                                                 new StaticHeadersWriter(
-                                                        "Cross-Origin-Resource-Policy", "same-origin"))
+                                                        "Cross-Origin-Resource-Policy",
+                                                        "same-origin"))
                                         .addHeaderWriter(
                                                 new StaticHeadersWriter(
-                                                        "X-Permitted-Cross-Domain-Policies", "none")))
+                                                        "X-Permitted-Cross-Domain-Policies",
+                                                        "none")))
                 .authorizeHttpRequests(
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
@@ -194,7 +198,8 @@ public class SecurityConfig {
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ACTUATOR")
                                         .requestMatchers(
-                                                PUBLIC_ANONYMOUS_API_PATTERNS.toArray(String[]::new))
+                                                PUBLIC_ANONYMOUS_API_PATTERNS.toArray(
+                                                        String[]::new))
                                         .permitAll()
                                         .requestMatchers(
                                                 PUBLIC_SIGNED_API_PATTERNS.toArray(String[]::new))
@@ -339,9 +344,7 @@ public class SecurityConfig {
     }
 
     private boolean isLoopbackHost(String host) {
-        return "localhost".equalsIgnoreCase(host)
-                || "127.0.0.1".equals(host)
-                || "::1".equals(host);
+        return "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "::1".equals(host);
     }
 
     private void validateCredentials(String username, String password, String message) {

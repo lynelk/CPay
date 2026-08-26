@@ -36,7 +36,9 @@ public class BillingBaasAdminController {
 
     @PostMapping("/tenants/{tenantId}/profile/review")
     public ResponseEntity<?> reviewProfile(
-            @PathVariable long tenantId, @RequestBody ProfileReviewRequest body, Principal principal) {
+            @PathVariable long tenantId,
+            @RequestBody ProfileReviewRequest body,
+            Principal principal) {
         try {
             return ResponseEntity.ok(
                     service.reviewTenant(
@@ -62,9 +64,7 @@ public class BillingBaasAdminController {
 
     @PostMapping("/tenants/{tenantId}/credentials")
     public ResponseEntity<?> provisionCredential(
-            @PathVariable long tenantId,
-            @RequestBody CredentialRequest body,
-            Principal principal) {
+            @PathVariable long tenantId, @RequestBody CredentialRequest body, Principal principal) {
         try {
             return ResponseEntity.ok(
                     service.provisionCredential(
@@ -126,11 +126,16 @@ public class BillingBaasAdminController {
                                 "code",
                                 "BILLING_BAAS_ADMIN_REJECTED",
                                 "message",
-                                e.getMessage() == null ? "BaaS admin request failed" : e.getMessage()));
+                                e.getMessage() == null
+                                        ? "BaaS admin request failed"
+                                        : e.getMessage()));
     }
 
     public record ProfileReviewRequest(
-            String legalStatus, String commercialStatus, String taxStatus, String fundsFlowStatus) {}
+            String legalStatus,
+            String commercialStatus,
+            String taxStatus,
+            String fundsFlowStatus) {}
 
     public record CredentialRequest(
             String projectReference,

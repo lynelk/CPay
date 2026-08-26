@@ -154,9 +154,9 @@ public class BillingCompletenessGateService {
     }
 
     /**
-     * Revalidates operational completeness immediately before money is posted. A new source
-     * failure or material exception after approval invalidates a clean PASS; a waived FAIL remains
-     * usable only while its failure counts have not grown. CRITICAL exceptions always fail closed.
+     * Revalidates operational completeness immediately before money is posted. A new source failure
+     * or material exception after approval invalidates a clean PASS; a waived FAIL remains usable
+     * only while its failure counts have not grown. CRITICAL exceptions always fail closed.
      */
     public boolean isFinalizationReady(long billingInvoiceId) {
         List<Map<String, Object>> gates =
@@ -175,8 +175,7 @@ public class BillingCompletenessGateService {
         }
         Map<String, Object> gate = gates.get(0);
         int currentWatermarkFailures = countIncompleteWatermarks(invoice);
-        int currentExceptions =
-                countOpenExceptions(invoice.billingTenantId(), invoice.id(), false);
+        int currentExceptions = countOpenExceptions(invoice.billingTenantId(), invoice.id(), false);
         int approvedWatermarkFailures = number(gate.get("source_watermark_failure_count"));
         int approvedExceptions = number(gate.get("material_exception_count"));
         boolean waived =
@@ -221,7 +220,8 @@ public class BillingCompletenessGateService {
         return count == null ? 0 : count;
     }
 
-    private int countOpenExceptions(long billingTenantId, long billingInvoiceId, boolean criticalOnly) {
+    private int countOpenExceptions(
+            long billingTenantId, long billingInvoiceId, boolean criticalOnly) {
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("tenant", billingTenantId);
         p.addValue("invoice", billingInvoiceId);

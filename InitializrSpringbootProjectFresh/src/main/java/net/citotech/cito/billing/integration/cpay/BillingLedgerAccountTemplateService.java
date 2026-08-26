@@ -161,12 +161,7 @@ public class BillingLedgerAccountTemplateService {
             String usageReference,
             String memo) {
         return postPrepaidConsumptionWithTax(
-                billingTenantId,
-                currency,
-                amount,
-                BigDecimal.ZERO,
-                usageReference,
-                memo);
+                billingTenantId, currency, amount, BigDecimal.ZERO, usageReference, memo);
     }
 
     @Transactional
@@ -270,12 +265,7 @@ public class BillingLedgerAccountTemplateService {
             String creditReference,
             String memo) {
         return postCreditNoteWithTax(
-                billingTenantId,
-                currency,
-                amount,
-                BigDecimal.ZERO,
-                creditReference,
-                memo);
+                billingTenantId, currency, amount, BigDecimal.ZERO, creditReference, memo);
     }
 
     @Transactional

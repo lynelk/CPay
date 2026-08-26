@@ -249,7 +249,8 @@ public class BillingInvoiceRepository {
                                 + "total_amount=:total_amount WHERE id=:id AND status='DRAFT'",
                         p);
         if (updated == 0) {
-            throw new PaymentGatewayException("Billing invoice is no longer DRAFT: " + billingInvoiceId);
+            throw new PaymentGatewayException(
+                    "Billing invoice is no longer DRAFT: " + billingInvoiceId);
         }
     }
 

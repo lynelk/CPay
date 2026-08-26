@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.citotech.cito.Common;
+import net.citotech.cito.Model.Transaction;
+import net.citotech.cito.Model.TransactionStatus;
 import net.citotech.cito.admin.AdminAuditService;
 import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
 import net.citotech.cito.gateway.PaymentGatewayException;
@@ -104,14 +106,15 @@ public class BillingBaasAdminService {
         int updated =
                 jdbcTemplate.update(
                         "UPDATE billing_baas_tenant_profiles SET activation_status='ACTIVE',"
-                                + "approved_by=:actor,approved_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP "
+                                + "activated_by=:actor,activated_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP "
                                 + "WHERE billing_tenant_id=:tenant AND activation_status IN ('READY','ACTIVE') "
                                 + "AND legal_model_status='APPROVED' AND commercial_model_status='APPROVED' "
-                                + "AND tax_model_status='APPROVED' AND funds_flow_status='APPROVED'",
+                                + "AND tax_model_status='APPROVED' AND funds_flow_status='APPROVED' "
+                                + "AND approved_by IS NOT NULL AND approved_by<>:actor",
                         p);
         if (updated == 0) {
             throw new PaymentGatewayException(
-                    "BaaS tenant cannot activate until legal, commercial, tax and funds-flow reviews are approved");
+                    "BaaS tenant activation requires all reviews approved and a different activator from the reviewer");
         }
         auditService.record(
                 "BILLING_BAAS",
@@ -185,7 +188,9 @@ public class BillingBaasAdminService {
                         .addValue("reference", credentialReference)
                         .addValue("prefix", keyPrefix)
                         .addValue("hash", sha256(secret))
-                        .addValue("expires_at", expiresAt == null ? null : Timestamp.from(expiresAt)));
+                        .addValue(
+                                "expires_at",
+                                expiresAt == null ? null : Timestamp.from(expiresAt)));
         int rpm = requestsPerMinute == null ? 300 : requestsPerMinute;
         if (rpm <= 0 || rpm > 100000) {
             throw new PaymentGatewayException("requestsPerMinute must be between 1 and 100000");
@@ -204,7 +209,12 @@ public class BillingBaasAdminService {
                 "BILLING_BAAS",
                 "BAAS_CREDENTIAL_PROVISION",
                 credentialReference,
-                "tenant=" + billingTenantId + ",project=" + projectReference + ",environment=" + env);
+                "tenant="
+                        + billingTenantId
+                        + ",project="
+                        + projectReference
+                        + ",environment="
+                        + env);
         return Map.of(
                 "billingTenantId",
                 billingTenantId,
@@ -230,15 +240,14 @@ public class BillingBaasAdminService {
 
     @Transactional
     public Map<String, Object> setCreditLimit(
-            long billingTenantId,
-            String accountReference,
-            BigDecimal creditLimit,
-            String actor) {
+            long billingTenantId, String accountReference, BigDecimal creditLimit, String actor) {
         BigDecimal limit = nonNegative(creditLimit, "creditLimit");
         BillingAccount account = billingAccount(billingTenantId, accountReference);
-        BigDecimal creditUsed = chargingCreditUsed(billingTenantId, account.id(), account.currency());
+        BigDecimal creditUsed =
+                chargingCreditUsed(billingTenantId, account.id(), account.currency());
         if (limit.compareTo(creditUsed) < 0) {
-            throw new PaymentGatewayException("Credit limit cannot be lower than currently used credit");
+            throw new PaymentGatewayException(
+                    "Credit limit cannot be lower than currently used credit");
         }
         MapSqlParameterSource p =
                 new MapSqlParameterSource()
@@ -274,6 +283,7 @@ public class BillingBaasAdminService {
         BigDecimal safeAmount = positive(amount, "amount");
         String paymentReference = required(verifiedPaymentReference, "verifiedPaymentReference");
         BillingAccount account = billingAccount(billingTenantId, accountReference);
+        verifySettledPayIn(billingTenantId, paymentReference, safeAmount);
         ensureChargingAccount(billingTenantId, account);
         String adjustmentKey = "topup:" + billingTenantId + ":" + paymentReference;
         Integer existing =
@@ -356,7 +366,9 @@ public class BillingBaasAdminService {
                                 + "WHERE bt.id=:tenant AND p.project_reference=:reference AND p.status='ACTIVE'",
                         new MapSqlParameterSource()
                                 .addValue("tenant", tenantId)
-                                .addValue("reference", required(projectReference, "projectReference")),
+                                .addValue(
+                                        "reference",
+                                        required(projectReference, "projectReference")),
                         (rs, rowNum) -> new Project(rs.getLong("id"), rs.getLong("merchant_id")));
         if (rows.isEmpty()) {
             throw new PaymentGatewayException(
@@ -424,6 +436,39 @@ public class BillingBaasAdminService {
             throw new PaymentGatewayException("Billing account was not found for this tenant");
         }
         return rows.get(0);
+    }
+
+    private void verifySettledPayIn(long tenantId, String paymentReference, BigDecimal amount) {
+        List<PaymentProof> proofs =
+                jdbcTemplate.query(
+                        "SELECT t.status,t.tx_type,t.original_amount FROM merchant_transactions_log t "
+                                + "JOIN billing_tenants bt ON bt.merchant_id=t.merchant_id "
+                                + "WHERE bt.id=:tenant AND (t.tx_unique_id=:reference OR t.tx_merchant_ref=:reference "
+                                + "OR t.tx_gateway_ref=:reference) ORDER BY t.id DESC LIMIT 2",
+                        new MapSqlParameterSource()
+                                .addValue("tenant", tenantId)
+                                .addValue("reference", paymentReference),
+                        (rs, rowNum) ->
+                                new PaymentProof(
+                                        rs.getString("status"),
+                                        rs.getString("tx_type"),
+                                        rs.getBigDecimal("original_amount")));
+        if (proofs.size() != 1) {
+            throw new PaymentGatewayException(
+                    "Verified payment reference must resolve to exactly one CPay transaction for this tenant");
+        }
+        PaymentProof proof = proofs.get(0);
+        TransactionStatus status = TransactionStatus.fromString(proof.status());
+        if (status != TransactionStatus.SUCCESSFUL) {
+            throw new PaymentGatewayException("Prepaid funding requires a SUCCESSFUL CPay payment");
+        }
+        if (!Transaction.TX_TYPE_PAYIN.equals(proof.transactionType())) {
+            throw new PaymentGatewayException("Prepaid funding requires a CPay PAYIN transaction");
+        }
+        if (proof.amount() == null || proof.amount().compareTo(amount) != 0) {
+            throw new PaymentGatewayException(
+                    "Prepaid top-up amount must exactly match the settled CPay payment amount");
+        }
     }
 
     private void ensureChargingAccount(long tenantId, BillingAccount account) {
@@ -541,5 +586,8 @@ public class BillingBaasAdminService {
 
     private record Project(long id, long merchantId) {}
 
-    private record BillingAccount(long id, long customerId, String currency, BigDecimal creditLimit) {}
+    private record PaymentProof(String status, String transactionType, BigDecimal amount) {}
+
+    private record BillingAccount(
+            long id, long customerId, String currency, BigDecimal creditLimit) {}
 }

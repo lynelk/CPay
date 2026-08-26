@@ -122,7 +122,8 @@ public class BillingBaasCommercialService {
         if (updated == 0) {
             throw new PaymentGatewayException("Only a DRAFT contract can be submitted");
         }
-        return contract(context.billingTenantId(), required(contractReference, "contractReference"));
+        return contract(
+                context.billingTenantId(), required(contractReference, "contractReference"));
     }
 
     @Transactional
@@ -141,7 +142,8 @@ public class BillingBaasCommercialService {
             throw new PaymentGatewayException(
                     "Contract approval requires SUBMITTED status and a different service account");
         }
-        return contract(context.billingTenantId(), required(contractReference, "contractReference"));
+        return contract(
+                context.billingTenantId(), required(contractReference, "contractReference"));
     }
 
     @Transactional
@@ -160,7 +162,8 @@ public class BillingBaasCommercialService {
             throw new PaymentGatewayException(
                     "Contract must be APPROVED and currently effective before activation");
         }
-        return contract(context.billingTenantId(), required(contractReference, "contractReference"));
+        return contract(
+                context.billingTenantId(), required(contractReference, "contractReference"));
     }
 
     @Transactional
@@ -178,8 +181,10 @@ public class BillingBaasCommercialService {
         requireContext(context);
         long customerId = customerId(context.billingTenantId(), customerReference);
         long accountId = accountId(context.billingTenantId(), customerId, accountReference);
-        long contractId = activeContractId(context.billingTenantId(), customerId, contractReference);
-        BigDecimal safeQuantity = positive(quantity == null ? BigDecimal.ONE : quantity, "quantity");
+        long contractId =
+                activeContractId(context.billingTenantId(), customerId, contractReference);
+        BigDecimal safeQuantity =
+                positive(quantity == null ? BigDecimal.ONE : quantity, "quantity");
         Instant start = startsAt == null ? Instant.now() : startsAt;
         if (endsAt != null && !endsAt.isAfter(start)) {
             throw new PaymentGatewayException("Subscription endsAt must be after startsAt");
@@ -213,7 +218,9 @@ public class BillingBaasCommercialService {
         MapSqlParameterSource p =
                 new MapSqlParameterSource()
                         .addValue("tenant", context.billingTenantId())
-                        .addValue("reference", required(subscriptionReference, "subscriptionReference"));
+                        .addValue(
+                                "reference",
+                                required(subscriptionReference, "subscriptionReference"));
         int updated =
                 jdbcTemplate.update(
                         "UPDATE billing_subscriptions s JOIN billing_contracts c ON c.id=s.billing_contract_id "
@@ -226,18 +233,16 @@ public class BillingBaasCommercialService {
             throw new PaymentGatewayException(
                     "Subscription must be current and backed by an ACTIVE contract");
         }
-        return subscription(context.billingTenantId(), required(subscriptionReference, "subscriptionReference"));
+        return subscription(
+                context.billingTenantId(),
+                required(subscriptionReference, "subscriptionReference"));
     }
 
     @Transactional
     public Map<String, Object> pauseSubscription(
             BillingBaasContext context, String subscriptionReference) {
         return changeSubscription(
-                context,
-                subscriptionReference,
-                "ACTIVE",
-                "PAUSED",
-                "paused_at=CURRENT_TIMESTAMP");
+                context, subscriptionReference, "ACTIVE", "PAUSED", "paused_at=CURRENT_TIMESTAMP");
     }
 
     @Transactional
@@ -254,7 +259,8 @@ public class BillingBaasCommercialService {
                                 .addValue("tenant", context.billingTenantId())
                                 .addValue("reference", reference));
         if (updated == 0) {
-            throw new PaymentGatewayException("Subscription cannot be cancelled from its current state");
+            throw new PaymentGatewayException(
+                    "Subscription cannot be cancelled from its current state");
         }
         return subscription(context.billingTenantId(), reference);
     }
@@ -379,7 +385,8 @@ public class BillingBaasCommercialService {
     private long accountId(long tenantId, long customerId, String reference) {
         Map<String, Object> account = account(tenantId, required(reference, "accountReference"));
         if (((Number) account.get("billingCustomerId")).longValue() != customerId) {
-            throw new PaymentGatewayException("Billing account does not belong to the requested customer");
+            throw new PaymentGatewayException(
+                    "Billing account does not belong to the requested customer");
         }
         return ((Number) account.get("id")).longValue();
     }
@@ -417,7 +424,8 @@ public class BillingBaasCommercialService {
                                 + "FROM billing_subscriptions WHERE billing_tenant_id=:tenant AND subscription_reference=:reference",
                         new MapSqlParameterSource()
                                 .addValue("tenant", tenantId)
-                                .addValue("reference", required(reference, "subscriptionReference")));
+                                .addValue(
+                                        "reference", required(reference, "subscriptionReference")));
         return one(rows, "Billing subscription was not found");
     }
 
