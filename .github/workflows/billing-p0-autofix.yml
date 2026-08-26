@@ -1,0 +1,56 @@
+name: Billing P0 hardening autofix
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - billing-p0-baas-hardening-20260826
+    paths:
+      - '.github/scripts/billing_p0_hardening.py'
+      - '.github/workflows/billing-p0-autofix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out hardening branch
+        uses: actions/checkout@v7
+        with:
+          ref: billing-p0-baas-hardening-20260826
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Apply deterministic P0 patch
+        run: python3 .github/scripts/billing_p0_hardening.py
+
+      - name: Apply repository formatting
+        working-directory: InitializrSpringbootProjectFresh
+        run: mvn -B spotless:apply --no-transfer-progress
+
+      - name: Full backend verification
+        working-directory: InitializrSpringbootProjectFresh
+        run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
+
+      - name: Reject whitespace errors
+        run: git diff --check
+
+      - name: Commit validated hardening
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add InitializrSpringbootProjectFresh
+          if git diff --cached --quiet; then
+            echo 'No validated source changes to commit.'
+            exit 0
+          fi
+          git commit -m 'fix(billing): close BaaS P0 hardening gaps [billing-p0-autofix]'
+          git push origin HEAD:billing-p0-baas-hardening-20260826
