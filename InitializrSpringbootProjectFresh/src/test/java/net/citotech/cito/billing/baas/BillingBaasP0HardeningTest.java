@@ -22,7 +22,8 @@ class BillingBaasP0HardeningTest {
 
     @Test
     void protectedActionConsumptionIsOneTimeTenantScopedAndRequesterBound() {
-        NamedParameterJdbcTemplate jdbc = org.mockito.Mockito.mock(NamedParameterJdbcTemplate.class);
+        NamedParameterJdbcTemplate jdbc =
+                org.mockito.Mockito.mock(NamedParameterJdbcTemplate.class);
         BillingBaasProtectedActionService service = new BillingBaasProtectedActionService(jdbc);
         BillingBaasContext context = new BillingBaasContext(77L, 9L, 10L, 11L, "production");
         when(jdbc.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
@@ -30,7 +31,8 @@ class BillingBaasP0HardeningTest {
         service.consumeApproved(context, "charge_reverse", "charge_reservation", "RES-1");
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<MapSqlParameterSource> params = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        ArgumentCaptor<MapSqlParameterSource> params =
+                ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(jdbc).update(sql.capture(), params.capture());
         assertThat(sql.getValue())
                 .contains("billing_tenant_id=:tenant")
@@ -45,7 +47,8 @@ class BillingBaasP0HardeningTest {
 
     @Test
     void protectedActionConsumptionFailsClosedWhenNoUnusedApprovalExists() {
-        NamedParameterJdbcTemplate jdbc = org.mockito.Mockito.mock(NamedParameterJdbcTemplate.class);
+        NamedParameterJdbcTemplate jdbc =
+                org.mockito.Mockito.mock(NamedParameterJdbcTemplate.class);
         BillingBaasProtectedActionService service = new BillingBaasProtectedActionService(jdbc);
         BillingBaasContext context = new BillingBaasContext(77L, 9L, 10L, 11L, "production");
         when(jdbc.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(0);
@@ -53,10 +56,7 @@ class BillingBaasP0HardeningTest {
         assertThatThrownBy(
                         () ->
                                 service.consumeApproved(
-                                        context,
-                                        "CHARGE_REVERSE",
-                                        "CHARGE_RESERVATION",
-                                        "RES-1"))
+                                        context, "CHARGE_REVERSE", "CHARGE_RESERVATION", "RES-1"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("unused approval");
     }
@@ -77,8 +77,7 @@ class BillingBaasP0HardeningTest {
     void migrationPersistsActivationAndProtectedActionConsumptionEvidence() throws IOException {
         try (var stream =
                 getClass()
-                        .getResourceAsStream(
-                                "/db/migration/V102__billing_baas_p0_hardening.sql")) {
+                        .getResourceAsStream("/db/migration/V102__billing_baas_p0_hardening.sql")) {
             assertThat(stream).isNotNull();
             String sql = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             assertThat(sql)
