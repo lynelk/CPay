@@ -8,24 +8,7 @@ import net.citotech.cito.ledger.LedgerEntryCommand;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * The one place in the billing module allowed to call {@code DoubleEntryLedgerService.post()}
- * directly (ADR 0004 / Architectural Decision #1) - every other billing service that needs a ledger
- * effect goes through here, so account-code conventions stay centralized and reviewable in one file
- * instead of scattered string-building across the module.
- *
- * <p>Implements the accounting patterns from the billing spec as pre-built, always-balanced {@link
- * LedgerEntryCommand} lists. "Tax" is not its own method: a standalone tax entry can never balance
- * on its own, so it is folded into {@link #postCustomerCharge} as an optional additional line,
- * matching how a real invoice bills tax alongside the underlying charge.
- *
- * <p>Every posting uses the new {@code billing:{tenantId}:{ccy}:{purpose}} account-code namespace
- * (owner_type {@code BILLING_TENANT}, owner_id the billing tenant id) alongside the existing {@code
- * provider:{gatewayId}:{ccy}:*}/{@code cpay:{ccy}:*} conventions already used by {@code
- * PaymentOrchestrationService.postLedgerEntries}, and immediately records a {@code
- * billing_ledger_links} row after every post via {@link BillingLedgerLinkWriter} so the ledger
- * transaction can be traced back to its billing artifact.
- */
+/** Centralized billing ledger account templates. */
 @Service
 public class BillingLedgerAccountTemplateService {
     private static final String TENANT_OWNER_TYPE = "BILLING_TENANT";
@@ -39,10 +22,6 @@ public class BillingLedgerAccountTemplateService {
         this.linkWriter = linkWriter;
     }
 
-    /**
-     * Postpaid customer charge: debits the tenant's receivable for the full amount (charge + tax)
-     * and credits billing revenue and, if {@code taxAmount} is positive, tax payable.
-     */
     @Transactional
     public long postCustomerCharge(
             long billingTenantId,
@@ -97,7 +76,6 @@ public class BillingLedgerAccountTemplateService {
                 chargeReference);
     }
 
-    /** Provider cost accrual: recognizes an owed-but-unpaid provider cost as an expense. */
     @Transactional
     public long postProviderCostAccrual(
             long billingTenantId,
@@ -137,7 +115,6 @@ public class BillingLedgerAccountTemplateService {
                 costReference);
     }
 
-    /** Prepaid top-up: the tenant pays CPay cash/settlement and receives stored-value credit. */
     @Transactional
     public long postPrepaidTopUp(
             long billingTenantId,
@@ -176,7 +153,6 @@ public class BillingLedgerAccountTemplateService {
                 paymentReference);
     }
 
-    /** Prepaid consumption: draws down stored value as the tenant uses metered services. */
     @Transactional
     public long postPrepaidConsumption(
             long billingTenantId,
@@ -215,7 +191,6 @@ public class BillingLedgerAccountTemplateService {
                 usageReference);
     }
 
-    /** Invoice payment: clears the tenant's receivable as cash/settlement is received. */
     @Transactional
     public long postInvoicePayment(
             long billingTenantId,
@@ -254,7 +229,7 @@ public class BillingLedgerAccountTemplateService {
                 invoiceReference);
     }
 
-    /** Credit note / refund: reduces billing revenue and the tenant's outstanding receivable. */
+    /** Backwards-compatible zero-tax credit note. */
     @Transactional
     public long postCreditNote(
             long billingTenantId,
@@ -262,26 +237,63 @@ public class BillingLedgerAccountTemplateService {
             BigDecimal amount,
             String creditReference,
             String memo) {
-        List<LedgerEntryCommand> entries =
-                List.of(
-                        entry(
-                                billingRevenueAccount(currency),
-                                "CPay billing revenue",
-                                "REVENUE",
-                                null,
-                                "DR",
-                                amount,
-                                currency,
-                                memo),
-                        entry(
-                                arAccount(billingTenantId, currency),
-                                "Billing accounts receivable",
-                                "RECEIVABLE",
-                                billingTenantId,
-                                "CR",
-                                amount,
-                                currency,
-                                memo));
+        return postCreditNoteWithTax(
+                billingTenantId,
+                currency,
+                amount,
+                BigDecimal.ZERO,
+                creditReference,
+                memo);
+    }
+
+    /**
+     * Reverses the exact revenue/tax split represented by a credit note and reduces receivables by
+     * the gross credit. This prevents tax payable from being stranded when a taxed invoice is
+     * corrected or voided.
+     */
+    @Transactional
+    public long postCreditNoteWithTax(
+            long billingTenantId,
+            String currency,
+            BigDecimal revenueAmount,
+            BigDecimal taxAmount,
+            String creditReference,
+            String memo) {
+        BigDecimal tax = taxAmount == null ? BigDecimal.ZERO : taxAmount;
+        BigDecimal total = revenueAmount.add(tax);
+        List<LedgerEntryCommand> entries = new ArrayList<>();
+        entries.add(
+                entry(
+                        billingRevenueAccount(currency),
+                        "CPay billing revenue",
+                        "REVENUE",
+                        null,
+                        "DR",
+                        revenueAmount,
+                        currency,
+                        memo));
+        if (tax.compareTo(BigDecimal.ZERO) > 0) {
+            entries.add(
+                    entry(
+                            taxPayableAccount(billingTenantId, currency),
+                            "Billing tax payable",
+                            "TAX_LIABILITY",
+                            billingTenantId,
+                            "DR",
+                            tax,
+                            currency,
+                            memo));
+        }
+        entries.add(
+                entry(
+                        arAccount(billingTenantId, currency),
+                        "Billing accounts receivable",
+                        "RECEIVABLE",
+                        billingTenantId,
+                        "CR",
+                        total,
+                        currency,
+                        memo));
         return postAndLink(
                 "billing-credit:" + creditReference,
                 "BILLING_CREDIT",
@@ -293,7 +305,6 @@ public class BillingLedgerAccountTemplateService {
                 creditReference);
     }
 
-    /** BaaS platform fee revenue, kept segregated from a tenant's own merchant revenue. */
     @Transactional
     public long postBaasPlatformFee(
             long billingTenantId,
