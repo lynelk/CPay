@@ -27,9 +27,17 @@ class BillingInvoiceServiceTest {
             mock(BillingCompletenessGateService.class);
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService =
             mock(BillingLedgerAccountTemplateService.class);
+    private final net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService
+            fundingService =
+                    mock(
+                            net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService
+                                    .class);
     private final BillingInvoiceService service =
             new BillingInvoiceService(
-                    repository, completenessGateService, ledgerAccountTemplateService);
+                    repository,
+                    completenessGateService,
+                    ledgerAccountTemplateService,
+                    fundingService);
 
     @Test
     void createDraftGeneratesAnInvoiceNumberAndDelegatesToTheRepository() {
@@ -188,11 +196,18 @@ class BillingInvoiceServiceTest {
 
     @Test
     void paymentReplayDoesNotPostTwice() {
-        when(repository.find(55L)).thenReturn(Optional.of(finalizedInvoice("1000", "180", "1180")));
-        when(repository.paymentAllocationExists(55L, "PAY-1")).thenReturn(true);
+        when(repository.findForUpdate(55L))
+                .thenReturn(Optional.of(finalizedInvoice("1000", "180", "1180")));
+        when(fundingService.claim(
+                        7L, "PAY-1", "UGX", new BigDecimal("100"), false, "INVOICE", "55"))
+                .thenReturn(
+                        new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService
+                                .FundingClaim(
+                                91L, 3L, "PAY-1", "UGX", new BigDecimal("100"), true));
         assertThat(service.applyPayment(55L, "PAY-1", new BigDecimal("100"), "ops")).isZero();
         verify(ledgerAccountTemplateService, never())
-                .postInvoicePayment(anyLong(), any(), any(), any(), any());
+                .postInvoicePaymentFromMerchantCollection(
+                        anyLong(), anyLong(), any(), any(), any(), any());
     }
 
     @Test

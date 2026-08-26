@@ -154,6 +154,82 @@ public class BillingLedgerAccountTemplateService {
     }
 
     @Transactional
+    public long postPrepaidTopUpFromMerchantCollection(
+            long billingTenantId,
+            long merchantId,
+            String currency,
+            BigDecimal amount,
+            String paymentReference,
+            String memo) {
+        List<LedgerEntryCommand> entries =
+                List.of(
+                        merchantEntry(
+                                merchantCollectionsPayableAccount(merchantId, currency),
+                                "Merchant collection payable",
+                                merchantId,
+                                "DR",
+                                amount,
+                                currency,
+                                memo),
+                        entry(
+                                storedValueLiabilityAccount(billingTenantId, currency),
+                                "Billing stored-value liability",
+                                "STORED_VALUE_LIABILITY",
+                                billingTenantId,
+                                "CR",
+                                amount,
+                                currency,
+                                memo));
+        return postAndLink(
+                "billing-topup-reclass:" + paymentReference,
+                "BILLING_TOPUP",
+                paymentReference,
+                memo,
+                entries,
+                billingTenantId,
+                BillingLedgerLinkType.PAYMENT,
+                paymentReference);
+    }
+
+    @Transactional
+    public long postInvoicePaymentFromMerchantCollection(
+            long billingTenantId,
+            long merchantId,
+            String currency,
+            BigDecimal amount,
+            String invoiceReference,
+            String memo) {
+        List<LedgerEntryCommand> entries =
+                List.of(
+                        merchantEntry(
+                                merchantCollectionsPayableAccount(merchantId, currency),
+                                "Merchant collection payable",
+                                merchantId,
+                                "DR",
+                                amount,
+                                currency,
+                                memo),
+                        entry(
+                                arAccount(billingTenantId, currency),
+                                "Billing accounts receivable",
+                                "RECEIVABLE",
+                                billingTenantId,
+                                "CR",
+                                amount,
+                                currency,
+                                memo));
+        return postAndLink(
+                "billing-invoice-payment-reclass:" + invoiceReference,
+                "BILLING_INVOICE",
+                invoiceReference,
+                memo,
+                entries,
+                billingTenantId,
+                BillingLedgerLinkType.INVOICE,
+                invoiceReference);
+    }
+
+    @Transactional
     public long postPrepaidConsumption(
             long billingTenantId,
             String currency,
@@ -413,6 +489,30 @@ public class BillingLedgerAccountTemplateService {
                 amount,
                 currency,
                 memo);
+    }
+
+    private LedgerEntryCommand merchantEntry(
+            String accountCode,
+            String accountName,
+            long merchantId,
+            String direction,
+            BigDecimal amount,
+            String currency,
+            String memo) {
+        return new LedgerEntryCommand(
+                accountCode,
+                accountName,
+                "MERCHANT_LIABILITY",
+                "MERCHANT",
+                merchantId,
+                direction,
+                amount,
+                currency,
+                memo);
+    }
+
+    private String merchantCollectionsPayableAccount(long merchantId, String currency) {
+        return "merchant:" + merchantId + ":" + currency + ":collections_payable";
     }
 
     private String arAccount(long billingTenantId, String currency) {

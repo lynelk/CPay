@@ -13,10 +13,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.citotech.cito.Common;
-import net.citotech.cito.Model.Transaction;
-import net.citotech.cito.Model.TransactionStatus;
 import net.citotech.cito.admin.AdminAuditService;
 import net.citotech.cito.billing.integration.cpay.BillingLedgerAccountTemplateService;
+import net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.platform.CitoEntitlementService;
 import org.json.JSONArray;
@@ -34,16 +33,19 @@ public class BillingBaasAdminService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final CitoEntitlementService entitlementService;
     private final BillingLedgerAccountTemplateService ledgerService;
+    private final BillingPaymentFundingService fundingService;
     private final AdminAuditService auditService;
 
     public BillingBaasAdminService(
             NamedParameterJdbcTemplate jdbcTemplate,
             CitoEntitlementService entitlementService,
             BillingLedgerAccountTemplateService ledgerService,
+            BillingPaymentFundingService fundingService,
             AdminAuditService auditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.entitlementService = entitlementService;
         this.ledgerService = ledgerService;
+        this.fundingService = fundingService;
         this.auditService = auditService;
     }
 
@@ -84,9 +86,8 @@ public class BillingBaasAdminService {
                         + "ON DUPLICATE KEY UPDATE legal_model_status=VALUES(legal_model_status),"
                         + "commercial_model_status=VALUES(commercial_model_status),"
                         + "tax_model_status=VALUES(tax_model_status),funds_flow_status=VALUES(funds_flow_status),"
-                        + "activation_status=CASE WHEN activation_status='ACTIVE' AND :activation='READY' "
-                        + "THEN 'ACTIVE' ELSE :activation END,approved_by=VALUES(approved_by),"
-                        + "approved_at=VALUES(approved_at),updated_at=CURRENT_TIMESTAMP",
+                        + "activation_status=VALUES(activation_status),approved_by=VALUES(approved_by),"
+                        + "approved_at=VALUES(approved_at),activated_by=NULL,activated_at=NULL,updated_at=CURRENT_TIMESTAMP",
                 p);
         auditService.record(
                 "BILLING_BAAS",
@@ -281,29 +282,30 @@ public class BillingBaasAdminService {
             String verifiedPaymentReference,
             String actor) {
         BigDecimal safeAmount = positive(amount, "amount");
-        String paymentReference = required(verifiedPaymentReference, "verifiedPaymentReference");
         BillingAccount account = billingAccount(billingTenantId, accountReference);
-        verifySettledPayIn(billingTenantId, paymentReference, safeAmount);
         ensureChargingAccount(billingTenantId, account);
-        String adjustmentKey = "topup:" + billingTenantId + ":" + paymentReference;
-        Integer existing =
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM billing_charging_adjustments "
-                                + "WHERE billing_tenant_id=:tenant AND idempotency_key=:key",
-                        new MapSqlParameterSource()
-                                .addValue("tenant", billingTenantId)
-                                .addValue("key", adjustmentKey),
-                        Integer.class);
-        if (existing != null && existing > 0) {
-            return chargingAccount(billingTenantId, account.id(), account.currency());
-        }
-        long ledgerTransactionId =
-                ledgerService.postPrepaidTopUp(
+        BillingPaymentFundingService.FundingClaim claim =
+                fundingService.claim(
                         billingTenantId,
+                        verifiedPaymentReference,
                         account.currency(),
                         safeAmount,
-                        billingTenantId + ":" + paymentReference,
-                        "Verified BaaS prepaid top-up " + paymentReference);
+                        true,
+                        "BAAS_TOPUP",
+                        String.valueOf(account.id()));
+        if (claim.alreadyClaimed()) {
+            return chargingAccount(billingTenantId, account.id(), account.currency());
+        }
+        String adjustmentKey =
+                "topup:" + billingTenantId + ":" + account.id() + ":" + claim.sourceTransactionId();
+        long ledgerTransactionId =
+                ledgerService.postPrepaidTopUpFromMerchantCollection(
+                        billingTenantId,
+                        claim.merchantId(),
+                        account.currency(),
+                        safeAmount,
+                        claim.sourceTransactionReference(),
+                        "Verified BaaS prepaid top-up " + claim.sourceTransactionReference());
         MapSqlParameterSource p =
                 new MapSqlParameterSource()
                         .addValue("tenant", billingTenantId)
@@ -338,7 +340,10 @@ public class BillingBaasAdminService {
                 "BILLING_BAAS",
                 "BAAS_PREPAID_TOPUP",
                 accountReference,
-                "tenant=" + billingTenantId + ",paymentReference=" + paymentReference);
+                "tenant="
+                        + billingTenantId
+                        + ",paymentReference="
+                        + claim.sourceTransactionReference());
         return chargingAccount(billingTenantId, account.id(), account.currency());
     }
 
@@ -436,39 +441,6 @@ public class BillingBaasAdminService {
             throw new PaymentGatewayException("Billing account was not found for this tenant");
         }
         return rows.get(0);
-    }
-
-    private void verifySettledPayIn(long tenantId, String paymentReference, BigDecimal amount) {
-        List<PaymentProof> proofs =
-                jdbcTemplate.query(
-                        "SELECT t.status,t.tx_type,t.original_amount FROM merchant_transactions_log t "
-                                + "JOIN billing_tenants bt ON bt.merchant_id=t.merchant_id "
-                                + "WHERE bt.id=:tenant AND (t.tx_unique_id=:reference OR t.tx_merchant_ref=:reference "
-                                + "OR t.tx_gateway_ref=:reference) ORDER BY t.id DESC LIMIT 2",
-                        new MapSqlParameterSource()
-                                .addValue("tenant", tenantId)
-                                .addValue("reference", paymentReference),
-                        (rs, rowNum) ->
-                                new PaymentProof(
-                                        rs.getString("status"),
-                                        rs.getString("tx_type"),
-                                        rs.getBigDecimal("original_amount")));
-        if (proofs.size() != 1) {
-            throw new PaymentGatewayException(
-                    "Verified payment reference must resolve to exactly one CPay transaction for this tenant");
-        }
-        PaymentProof proof = proofs.get(0);
-        TransactionStatus status = TransactionStatus.fromString(proof.status());
-        if (status != TransactionStatus.SUCCESSFUL) {
-            throw new PaymentGatewayException("Prepaid funding requires a SUCCESSFUL CPay payment");
-        }
-        if (!Transaction.TX_TYPE_PAYIN.equals(proof.transactionType())) {
-            throw new PaymentGatewayException("Prepaid funding requires a CPay PAYIN transaction");
-        }
-        if (proof.amount() == null || proof.amount().compareTo(amount) != 0) {
-            throw new PaymentGatewayException(
-                    "Prepaid top-up amount must exactly match the settled CPay payment amount");
-        }
     }
 
     private void ensureChargingAccount(long tenantId, BillingAccount account) {
@@ -585,8 +557,6 @@ public class BillingBaasAdminService {
     }
 
     private record Project(long id, long merchantId) {}
-
-    private record PaymentProof(String status, String transactionType, BigDecimal amount) {}
 
     private record BillingAccount(
             long id, long customerId, String currency, BigDecimal creditLimit) {}
