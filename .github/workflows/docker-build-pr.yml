@@ -144,7 +144,7 @@ jobs:
     if: always()
     steps:
       - name: Post build status
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const backend = '${{ needs.build_backend_pr.result }}' === 'success' ? '✅' : '❌';
