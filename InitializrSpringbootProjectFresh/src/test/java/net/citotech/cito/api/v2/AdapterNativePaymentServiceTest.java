@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Common;
@@ -27,6 +28,9 @@ import net.citotech.cito.gateway.PaymentStatusRequest;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
 import net.citotech.cito.platform.CitoFeatureAccessService;
+import net.citotech.cito.sharedprovider.SharedProviderAccessService;
+import net.citotech.cito.sharedprovider.SharedProviderAccessService.CredentialContext;
+import net.citotech.cito.treasury.ProviderTreasuryService;
 import org.junit.jupiter.api.Test;
 
 class AdapterNativePaymentServiceTest {
@@ -37,13 +41,40 @@ class AdapterNativePaymentServiceTest {
         MerchantChannelCredentialService credentialService =
                 mock(MerchantChannelCredentialService.class);
         MerchantEnvironmentService environmentService = mock(MerchantEnvironmentService.class);
-        IntelligentPaymentRoutingService routingService = mock(IntelligentPaymentRoutingService.class);
+        IntelligentPaymentRoutingService routingService =
+                mock(IntelligentPaymentRoutingService.class);
         CitoFeatureAccessService featureAccessService = mock(CitoFeatureAccessService.class);
+        SharedProviderAccessService sharedProviderAccessService =
+                mock(SharedProviderAccessService.class);
+        ProviderTreasuryService treasuryService = mock(ProviderTreasuryService.class);
         GatewayExecutionService gatewayExecutionService = new GatewayExecutionService();
         when(environmentService.normalizedEnvironment("PRODUCTION")).thenReturn("PRODUCTION");
-        when(credentialService.loadDecrypted(
-                        any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION")))
-                .thenReturn(Map.of("collectUrl", "https://provider.example/collect"));
+        when(sharedProviderAccessService.isReady(
+                        any(Merchant.class),
+                        eq("mtn_momo"),
+                        eq("PRODUCTION"),
+                        eq("UG"),
+                        eq("UGX"),
+                        eq("COLLECT"),
+                        eq(new BigDecimal("1000.00"))))
+                .thenReturn(true);
+        CredentialContext credentialContext =
+                new CredentialContext(
+                        SharedProviderAccessService.MERCHANT,
+                        Map.of("collectUrl", "https://provider.example/collect"),
+                        null,
+                        "UG",
+                        "UGX",
+                        "COLLECT");
+        when(sharedProviderAccessService.resolve(
+                        any(Merchant.class),
+                        eq("mtn_momo"),
+                        eq("PRODUCTION"),
+                        eq("UG"),
+                        eq("UGX"),
+                        eq("COLLECT"),
+                        eq(new BigDecimal("1000.00"))))
+                .thenReturn(credentialContext);
 
         AdapterNativePaymentService service =
                 new AdapterNativePaymentService(
@@ -53,20 +84,44 @@ class AdapterNativePaymentServiceTest {
                         gatewayExecutionService,
                         routingService,
                         featureAccessService,
+                        sharedProviderAccessService,
+                        treasuryService,
                         "PRODUCTION");
 
         PaymentResult result = service.collect(paymentRequest(), merchant(), "PRODUCTION");
 
-        verify(environmentService)
-                .enforceProductionLimit(any(Merchant.class), eq("PRODUCTION"));
-        verify(credentialService)
-                .ensureChannelReady(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
-        verify(credentialService)
-                .loadDecrypted(any(Merchant.class), eq("mtn_momo"), eq("PRODUCTION"));
+        verify(environmentService).enforceProductionLimit(any(Merchant.class), eq("PRODUCTION"));
+        verify(sharedProviderAccessService)
+                .isReady(
+                        any(Merchant.class),
+                        eq("mtn_momo"),
+                        eq("PRODUCTION"),
+                        eq("UG"),
+                        eq("UGX"),
+                        eq("COLLECT"),
+                        eq(new BigDecimal("1000.00")));
+        verify(sharedProviderAccessService)
+                .resolve(
+                        any(Merchant.class),
+                        eq("mtn_momo"),
+                        eq("PRODUCTION"),
+                        eq("UG"),
+                        eq("UGX"),
+                        eq("COLLECT"),
+                        eq(new BigDecimal("1000.00")));
+        verify(treasuryService)
+                .beginShared(
+                        eq(credentialContext),
+                        any(Merchant.class),
+                        eq("mtn_momo"),
+                        eq("PRODUCTION"),
+                        eq(new BigDecimal("1000.00")),
+                        eq("PROD-REF-1"));
         assertThat(result.getEnvironment()).isEqualTo("PRODUCTION");
         assertThat(adapter.lastRequest.getMetadata())
                 .containsEntry("gatewayState", "PRODUCTION")
                 .containsEntry("credentialEnvironment", "PRODUCTION")
+                .containsEntry("credentialSource", SharedProviderAccessService.MERCHANT)
                 .containsEntry("collectUrl", "https://provider.example/collect");
 
         gatewayExecutionService.shutdown();

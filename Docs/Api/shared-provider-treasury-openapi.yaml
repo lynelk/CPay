@@ -1,0 +1,397 @@
+openapi: 3.0.3
+info:
+  title: CPay Shared Provider and Provider Treasury Admin API
+  version: 1.0.0
+  description: >-
+    Administrative contract for CPay-sponsored provider credentials, merchant shared-provider
+    entitlements, and controlled provider treasury/float operations. All endpoints require an
+    authenticated GATEWAY_ADMIN or PAYMENTS_ADMIN principal. Provider secrets are write-only and
+    returned only as masked metadata. Treasury balances cannot be set directly; value changes use
+    maker-checker CREDIT, DEBIT, or REBALANCE adjustments.
+servers:
+  - url: /
+tags:
+  - name: Shared Provider
+  - name: Provider Treasury
+paths:
+  /api/v2/admin/shared-provider/entitlements:
+    get:
+      tags: [Shared Provider]
+      summary: List shared-provider merchant entitlements
+      operationId: listSharedProviderEntitlements
+      responses:
+        '200':
+          description: Entitlements ordered by most recent update.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Entitlement'}
+    post:
+      tags: [Shared Provider]
+      summary: Request a shared-provider merchant entitlement
+      operationId: requestSharedProviderEntitlement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EntitlementRequest'}
+      responses:
+        '200':
+          description: Pending entitlement request.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Entitlement'}
+  /api/v2/admin/shared-provider/entitlements/{id}/approve:
+    post:
+      tags: [Shared Provider]
+      summary: Approve a shared-provider merchant entitlement
+      operationId: approveSharedProviderEntitlement
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Approved entitlement.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Entitlement'}
+  /api/v2/admin/shared-provider/entitlements/{id}/reject:
+    post:
+      tags: [Shared Provider]
+      summary: Reject a shared-provider merchant entitlement
+      operationId: rejectSharedProviderEntitlement
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Rejected entitlement.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Entitlement'}
+  /api/v2/admin/shared-provider/entitlements/{id}/disable:
+    post:
+      tags: [Shared Provider]
+      summary: Disable a shared-provider merchant entitlement
+      operationId: disableSharedProviderEntitlement
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Disabled entitlement.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Entitlement'}
+  /api/v2/admin/shared-provider/credentials:
+    get:
+      tags: [Shared Provider]
+      summary: List masked CPay platform provider credentials
+      operationId: listPlatformProviderCredentials
+      responses:
+        '200':
+          description: Masked platform credential records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/PlatformCredential'}
+    post:
+      tags: [Shared Provider]
+      summary: Save CPay platform provider credentials
+      operationId: savePlatformProviderCredential
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PlatformCredentialRequest'}
+      responses:
+        '200':
+          description: Configured platform credential awaiting independent approval.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PlatformCredential'}
+  /api/v2/admin/shared-provider/credentials/{id}/approve:
+    post:
+      tags: [Shared Provider]
+      summary: Approve CPay platform provider credentials
+      operationId: approvePlatformProviderCredential
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Active platform credential.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PlatformCredential'}
+  /api/v2/admin/shared-provider/credentials/{id}/disable:
+    post:
+      tags: [Shared Provider]
+      summary: Disable CPay platform provider credentials
+      operationId: disablePlatformProviderCredential
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Disabled platform credential.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PlatformCredential'}
+  /api/v2/admin/provider-treasury/accounts:
+    get:
+      tags: [Provider Treasury]
+      summary: List provider treasury accounts
+      operationId: listProviderTreasuryAccounts
+      responses:
+        '200':
+          description: Provider treasury positions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/TreasuryAccount'}
+  /api/v2/admin/provider-treasury/adjustments:
+    get:
+      tags: [Provider Treasury]
+      summary: List provider treasury adjustments
+      operationId: listProviderTreasuryAdjustments
+      responses:
+        '200':
+          description: Recent treasury adjustment requests.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/TreasuryAdjustment'}
+    post:
+      tags: [Provider Treasury]
+      summary: Request a provider treasury adjustment
+      operationId: requestProviderTreasuryAdjustment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TreasuryAdjustmentRequest'}
+      responses:
+        '200':
+          description: Pending maker-checker adjustment.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TreasuryAdjustment'}
+  /api/v2/admin/provider-treasury/adjustments/{id}/approve:
+    post:
+      tags: [Provider Treasury]
+      summary: Approve and post a provider treasury adjustment
+      operationId: approveProviderTreasuryAdjustment
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Approved and posted treasury adjustment.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TreasuryAdjustment'}
+  /api/v2/admin/provider-treasury/adjustments/{id}/reject:
+    post:
+      tags: [Provider Treasury]
+      summary: Reject a provider treasury adjustment
+      operationId: rejectProviderTreasuryAdjustment
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Rejected treasury adjustment.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TreasuryAdjustment'}
+  /api/v2/admin/provider-treasury/reservations:
+    get:
+      tags: [Provider Treasury]
+      summary: List shared-provider treasury reservations
+      operationId: listProviderTreasuryReservations
+      responses:
+        '200':
+          description: Recent shared-provider reservations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/TreasuryReservation'}
+  /api/v2/admin/provider-treasury/reservations/{id}/resolve:
+    post:
+      tags: [Provider Treasury]
+      summary: Resolve a pending provider treasury reservation
+      operationId: resolvePendingProviderTreasuryReservation
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [success]
+              properties:
+                success: {type: boolean}
+                providerReference: {type: string}
+      responses:
+        '200':
+          description: Resolved provider reservation.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TreasuryReservation'}
+  /api/v2/admin/provider-treasury/exposures:
+    get:
+      tags: [Provider Treasury]
+      summary: List merchant exposure to CPay provider float
+      operationId: listMerchantProviderExposures
+      responses:
+        '200':
+          description: Merchant exposure against CPay-owned provider float.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {type: object, additionalProperties: true}
+  /api/v2/admin/provider-treasury/journal:
+    get:
+      tags: [Provider Treasury]
+      summary: List provider treasury journal entries
+      operationId: listProviderTreasuryJournal
+      responses:
+        '200':
+          description: Hash-chained balanced treasury journal entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {type: object, additionalProperties: true}
+  /api/v2/admin/provider-treasury/reconciliations:
+    get:
+      tags: [Provider Treasury]
+      summary: List provider treasury reconciliations
+      operationId: listProviderTreasuryReconciliations
+      responses:
+        '200':
+          description: Provider statement reconciliation evidence.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {type: object, additionalProperties: true}
+  /api/v2/admin/provider-treasury/accounts/{id}/reconcile:
+    post:
+      tags: [Provider Treasury]
+      summary: Reconcile a provider treasury account
+      operationId: reconcileProviderTreasuryAccount
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReconciliationRequest'}
+      responses:
+        '200':
+          description: Recorded reconciliation result.
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+  /api/v2/admin/provider-treasury/accounts/{id}/low-float-threshold:
+    post:
+      tags: [Provider Treasury]
+      summary: Set a provider treasury low-float threshold
+      operationId: setProviderTreasuryLowFloatThreshold
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lowFloatThreshold: {type: number, format: double, minimum: 0}
+      responses:
+        '200':
+          description: Updated provider treasury account.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TreasuryAccount'}
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+  schemas:
+    EntitlementRequest:
+      type: object
+      required: [merchantId, channelCode, environment, countryCode, currencyCode, operation]
+      properties:
+        merchantId: {type: integer, format: int64}
+        channelCode: {type: string}
+        environment: {type: string, enum: [SANDBOX, PRODUCTION]}
+        countryCode: {type: string}
+        currencyCode: {type: string}
+        operation: {type: string, enum: [COLLECT, PAYOUT]}
+        perTransactionLimit: {type: number, format: double, exclusiveMinimum: true, minimum: 0}
+        dailyLimit: {type: number, format: double, exclusiveMinimum: true, minimum: 0}
+        notes: {type: string}
+    Entitlement:
+      allOf:
+        - {$ref: '#/components/schemas/EntitlementRequest'}
+        - type: object
+          properties:
+            id: {type: integer, format: int64}
+            status: {type: string}
+            requestedBy: {type: string}
+            approvedBy: {type: string, nullable: true}
+    PlatformCredentialRequest:
+      type: object
+      required: [channelCode, environment, countryCode, currencyCode, credentials]
+      properties:
+        channelCode: {type: string}
+        environment: {type: string, enum: [SANDBOX, PRODUCTION]}
+        countryCode: {type: string}
+        currencyCode: {type: string}
+        credentials:
+          type: object
+          additionalProperties: true
+          description: Write-only provider configuration. Secrets are encrypted at rest.
+    PlatformCredential:
+      type: object
+      additionalProperties: true
+      description: Platform credential metadata with masked credential values only.
+    TreasuryAccount:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        channelCode: {type: string}
+        environment: {type: string}
+        countryCode: {type: string}
+        currencyCode: {type: string}
+        bookBalance: {type: number}
+        reservedBalance: {type: number}
+        pendingOutgoingBalance: {type: number}
+        pendingIncomingBalance: {type: number}
+        providerReportedBalance: {type: number, nullable: true}
+        availableBalance: {type: number}
+        lowFloatThreshold: {type: number}
+        reconciliationState: {type: string}
+    TreasuryAdjustmentRequest:
+      type: object
+      required: [adjustmentType, amount, reason, externalReference, valueDate]
+      properties:
+        adjustmentType: {type: string, enum: [CREDIT, DEBIT, REBALANCE]}
+        sourceAccountId: {type: integer, format: int64, nullable: true}
+        destinationAccountId: {type: integer, format: int64, nullable: true}
+        amount: {type: number, exclusiveMinimum: true, minimum: 0}
+        reason: {type: string}
+        externalReference: {type: string}
+        evidenceReference: {type: string}
+        valueDate: {type: string, format: date}
+        idempotencyKey: {type: string}
+    TreasuryAdjustment:
+      type: object
+      additionalProperties: true
+    TreasuryReservation:
+      type: object
+      additionalProperties: true
+    ReconciliationRequest:
+      type: object
+      required: [statementReference, providerReportedBalance]
+      properties:
+        statementReference: {type: string}
+        providerReportedBalance: {type: number}
+        evidenceReference: {type: string}
+        notes: {type: string}

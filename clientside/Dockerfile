@@ -18,6 +18,7 @@ COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
 ENV PORT=8080
+ENV BACKEND_UPSTREAM=cpay.railway.internal:8080
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

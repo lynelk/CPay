@@ -41,7 +41,7 @@ class FlywayMigrationSmokeTest {
         assertTrue(result.migrationsExecuted > 0, "A clean schema must execute migrations");
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
-            assertEquals("86", latestSuccessfulVersion(connection));
+            assertEquals("105", latestSuccessfulVersion(connection));
             assertEquals(4, auditProtectionTriggerCount(connection));
         }
     }
@@ -60,10 +60,10 @@ class FlywayMigrationSmokeTest {
 
     private static int auditProtectionTriggerCount(Connection connection) throws SQLException {
         try (PreparedStatement statement =
-                        connection.prepareStatement(
-                                "SELECT COUNT(*) FROM information_schema.triggers "
-                                        + "WHERE trigger_schema = DATABASE() "
-                                        + "AND trigger_name IN (?, ?, ?, ?)");) {
+                connection.prepareStatement(
+                        "SELECT COUNT(*) FROM information_schema.triggers "
+                                + "WHERE trigger_schema = DATABASE() "
+                                + "AND trigger_name IN (?, ?, ?, ?)"); ) {
             statement.setString(1, "audit_trail_no_update");
             statement.setString(2, "audit_trail_no_delete");
             statement.setString(3, "merchants_audit_trail_no_update");
