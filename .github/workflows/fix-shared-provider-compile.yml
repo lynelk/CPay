@@ -1,0 +1,51 @@
+name: One-shot shared provider compile repair
+
+on:
+  push:
+    branches:
+      - feature/shared-provider-treasury-completion-20260827
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[compile-repair]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/shared-provider-treasury-completion-20260827
+          fetch-depth: 0
+      - name: Repair NamedParameterJdbcTemplate no-parameter list queries
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          paths = [
+              Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/sharedprovider/SharedProviderAccessService.java'),
+              Path('InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/treasury/ProviderTreasuryService.java'),
+          ]
+          concat = r'"(?:\\.|[^"\\])*"(?:\s*\+\s*"(?:\\.|[^"\\])*")*'
+          pattern = re.compile(r'jdbc\.queryForList\(\s*(' + concat + r')\s*\)', re.MULTILINE)
+          total = 0
+          for path in paths:
+              text = path.read_text(encoding='utf-8')
+              repaired, count = pattern.subn(r'jdbc.queryForList(\1, Map.of())', text)
+              if count:
+                  path.write_text(repaired, encoding='utf-8')
+              total += count
+              print(f'{path}: repaired {count}')
+          if total != 8:
+              raise SystemExit(f'Expected exactly 8 repairs, found {total}')
+          PY
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/sharedprovider/SharedProviderAccessService.java \
+                  InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/treasury/ProviderTreasuryService.java
+          git diff --cached --check
+          git commit -s -m "fix: compile shared provider treasury JDBC queries [compile-repair]"
+          git push origin HEAD:feature/shared-provider-treasury-completion-20260827
