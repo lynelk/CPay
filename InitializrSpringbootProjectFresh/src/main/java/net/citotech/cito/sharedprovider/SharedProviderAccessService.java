@@ -13,7 +13,6 @@ import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -300,31 +299,21 @@ public class SharedProviderAccessService {
                 .addValue("day", LocalDate.now())
                 .addValue("operation", "AUTHORIZED")
                 .addValue("amount", amount);
-        try {
-            jdbc.update(
-                    "INSERT INTO shared_provider_daily_usage (entitlement_id, usage_date, operation, approved_amount, transaction_count) VALUES (:id,:day,:operation,:amount,1)",
-                    p);
-        } catch (DuplicateKeyException ignored) {
-            // Existing day. Locked below before increment.
-        }
+        jdbc.update(
+                "INSERT IGNORE INTO shared_provider_daily_usage (entitlement_id, usage_date, operation, approved_amount, transaction_count) VALUES (:id,:day,:operation,0,0)",
+                p);
         List<Map<String, Object>> usage = jdbc.queryForList(
                 "SELECT id, approved_amount FROM shared_provider_daily_usage WHERE entitlement_id=:id AND usage_date=:day AND operation=:operation FOR UPDATE",
                 p);
         BigDecimal used = usage.isEmpty() ? BigDecimal.ZERO : decimal(usage.get(0).get("approved_amount"));
-        // If the INSERT above created the row, amount is already included. Otherwise it is not.
-        boolean insertedAtAmount = used.compareTo(amount) == 0 && usage.size() == 1;
-        BigDecimal proposed = insertedAtAmount ? used : used.add(amount);
+        BigDecimal proposed = used.add(amount);
         if (proposed.compareTo(dailyLimit) > 0) {
-            if (insertedAtAmount) {
-                jdbc.update("DELETE FROM shared_provider_daily_usage WHERE entitlement_id=:id AND usage_date=:day AND operation=:operation", p);
-            }
             throw new PaymentGatewayException("CPay shared-provider daily limit exceeded");
         }
-        if (!insertedAtAmount) {
-            jdbc.update(
-                    "UPDATE shared_provider_daily_usage SET approved_amount=approved_amount+:amount, transaction_count=transaction_count+1 WHERE entitlement_id=:id AND usage_date=:day AND operation=:operation",
-                    p);
-        }
+        p.addValue("proposed", proposed);
+        jdbc.update(
+                "UPDATE shared_provider_daily_usage SET approved_amount=:proposed, transaction_count=transaction_count+1 WHERE entitlement_id=:id AND usage_date=:day AND operation=:operation",
+                p);
     }
 
     private MapSqlParameterSource scope(Long merchantId, String channel, String environment, String country, String currency, String operation) {
