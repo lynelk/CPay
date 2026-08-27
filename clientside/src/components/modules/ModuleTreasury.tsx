@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Section, Table, Badge, Alert, Spinner, StatGrid, StatTile } from '../../ui';
+import { useNavigate } from 'react-router-dom';
+import { Section, Table, Badge, Alert, Spinner, StatGrid, StatTile, Button } from '../../ui';
 import type { Column } from '../../ui';
 import {
   useTreasuryPositions,
@@ -14,6 +15,9 @@ import { ApiError } from '../../shared/api/httpClient';
  * Admin treasury/balance-monitoring surface: per-currency available/reserved/
  * net-available positions (TreasuryPositionController) plus the S5
  * balance-monitoring overview (BalanceMonitoringController, feature-flagged).
+ * Provider-network float administration is linked directly from this module so
+ * operators can reach controlled Airtel/MTN/Safaricom credit/debit/rebalance,
+ * reconciliation and shared-provider merchant permissions from the Treasury menu.
  */
 
 function errorMessage(error: unknown): string {
@@ -50,6 +54,7 @@ interface ModuleTreasuryProps {
 }
 
 function ModuleTreasury({ loader, refreshSignal, sessionExpired }: ModuleTreasuryProps): React.ReactElement {
+  const navigate = useNavigate();
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
   const positionsQuery = useTreasuryPositions();
@@ -100,6 +105,20 @@ function ModuleTreasury({ loader, refreshSignal, sessionExpired }: ModuleTreasur
   return (
     <div className="cpay-treasury">
       {feedback ? <Alert variant={feedback.tone === 'success' ? 'success' : 'error'}>{feedback.message}</Alert> : null}
+
+      <Section title="Provider-network float administration">
+        <div style={{ display: 'flex', gap: 'var(--ios-space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 420px' }}>
+            <strong>Airtel, MTN and Safaricom float controls</strong>
+            <p style={{ margin: '4px 0 0' }}>
+              Credit, debit or rebalance CPay-owned provider float through maker-checker controls; manage shared-provider merchant permissions, platform credentials, reservations, exposure and reconciliation.
+            </p>
+          </div>
+          <Button variant="primary" onClick={() => navigate('/admin/provider-treasury')}>
+            Manage provider float & shared channels
+          </Button>
+        </div>
+      </Section>
 
       {positionsQuery.isLoading ? <Spinner label="Loading treasury positions" /> : null}
       {positionsQuery.error && !(positionsQuery.error instanceof ApiError && positionsQuery.error.status === 400) ? (
