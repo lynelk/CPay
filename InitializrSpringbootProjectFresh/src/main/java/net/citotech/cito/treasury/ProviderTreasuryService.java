@@ -40,39 +40,33 @@ public class ProviderTreasuryService {
     }
 
     public List<Map<String, Object>> listAccounts() {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, "
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, "
                         + "book_balance AS bookBalance, reserved_balance AS reservedBalance, pending_outgoing_balance AS pendingOutgoingBalance, "
                         + "pending_incoming_balance AS pendingIncomingBalance, provider_reported_balance AS providerReportedBalance, "
                         + "low_float_threshold AS lowFloatThreshold, reconciliation_state AS reconciliationState, updated_at AS updatedAt "
-                        + "FROM provider_treasury_accounts ORDER BY environment, country_code, currency_code, channel_code");
+                        + "FROM provider_treasury_accounts ORDER BY environment, country_code, currency_code, channel_code", Map.of());
         for (Map<String, Object> row : rows) enrichAccount(row);
         return rows;
     }
 
     public List<Map<String, Object>> listAdjustments() {
-        return jdbc.queryForList(
-                "SELECT id, idempotency_key AS idempotencyKey, adjustment_type AS adjustmentType, source_account_id AS sourceAccountId, destination_account_id AS destinationAccountId, amount, reason, external_reference AS externalReference, evidence_reference AS evidenceReference, value_date AS valueDate, status, requested_by AS requestedBy, requested_at AS requestedAt, approved_by AS approvedBy, approved_at AS approvedAt, rejected_by AS rejectedBy, rejected_at AS rejectedAt, posted_at AS postedAt FROM provider_treasury_adjustments ORDER BY requested_at DESC LIMIT 500");
+        return jdbc.queryForList("SELECT id, idempotency_key AS idempotencyKey, adjustment_type AS adjustmentType, source_account_id AS sourceAccountId, destination_account_id AS destinationAccountId, amount, reason, external_reference AS externalReference, evidence_reference AS evidenceReference, value_date AS valueDate, status, requested_by AS requestedBy, requested_at AS requestedAt, approved_by AS approvedBy, approved_at AS approvedAt, rejected_by AS rejectedBy, rejected_at AS rejectedAt, posted_at AS postedAt FROM provider_treasury_adjustments ORDER BY requested_at DESC LIMIT 500", Map.of());
     }
 
     public List<Map<String, Object>> listReservations() {
-        return jdbc.queryForList(
-                "SELECT id, treasury_account_id AS treasuryAccountId, merchant_id AS merchantId, merchant_number AS merchantNumber, operation, direction, amount, currency_code AS currencyCode, merchant_reference AS merchantReference, provider_reference AS providerReference, status, created_at AS createdAt, updated_at AS updatedAt FROM provider_treasury_reservations ORDER BY created_at DESC LIMIT 500");
+        return jdbc.queryForList("SELECT id, treasury_account_id AS treasuryAccountId, merchant_id AS merchantId, merchant_number AS merchantNumber, operation, direction, amount, currency_code AS currencyCode, merchant_reference AS merchantReference, provider_reference AS providerReference, status, created_at AS createdAt, updated_at AS updatedAt FROM provider_treasury_reservations ORDER BY created_at DESC LIMIT 500", Map.of());
     }
 
     public List<Map<String, Object>> listExposures() {
-        return jdbc.queryForList(
-                "SELECT id, merchant_id AS merchantId, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, reserved_outgoing AS reservedOutgoing, pending_outgoing AS pendingOutgoing, pending_incoming AS pendingIncoming, settled_net AS settledNet, updated_at AS updatedAt FROM merchant_provider_exposures ORDER BY updated_at DESC LIMIT 500");
+        return jdbc.queryForList("SELECT id, merchant_id AS merchantId, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, reserved_outgoing AS reservedOutgoing, pending_outgoing AS pendingOutgoing, pending_incoming AS pendingIncoming, settled_net AS settledNet, updated_at AS updatedAt FROM merchant_provider_exposures ORDER BY updated_at DESC LIMIT 500", Map.of());
     }
 
     public List<Map<String, Object>> listJournal() {
-        return jdbc.queryForList(
-                "SELECT id, entry_group AS entryGroup, sequence_no AS sequenceNo, treasury_account_id AS treasuryAccountId, ledger_account_code AS ledgerAccountCode, merchant_id AS merchantId, reservation_id AS reservationId, adjustment_id AS adjustmentId, transaction_reference AS transactionReference, entry_type AS entryType, entry_side AS entrySide, amount, currency_code AS currencyCode, reason, external_reference AS externalReference, previous_hash AS previousHash, entry_hash AS entryHash, actor, created_at AS createdAt FROM provider_treasury_journal ORDER BY id DESC LIMIT 1000");
+        return jdbc.queryForList("SELECT id, entry_group AS entryGroup, sequence_no AS sequenceNo, treasury_account_id AS treasuryAccountId, ledger_account_code AS ledgerAccountCode, merchant_id AS merchantId, reservation_id AS reservationId, adjustment_id AS adjustmentId, transaction_reference AS transactionReference, entry_type AS entryType, entry_side AS entrySide, amount, currency_code AS currencyCode, reason, external_reference AS externalReference, previous_hash AS previousHash, entry_hash AS entryHash, actor, created_at AS createdAt FROM provider_treasury_journal ORDER BY id DESC LIMIT 1000", Map.of());
     }
 
     public List<Map<String, Object>> listReconciliations() {
-        return jdbc.queryForList(
-                "SELECT id, treasury_account_id AS treasuryAccountId, statement_reference AS statementReference, evidence_reference AS evidenceReference, book_balance AS bookBalance, provider_reported_balance AS providerReportedBalance, variance, state, notes, reconciled_by AS reconciledBy, reconciled_at AS reconciledAt FROM provider_treasury_reconciliations ORDER BY reconciled_at DESC LIMIT 500");
+        return jdbc.queryForList("SELECT id, treasury_account_id AS treasuryAccountId, statement_reference AS statementReference, evidence_reference AS evidenceReference, book_balance AS bookBalance, provider_reported_balance AS providerReportedBalance, variance, state, notes, reconciled_by AS reconciledBy, reconciled_at AS reconciledAt FROM provider_treasury_reconciliations ORDER BY reconciled_at DESC LIMIT 500", Map.of());
     }
 
     /** Begin accounting for an actual shared-provider request. Merchant-owned execution returns null. */

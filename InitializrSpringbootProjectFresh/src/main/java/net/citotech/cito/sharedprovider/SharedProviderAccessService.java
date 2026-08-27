@@ -112,8 +112,7 @@ public class SharedProviderAccessService {
     }
 
     public List<Map<String, Object>> listEntitlements() {
-        return jdbc.queryForList(
-                "SELECT id, merchant_id AS merchantId, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, operation, status, per_transaction_limit AS perTransactionLimit, daily_limit AS dailyLimit, requested_by AS requestedBy, requested_at AS requestedAt, approved_by AS approvedBy, approved_at AS approvedAt, notes FROM shared_provider_entitlements ORDER BY updated_at DESC");
+        return jdbc.queryForList("SELECT id, merchant_id AS merchantId, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, operation, status, per_transaction_limit AS perTransactionLimit, daily_limit AS dailyLimit, requested_by AS requestedBy, requested_at AS requestedAt, approved_by AS approvedBy, approved_at AS approvedAt, notes FROM shared_provider_entitlements ORDER BY updated_at DESC", Map.of());
     }
 
     @Transactional
@@ -182,8 +181,7 @@ public class SharedProviderAccessService {
     }
 
     public List<Map<String, Object>> listPlatformCredentials() {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, credential_mask AS credentialMask, status, created_by AS createdBy, updated_by AS updatedBy, approved_by AS approvedBy, approved_at AS approvedAt, updated_at AS updatedAt FROM platform_channel_credentials ORDER BY channel_code, environment, country_code, currency_code");
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, credential_mask AS credentialMask, status, created_by AS createdBy, updated_by AS updatedBy, approved_by AS approvedBy, approved_at AS approvedAt, updated_at AS updatedAt FROM platform_channel_credentials ORDER BY channel_code, environment, country_code, currency_code", Map.of());
         for (Map<String, Object> row : rows) {
             row.put("credentials", parseJson(text(row.remove("credentialMask"))));
         }
