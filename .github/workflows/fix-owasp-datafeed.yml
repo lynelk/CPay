@@ -1,0 +1,50 @@
+name: One-shot OWASP datafeed repair
+
+on:
+  push:
+    branches:
+      - feature/shared-provider-treasury-completion-20260827
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[owasp-datafeed-repair]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/shared-provider-treasury-completion-20260827
+          fetch-depth: 0
+      - name: Route Dependency-Check through maintained NVD data feed
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          mirror = 'https://dependency-check.github.io/DependencyCheck_Builder/nvd_cache/nvdcve-{0}.json.gz'
+
+          ci = Path('.github/workflows/ci.yml')
+          text = ci.read_text(encoding='utf-8')
+          old = '            -DfailBuildOnCVSS=9 \\\n            -Dformat=HTML \\\n'
+          new = f'            -DfailBuildOnCVSS=9 \\\n            -DnvdDatafeedUrl="{mirror}" \\\n            -Dformat=HTML \\\n'
+          if old not in text:
+              raise SystemExit('Permanent CI OWASP command shape not found')
+          ci.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          gate = Path('.github/workflows/shared-provider-completion-gate.yml')
+          text = gate.read_text(encoding='utf-8')
+          old = '          mvn -B org.owasp:dependency-check-maven:check\n          -DfailBuildOnCVSS=9 -Dformat=HTML --no-transfer-progress\n'
+          new = f'          mvn -B org.owasp:dependency-check-maven:check\n          -DfailBuildOnCVSS=9 -DnvdDatafeedUrl="{mirror}" -Dformat=HTML --no-transfer-progress\n'
+          if old not in text:
+              raise SystemExit('Completion gate OWASP command shape not found')
+          gate.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ci.yml .github/workflows/shared-provider-completion-gate.yml
+          git diff --cached --check
+          git commit -s -m "ci: make OWASP dependency scan keyless and deterministic [owasp-datafeed-repair]"
+          git push origin HEAD:feature/shared-provider-treasury-completion-20260827
