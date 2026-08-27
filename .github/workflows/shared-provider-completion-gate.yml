@@ -166,7 +166,7 @@ jobs:
           cache: maven
       - run: >-
           mvn -B org.owasp:dependency-check-maven:check
-          -DfailBuildOnCVSS=9 -Dformat=HTML --no-transfer-progress
+          -DfailBuildOnCVSS=9 -DnvdDatafeedUrl="https://dependency-check.github.io/DependencyCheck_Builder/nvd_cache/nvdcve-{0}.json.gz" -Dformat=HTML --no-transfer-progress
 
   codeql:
     name: CodeQL security analysis
