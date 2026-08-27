@@ -1,5 +1,6 @@
 package net.citotech.cito.api.v2;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -18,6 +19,10 @@ import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantEnvironmentService;
 import net.citotech.cito.money.MoneyAmount;
 import net.citotech.cito.platform.CitoFeatureAccessService;
+import net.citotech.cito.sharedprovider.SharedProviderAccessService;
+import net.citotech.cito.sharedprovider.SharedProviderAccessService.CredentialContext;
+import net.citotech.cito.treasury.ProviderTreasuryService;
+import net.citotech.cito.treasury.ProviderTreasuryService.Reservation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +34,8 @@ public class AdapterNativePaymentService {
     private final GatewayExecutionService gatewayExecutionService;
     private final IntelligentPaymentRoutingService routingService;
     private final CitoFeatureAccessService featureAccessService;
+    private final SharedProviderAccessService sharedProviderAccessService;
+    private final ProviderTreasuryService treasuryService;
     private final String gatewayState;
 
     public AdapterNativePaymentService(
@@ -38,6 +45,8 @@ public class AdapterNativePaymentService {
             GatewayExecutionService gatewayExecutionService,
             IntelligentPaymentRoutingService routingService,
             CitoFeatureAccessService featureAccessService,
+            SharedProviderAccessService sharedProviderAccessService,
+            ProviderTreasuryService treasuryService,
             @Value("${custom.gatewaystate:SANDBOX}") String gatewayState) {
         this.registry = registry;
         this.channelCredentialService = channelCredentialService;
@@ -45,6 +54,8 @@ public class AdapterNativePaymentService {
         this.gatewayExecutionService = gatewayExecutionService;
         this.routingService = routingService;
         this.featureAccessService = featureAccessService;
+        this.sharedProviderAccessService = sharedProviderAccessService;
+        this.treasuryService = treasuryService;
         this.gatewayState = gatewayState;
     }
 
@@ -62,23 +73,49 @@ public class AdapterNativePaymentService {
         String resolvedEnvironment = environmentService.normalizedEnvironment(environment);
         requireMetadataEntitlements(request, merchant, resolvedEnvironment);
         environmentService.enforceProductionLimit(merchant, resolvedEnvironment);
+        BigDecimal amount = MoneyAmount.of(request.getAmount()).asBigDecimal();
         AdapterSelection selection =
                 selectAdapterAndEnsureReady(
-                        request, merchant, account, "COLLECT", resolvedEnvironment);
+                        request, merchant, account, "COLLECT", resolvedEnvironment, amount);
+        CredentialContext credentialContext =
+                sharedProviderAccessService.resolve(
+                        merchant,
+                        selection.adapter().channelCode(),
+                        resolvedEnvironment,
+                        request.getCountry(),
+                        request.getCurrency(),
+                        "COLLECT",
+                        amount);
         PaymentGatewayRequest gatewayRequest =
                 adapterRequest(
                         request,
                         account,
                         merchant,
                         selection.adapter(),
-                        resolvedEnvironment);
+                        resolvedEnvironment,
+                        credentialContext);
+        Reservation reservation =
+                treasuryService.beginShared(
+                        credentialContext,
+                        merchant,
+                        selection.adapter().channelCode(),
+                        resolvedEnvironment,
+                        amount,
+                        request.getReference());
         long started = System.nanoTime();
         try {
             GateWayResponse response =
                     gatewayExecutionService.execute(() -> selection.adapter().collect(gatewayRequest));
+            treasuryService.completeShared(
+                    reservation,
+                    response == null ? null : response.getTransactionStatus(),
+                    response == null ? null : response.getNetworkId());
             recordOutcome(selection, request, response, started);
             return result(request, selection.adapter(), resolvedEnvironment, response);
         } catch (RuntimeException e) {
+            // A transport/runtime exception after an outbound provider call can be ambiguous. Keep
+            // shared-provider exposure pending rather than falsely releasing CPay funds.
+            treasuryService.completeShared(reservation, "PENDING", null);
             recordFailure(selection, request, started);
             throw e;
         }
@@ -89,23 +126,47 @@ public class AdapterNativePaymentService {
         String account = request.getPayee().getValue();
         String resolvedEnvironment = environmentService.normalizedEnvironment(environment);
         environmentService.enforceProductionLimit(merchant, resolvedEnvironment);
+        BigDecimal amount = MoneyAmount.of(request.getAmount()).asBigDecimal();
         AdapterSelection selection =
                 selectAdapterAndEnsureReady(
-                        request, merchant, account, "PAYOUT", resolvedEnvironment);
+                        request, merchant, account, "PAYOUT", resolvedEnvironment, amount);
+        CredentialContext credentialContext =
+                sharedProviderAccessService.resolve(
+                        merchant,
+                        selection.adapter().channelCode(),
+                        resolvedEnvironment,
+                        request.getCountry(),
+                        request.getCurrency(),
+                        "PAYOUT",
+                        amount);
         PaymentGatewayRequest gatewayRequest =
                 adapterRequest(
                         request,
                         account,
                         merchant,
                         selection.adapter(),
-                        resolvedEnvironment);
+                        resolvedEnvironment,
+                        credentialContext);
+        Reservation reservation =
+                treasuryService.beginShared(
+                        credentialContext,
+                        merchant,
+                        selection.adapter().channelCode(),
+                        resolvedEnvironment,
+                        amount,
+                        request.getReference());
         long started = System.nanoTime();
         try {
             GateWayResponse response =
                     gatewayExecutionService.execute(() -> selection.adapter().payout(gatewayRequest));
+            treasuryService.completeShared(
+                    reservation,
+                    response == null ? null : response.getTransactionStatus(),
+                    response == null ? null : response.getNetworkId());
             recordOutcome(selection, request, response, started);
             return result(request, selection.adapter(), resolvedEnvironment, response);
         } catch (RuntimeException e) {
+            treasuryService.completeShared(reservation, "PENDING", null);
             recordFailure(selection, request, started);
             throw e;
         }
@@ -127,7 +188,8 @@ public class AdapterNativePaymentService {
             Merchant merchant,
             String account,
             String operation,
-            String environment) {
+            String environment,
+            BigDecimal amount) {
         if (request.getChannel() != null && !request.getChannel().trim().isEmpty()) {
             PaymentChannelAdapter adapter =
                     registry.findByChannelCode(request.getChannel())
@@ -135,8 +197,18 @@ public class AdapterNativePaymentService {
                                     () ->
                                             new PaymentGatewayException(
                                                     "Unsupported channel: " + request.getChannel()));
-            channelCredentialService.ensureChannelReady(
-                    merchant, adapter.channelCode(), environment);
+            if (!sharedProviderAccessService.isReady(
+                    merchant,
+                    adapter.channelCode(),
+                    environment,
+                    request.getCountry(),
+                    request.getCurrency(),
+                    operation,
+                    amount)) {
+                throw new PaymentGatewayException(
+                        "Channel is not ready for merchant-owned or CPay shared-provider execution: "
+                                + adapter.channelCode());
+            }
             return new AdapterSelection(adapter, null);
         }
 
@@ -149,8 +221,16 @@ public class AdapterNativePaymentService {
         for (IntelligentPaymentRoutingService.RoutingCandidate candidate : plan.candidates()) {
             attempted++;
             try {
-                channelCredentialService.ensureChannelReady(
-                        merchant, candidate.adapter().channelCode(), environment);
+                if (!sharedProviderAccessService.isReady(
+                        merchant,
+                        candidate.adapter().channelCode(),
+                        environment,
+                        request.getCountry(),
+                        request.getCurrency(),
+                        operation,
+                        amount)) {
+                    throw new PaymentGatewayException("Candidate has no ready merchant or shared-provider credential path");
+                }
                 String decisionReference =
                         routingService.recordDecision(
                                 plan,
@@ -161,7 +241,7 @@ public class AdapterNativePaymentService {
                                 environment,
                                 candidate.adapter().channelCode(),
                                 attempted == 1
-                                        ? "Top-ranked channel passed preflight"
+                                        ? "Top-ranked channel passed merchant/shared-provider preflight"
                                         : "Selected fallback candidate "
                                                 + attempted
                                                 + " after preflight rejection");
@@ -175,7 +255,7 @@ public class AdapterNativePaymentService {
         }
         if (lastPreflightFailure != null) {
             throw new PaymentGatewayException(
-                    "No routed payment channel is configured and ready for this merchant");
+                    "No routed payment channel is configured and ready for merchant-owned or CPay shared-provider execution");
         }
         throw new PaymentGatewayException("No eligible payment channel is available");
     }
@@ -185,17 +265,16 @@ public class AdapterNativePaymentService {
             String account,
             Merchant merchant,
             PaymentChannelAdapter adapter,
-            String environment) {
+            String environment,
+            CredentialContext credentialContext) {
         Map<String, String> metadata = new HashMap<>();
         metadata.put("currency", request.getCurrency());
         metadata.put("country", request.getCountry());
         metadata.put("gatewayState", environment);
         metadata.put("credentialEnvironment", environment);
         metadata.put("applicationGatewayState", gatewayState);
-        Map<String, Object> setup =
-                channelCredentialService.loadDecrypted(
-                        merchant, adapter.channelCode(), environment);
-        for (Map.Entry<String, Object> entry : setup.entrySet()) {
+        metadata.put("credentialSource", credentialContext.source());
+        for (Map.Entry<String, Object> entry : credentialContext.credentials().entrySet()) {
             if (entry.getValue() != null) {
                 metadata.put(entry.getKey(), String.valueOf(entry.getValue()));
             }
