@@ -41,7 +41,8 @@ class AdapterNativePaymentServiceTest {
         MerchantChannelCredentialService credentialService =
                 mock(MerchantChannelCredentialService.class);
         MerchantEnvironmentService environmentService = mock(MerchantEnvironmentService.class);
-        IntelligentPaymentRoutingService routingService = mock(IntelligentPaymentRoutingService.class);
+        IntelligentPaymentRoutingService routingService =
+                mock(IntelligentPaymentRoutingService.class);
         CitoFeatureAccessService featureAccessService = mock(CitoFeatureAccessService.class);
         SharedProviderAccessService sharedProviderAccessService =
                 mock(SharedProviderAccessService.class);
@@ -89,8 +90,7 @@ class AdapterNativePaymentServiceTest {
 
         PaymentResult result = service.collect(paymentRequest(), merchant(), "PRODUCTION");
 
-        verify(environmentService)
-                .enforceProductionLimit(any(Merchant.class), eq("PRODUCTION"));
+        verify(environmentService).enforceProductionLimit(any(Merchant.class), eq("PRODUCTION"));
         verify(sharedProviderAccessService)
                 .isReady(
                         any(Merchant.class),

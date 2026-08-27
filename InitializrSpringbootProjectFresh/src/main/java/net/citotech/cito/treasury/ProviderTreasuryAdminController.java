@@ -27,10 +27,14 @@ public class ProviderTreasuryAdminController {
     }
 
     @GetMapping("/accounts")
-    public List<Map<String, Object>> accounts() { return service.listAccounts(); }
+    public List<Map<String, Object>> accounts() {
+        return service.listAccounts();
+    }
 
     @GetMapping("/adjustments")
-    public List<Map<String, Object>> adjustments() { return service.listAdjustments(); }
+    public List<Map<String, Object>> adjustments() {
+        return service.listAdjustments();
+    }
 
     @PostMapping("/adjustments")
     public Map<String, Object> requestAdjustment(
@@ -51,26 +55,39 @@ public class ProviderTreasuryAdminController {
     }
 
     @GetMapping("/reservations")
-    public List<Map<String, Object>> reservations() { return service.listReservations(); }
+    public List<Map<String, Object>> reservations() {
+        return service.listReservations();
+    }
 
     @PostMapping("/reservations/{id}/resolve")
     public Map<String, Object> resolveReservation(
             @PathVariable long id,
             @RequestBody Map<String, Object> body,
             Authentication authentication) {
-        boolean success = Boolean.TRUE.equals(body.get("success"))
-                || "true".equalsIgnoreCase(String.valueOf(body.get("success")));
-        return service.resolvePending(id, success, String.valueOf(body.getOrDefault("providerReference", "")), actor(authentication));
+        boolean success =
+                Boolean.TRUE.equals(body.get("success"))
+                        || "true".equalsIgnoreCase(String.valueOf(body.get("success")));
+        return service.resolvePending(
+                id,
+                success,
+                String.valueOf(body.getOrDefault("providerReference", "")),
+                actor(authentication));
     }
 
     @GetMapping("/exposures")
-    public List<Map<String, Object>> exposures() { return service.listExposures(); }
+    public List<Map<String, Object>> exposures() {
+        return service.listExposures();
+    }
 
     @GetMapping("/journal")
-    public List<Map<String, Object>> journal() { return service.listJournal(); }
+    public List<Map<String, Object>> journal() {
+        return service.listJournal();
+    }
 
     @GetMapping("/reconciliations")
-    public List<Map<String, Object>> reconciliations() { return service.listReconciliations(); }
+    public List<Map<String, Object>> reconciliations() {
+        return service.listReconciliations();
+    }
 
     @PostMapping("/accounts/{id}/reconcile")
     public Map<String, Object> reconcile(

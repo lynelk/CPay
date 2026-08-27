@@ -105,7 +105,8 @@ public class AdapterNativePaymentService {
         long started = System.nanoTime();
         try {
             GateWayResponse response =
-                    gatewayExecutionService.execute(() -> selection.adapter().collect(gatewayRequest));
+                    gatewayExecutionService.execute(
+                            () -> selection.adapter().collect(gatewayRequest));
             treasuryService.completeShared(
                     reservation,
                     response == null ? null : response.getTransactionStatus(),
@@ -158,7 +159,8 @@ public class AdapterNativePaymentService {
         long started = System.nanoTime();
         try {
             GateWayResponse response =
-                    gatewayExecutionService.execute(() -> selection.adapter().payout(gatewayRequest));
+                    gatewayExecutionService.execute(
+                            () -> selection.adapter().payout(gatewayRequest));
             treasuryService.completeShared(
                     reservation,
                     response == null ? null : response.getTransactionStatus(),
@@ -174,7 +176,10 @@ public class AdapterNativePaymentService {
 
     private void requireMetadataEntitlements(
             PaymentRequest request, Merchant merchant, String environment) {
-        if (request == null || request.getMetadata() == null || merchant == null || merchant.getId() == null) {
+        if (request == null
+                || request.getMetadata() == null
+                || merchant == null
+                || merchant.getId() == null) {
             return;
         }
         String subscriptionReference = request.getMetadata().get("subscriptionReference");
@@ -196,7 +201,8 @@ public class AdapterNativePaymentService {
                             .orElseThrow(
                                     () ->
                                             new PaymentGatewayException(
-                                                    "Unsupported channel: " + request.getChannel()));
+                                                    "Unsupported channel: "
+                                                            + request.getChannel()));
             if (!sharedProviderAccessService.isReady(
                     merchant,
                     adapter.channelCode(),
@@ -229,7 +235,8 @@ public class AdapterNativePaymentService {
                         request.getCurrency(),
                         operation,
                         amount)) {
-                    throw new PaymentGatewayException("Candidate has no ready merchant or shared-provider credential path");
+                    throw new PaymentGatewayException(
+                            "Candidate has no ready merchant or shared-provider credential path");
                 }
                 String decisionReference =
                         routingService.recordDecision(

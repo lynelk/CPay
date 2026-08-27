@@ -17,6 +17,7 @@ paths:
   /api/v2/admin/shared-provider/entitlements:
     get:
       tags: [Shared Provider]
+      summary: List shared-provider merchant entitlements
       operationId: listSharedProviderEntitlements
       responses:
         '200':
@@ -28,6 +29,7 @@ paths:
                 items: {$ref: '#/components/schemas/Entitlement'}
     post:
       tags: [Shared Provider]
+      summary: Request a shared-provider merchant entitlement
       operationId: requestSharedProviderEntitlement
       requestBody:
         required: true
@@ -43,6 +45,7 @@ paths:
   /api/v2/admin/shared-provider/entitlements/{id}/approve:
     post:
       tags: [Shared Provider]
+      summary: Approve a shared-provider merchant entitlement
       operationId: approveSharedProviderEntitlement
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
@@ -54,6 +57,7 @@ paths:
   /api/v2/admin/shared-provider/entitlements/{id}/reject:
     post:
       tags: [Shared Provider]
+      summary: Reject a shared-provider merchant entitlement
       operationId: rejectSharedProviderEntitlement
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
@@ -65,6 +69,7 @@ paths:
   /api/v2/admin/shared-provider/entitlements/{id}/disable:
     post:
       tags: [Shared Provider]
+      summary: Disable a shared-provider merchant entitlement
       operationId: disableSharedProviderEntitlement
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
@@ -76,6 +81,7 @@ paths:
   /api/v2/admin/shared-provider/credentials:
     get:
       tags: [Shared Provider]
+      summary: List masked CPay platform provider credentials
       operationId: listPlatformProviderCredentials
       responses:
         '200':
@@ -87,6 +93,7 @@ paths:
                 items: {$ref: '#/components/schemas/PlatformCredential'}
     post:
       tags: [Shared Provider]
+      summary: Save CPay platform provider credentials
       operationId: savePlatformProviderCredential
       requestBody:
         required: true
@@ -102,6 +109,7 @@ paths:
   /api/v2/admin/shared-provider/credentials/{id}/approve:
     post:
       tags: [Shared Provider]
+      summary: Approve CPay platform provider credentials
       operationId: approvePlatformProviderCredential
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
@@ -113,6 +121,7 @@ paths:
   /api/v2/admin/shared-provider/credentials/{id}/disable:
     post:
       tags: [Shared Provider]
+      summary: Disable CPay platform provider credentials
       operationId: disablePlatformProviderCredential
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
@@ -124,6 +133,7 @@ paths:
   /api/v2/admin/provider-treasury/accounts:
     get:
       tags: [Provider Treasury]
+      summary: List provider treasury accounts
       operationId: listProviderTreasuryAccounts
       responses:
         '200':
@@ -136,6 +146,7 @@ paths:
   /api/v2/admin/provider-treasury/adjustments:
     get:
       tags: [Provider Treasury]
+      summary: List provider treasury adjustments
       operationId: listProviderTreasuryAdjustments
       responses:
         '200':
@@ -147,6 +158,7 @@ paths:
                 items: {$ref: '#/components/schemas/TreasuryAdjustment'}
     post:
       tags: [Provider Treasury]
+      summary: Request a provider treasury adjustment
       operationId: requestProviderTreasuryAdjustment
       requestBody:
         required: true
@@ -162,6 +174,7 @@ paths:
   /api/v2/admin/provider-treasury/adjustments/{id}/approve:
     post:
       tags: [Provider Treasury]
+      summary: Approve and post a provider treasury adjustment
       operationId: approveProviderTreasuryAdjustment
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
@@ -173,6 +186,7 @@ paths:
   /api/v2/admin/provider-treasury/adjustments/{id}/reject:
     post:
       tags: [Provider Treasury]
+      summary: Reject a provider treasury adjustment
       operationId: rejectProviderTreasuryAdjustment
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
@@ -184,6 +198,7 @@ paths:
   /api/v2/admin/provider-treasury/reservations:
     get:
       tags: [Provider Treasury]
+      summary: List shared-provider treasury reservations
       operationId: listProviderTreasuryReservations
       responses:
         '200':
@@ -196,6 +211,7 @@ paths:
   /api/v2/admin/provider-treasury/reservations/{id}/resolve:
     post:
       tags: [Provider Treasury]
+      summary: Resolve a pending provider treasury reservation
       operationId: resolvePendingProviderTreasuryReservation
       parameters: [{$ref: '#/components/parameters/Id'}]
       requestBody:
@@ -217,6 +233,7 @@ paths:
   /api/v2/admin/provider-treasury/exposures:
     get:
       tags: [Provider Treasury]
+      summary: List merchant exposure to CPay provider float
       operationId: listMerchantProviderExposures
       responses:
         '200':
@@ -229,6 +246,7 @@ paths:
   /api/v2/admin/provider-treasury/journal:
     get:
       tags: [Provider Treasury]
+      summary: List provider treasury journal entries
       operationId: listProviderTreasuryJournal
       responses:
         '200':
@@ -241,6 +259,7 @@ paths:
   /api/v2/admin/provider-treasury/reconciliations:
     get:
       tags: [Provider Treasury]
+      summary: List provider treasury reconciliations
       operationId: listProviderTreasuryReconciliations
       responses:
         '200':
@@ -253,6 +272,7 @@ paths:
   /api/v2/admin/provider-treasury/accounts/{id}/reconcile:
     post:
       tags: [Provider Treasury]
+      summary: Reconcile a provider treasury account
       operationId: reconcileProviderTreasuryAccount
       parameters: [{$ref: '#/components/parameters/Id'}]
       requestBody:
@@ -269,6 +289,7 @@ paths:
   /api/v2/admin/provider-treasury/accounts/{id}/low-float-threshold:
     post:
       tags: [Provider Treasury]
+      summary: Set a provider treasury low-float threshold
       operationId: setProviderTreasuryLowFloatThreshold
       parameters: [{$ref: '#/components/parameters/Id'}]
       requestBody:

@@ -39,7 +39,8 @@ class SharedProviderAccessServiceTest {
         jdbc = mock(NamedParameterJdbcTemplate.class);
         merchantCredentials = mock(MerchantChannelCredentialService.class);
         environments = mock(MerchantEnvironmentService.class);
-        when(environments.normalizedEnvironment(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(environments.normalizedEnvironment(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         service =
                 new SharedProviderAccessService(
                         jdbc,
@@ -71,7 +72,9 @@ class SharedProviderAccessServiceTest {
         assertEquals(SharedProviderAccessService.MERCHANT, context.source());
         assertEquals("merchant", context.credentials().get("credentialOwner"));
         assertFalse(context.shared());
-        verify(jdbc, never()).queryForList(contains("shared_provider_entitlements"), any(MapSqlParameterSource.class));
+        verify(jdbc, never())
+                .queryForList(
+                        contains("shared_provider_entitlements"), any(MapSqlParameterSource.class));
     }
 
     @Test
@@ -127,7 +130,15 @@ class SharedProviderAccessServiceTest {
         when(jdbc.queryForList(
                         contains("FROM shared_provider_entitlements WHERE id=:id FOR UPDATE"),
                         any(MapSqlParameterSource.class)))
-                .thenReturn(List.of(Map.of("id", 7L, "status", "PENDING", "requested_by", "maker@example.com")));
+                .thenReturn(
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        7L,
+                                        "status",
+                                        "PENDING",
+                                        "requested_by",
+                                        "maker@example.com")));
 
         PaymentGatewayException error =
                 assertThrows(
@@ -145,10 +156,15 @@ class SharedProviderAccessServiceTest {
 
     private Map<String, Object> entitlement(String perTransaction, String daily) {
         return Map.of(
-                "id", 9L,
-                "status", "ACTIVE",
-                "per_transaction_limit", new BigDecimal(perTransaction),
-                "daily_limit", new BigDecimal(daily),
-                "requested_by", "maker@example.com");
+                "id",
+                9L,
+                "status",
+                "ACTIVE",
+                "per_transaction_limit",
+                new BigDecimal(perTransaction),
+                "daily_limit",
+                new BigDecimal(daily),
+                "requested_by",
+                "maker@example.com");
     }
 }
