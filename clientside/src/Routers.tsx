@@ -11,6 +11,7 @@ const PartnerLogin = lazy(() => import('./components/LoginMerchant'));
 const Layout = lazy(() => import('./components/Layout'));
 const LayoutMerchant = lazy(() => import('./components/LayoutMerchant'));
 const OperationsConsole = lazy(() => import('./features/OperationsConsole'));
+const ProviderTreasuryConsole = lazy(() => import('./features/ProviderTreasuryConsole'));
 const ProductionMaturityDashboard = lazy(() => import('./features/productionMaturity/ProductionMaturityDashboard'));
 
 function RouteFallback(): React.ReactElement {
@@ -30,6 +31,7 @@ function Routers(): React.ReactElement {
           {/* Canonical Cito access surfaces. */}
           <Route path="/admin" element={<PlatformLogin />} />
           <Route path="/admin/operations" element={<OperationsConsole />} />
+          <Route path="/admin/provider-treasury" element={<ProviderTreasuryConsole />} />
           <Route path="/admin/production-maturity" element={<ProductionMaturityDashboard />} />
           <Route path="/admin/*" element={<Layout />} />
 
@@ -41,6 +43,7 @@ function Routers(): React.ReactElement {
           <Route path="/dashboard/*" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/dashboardMerchant/*" element={<Navigate to="/partner/dashboard" replace />} />
           <Route path="/operations" element={<Navigate to="/admin/operations" replace />} />
+          <Route path="/provider-treasury" element={<Navigate to="/admin/provider-treasury" replace />} />
           <Route path="/production-maturity" element={<Navigate to="/admin/production-maturity" replace />} />
         </Routes>
       </Suspense>
