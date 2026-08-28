@@ -14,20 +14,38 @@ server {
         return 200 'ok';
     }
 
-    # Keep browser traffic same-origin while the backend stays private behind
-    # this proxy. These are the backend path families already used by the
-    # Vite development proxy, plus health/API documentation endpoints.
-    # BACKEND_UPSTREAM defaults to Railway's private-networking hostname
-    # (see Dockerfile) and is overridden for other environments, e.g. the
-    # root docker-compose.yaml points it at the local "backend" service.
-    location ~ ^/(api|auth|admins|merchants|settings|audittrail|transactions|actuator|status|v3|swagger-ui)(/|$) {
+    # Canonical public API gateway. The public /api prefix is intentionally
+    # stripped because the Spring application exposes controllers at paths such
+    # as /auth, /merchants and /settings. The backend itself stays private on
+    # Railway's service network.
+    location = /api {
+        return 308 /api/;
+    }
+
+    location /api/ {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Port $http_x_forwarded_port;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_pass http://${BACKEND_UPSTREAM}/;
+    }
+
+    # Temporary compatibility for older clients/bookmarks that called backend
+    # controller families directly on the UI origin. New browser traffic uses
+    # /api exclusively and these aliases can be retired after the cutover.
+    location ~ ^/(auth|admins|merchants|settings|audittrail|transactions|actuator|status|v3|swagger-ui)(/|$) {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Port $http_x_forwarded_port;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_pass http://${BACKEND_UPSTREAM};
@@ -40,7 +58,8 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # React Router history fallback.
+    # React Router history fallback. /bo and its deep links are therefore
+    # served by the same SPA without needing a second public service.
     location / {
         try_files $uri $uri/ /index.html;
     }
