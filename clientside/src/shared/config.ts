@@ -1,12 +1,13 @@
 /**
  * Centralised runtime configuration.
  *
- * Replaces the Create React App `process.env.REACT_APP_*` convention with
- * Vite's `import.meta.env.VITE_*`. A legacy fallback is kept so any code that
- * still reads the old value during the incremental migration keeps working.
+ * Production uses the same public origin for the UI and API. Requests are
+ * sent through /api and the frontend nginx service forwards them to the CPay
+ * backend over Railway's private network. VITE_API_BASE remains available for
+ * local development and non-standard deployments.
  */
 function readApiBase(): string {
-  // Vite-native env var (preferred).
+  // Vite-native env var (preferred for explicit overrides).
   if (import.meta.env?.VITE_API_BASE) {
     return import.meta.env.VITE_API_BASE;
   }
@@ -15,7 +16,7 @@ function readApiBase(): string {
     typeof process !== 'undefined' && process.env
       ? (process.env as Record<string, string | undefined>).REACT_APP_API_BASE
       : undefined;
-  return legacy ?? '';
+  return legacy ?? '/api';
 }
 
 export const API_BASE: string = readApiBase();
