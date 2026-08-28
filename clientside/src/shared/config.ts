@@ -1,10 +1,13 @@
 /**
  * Centralised runtime configuration.
  *
- * Production uses the same public origin for the UI and API. Requests are
- * sent through /api and the frontend nginx service forwards them to the CPay
- * backend over Railway's private network. VITE_API_BASE remains available for
- * local development and non-standard deployments.
+ * Production uses the same public origin for the UI and API. Browser-internal
+ * controller calls are namespaced under /api/ui and nginx removes that UI-only
+ * prefix before forwarding to Spring. Public CPay routes such as /api/v1 and
+ * /api/v2 therefore keep their existing contract unchanged.
+ *
+ * VITE_API_BASE remains available for local development and non-standard
+ * deployments.
  */
 function readApiBase(): string {
   // Vite-native env var (preferred for explicit overrides).
@@ -16,7 +19,7 @@ function readApiBase(): string {
     typeof process !== 'undefined' && process.env
       ? (process.env as Record<string, string | undefined>).REACT_APP_API_BASE
       : undefined;
-  return legacy ?? '/api';
+  return legacy ?? '/api/ui';
 }
 
 export const API_BASE: string = readApiBase();
