@@ -14,15 +14,14 @@ server {
         return 200 'ok';
     }
 
-    # Canonical public API gateway. The public /api prefix is intentionally
-    # stripped because the Spring application exposes controllers at paths such
-    # as /auth, /merchants and /settings. The backend itself stays private on
-    # Railway's service network.
-    location = /api {
-        return 308 /api/;
+    # Browser-internal controller calls use /api/ui. Remove only that UI
+    # namespace before forwarding because Spring exposes those controllers at
+    # paths such as /auth, /merchants and /settings.
+    location = /api/ui {
+        return 308 /api/ui/;
     }
 
-    location /api/ {
+    location /api/ui/ {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -35,9 +34,25 @@ server {
         proxy_pass http://${BACKEND_UPSTREAM}/;
     }
 
+    # Public CPay gateway. Preserve /api because the backend already exposes
+    # versioned contracts such as /api/v1 and /api/v2. This avoids breaking
+    # existing merchant integrations during the single-domain cutover.
+    location /api/ {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Port $http_x_forwarded_port;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_pass http://${BACKEND_UPSTREAM};
+    }
+
     # Temporary compatibility for older clients/bookmarks that called backend
     # controller families directly on the UI origin. New browser traffic uses
-    # /api exclusively and these aliases can be retired after the cutover.
+    # /api/ui while external integrations continue to use /api.
     location ~ ^/(auth|admins|merchants|settings|audittrail|transactions|actuator|status|v3|swagger-ui)(/|$) {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
