@@ -48,22 +48,57 @@ public class RatingEngine {
             BigDecimal baseAmount,
             String currency,
             Instant asOf) {
-        if (asOf == null) {
-            throw new IllegalArgumentException("asOf is required for deterministic rating");
-        }
-        if (baseAmount == null) {
-            throw new IllegalArgumentException("baseAmount is required for deterministic rating");
-        }
-        if (currency == null || currency.isBlank()) {
-            throw new IllegalArgumentException("currency is required for deterministic rating");
-        }
+        validateInputs(baseAmount, currency, asOf);
         Optional<PriceBookVersion> resolved =
                 priceResolver.resolve(
                         billingTenantId, serviceCode, meterCode, chargeType, asOf);
         if (resolved.isEmpty()) {
             return Optional.empty();
         }
-        PriceBookVersion version = resolved.get();
+        return Optional.of(
+                rateVersion(
+                        resolved.get(),
+                        billingTenantId,
+                        serviceCode,
+                        meterCode,
+                        chargeType,
+                        baseAmount,
+                        currency,
+                        asOf));
+    }
+
+    /**
+     * Rates against an explicitly approved/selected immutable price-book version, used for contract
+     * overrides. It validates that the selected version matches the requested commercial key and
+     * was effective at the business time so an override cannot smuggle in an unrelated or stale
+     * price book.
+     */
+    public RatedCharge rateVersion(
+            PriceBookVersion version,
+            Long billingTenantId,
+            String serviceCode,
+            String meterCode,
+            String chargeType,
+            BigDecimal baseAmount,
+            String currency,
+            Instant asOf) {
+        validateInputs(baseAmount, currency, asOf);
+        if (version == null) {
+            throw new IllegalArgumentException("priceBookVersion is required");
+        }
+        if (!version.serviceCode().equals(serviceCode)
+                || !version.meterCode().equals(meterCode)
+                || !version.chargeType().equals(chargeType)) {
+            throw new IllegalStateException("Selected price-book version does not match the rating key");
+        }
+        if (version.billingTenantId() != null
+                && (billingTenantId == null || !version.billingTenantId().equals(billingTenantId))) {
+            throw new IllegalStateException("Selected price-book version belongs to another tenant");
+        }
+        if (version.effectiveFrom().isAfter(asOf)
+                || (version.effectiveTo() != null && !version.effectiveTo().isAfter(asOf))) {
+            throw new IllegalStateException("Selected price-book version was not effective at rating time");
+        }
         if (!version.currency().equalsIgnoreCase(currency.trim())) {
             throw new IllegalStateException(
                     "Resolved price-book currency "
@@ -71,8 +106,8 @@ public class RatingEngine {
                             + " does not match rating currency "
                             + currency);
         }
-        List<PriceComponent> components = priceBookRepository.findComponents(version.id());
 
+        List<PriceComponent> components = priceBookRepository.findComponents(version.id());
         BigDecimal runningTotal = BigDecimal.ZERO;
         List<Map<String, Object>> tierPath = new ArrayList<>();
         for (PriceComponent component : components) {
@@ -121,14 +156,25 @@ public class RatingEngine {
         formulaInputs.put("asOf", asOf.toString());
         formulaInputs.put("componentCount", components.size());
 
-        return Optional.of(
-                new RatedCharge(
-                        version.id(),
-                        ratedAmount,
-                        version.currency(),
-                        ROUNDING_POLICY,
-                        writeJson(tierPath),
-                        writeJson(formulaInputs)));
+        return new RatedCharge(
+                version.id(),
+                ratedAmount,
+                version.currency(),
+                ROUNDING_POLICY,
+                writeJson(tierPath),
+                writeJson(formulaInputs));
+    }
+
+    private void validateInputs(BigDecimal baseAmount, String currency, Instant asOf) {
+        if (asOf == null) {
+            throw new IllegalArgumentException("asOf is required for deterministic rating");
+        }
+        if (baseAmount == null || baseAmount.signum() < 0) {
+            throw new IllegalArgumentException("baseAmount must be zero or greater");
+        }
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException("currency is required for deterministic rating");
+        }
     }
 
     private List<TierBand> parseTierBands(String tierDefinitionJson) {
