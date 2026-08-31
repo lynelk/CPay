@@ -11,41 +11,41 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/**
- * Covers {@link PriceResolver}'s tenant-override-then-global lookup, mirroring FeeScheduleService's
- * pattern.
- */
+/** Covers tenant override, global fallback and event-time price resolution. */
 class PriceResolverTest {
+    private static final Instant AS_OF = Instant.parse("2026-08-15T10:00:00Z");
 
     @Test
-    void resolveReturnsTheTenantSpecificVersionWhenOnePresent() {
+    void resolveReturnsTheTenantSpecificVersionEffectiveAtBusinessTime() {
         PriceBookRepository repository = mock(PriceBookRepository.class);
         PriceBookVersion tenantVersion = version(1L, 7L);
-        when(repository.findActiveVersions(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(repository.findVersionsAt(
+                        7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(List.of(tenantVersion));
 
         Optional<PriceBookVersion> result =
                 new PriceResolver(repository)
-                        .resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE");
+                        .resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
 
         assertThat(result).contains(tenantVersion);
         verify(repository, never())
-                .findActiveVersions(null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE");
+                .findVersionsAt(null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
     }
 
     @Test
-    void resolveFallsBackToTheGlobalVersionWhenNoTenantSpecificOneExists() {
+    void resolveFallsBackToTheGlobalVersionAtTheSameBusinessTime() {
         PriceBookRepository repository = mock(PriceBookRepository.class);
         PriceBookVersion globalVersion = version(2L, null);
-        when(repository.findActiveVersions(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(repository.findVersionsAt(
+                        7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(List.of());
-        when(repository.findActiveVersions(
-                        null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(repository.findVersionsAt(
+                        null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(List.of(globalVersion));
 
         Optional<PriceBookVersion> result =
                 new PriceResolver(repository)
-                        .resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE");
+                        .resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
 
         assertThat(result).contains(globalVersion);
     }
@@ -54,13 +54,13 @@ class PriceResolverTest {
     void resolveGoesStraightToGlobalWhenBillingTenantIdIsNull() {
         PriceBookRepository repository = mock(PriceBookRepository.class);
         PriceBookVersion globalVersion = version(3L, null);
-        when(repository.findActiveVersions(
-                        null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(repository.findVersionsAt(
+                        null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(List.of(globalVersion));
 
         Optional<PriceBookVersion> result =
                 new PriceResolver(repository)
-                        .resolve(null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE");
+                        .resolve(null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
 
         assertThat(result).contains(globalVersion);
     }
@@ -68,15 +68,16 @@ class PriceResolverTest {
     @Test
     void resolveReturnsEmptyWhenNeitherExists() {
         PriceBookRepository repository = mock(PriceBookRepository.class);
-        when(repository.findActiveVersions(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(repository.findVersionsAt(
+                        7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(List.of());
-        when(repository.findActiveVersions(
-                        null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(repository.findVersionsAt(
+                        null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(List.of());
 
         Optional<PriceBookVersion> result =
                 new PriceResolver(repository)
-                        .resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE");
+                        .resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
 
         assertThat(result).isEmpty();
     }
@@ -90,7 +91,7 @@ class PriceResolverTest {
                 "CUSTOMER_CHARGE",
                 "UGX",
                 1,
-                Instant.now(),
+                AS_OF.minusSeconds(60),
                 null);
     }
 }

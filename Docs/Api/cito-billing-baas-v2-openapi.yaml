@@ -1,0 +1,982 @@
+openapi: 3.1.0
+info:
+  title: Cito Billing & Monetization API
+  version: 2.0.0
+  description: |
+    Public Billing-as-a-Service control and charging contract for Cito.
+
+    BaaS requests authenticate with `X-Cito-Api-Key` and explicitly select `SANDBOX` or
+    `PRODUCTION` with `X-Cito-Environment`. Production credentials resolve only when the linked
+    tenant has approved legal, commercial, tax and funds-flow models and an ACTIVE BaaS profile.
+
+    State-changing operations are idempotent where an idempotency key is part of the request model.
+    Existing CPay payment APIs remain separate compatibility contracts.
+servers:
+  - url: /
+    description: Current Cito deployment host
+
+tags:
+  - name: Customers
+  - name: Contracts
+  - name: Subscriptions
+  - name: Charging
+  - name: Webhooks
+  - name: Exports
+  - name: Protected Actions
+  - name: BaaS Administration
+  - name: Pricing Administration
+
+paths:
+  /api/v2/native/billing/baas/customers:
+    get:
+      tags: [Customers]
+      operationId: listBillingCustomers
+      x-sdk-operation-group: billing.customers
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Tenant customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Customer'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Customers]
+      operationId: createBillingCustomer
+      x-sdk-operation-group: billing.customers
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CustomerRequest'}
+      responses:
+        '200':
+          description: Customer created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Customer'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/accounts:
+    post:
+      tags: [Customers]
+      operationId: createBillingAccount
+      x-sdk-operation-group: billing.accounts
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AccountRequest'}
+      responses:
+        '200':
+          description: Billing account created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BillingAccount'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/contracts:
+    post:
+      tags: [Contracts]
+      operationId: createBillingContract
+      x-sdk-operation-group: billing.contracts
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ContractRequest'}
+      responses:
+        '200':
+          description: Contract created in DRAFT state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Contract'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/contracts/{reference}/submit:
+    post:
+      tags: [Contracts]
+      operationId: submitBillingContract
+      x-sdk-operation-group: billing.contracts
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Contract submitted, content: {application/json: {schema: {$ref: '#/components/schemas/Contract'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/contracts/{reference}/approve:
+    post:
+      tags: [Contracts]
+      operationId: approveBillingContract
+      x-sdk-operation-group: billing.contracts
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Contract approved, content: {application/json: {schema: {$ref: '#/components/schemas/Contract'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/contracts/{reference}/activate:
+    post:
+      tags: [Contracts]
+      operationId: activateBillingContract
+      x-sdk-operation-group: billing.contracts
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Contract activated, content: {application/json: {schema: {$ref: '#/components/schemas/Contract'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/subscriptions:
+    post:
+      tags: [Subscriptions]
+      operationId: createBillingSubscription
+      x-sdk-operation-group: billing.subscriptions
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SubscriptionRequest'}
+      responses:
+        '200': {description: Subscription created, content: {application/json: {schema: {$ref: '#/components/schemas/Subscription'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/subscriptions/{reference}/activate:
+    post:
+      tags: [Subscriptions]
+      operationId: activateBillingSubscription
+      x-sdk-operation-group: billing.subscriptions
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Subscription activated, content: {application/json: {schema: {$ref: '#/components/schemas/Subscription'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/subscriptions/{reference}/pause:
+    post:
+      tags: [Subscriptions]
+      operationId: pauseBillingSubscription
+      x-sdk-operation-group: billing.subscriptions
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Subscription paused, content: {application/json: {schema: {$ref: '#/components/schemas/Subscription'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/subscriptions/{reference}/cancel:
+    post:
+      tags: [Subscriptions]
+      operationId: cancelBillingSubscription
+      x-sdk-operation-group: billing.subscriptions
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Subscription cancelled, content: {application/json: {schema: {$ref: '#/components/schemas/Subscription'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/subscriptions/{reference}/entitlements:
+    post:
+      tags: [Subscriptions]
+      operationId: grantBillingEntitlement
+      x-sdk-operation-group: billing.entitlements
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EntitlementRequest'}
+      responses:
+        '200': {description: Entitlement granted, content: {application/json: {schema: {$ref: '#/components/schemas/Entitlement'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/charges:
+    post:
+      tags: [Charging]
+      operationId: authorizeBillingCharge
+      x-sdk-operation-group: billing.charging
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AuthorizeChargeRequest'}
+      responses:
+        '200': {description: Funds/quota reserved, content: {application/json: {schema: {$ref: '#/components/schemas/Charge'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/charges/{reference}:
+    get:
+      tags: [Charging]
+      operationId: getBillingCharge
+      x-sdk-operation-group: billing.charging
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Charge reservation, content: {application/json: {schema: {$ref: '#/components/schemas/Charge'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/charges/{reference}/commit:
+    post:
+      tags: [Charging]
+      operationId: commitBillingCharge
+      x-sdk-operation-group: billing.charging
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Reserved charge committed, content: {application/json: {schema: {$ref: '#/components/schemas/ChargeCommit'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/charges/{reference}/release:
+    post:
+      tags: [Charging]
+      operationId: releaseBillingCharge
+      x-sdk-operation-group: billing.charging
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Reservation released, content: {application/json: {schema: {$ref: '#/components/schemas/Charge'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/charges/{reference}/reverse:
+    post:
+      tags: [Charging, Protected Actions]
+      operationId: reverseBillingCharge
+      description: Requires a previously approved, unused protected action for this reservation.
+      x-sdk-operation-group: billing.charging
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Reference'
+      responses:
+        '200': {description: Committed charge reversed, content: {application/json: {schema: {$ref: '#/components/schemas/Charge'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/protected-actions:
+    post:
+      tags: [Protected Actions]
+      operationId: requestBillingProtectedAction
+      x-sdk-operation-group: billing.protectedActions
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProtectedActionRequest'}
+      responses:
+        '200': {description: Protected action request recorded, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/protected-actions/{id}/approve:
+    post:
+      tags: [Protected Actions]
+      operationId: approveBillingProtectedAction
+      description: Maker and checker must be different actors. Approval is one-time consumable.
+      x-sdk-operation-group: billing.protectedActions
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DecisionRequest'}
+      responses:
+        '200': {description: Protected action approved, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/webhooks/events:
+    get:
+      tags: [Webhooks]
+      operationId: listBillingWebhookEvents
+      x-sdk-operation-group: billing.webhooks
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Versioned webhook event catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/WebhookEventDefinition'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/webhooks:
+    get:
+      tags: [Webhooks]
+      operationId: listBillingWebhooks
+      x-sdk-operation-group: billing.webhooks
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Active/configured webhook endpoints
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/GenericObject'}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Webhooks]
+      operationId: createBillingWebhook
+      description: Returns the signing secret once. Store it securely.
+      x-sdk-operation-group: billing.webhooks
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WebhookRequest'}
+      responses:
+        '200': {description: Webhook registered and secret returned, content: {application/json: {schema: {$ref: '#/components/schemas/WebhookSecretResponse'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/webhooks/{endpointId}/rotate-secret:
+    post:
+      tags: [Webhooks]
+      operationId: rotateBillingWebhookSecret
+      x-sdk-operation-group: billing.webhooks
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - name: endpointId
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      responses:
+        '200': {description: New secret returned once, content: {application/json: {schema: {$ref: '#/components/schemas/WebhookSecretResponse'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/webhooks/deliveries:
+    get:
+      tags: [Webhooks]
+      operationId: listBillingWebhookDeliveries
+      x-sdk-operation-group: billing.webhooks
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
+      responses:
+        '200': {description: Delivery log, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/GenericObject'}}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/webhooks/deliveries/{deliveryId}/replay:
+    post:
+      tags: [Webhooks]
+      operationId: replayBillingWebhookDelivery
+      x-sdk-operation-group: billing.webhooks
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - name: deliveryId
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      responses:
+        '200': {description: Delivery requeued}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/webhooks/test:
+    post:
+      tags: [Webhooks]
+      operationId: testBillingWebhook
+      x-sdk-operation-group: billing.webhooks
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WebhookTestRequest'}
+      responses:
+        '200': {description: Test webhook queued}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/native/billing/baas/exports/focus:
+    get:
+      tags: [Exports]
+      operationId: exportBillingFocusCostUsage
+      description: |
+        Exports the tenant's rated usage as a FOCUS 1.4-compatible core Cost and Usage CSV.
+        Cito provider cost is preserved separately in the `x_CitoProviderCost` custom column.
+        Full FOCUS conformance is not claimed until schema validation is enabled in CI.
+      x-sdk-operation-group: billing.exports
+      security: [{CitoBaasApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/CitoEnvironment'
+        - $ref: '#/components/parameters/RequestId'
+        - name: from
+          in: query
+          required: true
+          schema: {type: string, format: date-time}
+        - name: to
+          in: query
+          required: true
+          schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: FOCUS cost-and-usage CSV
+          headers:
+            X-Cito-FOCUS-Version:
+              schema: {type: string, const: '1.4'}
+          content:
+            text/csv:
+              schema: {type: string}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/v2/admin/billing/baas/tenants/{tenantId}/profile:
+    get:
+      tags: [BaaS Administration]
+      operationId: getBillingBaasTenantProfile
+      security: [{AdminBasicAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200': {description: Tenant readiness profile, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
+
+  /api/v2/admin/billing/baas/tenants/{tenantId}/profile/review:
+    post:
+      tags: [BaaS Administration]
+      operationId: reviewBillingBaasTenantProfile
+      security: [{AdminBasicAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProfileReviewRequest'}
+      responses:
+        '200': {description: Readiness profile reviewed}
+
+  /api/v2/admin/billing/baas/tenants/{tenantId}/profile/activate:
+    post:
+      tags: [BaaS Administration]
+      operationId: activateBillingBaasTenant
+      description: Fails closed unless legal, commercial, tax and funds-flow reviews are approved.
+      security: [{AdminBasicAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200': {description: Tenant activated for production eligibility}
+
+  /api/v2/admin/billing/baas/tenants/{tenantId}/credentials:
+    post:
+      tags: [BaaS Administration]
+      operationId: provisionBillingBaasCredential
+      description: Provisions sandbox or production developer credentials, scopes and quota policy.
+      security: [{AdminBasicAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CredentialRequest'}
+      responses:
+        '200': {description: Credential provisioned; secret material is returned according to the admin service contract}
+
+  /api/v2/admin/billing/baas/tenants/{tenantId}/accounts/{accountReference}/credit-limit:
+    post:
+      tags: [BaaS Administration]
+      operationId: setBillingBaasCreditLimit
+      security: [{AdminBasicAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: accountReference
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreditLimitRequest'}
+      responses:
+        '200': {description: Credit limit updated}
+
+  /api/v2/admin/billing/baas/tenants/{tenantId}/accounts/{accountReference}/top-ups:
+    post:
+      tags: [BaaS Administration]
+      operationId: topUpBillingBaasAccount
+      security: [{AdminBasicAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: accountReference
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TopUpRequest'}
+      responses:
+        '200': {description: Verified funding top-up posted}
+
+  /api/v2/admin/billing/pricing/simulations/shadow:
+    post:
+      tags: [Pricing Administration]
+      operationId: simulateLegacyVsCitoPricing
+      description: Read-only comparison of deterministic Cito rating against retained legacy payment charges.
+      security: [{AdminBasicAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShadowSimulationRequest'}
+      responses:
+        '200': {description: Shadow pricing comparison, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+
+webhooks:
+  invoiceIssued:
+    post:
+      summary: Billing invoice issued event
+      description: |
+        Example outbound webhook shape for `invoice.issued`. Delivery currently retains the legacy
+        `X-CPay-Event`, `X-CPay-Reference` and `X-CPay-Signature` header names for compatibility.
+      parameters:
+        - name: X-CPay-Event
+          in: header
+          required: true
+          schema: {type: string, const: invoice.issued}
+        - name: X-CPay-Reference
+          in: header
+          required: true
+          schema: {type: string}
+        - name: X-CPay-Signature
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/InvoiceIssuedWebhook'}
+      responses:
+        '2XX': {description: Receiver accepted the webhook}
+
+components:
+  securitySchemes:
+    CitoBaasApiKey:
+      type: apiKey
+      in: header
+      name: X-Cito-Api-Key
+      description: BaaS developer credential. Scope is enforced server-side per operation.
+    AdminBasicAuth:
+      type: http
+      scheme: basic
+      description: Cito administrator authentication for protected administration endpoints.
+
+  parameters:
+    CitoEnvironment:
+      name: X-Cito-Environment
+      in: header
+      required: true
+      schema:
+        type: string
+        enum: [SANDBOX, PRODUCTION]
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: {type: string, maxLength: 191}
+    Reference:
+      name: reference
+      in: path
+      required: true
+      schema: {type: string, maxLength: 160}
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+
+  responses:
+    BadRequest:
+      description: Request failed validation or a protected business rule.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unauthorized:
+      description: Credential is invalid, inactive, out of scope, or not eligible for the environment.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+
+    GenericObject:
+      type: object
+      additionalProperties: true
+
+    CustomerRequest:
+      type: object
+      required: [externalReference, displayName]
+      properties:
+        externalReference: {type: string, maxLength: 120}
+        displayName: {type: string, maxLength: 255}
+        legalName: {type: [string, 'null'], maxLength: 255}
+        email: {type: [string, 'null'], format: email}
+        metadataJson: {type: [string, 'null'], description: JSON object or array serialized as text by the current v2 contract}
+
+    Customer:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        externalReference: {type: string}
+        displayName: {type: string}
+        legalName: {type: [string, 'null']}
+        email: {type: [string, 'null']}
+        status: {type: string}
+        createdAt: {type: string, format: date-time}
+
+    AccountRequest:
+      type: object
+      required: [customerReference, accountReference, currency]
+      properties:
+        customerReference: {type: string}
+        accountReference: {type: string}
+        currency: {type: string, minLength: 3, maxLength: 10}
+
+    BillingAccount:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        billingCustomerId: {type: integer, format: int64}
+        externalReference: {type: string}
+        currency: {type: string}
+        creditLimit: {type: number}
+        status: {type: string}
+        createdAt: {type: string, format: date-time}
+
+    ContractRequest:
+      type: object
+      required: [customerReference, contractReference, currency, effectiveFrom]
+      properties:
+        customerReference: {type: string}
+        contractReference: {type: string}
+        currency: {type: string}
+        effectiveFrom: {type: string, format: date-time}
+        effectiveTo: {type: [string, 'null'], format: date-time}
+        termsJson: {type: [string, 'null']}
+
+    Contract:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        billingCustomerId: {type: integer, format: int64}
+        contractReference: {type: string}
+        currency: {type: string}
+        status: {type: string, enum: [DRAFT, SUBMITTED, APPROVED, ACTIVE, SUSPENDED, ENDED]}
+        effectiveFrom: {type: string, format: date-time}
+        effectiveTo: {type: [string, 'null'], format: date-time}
+        createdBy: {type: string}
+        submittedBy: {type: [string, 'null']}
+        approvedBy: {type: [string, 'null']}
+
+    SubscriptionRequest:
+      type: object
+      required: [customerReference, accountReference, contractReference, subscriptionReference, serviceCode, planCode, quantity, startsAt]
+      properties:
+        customerReference: {type: string}
+        accountReference: {type: string}
+        contractReference: {type: string}
+        subscriptionReference: {type: string}
+        serviceCode: {type: string}
+        planCode: {type: string}
+        quantity: {type: number, exclusiveMinimum: 0}
+        startsAt: {type: string, format: date-time}
+        endsAt: {type: [string, 'null'], format: date-time}
+
+    Subscription:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        billingCustomerId: {type: integer, format: int64}
+        billingAccountId: {type: integer, format: int64}
+        billingContractId: {type: integer, format: int64}
+        subscriptionReference: {type: string}
+        serviceCode: {type: string}
+        planCode: {type: string}
+        quantity: {type: number}
+        status: {type: string, enum: [PENDING, ACTIVE, PAUSED, CANCELLED, EXPIRED]}
+        startsAt: {type: string, format: date-time}
+        endsAt: {type: [string, 'null'], format: date-time}
+
+    EntitlementRequest:
+      type: object
+      required: [entitlementCode]
+      properties:
+        entitlementCode: {type: string}
+        limitQuantity: {type: [number, 'null'], exclusiveMinimum: 0}
+        validFrom: {type: [string, 'null'], format: date-time}
+        validTo: {type: [string, 'null'], format: date-time}
+
+    Entitlement:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        billingSubscriptionId: {type: integer, format: int64}
+        entitlementCode: {type: string}
+        limitQuantity: {type: [number, 'null']}
+        validFrom: {type: string, format: date-time}
+        validTo: {type: [string, 'null'], format: date-time}
+        status: {type: string}
+
+    AuthorizeChargeRequest:
+      type: object
+      required: [billingAccountReference, serviceCode, usageQuantity, netAmount, currency, idempotencyKey]
+      properties:
+        billingAccountReference: {type: string}
+        serviceCode: {type: string}
+        entitlementCode: {type: [string, 'null']}
+        usageQuantity: {type: number, exclusiveMinimum: 0}
+        netAmount: {type: number, exclusiveMinimum: 0}
+        currency: {type: string}
+        idempotencyKey: {type: string, maxLength: 160}
+        expiresAt: {type: [string, 'null'], format: date-time}
+
+    Charge:
+      type: object
+      properties:
+        reservationReference: {type: string}
+        billingCustomerId: {type: integer, format: int64}
+        chargingAccountId: {type: integer, format: int64}
+        billingAccountId: {type: integer, format: int64}
+        serviceCode: {type: string}
+        entitlementCode: {type: [string, 'null']}
+        usageQuantity: {type: number}
+        currency: {type: string}
+        authorizedAmount: {type: number}
+        authorizedNetAmount: {type: number}
+        authorizedTaxAmount: {type: number}
+        taxRuleVersionId: {type: [integer, 'null'], format: int64}
+        taxCode: {type: [string, 'null']}
+        taxRate: {type: [number, 'null']}
+        status: {type: string}
+        idempotencyKey: {type: string}
+        expiresAt: {type: string, format: date-time}
+
+    ChargeCommit:
+      type: object
+      properties:
+        reservationReference: {type: string}
+        status: {type: string}
+        committedAmount: {type: number}
+        committedNetAmount: {type: number}
+        committedTaxAmount: {type: number}
+        prepaidCommittedAmount: {type: number}
+        creditCommittedAmount: {type: number}
+        currency: {type: string}
+
+    ProtectedActionRequest:
+      type: object
+      required: [actionType, resourceType, resourceReference]
+      properties:
+        actionType: {type: string}
+        resourceType: {type: string}
+        resourceReference: {type: string}
+
+    DecisionRequest:
+      type: object
+      properties:
+        reason: {type: [string, 'null']}
+
+    WebhookRequest:
+      type: object
+      required: [eventType, endpointUrl]
+      properties:
+        eventType: {type: string, example: invoice.issued}
+        endpointUrl: {type: string, format: uri}
+
+    WebhookTestRequest:
+      type: object
+      required: [eventType]
+      properties:
+        eventType: {type: string}
+
+    WebhookSecretResponse:
+      type: object
+      required: [code, secret]
+      properties:
+        code: {type: string}
+        eventType: {type: string}
+        secret: {type: string, writeOnly: true}
+
+    WebhookEventDefinition:
+      type: object
+      properties:
+        type: {type: string}
+        version: {type: integer}
+        description: {type: string}
+        jsonSchema: {type: string}
+
+    ProfileReviewRequest:
+      type: object
+      required: [legalStatus, commercialStatus, taxStatus, fundsFlowStatus]
+      properties:
+        legalStatus: {$ref: '#/components/schemas/ReviewStatus'}
+        commercialStatus: {$ref: '#/components/schemas/ReviewStatus'}
+        taxStatus: {$ref: '#/components/schemas/ReviewStatus'}
+        fundsFlowStatus: {$ref: '#/components/schemas/ReviewStatus'}
+
+    ReviewStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+
+    CredentialRequest:
+      type: object
+      required: [projectReference, environment, displayName, scopes]
+      properties:
+        projectReference: {type: string}
+        environment: {type: string, enum: [SANDBOX, PRODUCTION]}
+        displayName: {type: string}
+        scopes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {type: string, enum: [BILLING_READ, BILLING_WRITE, BILLING_CHARGE]}
+        requestsPerMinute: {type: [integer, 'null'], minimum: 1}
+        expiresAt: {type: [string, 'null'], format: date-time}
+
+    CreditLimitRequest:
+      type: object
+      required: [creditLimit]
+      properties:
+        creditLimit: {type: number, minimum: 0}
+
+    TopUpRequest:
+      type: object
+      required: [amount, verifiedPaymentReference]
+      properties:
+        amount: {type: number, exclusiveMinimum: 0}
+        verifiedPaymentReference: {type: string}
+
+    ShadowSimulationRequest:
+      type: object
+      required: [windowStart, windowEnd]
+      properties:
+        windowStart: {type: string, format: date-time}
+        windowEnd: {type: string, format: date-time}
+
+    InvoiceIssuedWebhook:
+      type: object
+      required: [eventId, eventType, eventVersion, createdAt, merchantNumber, invoiceId, status]
+      properties:
+        eventId: {type: string}
+        eventType: {type: string, const: invoice.issued}
+        eventVersion: {type: integer, const: 1}
+        createdAt: {type: string, format: date-time}
+        merchantNumber: {type: string}
+        invoiceId: {type: string}
+        status: {type: string}
+        amount: {type: string}
+        currency: {type: string}
+        dueAt: {type: string, format: date-time}

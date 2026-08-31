@@ -3,6 +3,7 @@ package net.citotech.cito.billing.pricing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,16 +13,16 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Covers {@link RatingEngine}'s component-folding logic against hand-computed fixtures. */
+/** Covers deterministic component-folding and effective-dated resolution. */
 class RatingEngineTest {
-
+    private static final Instant AS_OF = Instant.parse("2026-08-15T10:00:00Z");
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void rateReturnsEmptyWhenNoPriceBookResolves() {
+    void rateReturnsEmptyWhenNoPriceBookResolvesAtEventTime() {
         PriceResolver priceResolver = mock(PriceResolver.class);
         PriceBookRepository priceBookRepository = mock(PriceBookRepository.class);
-        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(Optional.empty());
 
         Optional<RatedCharge> result =
@@ -33,66 +34,90 @@ class RatingEngineTest {
                                 "CUSTOMER_CHARGE",
                                 new BigDecimal("1000"),
                                 "UGX",
-                                Instant.now());
+                                AS_OF);
 
         assertThat(result).isEmpty();
+        verify(priceResolver)
+                .resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
     }
 
     @Test
     void ratePercentageComponentOnly() {
         RatingEngine engine = engineWithComponents(List.of(percentage(1, "0.03")));
-
-        Optional<RatedCharge> result = rate(engine, "1000");
-
-        assertThat(result).isPresent();
-        assertThat(result.get().ratedAmount()).isEqualByComparingTo("30.00");
+        assertThat(rate(engine, "1000").orElseThrow().ratedAmount()).isEqualByComparingTo("30.00");
     }
 
     @Test
     void rateFlatPlusPercentageAddsBothContributions() {
         RatingEngine engine = engineWithComponents(List.of(flat(1, "100"), percentage(2, "0.02")));
-
-        Optional<RatedCharge> result = rate(engine, "1000");
-
-        assertThat(result).isPresent();
-        assertThat(result.get().ratedAmount()).isEqualByComparingTo("120.00");
+        assertThat(rate(engine, "1000").orElseThrow().ratedAmount()).isEqualByComparingTo("120.00");
     }
 
     @Test
     void rateAppliesAMinimumFloorWhenTheComputedChargeIsTooLow() {
         RatingEngine engine =
                 engineWithComponents(List.of(percentage(1, "0.001"), minimum(2, "50")));
-
-        Optional<RatedCharge> result = rate(engine, "1000");
-
-        // 1000 * 0.001 = 1.00, below the 50 floor.
-        assertThat(result).isPresent();
-        assertThat(result.get().ratedAmount()).isEqualByComparingTo("50.00");
+        assertThat(rate(engine, "1000").orElseThrow().ratedAmount()).isEqualByComparingTo("50.00");
     }
 
     @Test
     void rateAppliesAMaximumCapWhenTheComputedChargeIsTooHigh() {
         RatingEngine engine =
                 engineWithComponents(List.of(percentage(1, "0.5"), maximum(2, "100")));
-
-        Optional<RatedCharge> result = rate(engine, "1000");
-
-        // 1000 * 0.5 = 500, above the 100 cap.
-        assertThat(result).isPresent();
-        assertThat(result.get().ratedAmount()).isEqualByComparingTo("100.00");
+        assertThat(rate(engine, "1000").orElseThrow().ratedAmount()).isEqualByComparingTo("100.00");
     }
 
     @Test
     void rateTierComponentUsesGraduatedTierMath() {
         String tierDefinition = "[{\"upTo\":10000,\"rate\":0.02},{\"upTo\":null,\"rate\":0.01}]";
-        RatingEngine engine = engineWithComponents(List.of(tier(1, tierDefinition)));
+        RatedCharge result =
+                rate(engineWithComponents(List.of(tier(1, tierDefinition))), "15000").orElseThrow();
+        assertThat(result.ratedAmount()).isEqualByComparingTo("250.00");
+        assertThat(result.tierPathJson()).contains("bandFrom");
+    }
 
-        Optional<RatedCharge> result = rate(engine, "15000");
+    @Test
+    void formulaInputsRetainBusinessTimeAndRatingDimensions() {
+        RatedCharge result =
+                rate(engineWithComponents(List.of(flat(1, "10"))), "1000").orElseThrow();
+        assertThat(result.formulaInputsJson())
+                .contains(AS_OF.toString())
+                .contains("CUSTOMER_CHARGE")
+                .contains("payment_event_count")
+                .contains("UGX");
+    }
 
-        // 10000 @ 2% = 200, 5000 @ 1% = 50, total 250.
-        assertThat(result).isPresent();
-        assertThat(result.get().ratedAmount()).isEqualByComparingTo("250.00");
-        assertThat(result.get().tierPathJson()).contains("bandFrom");
+    @Test
+    void currencyMismatchFailsClosed() {
+        PriceResolver priceResolver = mock(PriceResolver.class);
+        PriceBookRepository repository = mock(PriceBookRepository.class);
+        PriceBookVersion usd =
+                new PriceBookVersion(
+                        1L,
+                        7L,
+                        "PAYMENT",
+                        "payment_event_count",
+                        "CUSTOMER_CHARGE",
+                        "USD",
+                        1,
+                        AS_OF.minusSeconds(60),
+                        null);
+        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
+                .thenReturn(Optional.of(usd));
+
+        RatingEngine engine = new RatingEngine(priceResolver, repository, objectMapper);
+        assertThatThrownBy(
+                        () ->
+                                engine.rate(
+                                        7L,
+                                        "PAYMENT",
+                                        "payment_event_count",
+                                        "CUSTOMER_CHARGE",
+                                        new BigDecimal("1000"),
+                                        "UGX",
+                                        AS_OF))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("currency");
     }
 
     @Test
@@ -100,7 +125,6 @@ class RatingEngineTest {
         RatingEngine engine =
                 engineWithComponents(
                         List.of(new PriceComponent(1L, 1L, "SOMETHING_ELSE", 1, null, null, null)));
-
         assertThatThrownBy(() -> rate(engine, "1000")).isInstanceOf(IllegalStateException.class);
     }
 
@@ -112,7 +136,7 @@ class RatingEngineTest {
                 "CUSTOMER_CHARGE",
                 new BigDecimal(baseAmount),
                 "UGX",
-                Instant.now());
+                AS_OF);
     }
 
     private RatingEngine engineWithComponents(List<PriceComponent> components) {
@@ -127,9 +151,9 @@ class RatingEngineTest {
                         "CUSTOMER_CHARGE",
                         "UGX",
                         1,
-                        Instant.now(),
+                        AS_OF.minusSeconds(60),
                         null);
-        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE"))
+        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(Optional.of(version));
         when(priceBookRepository.findComponents(1L)).thenReturn(components);
         return new RatingEngine(priceResolver, priceBookRepository, objectMapper);

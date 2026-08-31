@@ -45,7 +45,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
           tags: |
@@ -116,7 +116,7 @@ jobs:
 
       - name: Send Slack notification
         if: vars.SLACK_WEBHOOK_URL
-        uses: slackapi/slack-github-action@v1
+        uses: slackapi/slack-github-action@v4
         with:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           payload: |

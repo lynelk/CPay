@@ -15,13 +15,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
- * Folds a resolved price book's components (in {@code sequence_no} order) into one rated charge.
- * {@code FLAT}, {@code PERCENTAGE}, and {@code TIER} each contribute a charge amount computed
- * against {@code baseAmount} - not compounded against each other or against a running total, since
- * real fee schedules don't charge a percentage of a percentage. {@code MINIMUM}/{@code MAXIMUM}
- * then clamp the accumulated total (e.g. "2.9% + flat fee, minimum X, maximum Y"). Rounding is
- * fixed at {@code HALF_UP} scale 2, recorded literally per rated charge (not just as a constant
- * reference) so an already-computed row stays reproducible even if the constant later changes.
+ * Deterministically folds an effective-dated price book's components into one rated charge. FLAT,
+ * PERCENTAGE and TIER components contribute against the base amount; MINIMUM/MAXIMUM clamp the
+ * accumulated total. The exact price-book version, tier path, formula inputs and rounding policy
+ * are retained by the rated-charge persistence layer for reproducibility.
  */
 @Service
 public class RatingEngine {
@@ -42,10 +39,7 @@ public class RatingEngine {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Empty when no active price book resolves for this key - not an error, just
-     * not-yet-configured.
-     */
+    /** Empty when no price book is effective for this key at {@code asOf}. */
     public Optional<RatedCharge> rate(
             Long billingTenantId,
             String serviceCode,
@@ -54,14 +48,69 @@ public class RatingEngine {
             BigDecimal baseAmount,
             String currency,
             Instant asOf) {
+        validateInputs(baseAmount, currency, asOf);
         Optional<PriceBookVersion> resolved =
-                priceResolver.resolve(billingTenantId, serviceCode, meterCode, chargeType);
+                priceResolver.resolve(billingTenantId, serviceCode, meterCode, chargeType, asOf);
         if (resolved.isEmpty()) {
             return Optional.empty();
         }
-        PriceBookVersion version = resolved.get();
-        List<PriceComponent> components = priceBookRepository.findComponents(version.id());
+        return Optional.of(
+                rateVersion(
+                        resolved.get(),
+                        billingTenantId,
+                        serviceCode,
+                        meterCode,
+                        chargeType,
+                        baseAmount,
+                        currency,
+                        asOf));
+    }
 
+    /**
+     * Rates against an explicitly approved/selected immutable price-book version, used for contract
+     * overrides. It validates that the selected version matches the requested commercial key and
+     * was effective at the business time so an override cannot smuggle in an unrelated or stale
+     * price book.
+     */
+    public RatedCharge rateVersion(
+            PriceBookVersion version,
+            Long billingTenantId,
+            String serviceCode,
+            String meterCode,
+            String chargeType,
+            BigDecimal baseAmount,
+            String currency,
+            Instant asOf) {
+        validateInputs(baseAmount, currency, asOf);
+        if (version == null) {
+            throw new IllegalArgumentException("priceBookVersion is required");
+        }
+        if (!version.serviceCode().equals(serviceCode)
+                || !version.meterCode().equals(meterCode)
+                || !version.chargeType().equals(chargeType)) {
+            throw new IllegalStateException(
+                    "Selected price-book version does not match the rating key");
+        }
+        if (version.billingTenantId() != null
+                && (billingTenantId == null
+                        || !version.billingTenantId().equals(billingTenantId))) {
+            throw new IllegalStateException(
+                    "Selected price-book version belongs to another tenant");
+        }
+        if (version.effectiveFrom().isAfter(asOf)
+                || (version.effectiveTo() != null && !version.effectiveTo().isAfter(asOf))) {
+            throw new IllegalStateException(
+                    "Selected price-book version was not effective at rating time");
+        }
+        if (!version.currency().equalsIgnoreCase(currency.trim())) {
+            throw new IllegalStateException(
+                    "Resolved price-book currency "
+                            + version.currency()
+                            + " does not match rating currency "
+                            + currency);
+        }
+
+        List<PriceComponent> components = priceBookRepository.findComponents(version.id());
         BigDecimal runningTotal = BigDecimal.ZERO;
         List<Map<String, Object>> tierPath = new ArrayList<>();
         for (PriceComponent component : components) {
@@ -101,17 +150,34 @@ public class RatingEngine {
 
         BigDecimal ratedAmount = runningTotal.setScale(ROUNDING_SCALE, ROUNDING_MODE);
         Map<String, Object> formulaInputs = new LinkedHashMap<>();
+        formulaInputs.put("billingTenantId", billingTenantId);
+        formulaInputs.put("serviceCode", serviceCode);
+        formulaInputs.put("meterCode", meterCode);
+        formulaInputs.put("chargeType", chargeType);
         formulaInputs.put("baseAmount", baseAmount);
+        formulaInputs.put("currency", currency.trim().toUpperCase());
+        formulaInputs.put("asOf", asOf.toString());
         formulaInputs.put("componentCount", components.size());
 
-        return Optional.of(
-                new RatedCharge(
-                        version.id(),
-                        ratedAmount,
-                        currency,
-                        ROUNDING_POLICY,
-                        writeJson(tierPath),
-                        writeJson(formulaInputs)));
+        return new RatedCharge(
+                version.id(),
+                ratedAmount,
+                version.currency(),
+                ROUNDING_POLICY,
+                writeJson(tierPath),
+                writeJson(formulaInputs));
+    }
+
+    private void validateInputs(BigDecimal baseAmount, String currency, Instant asOf) {
+        if (asOf == null) {
+            throw new IllegalArgumentException("asOf is required for deterministic rating");
+        }
+        if (baseAmount == null || baseAmount.signum() < 0) {
+            throw new IllegalArgumentException("baseAmount must be zero or greater");
+        }
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException("currency is required for deterministic rating");
+        }
     }
 
     private List<TierBand> parseTierBands(String tierDefinitionJson) {
