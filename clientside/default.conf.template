@@ -8,10 +8,22 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Liveness: nginx itself is serving traffic.
     location = /healthz {
         access_log off;
         add_header Content-Type text/plain;
         return 200 'ok';
+    }
+
+    # Readiness: nginx can reach the CPay backend over Railway private
+    # networking. Keep this deliberately narrow and fast so a broken upstream
+    # fails deployments instead of leaving a superficially healthy frontend.
+    location = /readyz {
+        access_log off;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 5s;
+        proxy_pass http://${BACKEND_UPSTREAM}/status/health;
     }
 
     # Browser-internal controller calls use /api/ui. Remove only that UI
@@ -32,6 +44,16 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_pass http://${BACKEND_UPSTREAM}/;
+    }
+
+    # Expose the backend health endpoint through the single public edge for
+    # production acceptance checks without changing the backend route itself.
+    location = /api/status/health {
+        access_log off;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 5s;
+        proxy_pass http://${BACKEND_UPSTREAM}/status/health;
     }
 
     # Public CPay gateway. Preserve /api because the backend already exposes
