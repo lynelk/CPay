@@ -6,7 +6,7 @@
   },
   "deploy": {
     "startCommand": "/start.sh",
-    "healthcheckPath": "/healthz",
+    "healthcheckPath": "/readyz",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ALWAYS",
     "numReplicas": 1
