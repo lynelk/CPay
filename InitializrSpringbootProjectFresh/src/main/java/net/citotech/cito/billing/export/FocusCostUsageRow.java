@@ -4,12 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * Cito's FOCUS 1.4 cost-and-usage export row. Standard FOCUS columns are represented first; Cito
- * provenance/cost fields use the required {@code x_} custom-column prefix.
- *
- * <p>This is a deliberately small, truthful subset of the FOCUS 1.4 Cost and Usage dataset. It is
- * not labelled fully conformant until automated validation against the published FOCUS schema is
- * part of CI.
+ * Cito FOCUS 1.4 Cost and Usage row. Mandatory FOCUS columns are represented explicitly; relevant
+ * unit-pricing/usage columns are included because Cito meters and publishes versioned price books.
+ * Cito provenance/cost extensions use the specification-required {@code x_} prefix.
  */
 public record FocusCostUsageRow(
         BigDecimal billedCost,
@@ -26,8 +23,15 @@ public record FocusCostUsageRow(
         Instant chargePeriodStart,
         BigDecimal consumedQuantity,
         String consumedUnit,
+        BigDecimal contractedCost,
+        BigDecimal contractedUnitPrice,
         BigDecimal effectiveCost,
+        String hostProviderName,
+        String invoiceIssuerName,
+        BigDecimal listCost,
+        BigDecimal listUnitPrice,
         String pricingCategory,
+        String pricingCurrency,
         BigDecimal pricingQuantity,
         String pricingUnit,
         String resourceId,
@@ -37,6 +41,7 @@ public record FocusCostUsageRow(
         String serviceName,
         String skuId,
         String skuMeter,
+        String skuPriceId,
         String tags,
         BigDecimal x_CitoProviderCost,
         Long x_CitoCustomerPriceBookVersionId,
