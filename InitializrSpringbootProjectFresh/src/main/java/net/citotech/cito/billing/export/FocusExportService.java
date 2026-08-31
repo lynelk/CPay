@@ -1,8 +1,10 @@
 package net.citotech.cito.billing.export;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -12,12 +14,10 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Exports rated Cito usage as a FOCUS 1.4-compatible core Cost and Usage dataset.
- *
- * <p>The export intentionally includes only usage events that have a CUSTOMER_CHARGE rated charge,
- * because FOCUS BilledCost/EffectiveCost cannot be null. Provider cost is retained independently in
- * the FOCUS-compliant custom column {@code x_CitoProviderCost}. Cito does not claim full FOCUS 1.4
- * conformance until the generated dataset is validated against the published specification in CI.
+ * Exports tenant-scoped Cito usage using the FOCUS 1.4 Cost and Usage column model. The export
+ * includes all unconditional mandatory Cost and Usage columns and the usage/unit-price columns that
+ * apply to Cito's metered, versioned price-book model. Provider cost remains a separate Cito custom
+ * column and never replaces customer BilledCost.
  */
 @Service
 public class FocusExportService {
@@ -38,8 +38,15 @@ public class FocusExportService {
         "ChargePeriodStart",
         "ConsumedQuantity",
         "ConsumedUnit",
+        "ContractedCost",
+        "ContractedUnitPrice",
         "EffectiveCost",
+        "HostProviderName",
+        "InvoiceIssuerName",
+        "ListCost",
+        "ListUnitPrice",
         "PricingCategory",
+        "PricingCurrency",
         "PricingQuantity",
         "PricingUnit",
         "ResourceId",
@@ -49,6 +56,7 @@ public class FocusExportService {
         "ServiceName",
         "SkuId",
         "SkuMeter",
+        "SkuPriceId",
         "Tags",
         "x_CitoProviderCost",
         "x_CitoCustomerPriceBookVersionId",
@@ -96,13 +104,20 @@ public class FocusExportService {
                 parameters,
                 (rs, rowNum) -> {
                     Instant eventTime = rs.getTimestamp("event_time").toInstant();
+                    Instant eventEnd = eventTime.plus(1, ChronoUnit.MICROS);
                     String serviceCode = rs.getString("service_code");
                     String meterCode = rs.getString("meter_code");
                     long usageEventId = rs.getLong("usage_event_id");
+                    BigDecimal quantity = rs.getBigDecimal("quantity");
                     BigDecimal customerCharge = rs.getBigDecimal("customer_charge");
                     BigDecimal providerCost = rs.getBigDecimal("provider_cost");
+                    long customerPriceVersion = rs.getLong("customer_price_version");
                     Object providerPriceVersion = rs.getObject("provider_price_version");
                     String sourceReference = rs.getString("source_reference");
+                    BigDecimal unitPrice =
+                            quantity == null || quantity.signum() == 0
+                                    ? null
+                                    : customerCharge.divide(quantity, 12, RoundingMode.HALF_UP);
                     return new FocusCostUsageRow(
                             customerCharge,
                             "cito:billing-tenant:" + billingTenantId,
@@ -114,13 +129,20 @@ public class FocusExportService {
                             null,
                             serviceCode + " / " + meterCode,
                             "Usage-Based",
+                            eventEnd,
                             eventTime,
-                            eventTime,
-                            rs.getBigDecimal("quantity"),
+                            quantity,
                             meterCode,
                             customerCharge,
+                            unitPrice,
+                            customerCharge,
+                            "Cito",
+                            "Cito",
+                            customerCharge,
+                            unitPrice,
                             "Standard",
-                            rs.getBigDecimal("quantity"),
+                            rs.getString("currency"),
+                            quantity,
                             meterCode,
                             sourceReference,
                             sourceReference,
@@ -129,9 +151,10 @@ public class FocusExportService {
                             serviceCode,
                             serviceCode + ":" + meterCode,
                             meterCode,
+                            "cito-price-book-version:" + customerPriceVersion,
                             rs.getString("dimensions"),
                             providerCost,
-                            rs.getLong("customer_price_version"),
+                            customerPriceVersion,
                             providerPriceVersion == null
                                     ? null
                                     : ((Number) providerPriceVersion).longValue(),
@@ -165,8 +188,15 @@ public class FocusExportService {
                 csv(row.chargePeriodStart()),
                 csv(row.consumedQuantity()),
                 csv(row.consumedUnit()),
+                csv(row.contractedCost()),
+                csv(row.contractedUnitPrice()),
                 csv(row.effectiveCost()),
+                csv(row.hostProviderName()),
+                csv(row.invoiceIssuerName()),
+                csv(row.listCost()),
+                csv(row.listUnitPrice()),
                 csv(row.pricingCategory()),
+                csv(row.pricingCurrency()),
                 csv(row.pricingQuantity()),
                 csv(row.pricingUnit()),
                 csv(row.resourceId()),
@@ -176,6 +206,7 @@ public class FocusExportService {
                 csv(row.serviceName()),
                 csv(row.skuId()),
                 csv(row.skuMeter()),
+                csv(row.skuPriceId()),
                 csv(row.tags()),
                 csv(row.x_CitoProviderCost()),
                 csv(row.x_CitoCustomerPriceBookVersionId()),
@@ -199,7 +230,9 @@ public class FocusExportService {
         if (normalized.contains("IDENTITY") || normalized.contains("KYC") || normalized.contains("KYB")) {
             return "Identity";
         }
-        if (normalized.contains("SMS") || normalized.contains("USSD") || normalized.contains("WHATSAPP")
+        if (normalized.contains("SMS")
+                || normalized.contains("USSD")
+                || normalized.contains("WHATSAPP")
                 || normalized.contains("COMMUNICATION")) {
             return "Mobile";
         }
@@ -216,6 +249,9 @@ public class FocusExportService {
             return "Analytics";
         }
         if (normalized.contains("INTEGRATION")) {
+            return "Integration";
+        }
+        if (normalized.contains("WEBHOOK")) {
             return "Integration";
         }
         return "Other";
