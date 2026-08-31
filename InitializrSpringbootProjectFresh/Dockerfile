@@ -14,8 +14,11 @@ RUN mvn -q -DskipTests clean package
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -g 1002 appuser && adduser -D -u 1002 -G appuser appuser
+# Create non-root user and runtime directories required by scheduled jobs.
+RUN addgroup -g 1002 appuser \
+    && adduser -D -u 1002 -G appuser appuser \
+    && mkdir -p /tmp/cpay-locks \
+    && chown appuser:appuser /tmp/cpay-locks
 
 # Set environment
 ENV HTTP_PORT=8081 \
@@ -26,13 +29,13 @@ EXPOSE 8081
 # Copy JAR from build stage
 COPY --from=build --chown=appuser:appuser /workspace/target/*.jar /app/cpay-backend.jar
 
-# Copy start script so railway.json's "sh ./start.sh" startCommand can find it
+# Copy start script for Railway compatibility.
 COPY --chown=appuser:appuser start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost:8081/status/health || exit 1
 
 # Use non-root user
 USER appuser
