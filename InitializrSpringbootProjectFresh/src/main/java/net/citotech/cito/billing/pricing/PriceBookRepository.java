@@ -23,25 +23,40 @@ public class PriceBookRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    /**
-     * The active version for {@code (billingTenantId, serviceCode, meterCode, chargeType)}, at most
-     * one row (most-recently-effective first) - {@code billingTenantId} may be {@code null} to look
-     * up the global price book.
-     */
+    /** Current-time compatibility lookup used by authoring/admin read surfaces. */
     public List<PriceBookVersion> findActiveVersions(
             Long billingTenantId, String serviceCode, String meterCode, String chargeType) {
+        return findVersionsAt(
+                billingTenantId, serviceCode, meterCode, chargeType, Instant.now());
+    }
+
+    /**
+     * Resolves the version that was effective at the supplied business/event time. Rating and
+     * rerating must use this method rather than wall-clock time so historical usage remains
+     * reproducible after a price-book change.
+     */
+    public List<PriceBookVersion> findVersionsAt(
+            Long billingTenantId,
+            String serviceCode,
+            String meterCode,
+            String chargeType,
+            Instant asOf) {
+        if (asOf == null) {
+            throw new IllegalArgumentException("asOf is required for effective-dated price lookup");
+        }
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("billing_tenant_id", billingTenantId);
         p.addValue("service_code", serviceCode);
         p.addValue("meter_code", meterCode);
         p.addValue("charge_type", chargeType);
+        p.addValue("as_of", Timestamp.from(asOf));
         return jdbcTemplate.query(
                 "SELECT id, billing_tenant_id, service_code, meter_code, charge_type, currency, "
                         + "version_no, effective_from, effective_to FROM billing_price_book_versions "
                         + "WHERE (billing_tenant_id <=> :billing_tenant_id) AND service_code=:service_code "
                         + "AND meter_code=:meter_code AND charge_type=:charge_type "
-                        + "AND effective_from <= CURRENT_TIMESTAMP "
-                        + "AND (effective_to IS NULL OR effective_to > CURRENT_TIMESTAMP) "
+                        + "AND effective_from <= :as_of "
+                        + "AND (effective_to IS NULL OR effective_to > :as_of) "
                         + "ORDER BY effective_from DESC LIMIT 1",
                 p,
                 this::mapVersion);
@@ -58,9 +73,7 @@ public class PriceBookRepository {
                 this::mapComponent);
     }
 
-    /**
-     * Highest existing {@code version_no} for this key, plus one - {@code 1} if none exists yet.
-     */
+    /** Highest existing version number for this key, plus one. */
     public int nextVersionNo(
             Long billingTenantId, String serviceCode, String meterCode, String chargeType) {
         MapSqlParameterSource p = new MapSqlParameterSource();
@@ -78,12 +91,7 @@ public class PriceBookRepository {
         return max == null ? 1 : max + 1;
     }
 
-    /**
-     * Closes every currently-open version (({@code effective_to IS NULL}) for this key by setting
-     * {@code effective_to} to the new version's {@code effectiveFrom} - mirrors {@code
-     * FeeScheduleService.create()}'s "close, don't delete" pattern. Returns rows affected (0 or 1
-     * in practice).
-     */
+    /** Closes currently-open versions for this key at the new version's effective time. */
     public int closeOpenVersions(
             Long billingTenantId,
             String serviceCode,
