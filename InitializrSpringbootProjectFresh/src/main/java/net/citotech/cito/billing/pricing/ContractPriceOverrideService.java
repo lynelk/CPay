@@ -40,19 +40,27 @@ public class ContractPriceOverrideService {
         requireContext(context);
         Instant start = effectiveFrom == null ? Instant.now() : effectiveFrom;
         if (effectiveTo != null && !effectiveTo.isAfter(start)) {
-            throw new PaymentGatewayException("Price override effectiveTo must be after effectiveFrom");
+            throw new PaymentGatewayException(
+                    "Price override effectiveTo must be after effectiveFrom");
         }
-        long contractId = contractId(context.billingTenantId(), required(contractReference, "contractReference"));
+        long contractId =
+                contractId(
+                        context.billingTenantId(),
+                        required(contractReference, "contractReference"));
         PriceBookVersion priceBook =
                 priceBookRepository
                         .findVersionById(priceBookVersionId)
-                        .orElseThrow(() -> new PaymentGatewayException("Price-book version was not found"));
+                        .orElseThrow(
+                                () ->
+                                        new PaymentGatewayException(
+                                                "Price-book version was not found"));
         String service = required(serviceCode, "serviceCode").toUpperCase();
         String meter = required(meterCode, "meterCode");
         if (!priceBook.serviceCode().equals(service)
                 || !priceBook.meterCode().equals(meter)
                 || !"CUSTOMER_CHARGE".equals(priceBook.chargeType())) {
-            throw new PaymentGatewayException("Price-book version does not match the contract pricing key");
+            throw new PaymentGatewayException(
+                    "Price-book version does not match the contract pricing key");
         }
         if (priceBook.billingTenantId() != null
                 && !priceBook.billingTenantId().equals(context.billingTenantId())) {
@@ -67,7 +75,9 @@ public class ContractPriceOverrideService {
                         .addValue("meter", meter)
                         .addValue("price_book", priceBookVersionId)
                         .addValue("effective_from", Timestamp.from(start))
-                        .addValue("effective_to", effectiveTo == null ? null : Timestamp.from(effectiveTo))
+                        .addValue(
+                                "effective_to",
+                                effectiveTo == null ? null : Timestamp.from(effectiveTo))
                         .addValue("actor", actor);
         jdbcTemplate.update(
                 "INSERT INTO billing_contract_price_overrides "
@@ -76,7 +86,9 @@ public class ContractPriceOverrideService {
                         + "VALUES (:tenant,:contract,:service,:meter,'CUSTOMER_CHARGE',:price_book,'SUBMITTED',"
                         + ":effective_from,:effective_to,:actor,:actor,CURRENT_TIMESTAMP)",
                 p);
-        Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
+        Long id =
+                jdbcTemplate.queryForObject(
+                        "SELECT LAST_INSERT_ID()", new MapSqlParameterSource(), Long.class);
         return view(context.billingTenantId(), id == null ? 0L : id);
     }
 
@@ -89,7 +101,8 @@ public class ContractPriceOverrideService {
         }
         String actor = actor(context);
         if (actor.equals(String.valueOf(row.get("submittedBy")))) {
-            throw new PaymentGatewayException("Price override maker and checker must be different actors");
+            throw new PaymentGatewayException(
+                    "Price override maker and checker must be different actors");
         }
         MapSqlParameterSource p =
                 new MapSqlParameterSource()
@@ -112,7 +125,8 @@ public class ContractPriceOverrideService {
                         p,
                         Long.class);
         if (overlaps != null && overlaps > 0) {
-            throw new PaymentGatewayException("Approved contract price override would overlap an existing version");
+            throw new PaymentGatewayException(
+                    "Approved contract price override would overlap an existing version");
         }
         int updated =
                 jdbcTemplate.update(
@@ -182,7 +196,8 @@ public class ContractPriceOverrideService {
                                 + "ORDER BY effective_from DESC,id DESC LIMIT 2",
                         p);
         if (overrides.size() > 1) {
-            throw new PaymentGatewayException("Multiple approved contract price overrides are effective");
+            throw new PaymentGatewayException(
+                    "Multiple approved contract price overrides are effective");
         }
         if (overrides.isEmpty()) {
             return Optional.of(new ResolvedContractPrice(contractId, null, null));
@@ -192,7 +207,10 @@ public class ContractPriceOverrideService {
         PriceBookVersion version =
                 priceBookRepository
                         .findVersionById(priceBookId)
-                        .orElseThrow(() -> new PaymentGatewayException("Contract override price book was deleted"));
+                        .orElseThrow(
+                                () ->
+                                        new PaymentGatewayException(
+                                                "Contract override price book was deleted"));
         return Optional.of(new ResolvedContractPrice(contractId, overrideId, version));
     }
 
@@ -206,7 +224,8 @@ public class ContractPriceOverrideService {
                                 .addValue("reference", reference),
                         (rs, rowNum) -> rs.getLong(1));
         if (ids.isEmpty()) {
-            throw new PaymentGatewayException("Contract must be APPROVED or ACTIVE before pricing override");
+            throw new PaymentGatewayException(
+                    "Contract must be APPROVED or ACTIVE before pricing override");
         }
         return ids.get(0);
     }
@@ -218,9 +237,12 @@ public class ContractPriceOverrideService {
                                 + "meter_code AS meterCode,status,effective_from AS effectiveFrom,"
                                 + "effective_to AS effectiveTo,submitted_by AS submittedBy "
                                 + "FROM billing_contract_price_overrides WHERE id=:id AND billing_tenant_id=:tenant FOR UPDATE",
-                        new MapSqlParameterSource().addValue("id", id).addValue("tenant", tenantId));
+                        new MapSqlParameterSource()
+                                .addValue("id", id)
+                                .addValue("tenant", tenantId));
         if (rows.isEmpty()) {
-            throw new PaymentGatewayException("Contract price override was not found for this tenant");
+            throw new PaymentGatewayException(
+                    "Contract price override was not found for this tenant");
         }
         return rows.get(0);
     }
@@ -233,7 +255,9 @@ public class ContractPriceOverrideService {
                                 + "status,effective_from AS effectiveFrom,effective_to AS effectiveTo,created_by AS createdBy,"
                                 + "submitted_by AS submittedBy,approved_by AS approvedBy,approved_at AS approvedAt "
                                 + "FROM billing_contract_price_overrides WHERE id=:id AND billing_tenant_id=:tenant",
-                        new MapSqlParameterSource().addValue("id", id).addValue("tenant", tenantId));
+                        new MapSqlParameterSource()
+                                .addValue("id", id)
+                                .addValue("tenant", tenantId));
         if (rows.isEmpty()) {
             throw new PaymentGatewayException("Contract price override was not found");
         }

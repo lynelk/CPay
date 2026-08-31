@@ -19,7 +19,8 @@ public class BillingBaasBillingCenterService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public List<Map<String, Object>> invoices(BillingBaasContext context, String status, int limit) {
+    public List<Map<String, Object>> invoices(
+            BillingBaasContext context, String status, int limit) {
         requireContext(context);
         MapSqlParameterSource p =
                 new MapSqlParameterSource()

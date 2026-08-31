@@ -24,7 +24,8 @@ public class CitoServiceEntitlementService {
     @Transactional
     public EntitlementDecision requireMerchantAccess(
             long merchantId, String serviceCode, String environment, String actor) {
-        EntitlementDecision decision = evaluate(merchantId, serviceCode, environment, Instant.now());
+        EntitlementDecision decision =
+                evaluate(merchantId, serviceCode, environment, Instant.now());
         audit(decision, actor);
         if (!decision.allowed()) {
             throw new PaymentGatewayException(
@@ -70,7 +71,8 @@ public class CitoServiceEntitlementService {
                         new MapSqlParameterSource("merchant", merchantId),
                         (rs, rowNum) -> rs.getLong(1));
         if (organizations.size() > 1) {
-            throw new PaymentGatewayException("Merchant resolves to multiple active Cito organizations");
+            throw new PaymentGatewayException(
+                    "Merchant resolves to multiple active Cito organizations");
         }
         Long organizationId = organizations.isEmpty() ? null : organizations.get(0);
 
@@ -88,16 +90,21 @@ public class CitoServiceEntitlementService {
                 Map<String, Object> row = rows.get(0);
                 String status = String.valueOf(row.get("status"));
                 if (!"ACTIVE".equals(status)) {
-                    return new EntitlementDecision(false, service, env, organizationId, "ENTITLEMENT_" + status);
+                    return new EntitlementDecision(
+                            false, service, env, organizationId, "ENTITLEMENT_" + status);
                 }
                 Object startValue = row.get("starts_at");
-                Instant validFrom = startValue == null ? Instant.EPOCH : ((Timestamp) startValue).toInstant();
+                Instant validFrom =
+                        startValue == null ? Instant.EPOCH : ((Timestamp) startValue).toInstant();
                 Object validToValue = row.get("ends_at");
-                Instant validTo = validToValue == null ? null : ((Timestamp) validToValue).toInstant();
+                Instant validTo =
+                        validToValue == null ? null : ((Timestamp) validToValue).toInstant();
                 if (validFrom.isAfter(asOf) || (validTo != null && !validTo.isAfter(asOf))) {
-                    return new EntitlementDecision(false, service, env, organizationId, "OUTSIDE_VALIDITY_WINDOW");
+                    return new EntitlementDecision(
+                            false, service, env, organizationId, "OUTSIDE_VALIDITY_WINDOW");
                 }
-                return new EntitlementDecision(true, service, env, organizationId, "ACTIVE_ENTITLEMENT");
+                return new EntitlementDecision(
+                        true, service, env, organizationId, "ACTIVE_ENTITLEMENT");
             }
         }
 

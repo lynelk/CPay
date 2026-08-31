@@ -72,7 +72,8 @@ public class FocusExportService {
 
     public List<FocusCostUsageRow> rows(long billingTenantId, Instant from, Instant to) {
         if (billingTenantId <= 0) {
-            throw new PaymentGatewayException("Authenticated billing tenant is required for export");
+            throw new PaymentGatewayException(
+                    "Authenticated billing tenant is required for export");
         }
         if (from == null || to == null || !to.isAfter(from)) {
             throw new PaymentGatewayException("FOCUS export requires a valid from/to interval");
@@ -227,7 +228,9 @@ public class FocusExportService {
 
     private String serviceCategory(String serviceCode) {
         String normalized = serviceCode == null ? "" : serviceCode.toUpperCase(Locale.ROOT);
-        if (normalized.contains("IDENTITY") || normalized.contains("KYC") || normalized.contains("KYB")) {
+        if (normalized.contains("IDENTITY")
+                || normalized.contains("KYC")
+                || normalized.contains("KYB")) {
             return "Identity";
         }
         if (normalized.contains("SMS")

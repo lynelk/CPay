@@ -27,8 +27,7 @@ public class PriceBookRepository {
     /** Current-time compatibility lookup used by authoring/admin read surfaces. */
     public List<PriceBookVersion> findActiveVersions(
             Long billingTenantId, String serviceCode, String meterCode, String chargeType) {
-        return findVersionsAt(
-                billingTenantId, serviceCode, meterCode, chargeType, Instant.now());
+        return findVersionsAt(billingTenantId, serviceCode, meterCode, chargeType, Instant.now());
     }
 
     /**

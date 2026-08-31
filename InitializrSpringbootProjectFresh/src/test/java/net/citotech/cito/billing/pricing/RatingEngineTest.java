@@ -22,12 +22,7 @@ class RatingEngineTest {
     void rateReturnsEmptyWhenNoPriceBookResolvesAtEventTime() {
         PriceResolver priceResolver = mock(PriceResolver.class);
         PriceBookRepository priceBookRepository = mock(PriceBookRepository.class);
-        when(priceResolver.resolve(
-                        7L,
-                        "PAYMENT",
-                        "payment_event_count",
-                        "CUSTOMER_CHARGE",
-                        AS_OF))
+        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(Optional.empty());
 
         Optional<RatedCharge> result =
@@ -60,27 +55,31 @@ class RatingEngineTest {
 
     @Test
     void rateAppliesAMinimumFloorWhenTheComputedChargeIsTooLow() {
-        RatingEngine engine = engineWithComponents(List.of(percentage(1, "0.001"), minimum(2, "50")));
+        RatingEngine engine =
+                engineWithComponents(List.of(percentage(1, "0.001"), minimum(2, "50")));
         assertThat(rate(engine, "1000").orElseThrow().ratedAmount()).isEqualByComparingTo("50.00");
     }
 
     @Test
     void rateAppliesAMaximumCapWhenTheComputedChargeIsTooHigh() {
-        RatingEngine engine = engineWithComponents(List.of(percentage(1, "0.5"), maximum(2, "100")));
+        RatingEngine engine =
+                engineWithComponents(List.of(percentage(1, "0.5"), maximum(2, "100")));
         assertThat(rate(engine, "1000").orElseThrow().ratedAmount()).isEqualByComparingTo("100.00");
     }
 
     @Test
     void rateTierComponentUsesGraduatedTierMath() {
         String tierDefinition = "[{\"upTo\":10000,\"rate\":0.02},{\"upTo\":null,\"rate\":0.01}]";
-        RatedCharge result = rate(engineWithComponents(List.of(tier(1, tierDefinition))), "15000").orElseThrow();
+        RatedCharge result =
+                rate(engineWithComponents(List.of(tier(1, tierDefinition))), "15000").orElseThrow();
         assertThat(result.ratedAmount()).isEqualByComparingTo("250.00");
         assertThat(result.tierPathJson()).contains("bandFrom");
     }
 
     @Test
     void formulaInputsRetainBusinessTimeAndRatingDimensions() {
-        RatedCharge result = rate(engineWithComponents(List.of(flat(1, "10"))), "1000").orElseThrow();
+        RatedCharge result =
+                rate(engineWithComponents(List.of(flat(1, "10"))), "1000").orElseThrow();
         assertThat(result.formulaInputsJson())
                 .contains(AS_OF.toString())
                 .contains("CUSTOMER_CHARGE")
@@ -103,12 +102,7 @@ class RatingEngineTest {
                         1,
                         AS_OF.minusSeconds(60),
                         null);
-        when(priceResolver.resolve(
-                        7L,
-                        "PAYMENT",
-                        "payment_event_count",
-                        "CUSTOMER_CHARGE",
-                        AS_OF))
+        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(Optional.of(usd));
 
         RatingEngine engine = new RatingEngine(priceResolver, repository, objectMapper);
@@ -159,34 +153,34 @@ class RatingEngineTest {
                         1,
                         AS_OF.minusSeconds(60),
                         null);
-        when(priceResolver.resolve(
-                        7L,
-                        "PAYMENT",
-                        "payment_event_count",
-                        "CUSTOMER_CHARGE",
-                        AS_OF))
+        when(priceResolver.resolve(7L, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF))
                 .thenReturn(Optional.of(version));
         when(priceBookRepository.findComponents(1L)).thenReturn(components);
         return new RatingEngine(priceResolver, priceBookRepository, objectMapper);
     }
 
     private PriceComponent flat(int sequenceNo, String amount) {
-        return new PriceComponent(sequenceNo, 1L, "FLAT", sequenceNo, new BigDecimal(amount), null, null);
+        return new PriceComponent(
+                sequenceNo, 1L, "FLAT", sequenceNo, new BigDecimal(amount), null, null);
     }
 
     private PriceComponent percentage(int sequenceNo, String rate) {
-        return new PriceComponent(sequenceNo, 1L, "PERCENTAGE", sequenceNo, null, new BigDecimal(rate), null);
+        return new PriceComponent(
+                sequenceNo, 1L, "PERCENTAGE", sequenceNo, null, new BigDecimal(rate), null);
     }
 
     private PriceComponent minimum(int sequenceNo, String amount) {
-        return new PriceComponent(sequenceNo, 1L, "MINIMUM", sequenceNo, new BigDecimal(amount), null, null);
+        return new PriceComponent(
+                sequenceNo, 1L, "MINIMUM", sequenceNo, new BigDecimal(amount), null, null);
     }
 
     private PriceComponent maximum(int sequenceNo, String amount) {
-        return new PriceComponent(sequenceNo, 1L, "MAXIMUM", sequenceNo, new BigDecimal(amount), null, null);
+        return new PriceComponent(
+                sequenceNo, 1L, "MAXIMUM", sequenceNo, new BigDecimal(amount), null, null);
     }
 
     private PriceComponent tier(int sequenceNo, String tierDefinitionJson) {
-        return new PriceComponent(sequenceNo, 1L, "TIER", sequenceNo, null, null, tierDefinitionJson);
+        return new PriceComponent(
+                sequenceNo, 1L, "TIER", sequenceNo, null, null, tierDefinitionJson);
     }
 }

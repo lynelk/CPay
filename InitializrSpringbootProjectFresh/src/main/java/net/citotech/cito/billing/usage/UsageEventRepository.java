@@ -35,8 +35,9 @@ public class UsageEventRepository {
     }
 
     /**
-     * Tenant-scoped lookup. Public/multi-tenant call paths must use this method so the same external
-     * idempotency key used by two tenants cannot disclose or suppress the other tenant's event.
+     * Tenant-scoped lookup. Public/multi-tenant call paths must use this method so the same
+     * external idempotency key used by two tenants cannot disclose or suppress the other tenant's
+     * event.
      */
     public Optional<UsageEvent> findByIdempotencyKey(long billingTenantId, String idempotencyKey) {
         SqlParameterSource p =
@@ -115,7 +116,8 @@ public class UsageEventRepository {
                 .orElseThrow(
                         () ->
                                 new IllegalStateException(
-                                        "Inserted usage event not found: " + event.idempotencyKey()));
+                                        "Inserted usage event not found: "
+                                                + event.idempotencyKey()));
     }
 
     public List<UsageEvent> findForTenant(
@@ -144,7 +146,8 @@ public class UsageEventRepository {
                 || !java.util.Objects.equals(existing.meterCode(), requested.meterCode())
                 || existing.quantity().compareTo(requested.quantity()) != 0
                 || !java.util.Objects.equals(existing.currency(), requested.currency())
-                || !java.util.Objects.equals(existing.sourceReference(), requested.sourceReference())) {
+                || !java.util.Objects.equals(
+                        existing.sourceReference(), requested.sourceReference())) {
             throw new IllegalArgumentException(
                     "Usage idempotency key was already used with different event attributes");
         }

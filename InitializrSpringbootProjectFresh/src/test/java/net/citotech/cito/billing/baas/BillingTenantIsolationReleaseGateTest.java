@@ -8,9 +8,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /**
- * Release-level structural guard for the most security-sensitive BaaS paths. Behavioural integration
- * tests remain required, but these assertions prevent accidental removal of the tenant predicates
- * and credential-derived context that every lower-level test depends on.
+ * Release-level structural guard for the most security-sensitive BaaS paths. Behavioural
+ * integration tests remain required, but these assertions prevent accidental removal of the tenant
+ * predicates and credential-derived context that every lower-level test depends on.
  */
 class BillingTenantIsolationReleaseGateTest {
 
@@ -46,7 +46,8 @@ class BillingTenantIsolationReleaseGateTest {
                         StandardCharsets.UTF_8);
 
         assertThat(charging)
-                .contains("WHERE r.billing_tenant_id=:tenant AND r.reservation_reference=:reservation")
+                .contains(
+                        "WHERE r.billing_tenant_id=:tenant AND r.reservation_reference=:reservation")
                 .contains("WHERE billing_tenant_id=:tenant AND idempotency_key=:idempotency")
                 .contains("WHERE id=:account AND billing_tenant_id=:tenant")
                 .contains("g.billing_tenant_id=:tenant")

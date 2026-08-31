@@ -15,10 +15,8 @@ class BillingEffectiveDateReleaseGateTest {
     @Test
     void priceResolutionUsesBusinessTimeNotDatabaseWallClock() throws Exception {
         String repository =
-                source(
-                        "src/main/java/net/citotech/cito/billing/pricing/PriceBookRepository.java");
-        String engine =
-                source("src/main/java/net/citotech/cito/billing/pricing/RatingEngine.java");
+                source("src/main/java/net/citotech/cito/billing/pricing/PriceBookRepository.java");
+        String engine = source("src/main/java/net/citotech/cito/billing/pricing/RatingEngine.java");
 
         assertThat(repository)
                 .contains("effective_from <= :as_of")
@@ -33,10 +31,8 @@ class BillingEffectiveDateReleaseGateTest {
     @Test
     void taxAndFxResolutionUseTheSameBusinessTime() throws Exception {
         String tax =
-                source(
-                        "src/main/java/net/citotech/cito/billing/tax/BillingTaxRuleResolver.java");
-        String fx =
-                source("src/main/java/net/citotech/cito/billing/fx/BillingFxResolver.java");
+                source("src/main/java/net/citotech/cito/billing/tax/BillingTaxRuleResolver.java");
+        String fx = source("src/main/java/net/citotech/cito/billing/fx/BillingFxResolver.java");
 
         assertThat(tax)
                 .contains("effective_from<=:as_of")

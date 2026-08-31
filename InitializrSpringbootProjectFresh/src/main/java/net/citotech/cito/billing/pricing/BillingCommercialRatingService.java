@@ -61,7 +61,8 @@ public class BillingCommercialRatingService {
         requireContext(context);
         Instant ratedAt = asOf == null ? Instant.now() : asOf;
         if (ratedAt.isAfter(Instant.now().plusSeconds(60))) {
-            throw new PaymentGatewayException("Commercial rating time cannot be materially in the future");
+            throw new PaymentGatewayException(
+                    "Commercial rating time cannot be materially in the future");
         }
         BigDecimal sourceBase = nonNegative(sourceBaseAmount, "sourceBaseAmount");
         String service = required(serviceCode, "serviceCode").toUpperCase(java.util.Locale.ROOT);
@@ -118,10 +119,7 @@ public class BillingCommercialRatingService {
                 taxRuleResolver.calculate(
                         taxRule, customerCharge.ratedAmount(), customerVersion.currency());
         BigDecimal gross =
-                customerCharge
-                        .ratedAmount()
-                        .add(tax.taxAmount())
-                        .setScale(4, RoundingMode.HALF_UP);
+                customerCharge.ratedAmount().add(tax.taxAmount()).setScale(4, RoundingMode.HALF_UP);
 
         Long providerVersionId = null;
         BigDecimal providerCost = null;
@@ -188,7 +186,8 @@ public class BillingCommercialRatingService {
             CommercialRatingResult rating) {
         requireContext(context);
         if (rating == null || reservationReference == null || reservationReference.isBlank()) {
-            throw new PaymentGatewayException("Commercial rating evidence requires reservation and rating");
+            throw new PaymentGatewayException(
+                    "Commercial rating evidence requires reservation and rating");
         }
         MapSqlParameterSource p =
                 new MapSqlParameterSource()

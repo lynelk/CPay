@@ -9,7 +9,9 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
-/** Resolves an approved tenant override before the global tax rule at the supplied business time. */
+/**
+ * Resolves an approved tenant override before the global tax rule at the supplied business time.
+ */
 @Service
 public class BillingTaxRuleResolver {
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -68,12 +70,15 @@ public class BillingTaxRuleResolver {
     public BillingTaxSnapshot calculate(
             ResolvedTaxRule rule, BigDecimal taxableAmount, String currency) {
         if (rule == null || taxableAmount == null || taxableAmount.signum() < 0) {
-            throw new PaymentGatewayException("Tax calculation requires a resolved rule and amount");
+            throw new PaymentGatewayException(
+                    "Tax calculation requires a resolved rule and amount");
         }
         if (!rule.currency().equalsIgnoreCase(currency)) {
-            throw new PaymentGatewayException("Tax rule currency does not match taxable amount currency");
+            throw new PaymentGatewayException(
+                    "Tax rule currency does not match taxable amount currency");
         }
-        BigDecimal tax = taxableAmount.multiply(rule.rate()).setScale(4, java.math.RoundingMode.HALF_UP);
+        BigDecimal tax =
+                taxableAmount.multiply(rule.rate()).setScale(4, java.math.RoundingMode.HALF_UP);
         return new BillingTaxSnapshot(
                 rule.id(),
                 rule.taxCode(),

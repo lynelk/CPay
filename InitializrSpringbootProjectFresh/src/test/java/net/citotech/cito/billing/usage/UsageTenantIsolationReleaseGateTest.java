@@ -15,7 +15,8 @@ class UsageTenantIsolationReleaseGateTest {
     @Test
     void usageIdempotencyIsUniqueWithinTenantNotGlobally() throws Exception {
         String migration =
-                source("src/main/resources/db/migration/V107__billing_usage_tenant_idempotency.sql");
+                source(
+                        "src/main/resources/db/migration/V107__billing_usage_tenant_idempotency.sql");
         assertThat(migration)
                 .contains("DROP INDEX `uk_billing_usage_event_idempotency`")
                 .contains("(`billing_tenant_id`,`idempotency_key`)");

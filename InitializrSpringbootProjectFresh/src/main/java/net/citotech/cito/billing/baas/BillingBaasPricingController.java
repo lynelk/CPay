@@ -43,7 +43,13 @@ public class BillingBaasPricingController {
             @RequestBody PricingQuoteRequest body) {
         try {
             BillingBaasContext context =
-                    context(apiKey, environment, "BILLING_READ", requestId, "POST", "/pricing/quotes");
+                    context(
+                            apiKey,
+                            environment,
+                            "BILLING_READ",
+                            requestId,
+                            "POST",
+                            "/pricing/quotes");
             Instant asOf = body.asOf() == null ? Instant.now() : body.asOf();
             return ResponseEntity.ok(
                     ratingService.rate(

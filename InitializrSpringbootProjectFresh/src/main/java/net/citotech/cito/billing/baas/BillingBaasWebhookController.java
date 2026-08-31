@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * BaaS-facing management facade over Cito's existing durable merchant webhook delivery engine.
- * This deliberately reuses the proven endpoint/delivery/retry implementation instead of creating a
+ * BaaS-facing management facade over Cito's existing durable merchant webhook delivery engine. This
+ * deliberately reuses the proven endpoint/delivery/retry implementation instead of creating a
  * second webhook stack merely because a BaaS-specific subscription table happens to exist.
  */
 @RestController
@@ -138,7 +138,8 @@ public class BillingBaasWebhookController {
                             "/webhooks/deliveries/{deliveryId}/replay");
             int updated = webhookService.replay(context.merchantId(), deliveryId);
             if (updated == 0) {
-                throw new PaymentGatewayException("Webhook delivery is not replayable for this tenant");
+                throw new PaymentGatewayException(
+                        "Webhook delivery is not replayable for this tenant");
             }
             return ResponseEntity.ok(Map.of("code", "000", "requeued", true));
         } catch (PaymentGatewayException e) {
@@ -154,7 +155,13 @@ public class BillingBaasWebhookController {
             @RequestBody WebhookTestRequest body) {
         try {
             BillingBaasContext context =
-                    context(apiKey, environment, "BILLING_WRITE", requestId, "POST", "/webhooks/test");
+                    context(
+                            apiKey,
+                            environment,
+                            "BILLING_WRITE",
+                            requestId,
+                            "POST",
+                            "/webhooks/test");
             int queued = webhookService.testCallback(context.merchantId(), body.eventType());
             return ResponseEntity.ok(Map.of("code", "000", "queued", queued));
         } catch (PaymentGatewayException e) {

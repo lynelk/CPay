@@ -29,8 +29,7 @@ class PriceResolverTest {
 
         assertThat(result).contains(tenantVersion);
         verify(repository, never())
-                .findVersionsAt(
-                        null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
+                .findVersionsAt(null, "PAYMENT", "payment_event_count", "CUSTOMER_CHARGE", AS_OF);
     }
 
     @Test

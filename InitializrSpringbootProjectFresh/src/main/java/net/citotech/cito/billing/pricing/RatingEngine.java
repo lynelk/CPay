@@ -15,10 +15,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
- * Deterministically folds an effective-dated price book's components into one rated charge.
- * FLAT, PERCENTAGE and TIER components contribute against the base amount; MINIMUM/MAXIMUM clamp
- * the accumulated total. The exact price-book version, tier path, formula inputs and rounding
- * policy are retained by the rated-charge persistence layer for reproducibility.
+ * Deterministically folds an effective-dated price book's components into one rated charge. FLAT,
+ * PERCENTAGE and TIER components contribute against the base amount; MINIMUM/MAXIMUM clamp the
+ * accumulated total. The exact price-book version, tier path, formula inputs and rounding policy
+ * are retained by the rated-charge persistence layer for reproducibility.
  */
 @Service
 public class RatingEngine {
@@ -50,8 +50,7 @@ public class RatingEngine {
             Instant asOf) {
         validateInputs(baseAmount, currency, asOf);
         Optional<PriceBookVersion> resolved =
-                priceResolver.resolve(
-                        billingTenantId, serviceCode, meterCode, chargeType, asOf);
+                priceResolver.resolve(billingTenantId, serviceCode, meterCode, chargeType, asOf);
         if (resolved.isEmpty()) {
             return Optional.empty();
         }
@@ -89,15 +88,19 @@ public class RatingEngine {
         if (!version.serviceCode().equals(serviceCode)
                 || !version.meterCode().equals(meterCode)
                 || !version.chargeType().equals(chargeType)) {
-            throw new IllegalStateException("Selected price-book version does not match the rating key");
+            throw new IllegalStateException(
+                    "Selected price-book version does not match the rating key");
         }
         if (version.billingTenantId() != null
-                && (billingTenantId == null || !version.billingTenantId().equals(billingTenantId))) {
-            throw new IllegalStateException("Selected price-book version belongs to another tenant");
+                && (billingTenantId == null
+                        || !version.billingTenantId().equals(billingTenantId))) {
+            throw new IllegalStateException(
+                    "Selected price-book version belongs to another tenant");
         }
         if (version.effectiveFrom().isAfter(asOf)
                 || (version.effectiveTo() != null && !version.effectiveTo().isAfter(asOf))) {
-            throw new IllegalStateException("Selected price-book version was not effective at rating time");
+            throw new IllegalStateException(
+                    "Selected price-book version was not effective at rating time");
         }
         if (!version.currency().equalsIgnoreCase(currency.trim())) {
             throw new IllegalStateException(

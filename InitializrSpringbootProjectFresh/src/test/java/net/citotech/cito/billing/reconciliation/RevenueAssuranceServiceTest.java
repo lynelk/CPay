@@ -24,11 +24,7 @@ class RevenueAssuranceServiceTest {
                 .thenReturn(1L, 2L, 3L, 4L);
         when(jdbc.queryForMap(anyString(), any(MapSqlParameterSource.class)))
                 .thenReturn(
-                        Map.of(
-                                "negative_margin_count",
-                                5L,
-                                "exposure",
-                                new BigDecimal("125.50")));
+                        Map.of("negative_margin_count", 5L, "exposure", new BigDecimal("125.50")));
         RevenueAssuranceService service = new RevenueAssuranceService(jdbc);
 
         RevenueAssuranceSummary result = service.summarize(77L);

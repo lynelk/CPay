@@ -47,7 +47,8 @@ public class BillingBaasBillingCenterController {
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
             @PathVariable String invoiceNumber) {
         try {
-            BillingBaasContext context = context(apiKey, environment, requestId, "/invoices/{invoiceNumber}");
+            BillingBaasContext context =
+                    context(apiKey, environment, requestId, "/invoices/{invoiceNumber}");
             return ResponseEntity.ok(service.invoice(context, invoiceNumber));
         } catch (PaymentGatewayException e) {
             return error(e);
@@ -108,7 +109,8 @@ public class BillingBaasBillingCenterController {
     }
 
     private ResponseEntity<?> error(PaymentGatewayException e) {
-        String message = e.getMessage() == null ? "BaaS Billing Center request failed" : e.getMessage();
+        String message =
+                e.getMessage() == null ? "BaaS Billing Center request failed" : e.getMessage();
         HttpStatus status =
                 message.contains("credential") || message.contains("X-Cito-Api-Key")
                         ? HttpStatus.UNAUTHORIZED

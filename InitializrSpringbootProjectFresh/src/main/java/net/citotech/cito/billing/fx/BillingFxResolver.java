@@ -31,7 +31,8 @@ public class BillingFxResolver {
             throw new PaymentGatewayException("FX resolution requires asOf");
         }
         if (source.equals(target)) {
-            return new ResolvedFxRate(null, source, target, BigDecimal.ONE, "IDENTITY", asOf, false);
+            return new ResolvedFxRate(
+                    null, source, target, BigDecimal.ONE, "IDENTITY", asOf, false);
         }
 
         List<ResolvedFxRate> direct = find(source, target, asOf);
@@ -56,7 +57,8 @@ public class BillingFxResolver {
 
     public BigDecimal convert(BigDecimal amount, ResolvedFxRate rate) {
         if (amount == null || amount.signum() < 0 || rate == null) {
-            throw new PaymentGatewayException("FX conversion requires a non-negative amount and rate");
+            throw new PaymentGatewayException(
+                    "FX conversion requires a non-negative amount and rate");
         }
         return amount.multiply(rate.rate()).setScale(4, RoundingMode.HALF_UP);
     }
@@ -71,8 +73,12 @@ public class BillingFxResolver {
             String artifactType,
             String artifactReference,
             ResolvedFxRate rate) {
-        if (billingTenantId <= 0 || blank(artifactType) || blank(artifactReference) || rate == null) {
-            throw new PaymentGatewayException("FX snapshot requires tenant, artifact and resolved rate");
+        if (billingTenantId <= 0
+                || blank(artifactType)
+                || blank(artifactReference)
+                || rate == null) {
+            throw new PaymentGatewayException(
+                    "FX snapshot requires tenant, artifact and resolved rate");
         }
         String type = artifactType.trim().toUpperCase(Locale.ROOT);
         String reference = artifactReference.trim();
@@ -114,7 +120,9 @@ public class BillingFxResolver {
                     || ((BigDecimal) existing.get("rate")).compareTo(rate.rate()) != 0
                     || !java.util.Objects.equals(existingSource, rate.sourceFxRateId())
                     || !java.util.Objects.equals(existing.get("provider"), rate.provider())
-                    || !((Timestamp) existing.get("rate_as_of")).toInstant().equals(rate.rateAsOf())) {
+                    || !((Timestamp) existing.get("rate_as_of"))
+                            .toInstant()
+                            .equals(rate.rateAsOf())) {
                 throw new PaymentGatewayException(
                         "FX snapshot already exists with different immutable evidence");
             }

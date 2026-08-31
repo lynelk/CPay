@@ -30,7 +30,8 @@ public class PriceResolver {
             String chargeType,
             Instant asOf) {
         if (asOf == null) {
-            throw new IllegalArgumentException("asOf is required for effective-dated price resolution");
+            throw new IllegalArgumentException(
+                    "asOf is required for effective-dated price resolution");
         }
         if (billingTenantId != null) {
             List<PriceBookVersion> tenantSpecific =

@@ -49,7 +49,8 @@ public class BillingBaasUsageService {
         requireContext(context);
         Instant time = eventTime == null ? Instant.now() : eventTime;
         if (time.isAfter(Instant.now().plusSeconds(300))) {
-            throw new PaymentGatewayException("Usage event time cannot be more than five minutes in the future");
+            throw new PaymentGatewayException(
+                    "Usage event time cannot be more than five minutes in the future");
         }
         String service = required(serviceCode, "serviceCode").toUpperCase(Locale.ROOT);
         String meter = required(meterCode, "meterCode");
@@ -71,17 +72,14 @@ public class BillingBaasUsageService {
                         required(sourceReference, "sourceReference"),
                         required(idempotencyKey, "idempotencyKey"));
         if (event.billingTenantId() != context.billingTenantId()) {
-            throw new PaymentGatewayException("Usage event resolved outside authenticated billing tenant");
+            throw new PaymentGatewayException(
+                    "Usage event resolved outside authenticated billing tenant");
         }
         return event;
     }
 
     public List<UsageEvent> list(
-            BillingBaasContext context,
-            Instant from,
-            Instant to,
-            String serviceCode,
-            int limit) {
+            BillingBaasContext context, Instant from, Instant to, String serviceCode, int limit) {
         requireContext(context);
         Instant end = to == null ? Instant.now() : to;
         Instant start = from == null ? end.minusSeconds(30L * 24 * 3600) : from;
@@ -98,8 +96,7 @@ public class BillingBaasUsageService {
                 limit);
     }
 
-    public List<Map<String, Object>> summary(
-            BillingBaasContext context, Instant from, Instant to) {
+    public List<Map<String, Object>> summary(BillingBaasContext context, Instant from, Instant to) {
         requireContext(context);
         Instant end = to == null ? Instant.now() : to;
         Instant start = from == null ? end.minusSeconds(30L * 24 * 3600) : from;
@@ -119,7 +116,10 @@ public class BillingBaasUsageService {
     }
 
     private void validateMeter(
-            String serviceCode, String meterCode, Instant eventTime, Map<String, String> dimensions) {
+            String serviceCode,
+            String meterCode,
+            Instant eventTime,
+            Map<String, String> dimensions) {
         List<Map<String, Object>> rows =
                 jdbcTemplate.queryForList(
                         "SELECT mv.dimension_keys FROM billing_service_catalog s "
@@ -138,7 +138,8 @@ public class BillingBaasUsageService {
             throw new PaymentGatewayException("Usage service/meter is not active at event time");
         }
         if (rows.size() > 1) {
-            throw new PaymentGatewayException("Multiple billing meter versions are effective at event time");
+            throw new PaymentGatewayException(
+                    "Multiple billing meter versions are effective at event time");
         }
         Object json = rows.get(0).get("dimension_keys");
         if (json == null || dimensions.isEmpty()) {

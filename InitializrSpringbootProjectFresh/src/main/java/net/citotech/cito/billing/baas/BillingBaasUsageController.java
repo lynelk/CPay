@@ -35,7 +35,13 @@ public class BillingBaasUsageController {
             @RequestBody UsageEventRequest body) {
         try {
             BillingBaasContext context =
-                    context(apiKey, environment, "BILLING_WRITE", requestId, "POST", "/usage/events");
+                    context(
+                            apiKey,
+                            environment,
+                            "BILLING_WRITE",
+                            requestId,
+                            "POST",
+                            "/usage/events");
             return ResponseEntity.ok(
                     usageService.ingest(
                             context,
@@ -87,7 +93,13 @@ public class BillingBaasUsageController {
                     Instant to) {
         try {
             BillingBaasContext context =
-                    context(apiKey, environment, "BILLING_READ", requestId, "GET", "/usage/summary");
+                    context(
+                            apiKey,
+                            environment,
+                            "BILLING_READ",
+                            requestId,
+                            "GET",
+                            "/usage/summary");
             return ResponseEntity.ok(usageService.summary(context, from, to));
         } catch (PaymentGatewayException | IllegalArgumentException e) {
             return error(e);
