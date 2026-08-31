@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Repository;
 /**
  * JDBC access to {@code billing_price_book_versions}/{@code billing_price_components} (Flyway
  * {@code V43}): read paths for {@link PriceResolver}/{@link RatingEngine}, write paths for {@link
- * PriceBookAuthoringService} (Slice 20).
+ * PriceBookAuthoringService}.
  */
 @Repository
 public class PriceBookRepository {
@@ -60,6 +61,18 @@ public class PriceBookRepository {
                         + "ORDER BY effective_from DESC LIMIT 1",
                 p,
                 this::mapVersion);
+    }
+
+    /** Exact immutable version lookup used by approved contract overrides. */
+    public Optional<PriceBookVersion> findVersionById(long id) {
+        List<PriceBookVersion> rows =
+                jdbcTemplate.query(
+                        "SELECT id, billing_tenant_id, service_code, meter_code, charge_type, currency, "
+                                + "version_no, effective_from, effective_to FROM billing_price_book_versions "
+                                + "WHERE id=:id LIMIT 1",
+                        new MapSqlParameterSource("id", id),
+                        this::mapVersion);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
     public List<PriceComponent> findComponents(long priceBookVersionId) {
