@@ -113,21 +113,22 @@ jobs:
 
       - name: Start services
         timeout-minutes: 5
-        continue-on-error: true
-        run: docker compose up -d --wait
+        run: docker compose up -d --wait --wait-timeout 240
 
       - name: Check services health
         timeout-minutes: 2
-        continue-on-error: true
         run: |
-          echo "Waiting for MySQL..."
-          timeout 60 bash -c 'until docker compose exec -T mysql mysqladmin ping -h 127.0.0.1 -ucpay -pcpay-local; do sleep 2; done' || true
+          echo "Checking MySQL..."
+          docker compose exec -T mysql mysqladmin ping -h 127.0.0.1 -ucpay -pcpay-local
 
-          echo "Waiting for backend..."
-          timeout 60 bash -c 'until curl -f http://localhost:8081/actuator/health; do sleep 2; done' || true
+          echo "Checking backend..."
+          curl --fail --show-error --silent http://localhost:8081/status/health > /dev/null
 
-          echo "Checking frontend..."
-          timeout 30 bash -c 'until curl -f http://localhost:3000; do sleep 2; done' || true
+          echo "Checking frontend readiness..."
+          curl --fail --show-error --silent http://localhost:3000/readyz > /dev/null
+
+          echo "Checking nginx edge..."
+          curl --fail --show-error --silent http://localhost/health > /dev/null
 
       - name: Dump Docker logs
         if: always()
