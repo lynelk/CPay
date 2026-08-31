@@ -3,6 +3,7 @@ services:
     image: mysql:8.4
     container_name: cpay-mysql
     restart: unless-stopped
+    command: ["--log-bin-trust-function-creators=1"]
     environment:
       MYSQL_ROOT_PASSWORD: cpay-local
       MYSQL_DATABASE: cpayadmin
