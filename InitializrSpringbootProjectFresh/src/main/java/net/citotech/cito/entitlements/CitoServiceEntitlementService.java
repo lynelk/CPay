@@ -6,12 +6,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Central fail-closed entitlement boundary for Cito product modules. */
+/** Central fail-closed entitlement boundary for every Cito product service code in V87. */
 @Service
 public class CitoServiceEntitlementService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -24,7 +25,7 @@ public class CitoServiceEntitlementService {
     public EntitlementDecision requireMerchantAccess(
             long merchantId, String serviceCode, String environment, String actor) {
         EntitlementDecision decision = evaluate(merchantId, serviceCode, environment, Instant.now());
-        audit(decision, merchantId, actor);
+        audit(decision, actor);
         if (!decision.allowed()) {
             throw new PaymentGatewayException(
                     "Cito service entitlement denied: "
@@ -51,21 +52,21 @@ public class CitoServiceEntitlementService {
 
         List<Map<String, Object>> catalog =
                 jdbcTemplate.queryForList(
-                        "SELECT service_code,lifecycle_status,default_sandbox_access,default_production_access "
+                        "SELECT service_code,status,default_sandbox_access "
                                 + "FROM cito_service_catalog WHERE service_code=:service LIMIT 1",
                         new MapSqlParameterSource("service", service));
         if (catalog.isEmpty()) {
             return new EntitlementDecision(false, service, env, null, "UNKNOWN_SERVICE");
         }
         Map<String, Object> serviceRow = catalog.get(0);
-        if (!"ACTIVE".equals(String.valueOf(serviceRow.get("lifecycle_status")))) {
+        if (!"ACTIVE".equals(String.valueOf(serviceRow.get("status")))) {
             return new EntitlementDecision(false, service, env, null, "SERVICE_NOT_ACTIVE");
         }
 
         List<Long> organizations =
                 jdbcTemplate.query(
                         "SELECT id FROM cito_organizations WHERE merchant_id=:merchant "
-                                + "AND organization_status='ACTIVE' ORDER BY id LIMIT 2",
+                                + "AND status='ACTIVE' ORDER BY id LIMIT 2",
                         new MapSqlParameterSource("merchant", merchantId),
                         (rs, rowNum) -> rs.getLong(1));
         if (organizations.size() > 1) {
@@ -76,7 +77,7 @@ public class CitoServiceEntitlementService {
         if (organizationId != null) {
             List<Map<String, Object>> rows =
                     jdbcTemplate.queryForList(
-                            "SELECT entitlement_status,valid_from,valid_to FROM cito_service_entitlements "
+                            "SELECT status,starts_at,ends_at FROM cito_service_entitlements "
                                     + "WHERE organization_id=:organization AND service_code=:service "
                                     + "AND environment=:environment LIMIT 1",
                             new MapSqlParameterSource()
@@ -85,12 +86,13 @@ public class CitoServiceEntitlementService {
                                     .addValue("environment", env));
             if (!rows.isEmpty()) {
                 Map<String, Object> row = rows.get(0);
-                String status = String.valueOf(row.get("entitlement_status"));
+                String status = String.valueOf(row.get("status"));
                 if (!"ACTIVE".equals(status)) {
                     return new EntitlementDecision(false, service, env, organizationId, "ENTITLEMENT_" + status);
                 }
-                Instant validFrom = ((Timestamp) row.get("valid_from")).toInstant();
-                Object validToValue = row.get("valid_to");
+                Object startValue = row.get("starts_at");
+                Instant validFrom = startValue == null ? Instant.EPOCH : ((Timestamp) startValue).toInstant();
+                Object validToValue = row.get("ends_at");
                 Instant validTo = validToValue == null ? null : ((Timestamp) validToValue).toInstant();
                 if (validFrom.isAfter(asOf) || (validTo != null && !validTo.isAfter(asOf))) {
                     return new EntitlementDecision(false, service, env, organizationId, "OUTSIDE_VALIDITY_WINDOW");
@@ -99,33 +101,37 @@ public class CitoServiceEntitlementService {
             }
         }
 
+        // Sandbox defaults are catalog-driven. Production deliberately has no implicit default in
+        // the V87 model, therefore production fails closed unless an ACTIVE entitlement exists.
         boolean defaultAccess =
                 "SANDBOX".equals(env)
-                        ? "YES".equals(String.valueOf(serviceRow.get("default_sandbox_access")))
-                        : "YES".equals(String.valueOf(serviceRow.get("default_production_access")));
+                        && "YES".equals(String.valueOf(serviceRow.get("default_sandbox_access")));
         return new EntitlementDecision(
                 defaultAccess,
                 service,
                 env,
                 organizationId,
-                defaultAccess ? "CATALOG_DEFAULT" : "NO_ACTIVE_ENTITLEMENT");
+                defaultAccess ? "CATALOG_SANDBOX_DEFAULT" : "NO_ACTIVE_ENTITLEMENT");
     }
 
-    private void audit(EntitlementDecision decision, long merchantId, String actor) {
+    private void audit(EntitlementDecision decision, String actor) {
         if (decision.organizationId() == null) {
             return;
         }
+        JSONObject detail = new JSONObject();
+        detail.put("serviceCode", decision.serviceCode());
+        detail.put("environment", decision.environment());
+        detail.put("decision", decision.allowed() ? "ALLOW" : "DENY");
+        detail.put("reason", decision.reason());
         jdbcTemplate.update(
-                "INSERT INTO cito_service_access_audit "
-                        + "(organization_id,service_code,environment,decision,reason,actor) "
-                        + "VALUES (:organization,:service,:environment,:decision,:reason,:actor)",
+                "INSERT INTO cito_access_events "
+                        + "(organization_id,event_type,target_reference,actor_reference,detail_json) "
+                        + "VALUES (:organization,'SERVICE_ENTITLEMENT_DECISION',:target,:actor,:detail)",
                 new MapSqlParameterSource()
                         .addValue("organization", decision.organizationId())
-                        .addValue("service", decision.serviceCode())
-                        .addValue("environment", decision.environment())
-                        .addValue("decision", decision.allowed() ? "ALLOW" : "DENY")
-                        .addValue("reason", decision.reason())
-                        .addValue("actor", actor == null || actor.isBlank() ? "system" : actor));
+                        .addValue("target", decision.serviceCode() + ":" + decision.environment())
+                        .addValue("actor", actor == null || actor.isBlank() ? "system" : actor)
+                        .addValue("detail", detail.toString()));
     }
 
     private String required(String value, String field) {
