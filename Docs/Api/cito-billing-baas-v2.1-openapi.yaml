@@ -3,27 +3,27 @@ info:
   title: Cito Billing & Monetization API
   version: 2.1.0
   description: |
-    Public Billing-as-a-Service contract for Cito. Requests use `X-Cito-Api-Key` and explicitly
-    select `SANDBOX` or `PRODUCTION` with `X-Cito-Environment`. Production fails closed unless
-    BaaS readiness and the Cito BILLING product entitlement are active. Existing CPay payment APIs
-    and Cito Billing v2.0 remain compatibility surfaces.
+    Public Billing-as-a-Service contract for Cito. Requests use X-Cito-Api-Key and explicitly
+    select SANDBOX or PRODUCTION with X-Cito-Environment. Production fails closed unless BaaS
+    readiness and the Cito BILLING product entitlement are active. Existing CPay payment APIs and
+    Cito Billing v2.0 remain compatibility surfaces.
 servers:
   - url: /
 security:
   - CitoBaasApiKey: []
 tags:
-  - {name: Customers}
-  - {name: Contracts}
-  - {name: Subscriptions}
-  - {name: Pricing}
-  - {name: Charging}
-  - {name: Usage}
-  - {name: Billing Center}
-  - {name: Webhooks}
-  - {name: Exports}
-  - {name: Protected Actions}
-  - {name: Administration}
-  - {name: Revenue Assurance}
+  - name: Customers
+  - name: Contracts
+  - name: Subscriptions
+  - name: Pricing
+  - name: Charging
+  - name: Usage
+  - name: Billing Center
+  - name: Webhooks
+  - name: Exports
+  - name: Protected Actions
+  - name: Administration
+  - name: Revenue Assurance
 
 paths:
   /api/v2/native/billing/baas/customers:
@@ -58,12 +58,31 @@ paths:
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/contracts/{reference}/submit:
-    $ref: '#/components/pathItems/ContractSubmit'
+    post:
+      tags: [Contracts]
+      operationId: submitBillingContract
+      x-sdk-operation-group: billing.contracts
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/contracts/{reference}/approve:
-    $ref: '#/components/pathItems/ContractApprove'
+    post:
+      tags: [Contracts]
+      operationId: approveBillingContract
+      x-sdk-operation-group: billing.contracts
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/contracts/{reference}/activate:
-    $ref: '#/components/pathItems/ContractActivate'
+    post:
+      tags: [Contracts]
+      operationId: activateBillingContract
+      x-sdk-operation-group: billing.contracts
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/contracts/{reference}/price-overrides:
     post:
       tags: [Contracts, Pricing]
@@ -72,6 +91,7 @@ paths:
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/price-overrides/{overrideId}/approve:
     post:
       tags: [Contracts, Pricing]
@@ -91,12 +111,31 @@ paths:
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/subscriptions/{reference}/activate:
-    $ref: '#/components/pathItems/SubscriptionActivate'
+    post:
+      tags: [Subscriptions]
+      operationId: activateBillingSubscription
+      x-sdk-operation-group: billing.subscriptions
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/subscriptions/{reference}/pause:
-    $ref: '#/components/pathItems/SubscriptionPause'
+    post:
+      tags: [Subscriptions]
+      operationId: pauseBillingSubscription
+      x-sdk-operation-group: billing.subscriptions
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/subscriptions/{reference}/cancel:
-    $ref: '#/components/pathItems/SubscriptionCancel'
+    post:
+      tags: [Subscriptions]
+      operationId: cancelBillingSubscription
+      x-sdk-operation-group: billing.subscriptions
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/subscriptions/{reference}/entitlements:
     post:
       tags: [Subscriptions]
@@ -125,6 +164,7 @@ paths:
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/charges/rate-and-authorize:
     post:
       tags: [Charging, Pricing]
@@ -134,6 +174,7 @@ paths:
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/charges/{reference}:
     get:
       tags: [Charging]
@@ -141,12 +182,30 @@ paths:
       x-sdk-operation-group: billing.charging
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/charges/{reference}/commit:
-    $ref: '#/components/pathItems/ChargeCommit'
+    post:
+      tags: [Charging]
+      operationId: commitBillingCharge
+      x-sdk-operation-group: billing.charging
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/charges/{reference}/release:
-    $ref: '#/components/pathItems/ChargeRelease'
+    post:
+      tags: [Charging]
+      operationId: releaseBillingCharge
+      x-sdk-operation-group: billing.charging
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/charges/{reference}/reverse:
-    $ref: '#/components/pathItems/ChargeReverse'
+    post:
+      tags: [Charging, Protected Actions]
+      operationId: reverseBillingCharge
+      x-sdk-operation-group: billing.charging
+      parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
+      responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
 
   /api/v2/native/billing/baas/usage/events:
     post:
@@ -165,11 +224,12 @@ paths:
       parameters:
         - {$ref: '#/components/parameters/CitoEnvironment'}
         - {$ref: '#/components/parameters/RequestId'}
-        - {name: from, in: query, schema: {type: string, format: date-time}}
-        - {name: to, in: query, schema: {type: string, format: date-time}}
-        - {name: serviceCode, in: query, schema: {type: string}}
-        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 100}}
+        - {name: from, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: serviceCode, in: query, required: false, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 500, default: 100}}
       responses: {'200': {$ref: '#/components/responses/ObjectList'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/usage/summary:
     get:
       tags: [Usage]
@@ -178,8 +238,8 @@ paths:
       parameters:
         - {$ref: '#/components/parameters/CitoEnvironment'}
         - {$ref: '#/components/parameters/RequestId'}
-        - {name: from, in: query, schema: {type: string, format: date-time}}
-        - {name: to, in: query, schema: {type: string, format: date-time}}
+        - {name: from, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date-time}}
       responses: {'200': {$ref: '#/components/responses/ObjectList'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
 
   /api/v2/native/billing/baas/invoices:
@@ -190,9 +250,10 @@ paths:
       parameters:
         - {$ref: '#/components/parameters/CitoEnvironment'}
         - {$ref: '#/components/parameters/RequestId'}
-        - {name: status, in: query, schema: {type: string}}
-        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+        - {name: status, in: query, required: false, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
       responses: {'200': {$ref: '#/components/responses/ObjectList'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/invoices/{invoiceNumber}:
     get:
       tags: [Billing Center]
@@ -204,6 +265,7 @@ paths:
         - {$ref: '#/components/parameters/RequestId'}
         - {name: invoiceNumber, in: path, required: true, schema: {type: string}}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/quotas:
     get:
       tags: [Billing Center]
@@ -211,6 +273,7 @@ paths:
       x-sdk-operation-group: billing.quotas
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       responses: {'200': {$ref: '#/components/responses/Object'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/entitlements:
     get:
       tags: [Billing Center]
@@ -218,6 +281,7 @@ paths:
       x-sdk-operation-group: billing.entitlements
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       responses: {'200': {$ref: '#/components/responses/ObjectList'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/catalog:
     get:
       tags: [Billing Center]
@@ -226,7 +290,7 @@ paths:
       parameters:
         - {$ref: '#/components/parameters/CitoEnvironment'}
         - {$ref: '#/components/parameters/RequestId'}
-        - {name: asOf, in: query, schema: {type: string, format: date-time}}
+        - {name: asOf, in: query, required: false, schema: {type: string, format: date-time}}
       responses: {'200': {$ref: '#/components/responses/ObjectList'}, '401': {$ref: '#/components/responses/Unauthorized'}}
 
   /api/v2/native/billing/baas/protected-actions:
@@ -237,6 +301,7 @@ paths:
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/protected-actions/{id}/approve:
     post:
       tags: [Protected Actions]
@@ -256,6 +321,7 @@ paths:
       x-sdk-operation-group: billing.webhooks
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       responses: {'200': {$ref: '#/components/responses/ObjectList'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/webhooks:
     get:
       tags: [Webhooks]
@@ -270,6 +336,7 @@ paths:
       parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/webhooks/{endpointId}/rotate-secret:
     post:
       tags: [Webhooks]
@@ -280,6 +347,7 @@ paths:
         - {$ref: '#/components/parameters/RequestId'}
         - {name: endpointId, in: path, required: true, schema: {type: integer, format: int64}}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/webhooks/deliveries:
     get:
       tags: [Webhooks]
@@ -288,8 +356,9 @@ paths:
       parameters:
         - {$ref: '#/components/parameters/CitoEnvironment'}
         - {$ref: '#/components/parameters/RequestId'}
-        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
       responses: {'200': {$ref: '#/components/responses/ObjectList'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/webhooks/deliveries/{deliveryId}/replay:
     post:
       tags: [Webhooks]
@@ -300,6 +369,7 @@ paths:
         - {$ref: '#/components/parameters/RequestId'}
         - {name: deliveryId, in: path, required: true, schema: {type: integer, format: int64}}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+
   /api/v2/native/billing/baas/webhooks/test:
     post:
       tags: [Webhooks]
@@ -323,8 +393,12 @@ paths:
       responses:
         '200':
           description: FOCUS 1.4 Cost and Usage CSV
-          headers: {X-Cito-FOCUS-Version: {schema: {type: string, const: '1.4'}}}
-          content: {text/csv: {schema: {type: string}}}
+          headers:
+            X-Cito-FOCUS-Version:
+              schema: {type: string, const: '1.4'}
+          content:
+            text/csv:
+              schema: {type: string}
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
 
@@ -335,6 +409,7 @@ paths:
       security: [{AdminBasicAuth: []}]
       parameters: [{$ref: '#/components/parameters/TenantId'}]
       responses: {'200': {$ref: '#/components/responses/Object'}}
+
   /api/v2/admin/billing/baas/tenants/{tenantId}/profile/review:
     post:
       tags: [Administration]
@@ -343,23 +418,24 @@ paths:
       parameters: [{$ref: '#/components/parameters/TenantId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}}
+
   /api/v2/admin/billing/baas/tenants/{tenantId}/profile/activate:
     post:
       tags: [Administration]
       operationId: activateBillingBaasTenant
-      description: Fails closed until legal, commercial, tax and funds-flow readiness are approved.
       security: [{AdminBasicAuth: []}]
       parameters: [{$ref: '#/components/parameters/TenantId'}]
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}}
+
   /api/v2/admin/billing/baas/tenants/{tenantId}/credentials:
     post:
       tags: [Administration]
       operationId: provisionBillingBaasCredential
-      description: Provisions scoped SANDBOX or PRODUCTION credentials and request/usage quotas.
       security: [{AdminBasicAuth: []}]
       parameters: [{$ref: '#/components/parameters/TenantId'}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}}
+
   /api/v2/admin/billing/baas/tenants/{tenantId}/accounts/{accountReference}/credit-limit:
     post:
       tags: [Administration]
@@ -370,6 +446,7 @@ paths:
         - {name: accountReference, in: path, required: true, schema: {type: string}}
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}}
+
   /api/v2/admin/billing/baas/tenants/{tenantId}/accounts/{accountReference}/top-ups:
     post:
       tags: [Administration]
@@ -380,6 +457,7 @@ paths:
         - {name: accountReference, in: path, required: true, schema: {type: string}}
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}}
+
   /api/v2/admin/billing/pricing/simulations/shadow:
     post:
       tags: [Pricing, Administration]
@@ -387,6 +465,7 @@ paths:
       security: [{AdminBasicAuth: []}]
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}}
+
   /api/v2/admin/billing/revenue-assurance/tenants/{tenantId}/summary:
     get:
       tags: [Revenue Assurance, Administration]
@@ -405,103 +484,83 @@ webhooks:
         - {name: X-CPay-Reference, in: header, required: true, deprecated: true, schema: {type: string}}
         - {name: X-CPay-Signature, in: header, required: true, deprecated: true, schema: {type: string}}
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
-      responses: {'2XX': {description: Receiver accepted webhook}}
+      responses:
+        '2XX': {description: Receiver accepted webhook}
 
 components:
   securitySchemes:
-    CitoBaasApiKey: {type: apiKey, in: header, name: X-Cito-Api-Key}
-    AdminBasicAuth: {type: http, scheme: basic}
+    CitoBaasApiKey:
+      type: apiKey
+      in: header
+      name: X-Cito-Api-Key
+    AdminBasicAuth:
+      type: http
+      scheme: basic
   parameters:
     CitoEnvironment:
       name: X-Cito-Environment
       in: header
       required: true
       schema: {type: string, enum: [SANDBOX, PRODUCTION]}
-    RequestId: {name: X-Request-Id, in: header, required: false, schema: {type: string, maxLength: 191}}
-    Reference: {name: reference, in: path, required: true, schema: {type: string, maxLength: 160}}
-    TenantId: {name: tenantId, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: {type: string, maxLength: 191}
+    Reference:
+      name: reference
+      in: path
+      required: true
+      schema: {type: string, maxLength: 160}
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
   requestBodies:
     GenericJson:
       required: true
-      content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/GenericObject'}
     OptionalJson:
       required: false
-      content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/GenericObject'}
   responses:
-    Object: {description: Successful response, content: {application/json: {schema: {$ref: '#/components/schemas/GenericObject'}}}}
-    ObjectList: {description: Successful list response, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/GenericObject'}}}}}
-    BadRequest: {description: Validation or protected business rule rejected the request, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-    Unauthorized: {description: Credential, scope, environment or product entitlement rejected the request, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-  pathItems:
-    ContractSubmit:
-      post:
-        tags: [Contracts]
-        operationId: submitBillingContract
-        x-sdk-operation-group: billing.contracts
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    ContractApprove:
-      post:
-        tags: [Contracts]
-        operationId: approveBillingContract
-        x-sdk-operation-group: billing.contracts
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    ContractActivate:
-      post:
-        tags: [Contracts]
-        operationId: activateBillingContract
-        x-sdk-operation-group: billing.contracts
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    SubscriptionActivate:
-      post:
-        tags: [Subscriptions]
-        operationId: activateBillingSubscription
-        x-sdk-operation-group: billing.subscriptions
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    SubscriptionPause:
-      post:
-        tags: [Subscriptions]
-        operationId: pauseBillingSubscription
-        x-sdk-operation-group: billing.subscriptions
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    SubscriptionCancel:
-      post:
-        tags: [Subscriptions]
-        operationId: cancelBillingSubscription
-        x-sdk-operation-group: billing.subscriptions
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    ChargeCommit:
-      post:
-        tags: [Charging]
-        operationId: commitBillingCharge
-        x-sdk-operation-group: billing.charging
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    ChargeRelease:
-      post:
-        tags: [Charging]
-        operationId: releaseBillingCharge
-        x-sdk-operation-group: billing.charging
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
-    ChargeReverse:
-      post:
-        tags: [Charging, Protected Actions]
-        operationId: reverseBillingCharge
-        x-sdk-operation-group: billing.charging
-        parameters: [{$ref: '#/components/parameters/CitoEnvironment'}, {$ref: '#/components/parameters/RequestId'}, {$ref: '#/components/parameters/Reference'}]
-        responses: {'200': {$ref: '#/components/responses/Object'}, '400': {$ref: '#/components/responses/BadRequest'}, '401': {$ref: '#/components/responses/Unauthorized'}}
+    Object:
+      description: Successful response
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/GenericObject'}
+    ObjectList:
+      description: Successful list response
+      content:
+        application/json:
+          schema:
+            type: array
+            items: {$ref: '#/components/schemas/GenericObject'}
+    BadRequest:
+      description: Validation or protected business rule rejected the request
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unauthorized:
+      description: 'Credential, scope, environment or product entitlement rejected the request'
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
   schemas:
-    GenericObject: {type: object, additionalProperties: true}
+    GenericObject:
+      type: object
+      additionalProperties: true
     Error:
       type: object
       required: [code, message]
-      properties: {code: {type: string}, message: {type: string}}
+      properties:
+        code: {type: string}
+        message: {type: string}
     UsageEventRequest:
       type: object
       required: [serviceCode, meterCode, quantity, sourceReference, idempotencyKey]
@@ -511,6 +570,8 @@ components:
         eventTime: {type: [string, 'null'], format: date-time}
         quantity: {type: number, exclusiveMinimum: 0}
         currency: {type: [string, 'null']}
-        dimensions: {type: object, additionalProperties: {type: string}}
+        dimensions:
+          type: object
+          additionalProperties: {type: string}
         sourceReference: {type: string}
         idempotencyKey: {type: string}
