@@ -69,14 +69,14 @@ services:
       - cpay-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/status/health"]
-      interval: 30s
+      interval: 20s
       timeout: 10s
-      retries: 3
-      start_period: 300s
+      retries: 5
+      start_period: 120s
 
   frontend:
     build:
-      context: ./Clientside
+      context: ./clientside
       dockerfile: Dockerfile
     container_name: cpay-frontend
     restart: unless-stopped
@@ -90,14 +90,22 @@ services:
       - "3000:3000"
     networks:
       - cpay-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
 
   nginx:
     image: nginx:latest-alpine
     container_name: cpay-nginx
     restart: unless-stopped
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     ports:
       - "80:80"
     volumes:
@@ -106,9 +114,10 @@ services:
       - cpay-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 6
+      start_period: 15s
 
 volumes:
   cpay_mysql:
