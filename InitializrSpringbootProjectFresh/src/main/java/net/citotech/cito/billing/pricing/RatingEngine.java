@@ -15,13 +15,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
- * Folds a resolved price book's components (in {@code sequence_no} order) into one rated charge.
- * {@code FLAT}, {@code PERCENTAGE}, and {@code TIER} each contribute a charge amount computed
- * against {@code baseAmount} - not compounded against each other or against a running total, since
- * real fee schedules don't charge a percentage of a percentage. {@code MINIMUM}/{@code MAXIMUM}
- * then clamp the accumulated total (e.g. "2.9% + flat fee, minimum X, maximum Y"). Rounding is
- * fixed at {@code HALF_UP} scale 2, recorded literally per rated charge (not just as a constant
- * reference) so an already-computed row stays reproducible even if the constant later changes.
+ * Deterministically folds an effective-dated price book's components into one rated charge.
+ * FLAT, PERCENTAGE and TIER components contribute against the base amount; MINIMUM/MAXIMUM clamp
+ * the accumulated total. The exact price-book version, tier path, formula inputs and rounding
+ * policy are retained by the rated-charge persistence layer for reproducibility.
  */
 @Service
 public class RatingEngine {
@@ -42,10 +39,7 @@ public class RatingEngine {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Empty when no active price book resolves for this key - not an error, just
-     * not-yet-configured.
-     */
+    /** Empty when no price book is effective for this key at {@code asOf}. */
     public Optional<RatedCharge> rate(
             Long billingTenantId,
             String serviceCode,
@@ -54,12 +48,29 @@ public class RatingEngine {
             BigDecimal baseAmount,
             String currency,
             Instant asOf) {
+        if (asOf == null) {
+            throw new IllegalArgumentException("asOf is required for deterministic rating");
+        }
+        if (baseAmount == null) {
+            throw new IllegalArgumentException("baseAmount is required for deterministic rating");
+        }
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException("currency is required for deterministic rating");
+        }
         Optional<PriceBookVersion> resolved =
-                priceResolver.resolve(billingTenantId, serviceCode, meterCode, chargeType);
+                priceResolver.resolve(
+                        billingTenantId, serviceCode, meterCode, chargeType, asOf);
         if (resolved.isEmpty()) {
             return Optional.empty();
         }
         PriceBookVersion version = resolved.get();
+        if (!version.currency().equalsIgnoreCase(currency.trim())) {
+            throw new IllegalStateException(
+                    "Resolved price-book currency "
+                            + version.currency()
+                            + " does not match rating currency "
+                            + currency);
+        }
         List<PriceComponent> components = priceBookRepository.findComponents(version.id());
 
         BigDecimal runningTotal = BigDecimal.ZERO;
@@ -101,14 +112,20 @@ public class RatingEngine {
 
         BigDecimal ratedAmount = runningTotal.setScale(ROUNDING_SCALE, ROUNDING_MODE);
         Map<String, Object> formulaInputs = new LinkedHashMap<>();
+        formulaInputs.put("billingTenantId", billingTenantId);
+        formulaInputs.put("serviceCode", serviceCode);
+        formulaInputs.put("meterCode", meterCode);
+        formulaInputs.put("chargeType", chargeType);
         formulaInputs.put("baseAmount", baseAmount);
+        formulaInputs.put("currency", currency.trim().toUpperCase());
+        formulaInputs.put("asOf", asOf.toString());
         formulaInputs.put("componentCount", components.size());
 
         return Optional.of(
                 new RatedCharge(
                         version.id(),
                         ratedAmount,
-                        currency,
+                        version.currency(),
                         ROUNDING_POLICY,
                         writeJson(tierPath),
                         writeJson(formulaInputs)));
