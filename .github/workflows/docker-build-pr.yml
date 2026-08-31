@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - production
     paths:
       - "InitializrSpringbootProjectFresh/**"
       - "clientside/**"
@@ -157,5 +158,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🐳 Docker Build Status\n\n| Component | Status |\n|-----------|--------|\n| Backend | ${backend} |\n| Frontend | ${frontend} |\n| Nginx | ${nginx} |\n| Compose Stack | ${compose} |\n\nImages built but not pushed (PR check only). Merge to \`main\` or \`develop\` to build and push to registry.`
+              body: `## 🐳 Docker Build Status\n\n| Component | Status |\n|-----------|--------|\n| Backend | ${backend} |\n| Frontend | ${frontend} |\n| Nginx | ${nginx} |\n| Compose Stack | ${compose} |\n\nImages built but not pushed (PR check only). Merge to \`main\`, \`develop\`, or \`production\` to build and push to registry.`
             });
