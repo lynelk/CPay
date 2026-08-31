@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - production
     paths:
       - "InitializrSpringbootProjectFresh/**"
       - "clientside/**"
@@ -113,21 +114,31 @@ jobs:
 
       - name: Start services
         timeout-minutes: 5
-        continue-on-error: true
-        run: docker compose up -d --wait
+        run: docker compose up -d --wait --wait-timeout 240
 
       - name: Check services health
         timeout-minutes: 2
-        continue-on-error: true
         run: |
-          echo "Waiting for MySQL..."
-          timeout 60 bash -c 'until docker compose exec -T mysql mysqladmin ping -h 127.0.0.1 -ucpay -pcpay-local; do sleep 2; done' || true
+          echo "Checking MySQL..."
+          docker compose exec -T mysql mysqladmin ping -h 127.0.0.1 -ucpay -pcpay-local
 
-          echo "Waiting for backend..."
-          timeout 60 bash -c 'until curl -f http://localhost:8081/actuator/health; do sleep 2; done' || true
+          echo "Checking backend..."
+          curl --fail --show-error --silent http://localhost:8081/status/health > /dev/null
 
-          echo "Checking frontend..."
-          timeout 30 bash -c 'until curl -f http://localhost:3000; do sleep 2; done' || true
+          echo "Checking backend scheduler lock directory..."
+          docker compose exec -T backend sh -c 'test -d /tmp/cpay-locks && test -w /tmp/cpay-locks'
+
+          echo "Checking frontend readiness..."
+          curl --fail --show-error --silent http://localhost:3000/readyz > /dev/null
+
+          echo "Checking nginx edge..."
+          curl --fail --show-error --silent http://localhost/health > /dev/null
+
+          echo "Checking backend scheduler logs..."
+          if docker compose logs backend 2>&1 | grep -Eq 'HANDLING_INITIAL_PROCESS IOException:.*/tmp/cpay-locks|PAYMENTS CRON IOException: No such file or directory'; then
+            echo "Backend scheduler emitted a lock-directory runtime error" >&2
+            exit 1
+          fi
 
       - name: Dump Docker logs
         if: always()
@@ -156,5 +167,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🐳 Docker Build Status\n\n| Component | Status |\n|-----------|--------|\n| Backend | ${backend} |\n| Frontend | ${frontend} |\n| Nginx | ${nginx} |\n| Compose Stack | ${compose} |\n\nImages built but not pushed (PR check only). Merge to \`main\` or \`develop\` to build and push to registry.`
+              body: `## 🐳 Docker Build Status\n\n| Component | Status |\n|-----------|--------|\n| Backend | ${backend} |\n| Frontend | ${frontend} |\n| Nginx | ${nginx} |\n| Compose Stack | ${compose} |\n\nImages built but not pushed (PR check only). Merge to \`main\`, \`develop\`, or \`production\` to build and push to registry.`
             });

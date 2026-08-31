@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - production
       - "release/**"
     paths:
       - "InitializrSpringbootProjectFresh/**"
