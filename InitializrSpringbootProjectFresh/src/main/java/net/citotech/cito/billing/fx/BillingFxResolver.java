@@ -6,7 +6,9 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -59,6 +61,10 @@ public class BillingFxResolver {
         return amount.multiply(rate.rate()).setScale(4, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Retains immutable FX evidence. Replaying the same artifact/pair is allowed only when every
+     * commercial attribute matches the original snapshot; a conflicting replay fails closed.
+     */
     @Transactional
     public void snapshot(
             long billingTenantId,
@@ -68,23 +74,51 @@ public class BillingFxResolver {
         if (billingTenantId <= 0 || blank(artifactType) || blank(artifactReference) || rate == null) {
             throw new PaymentGatewayException("FX snapshot requires tenant, artifact and resolved rate");
         }
-        jdbcTemplate.update(
-                "INSERT INTO billing_fx_snapshots "
-                        + "(billing_tenant_id,artifact_type,artifact_reference,source_currency,target_currency,"
-                        + "rate,source_fx_rate_id,provider,rate_as_of) "
-                        + "VALUES (:tenant,:artifact_type,:artifact_reference,:source,:target,:rate,:source_id,:provider,:as_of) "
-                        + "ON DUPLICATE KEY UPDATE rate=VALUES(rate),source_fx_rate_id=VALUES(source_fx_rate_id),"
-                        + "provider=VALUES(provider),rate_as_of=VALUES(rate_as_of)",
+        String type = artifactType.trim().toUpperCase(Locale.ROOT);
+        String reference = artifactReference.trim();
+        MapSqlParameterSource p =
                 new MapSqlParameterSource()
                         .addValue("tenant", billingTenantId)
-                        .addValue("artifact_type", artifactType.trim().toUpperCase(Locale.ROOT))
-                        .addValue("artifact_reference", artifactReference.trim())
+                        .addValue("artifact_type", type)
+                        .addValue("artifact_reference", reference)
                         .addValue("source", rate.sourceCurrency())
                         .addValue("target", rate.targetCurrency())
                         .addValue("rate", rate.rate())
                         .addValue("source_id", rate.sourceFxRateId())
                         .addValue("provider", rate.provider())
-                        .addValue("as_of", Timestamp.from(rate.rateAsOf())));
+                        .addValue("as_of", Timestamp.from(rate.rateAsOf()));
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO billing_fx_snapshots "
+                            + "(billing_tenant_id,artifact_type,artifact_reference,source_currency,target_currency,"
+                            + "rate,source_fx_rate_id,provider,rate_as_of) "
+                            + "VALUES (:tenant,:artifact_type,:artifact_reference,:source,:target,:rate,:source_id,:provider,:as_of)",
+                    p);
+        } catch (DuplicateKeyException duplicate) {
+            List<Map<String, Object>> rows =
+                    jdbcTemplate.queryForList(
+                            "SELECT billing_tenant_id,rate,source_fx_rate_id,provider,rate_as_of "
+                                    + "FROM billing_fx_snapshots WHERE artifact_type=:artifact_type "
+                                    + "AND artifact_reference=:artifact_reference AND source_currency=:source "
+                                    + "AND target_currency=:target LIMIT 1",
+                            p);
+            if (rows.isEmpty()) {
+                throw duplicate;
+            }
+            Map<String, Object> existing = rows.get(0);
+            Long existingSource =
+                    existing.get("source_fx_rate_id") == null
+                            ? null
+                            : ((Number) existing.get("source_fx_rate_id")).longValue();
+            if (((Number) existing.get("billing_tenant_id")).longValue() != billingTenantId
+                    || ((BigDecimal) existing.get("rate")).compareTo(rate.rate()) != 0
+                    || !java.util.Objects.equals(existingSource, rate.sourceFxRateId())
+                    || !java.util.Objects.equals(existing.get("provider"), rate.provider())
+                    || !((Timestamp) existing.get("rate_as_of")).toInstant().equals(rate.rateAsOf())) {
+                throw new PaymentGatewayException(
+                        "FX snapshot already exists with different immutable evidence");
+            }
+        }
     }
 
     private List<ResolvedFxRate> find(String source, String target, Instant asOf) {
