@@ -28,7 +28,17 @@ export function apiUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) {
     return path;
   }
+
   const base = API_BASE.replace(/\/$/, '');
   const suffix = path.startsWith('/') ? path : `/${path}`;
+
+  // Keep URL normalization idempotent. Some legacy call sites already pass a
+  // value through apiUrl() before handing it to apiFetch(), which normalizes
+  // again. Without this guard those calls became /api/ui/api/ui/... in
+  // production and never matched the nginx UI proxy namespace correctly.
+  if (suffix === base || suffix.startsWith(`${base}/`)) {
+    return suffix;
+  }
+
   return `${base}${suffix}`;
 }
