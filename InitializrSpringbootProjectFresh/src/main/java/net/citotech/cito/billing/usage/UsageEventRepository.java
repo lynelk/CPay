@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,7 +17,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Repository;
 
-/** Append-only JDBC access to {@code billing_usage_events} (Flyway {@code V40}). */
+/** Append-only JDBC access to {@code billing_usage_events} (Flyway {@code V40/V107}). */
 @Repository
 public class UsageEventRepository {
     private static final String SELECT_SQL =
@@ -33,24 +34,55 @@ public class UsageEventRepository {
         this.objectMapper = objectMapper;
     }
 
-    public Optional<UsageEvent> findByIdempotencyKey(String idempotencyKey) {
-        SqlParameterSource p = new MapSqlParameterSource("idempotency_key", idempotencyKey);
+    /**
+     * Tenant-scoped lookup. Public/multi-tenant call paths must use this method so the same
+     * external idempotency key used by two tenants cannot disclose or suppress the other tenant's
+     * event.
+     */
+    public Optional<UsageEvent> findByIdempotencyKey(long billingTenantId, String idempotencyKey) {
+        SqlParameterSource p =
+                new MapSqlParameterSource()
+                        .addValue("billing_tenant_id", billingTenantId)
+                        .addValue("idempotency_key", idempotencyKey);
         List<UsageEvent> rows =
                 jdbcTemplate.query(
-                        SELECT_SQL + " WHERE idempotency_key=:idempotency_key", p, this::mapRow);
+                        SELECT_SQL
+                                + " WHERE billing_tenant_id=:billing_tenant_id "
+                                + "AND idempotency_key=:idempotency_key",
+                        p,
+                        this::mapRow);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
     /**
-     * Inserts {@code event} and returns the persisted row, unless a row with the same {@code
-     * idempotencyKey} already exists - a caller retry (e.g. a redelivered callback) - in which case
-     * the pre-existing row is returned unchanged and nothing new is inserted. Safe under concurrent
-     * callers racing the same key: a duplicate-key insert failure is treated the same as finding
-     * the row up front, never propagated as an error.
+     * Legacy global lookup retained only for backward-compatible internal diagnostics. New
+     * production paths must use the tenant-scoped overload.
+     */
+    @Deprecated(forRemoval = false)
+    public Optional<UsageEvent> findByIdempotencyKey(String idempotencyKey) {
+        SqlParameterSource p = new MapSqlParameterSource("idempotency_key", idempotencyKey);
+        List<UsageEvent> rows =
+                jdbcTemplate.query(
+                        SELECT_SQL + " WHERE idempotency_key=:idempotency_key ORDER BY id LIMIT 2",
+                        p,
+                        this::mapRow);
+        if (rows.size() > 1) {
+            throw new IllegalStateException(
+                    "Usage idempotency key exists in multiple tenants; tenant context is required");
+        }
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    /**
+     * Inserts {@code event} and returns the tenant's persisted row. The unique key is
+     * (billing_tenant_id,idempotency_key), so a retry is idempotent within one tenant without
+     * coupling unrelated tenants.
      */
     public UsageEvent insertIfAbsent(UsageEvent event) {
-        Optional<UsageEvent> existing = findByIdempotencyKey(event.idempotencyKey());
+        Optional<UsageEvent> existing =
+                findByIdempotencyKey(event.billingTenantId(), event.idempotencyKey());
         if (existing.isPresent()) {
+            validateReplay(existing.get(), event);
             return existing.get();
         }
 
@@ -73,15 +105,52 @@ public class UsageEventRepository {
                             + ":currency, :dimensions, :source_reference, :idempotency_key)",
                     p);
         } catch (DuplicateKeyException raced) {
-            return findByIdempotencyKey(event.idempotencyKey()).orElseThrow(() -> raced);
+            UsageEvent winner =
+                    findByIdempotencyKey(event.billingTenantId(), event.idempotencyKey())
+                            .orElseThrow(() -> raced);
+            validateReplay(winner, event);
+            return winner;
         }
 
-        return findByIdempotencyKey(event.idempotencyKey())
+        return findByIdempotencyKey(event.billingTenantId(), event.idempotencyKey())
                 .orElseThrow(
                         () ->
                                 new IllegalStateException(
                                         "Inserted usage event not found: "
                                                 + event.idempotencyKey()));
+    }
+
+    public List<UsageEvent> findForTenant(
+            long billingTenantId, Instant from, Instant to, String serviceCode, int limit) {
+        MapSqlParameterSource p =
+                new MapSqlParameterSource()
+                        .addValue("tenant", billingTenantId)
+                        .addValue("from", Timestamp.from(from))
+                        .addValue("to", Timestamp.from(to))
+                        .addValue("service", serviceCode)
+                        .addValue("limit", Math.max(1, Math.min(limit, 500)));
+        String serviceFilter =
+                serviceCode == null || serviceCode.isBlank() ? "" : " AND service_code=:service";
+        return jdbcTemplate.query(
+                SELECT_SQL
+                        + " WHERE billing_tenant_id=:tenant AND event_time>=:from AND event_time<:to"
+                        + serviceFilter
+                        + " ORDER BY event_time DESC,id DESC LIMIT :limit",
+                p,
+                this::mapRow);
+    }
+
+    private void validateReplay(UsageEvent existing, UsageEvent requested) {
+        if (existing.billingTenantId() != requested.billingTenantId()
+                || !java.util.Objects.equals(existing.serviceCode(), requested.serviceCode())
+                || !java.util.Objects.equals(existing.meterCode(), requested.meterCode())
+                || existing.quantity().compareTo(requested.quantity()) != 0
+                || !java.util.Objects.equals(existing.currency(), requested.currency())
+                || !java.util.Objects.equals(
+                        existing.sourceReference(), requested.sourceReference())) {
+            throw new IllegalArgumentException(
+                    "Usage idempotency key was already used with different event attributes");
+        }
     }
 
     private String writeDimensions(Map<String, String> dimensions) {

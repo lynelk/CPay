@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Locale;
+import net.citotech.cito.entitlements.CitoServiceEntitlementService;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -16,9 +17,13 @@ public class BillingBaasApiKeyService {
     private static final int DEFAULT_REQUESTS_PER_MINUTE = 300;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final CitoServiceEntitlementService entitlementService;
 
-    public BillingBaasApiKeyService(NamedParameterJdbcTemplate jdbcTemplate) {
+    public BillingBaasApiKeyService(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            CitoServiceEntitlementService entitlementService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.entitlementService = entitlementService;
     }
 
     @Transactional
@@ -82,6 +87,15 @@ public class BillingBaasApiKeyService {
                     "BaaS credential resolves to multiple billing tenants; project mapping must be unique");
         }
         BillingBaasContext context = contexts.get(0);
+
+        // Product access is a separate decision from credential/scope validity. Keeping both gates
+        // prevents an otherwise-valid developer key from invoking a suspended Cito module.
+        entitlementService.requireMerchantAccess(
+                context.merchantId(),
+                "BILLING",
+                context.environment(),
+                "SERVICE_ACCOUNT:" + context.serviceAccountId());
+
         enforceQuota(context);
         jdbcTemplate.update(
                 "UPDATE developer_credentials SET last_used_at=CURRENT_TIMESTAMP "

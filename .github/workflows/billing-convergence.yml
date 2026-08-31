@@ -1,0 +1,161 @@
+name: Billing Convergence Gates
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  DB_URL: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
+  DB_USERNAME: sa
+  DB_PASSWORD: ""
+  MAIL_USERNAME: noreply@example.com
+  MAIL_PASSWORD: ""
+  LOCK_FILE_DIR: /tmp/cito/locks
+  ACTUATOR_USERNAME: ci-actuator
+  ACTUATOR_PASSWORD: ci-actuator-password
+  ADMIN_API_USERNAME: ci-admin
+  ADMIN_API_PASSWORD: ci-admin-password
+  CALLBACK_SIGNING_SECRET: ci-callback-secret
+
+jobs:
+  requirements-contract:
+    name: Frozen 42 Requirements
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify frozen requirement IDs and count
+        run: |
+          python - <<'PY'
+          import pathlib, re
+          path = pathlib.Path('Docs/Requirements/Cito-42-requirements-traceability.md')
+          assert path.is_file(), 'Frozen Cito billing requirements matrix is missing'
+          text = path.read_text(encoding='utf-8')
+          table_ids = re.findall(r'^\| (CITO-BILL-\d{3}) \|', text, re.M)
+          expected = [f'CITO-BILL-{i:03d}' for i in range(1, 43)]
+          assert table_ids == expected, f'Requirement table must be exactly 001..042 in order: {table_ids}'
+          assert len(set(table_ids)) == 42, 'Requirement IDs must be unique'
+          assert '**Status:** FROZEN baseline' in text, 'Matrix must remain explicitly frozen'
+          PY
+
+  baas-openapi-contract:
+    name: BaaS OpenAPI and SDK Contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install OpenAPI validators
+        run: python -m pip install --disable-pip-version-check pyyaml==6.0.2 openapi-spec-validator==0.7.2
+      - name: Validate OpenAPI 3.1 schema
+        run: openapi-spec-validator Docs/Api/cito-billing-baas-v2.1-openapi.yaml
+      - name: Verify complete v2.1 operation surface and unique SDK operation IDs
+        run: |
+          python - <<'PY'
+          import pathlib, yaml
+          path = pathlib.Path('Docs/Api/cito-billing-baas-v2.1-openapi.yaml')
+          spec = yaml.safe_load(path.read_text(encoding='utf-8'))
+          required = {
+            '/api/v2/native/billing/baas/customers': {'get','post'},
+            '/api/v2/native/billing/baas/accounts': {'post'},
+            '/api/v2/native/billing/baas/contracts': {'post'},
+            '/api/v2/native/billing/baas/contracts/{reference}/price-overrides': {'post'},
+            '/api/v2/native/billing/baas/price-overrides/{overrideId}/approve': {'post'},
+            '/api/v2/native/billing/baas/subscriptions': {'post'},
+            '/api/v2/native/billing/baas/pricing/quotes': {'post'},
+            '/api/v2/native/billing/baas/charges': {'post'},
+            '/api/v2/native/billing/baas/charges/rate-and-authorize': {'post'},
+            '/api/v2/native/billing/baas/usage/events': {'get','post'},
+            '/api/v2/native/billing/baas/usage/summary': {'get'},
+            '/api/v2/native/billing/baas/invoices': {'get'},
+            '/api/v2/native/billing/baas/invoices/{invoiceNumber}': {'get'},
+            '/api/v2/native/billing/baas/quotas': {'get'},
+            '/api/v2/native/billing/baas/entitlements': {'get'},
+            '/api/v2/native/billing/baas/catalog': {'get'},
+            '/api/v2/native/billing/baas/webhooks': {'get','post'},
+            '/api/v2/native/billing/baas/webhooks/deliveries': {'get'},
+            '/api/v2/native/billing/baas/exports/focus': {'get'},
+            '/api/v2/admin/billing/baas/tenants/{tenantId}/profile/activate': {'post'},
+            '/api/v2/admin/billing/baas/tenants/{tenantId}/credentials': {'post'},
+            '/api/v2/admin/billing/pricing/simulations/shadow': {'post'},
+            '/api/v2/admin/billing/revenue-assurance/tenants/{tenantId}/summary': {'get'},
+          }
+          paths = spec['paths']
+          path_items = spec['components'].get('pathItems', {})
+          def resolved_item(route):
+              item = paths[route]
+              ref = item.get('$ref') if isinstance(item, dict) else None
+              if ref and ref.startswith('#/components/pathItems/'):
+                  return path_items[ref.rsplit('/', 1)[-1]]
+              return item
+          for route, methods in required.items():
+              assert route in paths, f'Missing BaaS route {route}'
+              item = resolved_item(route)
+              assert methods.issubset(item), f'Missing method for {route}: {methods - set(item)}'
+          operation_ids = []
+          for route in paths:
+              item = resolved_item(route)
+              for method, op in item.items():
+                  if method not in {'get','post','put','patch','delete','head','options','trace'}:
+                      continue
+                  assert op.get('operationId'), f'{method.upper()} {route} has no operationId'
+                  operation_ids.append(op['operationId'])
+          for name, item in path_items.items():
+              if any(paths[p].get('$ref','').endswith('/'+name) for p in paths if isinstance(paths[p], dict)):
+                  continue
+              for method, op in item.items():
+                  if method in {'get','post','put','patch','delete','head','options','trace'}:
+                      operation_ids.append(op['operationId'])
+          assert len(operation_ids) == len(set(operation_ids)), 'OpenAPI operationId values must be unique'
+          assert spec['components']['securitySchemes']['CitoBaasApiKey']['name'] == 'X-Cito-Api-Key'
+          assert 'invoiceIssued' in spec.get('webhooks', {})
+          PY
+      - name: Verify public contract routes are backed by controllers
+        run: |
+          set -euo pipefail
+          grep -q '@RequestMapping("/api/v2/native/billing/baas")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/baas/BillingBaasController.java
+          grep -q '@RequestMapping("/api/v2/native/billing/baas")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/baas/BillingBaasPricingController.java
+          grep -q '@RequestMapping("/api/v2/native/billing/baas/usage")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/baas/BillingBaasUsageController.java
+          grep -q '@RequestMapping("/api/v2/native/billing/baas")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/baas/BillingBaasBillingCenterController.java
+          grep -q '@RequestMapping("/api/v2/native/billing/baas/webhooks")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/baas/BillingBaasWebhookController.java
+          grep -q '@RequestMapping("/api/v2/native/billing/baas/exports")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/export/BillingBaasExportController.java
+          grep -q '@RequestMapping("/api/v2/admin/billing/baas")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/baas/BillingBaasAdminController.java
+          grep -q '@RequestMapping("/api/v2/admin/billing/pricing/simulations")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/pricing/PricingSimulationController.java
+          grep -q '@RequestMapping("/api/v2/admin/billing/revenue-assurance")' InitializrSpringbootProjectFresh/src/main/java/net/citotech/cito/billing/reconciliation/RevenueAssuranceAdminController.java
+
+  billing-behavioural-release-gates:
+    name: Billing Financial, Entitlement and Isolation Gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: InitializrSpringbootProjectFresh
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: maven
+      - name: Run release-blocking behaviour and invariant tests
+        run: >-
+          mvn -B test --no-transfer-progress
+          -Dspring.flyway.enabled=false
+          -Dtest=RatingEngineTest,TierCalculatorTest,PriceResolverTest,PriceBookAuthoringServiceTest,ChargeShadowComparisonServiceTest,PricingSimulationControllerTest,BillingBaasP0HardeningTest,BillingFinancialIntegrityRegressionTest,BillingFinancialInvariantReleaseGateTest,BillingEffectiveDateReleaseGateTest,BillingTenantIsolationReleaseGateTest,UsageTenantIsolationReleaseGateTest,CitoServiceEntitlementReleaseGateTest,FocusExportServiceTest,RevenueAssuranceServiceTest,DoubleEntryLedgerServiceTest
+
+  convergence-summary:
+    name: Billing Convergence Summary
+    runs-on: ubuntu-latest
+    needs: [requirements-contract, baas-openapi-contract, billing-behavioural-release-gates]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Confirm platform source-of-truth assets
+        run: |
+          test -s Docs/Architecture/Cito-Platform-Architecture.md
+          test -s Docs/Compatibility/CPay-to-Cito-compatibility.md
+          test -s Docs/Requirements/Cito-42-requirements-traceability.md
+          test -s Docs/Api/cito-billing-baas-v2-openapi.yaml
+          test -s Docs/Api/cito-billing-baas-v2.1-openapi.yaml
