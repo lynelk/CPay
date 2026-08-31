@@ -1,14 +1,14 @@
 package net.citotech.cito.billing.pricing;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
- * Resolves the active price-book version for a tenant/service/meter/chargeType, mirroring {@code
- * fees.FeeScheduleService#currentSchedule}'s merchant-override-then-global lookup pattern: a
- * tenant-specific version wins over the global ({@code billing_tenant_id IS NULL}) one when both
- * exist.
+ * Resolves an effective price-book version for a tenant/service/meter/chargeType. Tenant-specific
+ * pricing wins over the global default. Rating paths must supply the event/business time; the
+ * compatibility overload resolves at the current instant for admin/current-price reads.
  */
 @Service
 public class PriceResolver {
@@ -20,16 +20,28 @@ public class PriceResolver {
 
     public Optional<PriceBookVersion> resolve(
             Long billingTenantId, String serviceCode, String meterCode, String chargeType) {
+        return resolve(billingTenantId, serviceCode, meterCode, chargeType, Instant.now());
+    }
+
+    public Optional<PriceBookVersion> resolve(
+            Long billingTenantId,
+            String serviceCode,
+            String meterCode,
+            String chargeType,
+            Instant asOf) {
+        if (asOf == null) {
+            throw new IllegalArgumentException("asOf is required for effective-dated price resolution");
+        }
         if (billingTenantId != null) {
             List<PriceBookVersion> tenantSpecific =
-                    repository.findActiveVersions(
-                            billingTenantId, serviceCode, meterCode, chargeType);
+                    repository.findVersionsAt(
+                            billingTenantId, serviceCode, meterCode, chargeType, asOf);
             if (!tenantSpecific.isEmpty()) {
                 return Optional.of(tenantSpecific.get(0));
             }
         }
         List<PriceBookVersion> global =
-                repository.findActiveVersions(null, serviceCode, meterCode, chargeType);
+                repository.findVersionsAt(null, serviceCode, meterCode, chargeType, asOf);
         return global.isEmpty() ? Optional.empty() : Optional.of(global.get(0));
     }
 }
