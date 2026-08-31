@@ -125,11 +125,20 @@ jobs:
           echo "Checking backend..."
           curl --fail --show-error --silent http://localhost:8081/status/health > /dev/null
 
+          echo "Checking backend scheduler lock directory..."
+          docker compose exec -T backend sh -c 'test -d /tmp/cpay-locks && test -w /tmp/cpay-locks'
+
           echo "Checking frontend readiness..."
           curl --fail --show-error --silent http://localhost:3000/readyz > /dev/null
 
           echo "Checking nginx edge..."
           curl --fail --show-error --silent http://localhost/health > /dev/null
+
+          echo "Checking backend scheduler logs..."
+          if docker compose logs backend 2>&1 | grep -Eq 'HANDLING_INITIAL_PROCESS IOException:.*/tmp/cpay-locks|PAYMENTS CRON IOException: No such file or directory'; then
+            echo "Backend scheduler emitted a lock-directory runtime error" >&2
+            exit 1
+          fi
 
       - name: Dump Docker logs
         if: always()
