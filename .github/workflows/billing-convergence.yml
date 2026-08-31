@@ -115,7 +115,7 @@ jobs:
         run: >-
           mvn -B test --no-transfer-progress
           -Dspring.flyway.enabled=false
-          -Dtest=RatingEngineTest,TierCalculatorTest,PriceResolverTest,PriceBookAuthoringServiceTest,ChargeShadowComparisonServiceTest,PricingSimulationControllerTest,BillingBaasP0HardeningTest,BillingFinancialIntegrityRegressionTest,BillingTenantIsolationReleaseGateTest,FocusExportServiceTest,RevenueAssuranceServiceTest,DoubleEntryLedgerServiceTest
+          -Dtest=RatingEngineTest,TierCalculatorTest,PriceResolverTest,PriceBookAuthoringServiceTest,ChargeShadowComparisonServiceTest,PricingSimulationControllerTest,BillingBaasP0HardeningTest,BillingFinancialIntegrityRegressionTest,BillingFinancialInvariantReleaseGateTest,BillingTenantIsolationReleaseGateTest,FocusExportServiceTest,RevenueAssuranceServiceTest,DoubleEntryLedgerServiceTest
 
   convergence-summary:
     name: Billing Convergence Summary
