@@ -3,9 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
-    "watchPatterns": [
-      "InitializrSpringbootProjectFresh/**"
-    ]
+    "watchPatterns": ["InitializrSpringbootProjectFresh/**"]
   },
   "deploy": {
     "startCommand": "sh /app/start.sh",
@@ -14,7 +12,7 @@
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "multiRegionConfig": {
-      "europe-west4-drams3a": {
+      "ams": {
         "numReplicas": 2
       }
     }
