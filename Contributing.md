@@ -98,7 +98,7 @@ Every defect fix should add a regression test that would have failed before the 
 
 `mvn verify` enforces Spotless on changed Java files. Remove unused imports, stale comments, duplicate helpers and dead code only when usage is proven. Do not delete a compatibility API merely because its name looks old.
 
-When consolidating duplicated logic, keep one canonical implementation and make unavoidable legacy wrappers delegate to it. `Amount` and `MoneyAmount` are an example: `MoneyAmount` owns precision policy; the legacy wrapper must not invent a second one.
+When consolidating duplicated logic, keep one canonical implementation. The obsolete root-package `Amount` helper was removed after repository-wide reference checks showed no callers; `MoneyAmount` is now the sole application precision helper.
 
 ## Security-sensitive changes
 
