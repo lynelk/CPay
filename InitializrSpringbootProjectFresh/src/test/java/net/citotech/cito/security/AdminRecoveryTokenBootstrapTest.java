@@ -15,8 +15,7 @@ class AdminRecoveryTokenBootstrapTest {
     @Test
     void remainsDisabledWhenRecoveryPropertiesAreBlank() {
         AdminRecoveryTokenIssuer issuer = mock(AdminRecoveryTokenIssuer.class);
-        AdminRecoveryTokenBootstrap bootstrap =
-                new AdminRecoveryTokenBootstrap(issuer, "", "");
+        AdminRecoveryTokenBootstrap bootstrap = new AdminRecoveryTokenBootstrap(issuer, "", "");
 
         bootstrap.run(new DefaultApplicationArguments());
 

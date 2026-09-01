@@ -63,13 +63,12 @@ public class AdminRecoveryTokenIssuer {
         }
 
         long accountId = ((Number) account.get("id")).longValue();
-        String canonicalEmail = String.valueOf(account.get("email")).trim().toLowerCase(Locale.ROOT);
+        String canonicalEmail =
+                String.valueOf(account.get("email")).trim().toLowerCase(Locale.ROOT);
         Instant issuedAt = Instant.now();
-        Timestamp expiresAt =
-                Timestamp.from(issuedAt.plus(expiryMinutes, ChronoUnit.MINUTES));
+        Timestamp expiresAt = Timestamp.from(issuedAt.plus(expiryMinutes, ChronoUnit.MINUTES));
         Timestamp legacyWindowStart =
-                Timestamp.from(
-                        issuedAt.plus(Math.max(0L, expiryMinutes - 5L), ChronoUnit.MINUTES));
+                Timestamp.from(issuedAt.plus(Math.max(0L, expiryMinutes - 5L), ChronoUnit.MINUTES));
         MapSqlParameterSource tokenParameters =
                 new MapSqlParameterSource()
                         .addValue("entity_type", ENTITY_TYPE)

@@ -45,8 +45,7 @@ class AdminRecoveryTokenIssuerTest {
                 ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(jdbcTemplate)
                 .update(startsWith("INSERT INTO password_reset_tokens"), parameters.capture());
-        verify(jdbcTemplate)
-                .update(startsWith("UPDATE admins"), any(MapSqlParameterSource.class));
+        verify(jdbcTemplate).update(startsWith("UPDATE admins"), any(MapSqlParameterSource.class));
         assertThat(parameters.getValue().getValue("entity_type")).isEqualTo("ADMIN");
         assertThat(parameters.getValue().getValue("entity_id")).isEqualTo(7L);
         assertThat(parameters.getValue().getValue("email")).isEqualTo("admin@example.com");
@@ -63,11 +62,9 @@ class AdminRecoveryTokenIssuerTest {
                 .thenReturn(List.of());
         AdminRecoveryTokenIssuer issuer = new AdminRecoveryTokenIssuer(jdbcTemplate, 15);
 
-        AdminRecoveryTokenIssuer.IssueResult result =
-                issuer.issue("admin@example.com", TOKEN_HASH);
+        AdminRecoveryTokenIssuer.IssueResult result = issuer.issue("admin@example.com", TOKEN_HASH);
 
-        assertThat(result)
-                .isEqualTo(AdminRecoveryTokenIssuer.IssueResult.ACCOUNT_NOT_FOUND);
+        assertThat(result).isEqualTo(AdminRecoveryTokenIssuer.IssueResult.ACCOUNT_NOT_FOUND);
         verify(jdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
     }
 
@@ -83,11 +80,9 @@ class AdminRecoveryTokenIssuerTest {
                                         "status", "SUSPENDED")));
         AdminRecoveryTokenIssuer issuer = new AdminRecoveryTokenIssuer(jdbcTemplate, 15);
 
-        AdminRecoveryTokenIssuer.IssueResult result =
-                issuer.issue("admin@example.com", TOKEN_HASH);
+        AdminRecoveryTokenIssuer.IssueResult result = issuer.issue("admin@example.com", TOKEN_HASH);
 
-        assertThat(result)
-                .isEqualTo(AdminRecoveryTokenIssuer.IssueResult.ACCOUNT_NOT_ACTIVE);
+        assertThat(result).isEqualTo(AdminRecoveryTokenIssuer.IssueResult.ACCOUNT_NOT_ACTIVE);
         verify(jdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
     }
 

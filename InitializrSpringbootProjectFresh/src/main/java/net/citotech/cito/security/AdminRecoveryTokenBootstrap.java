@@ -19,8 +19,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AdminRecoveryTokenBootstrap implements ApplicationRunner {
 
-    private static final Logger LOGGER =
-            LoggerFactory.getLogger(AdminRecoveryTokenBootstrap.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AdminRecoveryTokenBootstrap.class);
     private static final Pattern SHA256 = Pattern.compile("[0-9a-fA-F]{64}");
 
     private final AdminRecoveryTokenIssuer issuer;

@@ -84,18 +84,5 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Emit canonical formatting for recovery files
-        run: |
-          mvn -B spotless:apply --no-transfer-progress
-          for file in \
-            src/main/java/net/citotech/cito/security/AdminRecoveryTokenIssuer.java \
-            src/main/java/net/citotech/cito/security/AdminRecoveryTokenBootstrap.java \
-            src/test/java/net/citotech/cito/security/AdminRecoveryTokenIssuerTest.java \
-            src/test/java/net/citotech/cito/security/AdminRecoveryTokenBootstrapTest.java
-          do
-            echo "FORMATTED_BEGIN:${file}"
-            base64 -w0 "${file}"
-            echo
-            echo "FORMATTED_END:${file}"
-          done
-          exit 1
+      - name: Compile, test, package and enforce formatting
+        run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
