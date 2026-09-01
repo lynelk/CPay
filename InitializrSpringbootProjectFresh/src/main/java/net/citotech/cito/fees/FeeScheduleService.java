@@ -137,8 +137,7 @@ public class FeeScheduleService {
         if (amount == null || amount.signum() <= 0) {
             throw new PaymentGatewayException("amount must be greater than zero");
         }
-        if ("PERCENTAGE".equals(chargingMethod)
-                && amount.compareTo(BigDecimal.valueOf(100)) > 0) {
+        if ("PERCENTAGE".equals(chargingMethod) && amount.compareTo(BigDecimal.valueOf(100)) > 0) {
             throw new PaymentGatewayException("percentage fee must not exceed 100");
         }
     }

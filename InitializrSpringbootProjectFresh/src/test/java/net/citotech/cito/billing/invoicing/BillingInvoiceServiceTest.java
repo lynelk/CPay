@@ -95,18 +95,9 @@ class BillingInvoiceServiceTest {
         assertThat(service.stageCharges(55L)).isEqualTo(2);
         verify(repository)
                 .insertLine(
-                        55L,
-                        201L,
-                        "PAYMENT:collection_count",
-                        new BigDecimal("100.0000"),
-                        "UGX");
+                        55L, 201L, "PAYMENT:collection_count", new BigDecimal("100.0000"), "UGX");
         verify(repository)
-                .insertLine(
-                        55L,
-                        202L,
-                        "SMS:message_count",
-                        new BigDecimal("50.0000"),
-                        "UGX");
+                .insertLine(55L, 202L, "SMS:message_count", new BigDecimal("50.0000"), "UGX");
         verify(repository)
                 .updateTotals(55L, new BigDecimal("150.0000"), new BigDecimal("150.0000"));
     }
@@ -214,13 +205,7 @@ class BillingInvoiceServiceTest {
         when(repository.findForUpdate(55L))
                 .thenReturn(Optional.of(finalizedInvoice("1000", "180", "1180")));
         when(fundingService.claim(
-                        7L,
-                        "PAY-1",
-                        "UGX",
-                        new BigDecimal("100.0000"),
-                        false,
-                        "INVOICE",
-                        "55"))
+                        7L, "PAY-1", "UGX", new BigDecimal("100.0000"), false, "INVOICE", "55"))
                 .thenReturn(
                         new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService
                                 .FundingClaim(

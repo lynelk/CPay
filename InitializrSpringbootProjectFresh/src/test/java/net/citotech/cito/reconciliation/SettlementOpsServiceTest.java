@@ -26,21 +26,30 @@ class SettlementOpsServiceTest {
     void newBatchIsInsertedAndPostedOnce() {
         NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
         DoubleEntryLedgerService ledger = mock(DoubleEntryLedgerService.class);
-        when(jdbc.query(contains("FOR UPDATE"), any(MapSqlParameterSource.class), any(RowMapper.class)))
+        when(jdbc.query(
+                        contains("FOR UPDATE"),
+                        any(MapSqlParameterSource.class),
+                        any(RowMapper.class)))
                 .thenReturn(List.of());
-        when(jdbc.update(contains("INSERT INTO reconciliation_settlement_batches"), any(MapSqlParameterSource.class)))
+        when(jdbc.update(
+                        contains("INSERT INTO reconciliation_settlement_batches"),
+                        any(MapSqlParameterSource.class)))
                 .thenReturn(1);
         SettlementOpsService service = new SettlementOpsService(jdbc, ledger);
 
         service.openBatch("SET-1", "mtn", "mtn_momo", "ugx", new BigDecimal("1000.12345"), "maker");
 
-        verify(jdbc).update(contains("INSERT INTO reconciliation_settlement_batches"), any(MapSqlParameterSource.class));
-        verify(ledger).post(
-                org.mockito.ArgumentMatchers.eq("settlement:SET-1"),
-                org.mockito.ArgumentMatchers.eq("SETTLEMENT"),
-                org.mockito.ArgumentMatchers.eq("SET-1"),
-                anyString(),
-                any());
+        verify(jdbc)
+                .update(
+                        contains("INSERT INTO reconciliation_settlement_batches"),
+                        any(MapSqlParameterSource.class));
+        verify(ledger)
+                .post(
+                        org.mockito.ArgumentMatchers.eq("settlement:SET-1"),
+                        org.mockito.ArgumentMatchers.eq("SETTLEMENT"),
+                        org.mockito.ArgumentMatchers.eq("SET-1"),
+                        anyString(),
+                        any());
     }
 
     @Test
@@ -52,15 +61,26 @@ class SettlementOpsServiceTest {
         when(row.getString("channel_code")).thenReturn("MTN_MOMO");
         when(row.getString("currency")).thenReturn("UGX");
         when(row.getBigDecimal("expected_amount")).thenReturn(new BigDecimal("1000.0000"));
-        when(jdbc.query(contains("FOR UPDATE"), any(MapSqlParameterSource.class), any(RowMapper.class)))
-                .thenAnswer(invocation -> {
-                    RowMapper mapper = invocation.getArgument(2);
-                    return List.of(mapper.mapRow(row, 1));
-                });
+        when(jdbc.query(
+                        contains("FOR UPDATE"),
+                        any(MapSqlParameterSource.class),
+                        any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            return List.of(mapper.mapRow(row, 1));
+                        });
         SettlementOpsService service = new SettlementOpsService(jdbc, ledger);
 
         assertThatThrownBy(
-                        () -> service.openBatch("SET-1", "MTN", "MTN_MOMO", "UGX", new BigDecimal("1100"), "maker"))
+                        () ->
+                                service.openBatch(
+                                        "SET-1",
+                                        "MTN",
+                                        "MTN_MOMO",
+                                        "UGX",
+                                        new BigDecimal("1100"),
+                                        "maker"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("different commercial attributes");
         verify(ledger, never()).post(anyString(), anyString(), anyString(), anyString(), any());
@@ -75,29 +95,38 @@ class SettlementOpsServiceTest {
         when(row.getString("channel_code")).thenReturn("MTN_MOMO");
         when(row.getString("currency")).thenReturn("UGX");
         when(row.getBigDecimal("expected_amount")).thenReturn(new BigDecimal("1000.0000"));
-        when(jdbc.query(contains("FOR UPDATE"), any(MapSqlParameterSource.class), any(RowMapper.class)))
-                .thenAnswer(invocation -> {
-                    RowMapper mapper = invocation.getArgument(2);
-                    return List.of(mapper.mapRow(row, 1));
-                });
+        when(jdbc.query(
+                        contains("FOR UPDATE"),
+                        any(MapSqlParameterSource.class),
+                        any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            return List.of(mapper.mapRow(row, 1));
+                        });
         SettlementOpsService service = new SettlementOpsService(jdbc, ledger);
 
         service.openBatch("SET-1", "mtn", "mtn_momo", "ugx", new BigDecimal("1000"), "maker");
 
-        verify(jdbc, never()).update(contains("INSERT INTO reconciliation_settlement_batches"), any(MapSqlParameterSource.class));
-        verify(ledger).post(
-                org.mockito.ArgumentMatchers.eq("settlement:SET-1"),
-                org.mockito.ArgumentMatchers.eq("SETTLEMENT"),
-                org.mockito.ArgumentMatchers.eq("SET-1"),
-                anyString(),
-                any());
+        verify(jdbc, never())
+                .update(
+                        contains("INSERT INTO reconciliation_settlement_batches"),
+                        any(MapSqlParameterSource.class));
+        verify(ledger)
+                .post(
+                        org.mockito.ArgumentMatchers.eq("settlement:SET-1"),
+                        org.mockito.ArgumentMatchers.eq("SETTLEMENT"),
+                        org.mockito.ArgumentMatchers.eq("SET-1"),
+                        anyString(),
+                        any());
     }
 
     @Test
     void makerCheckerCloseRemainsEnforced() {
         NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
         when(jdbc.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
-        SettlementOpsService service = new SettlementOpsService(jdbc, mock(DoubleEntryLedgerService.class));
+        SettlementOpsService service =
+                new SettlementOpsService(jdbc, mock(DoubleEntryLedgerService.class));
 
         assertThat(service.requestBatchClose("SET-1", "maker")).isEqualTo(1);
         assertThat(service.approveBatchClose("SET-1", "checker")).isEqualTo(1);
@@ -110,7 +139,8 @@ class SettlementOpsServiceTest {
         when(jdbc.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(0);
         when(jdbc.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
                 .thenReturn(List.of("OPEN"));
-        SettlementOpsService service = new SettlementOpsService(jdbc, mock(DoubleEntryLedgerService.class));
+        SettlementOpsService service =
+                new SettlementOpsService(jdbc, mock(DoubleEntryLedgerService.class));
 
         assertThatThrownBy(() -> service.requireApproved("SET-1", "checker"))
                 .isInstanceOf(PaymentGatewayException.class)

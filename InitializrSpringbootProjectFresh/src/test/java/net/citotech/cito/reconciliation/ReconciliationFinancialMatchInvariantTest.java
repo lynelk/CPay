@@ -29,7 +29,8 @@ class ReconciliationFinancialMatchInvariantTest {
                                 sql ->
                                         sql.contains("tx.tx_merchant_ref = rr2.merchant_reference")
                                                 && sql.contains("rr2.amount")
-                                                && sql.contains("UPPER(tx.currency) = UPPER(rr2.currency)")
+                                                && sql.contains(
+                                                        "UPPER(tx.currency) = UPPER(rr2.currency)")
                                                 && sql.contains("UPPER(tx.status) IN")
                                                 && sql.contains("HAVING COUNT(*) = 1")
                                                 && sql.contains(

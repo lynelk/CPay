@@ -197,7 +197,8 @@ public class SettlementOpsService {
                                         rs.getString("provider_code"),
                                         rs.getString("channel_code"),
                                         rs.getString("currency"),
-                                        MoneyAmount.normalize(rs.getBigDecimal("expected_amount"))));
+                                        MoneyAmount.normalize(
+                                                rs.getBigDecimal("expected_amount"))));
         return batches.isEmpty() ? null : batches.get(0);
     }
 
@@ -210,8 +211,7 @@ public class SettlementOpsService {
 
     private record ExistingBatch(
             String providerCode, String channelCode, String currency, BigDecimal expectedAmount) {
-        private boolean matches(
-                String provider, String channel, String ccy, BigDecimal expected) {
+        private boolean matches(String provider, String channel, String ccy, BigDecimal expected) {
             return Objects.equals(normalize(providerCode), normalize(provider))
                     && Objects.equals(normalize(channelCode), normalize(channel))
                     && Objects.equals(normalize(currency), normalize(ccy))

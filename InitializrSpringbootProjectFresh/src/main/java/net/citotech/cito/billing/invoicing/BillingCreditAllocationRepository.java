@@ -54,5 +54,6 @@ public class BillingCreditAllocationRepository {
                 p);
     }
 
-    public record CreditTotals(BigDecimal grossAmount, BigDecimal revenueAmount, BigDecimal taxAmount) {}
+    public record CreditTotals(
+            BigDecimal grossAmount, BigDecimal revenueAmount, BigDecimal taxAmount) {}
 }

@@ -85,8 +85,8 @@ public class ReconciliationRepository {
     }
 
     /**
-     * Automatically matches only a unique, financially equivalent, final transaction candidate.
-     * A reference alone is never sufficient evidence. Ambiguous or financially inconsistent rows
+     * Automatically matches only a unique, financially equivalent, final transaction candidate. A
+     * reference alone is never sufficient evidence. Ambiguous or financially inconsistent rows
      * remain UNMATCHED for operator review.
      */
     public int autoMatchByMerchantReference() {
@@ -149,7 +149,8 @@ public class ReconciliationRepository {
             p.addValue("reference", "%" + reference + "%");
         }
         if (amount != null) {
-            sql.append(" AND ABS(CAST(original_amount AS DECIMAL(24,8)) - :amount) < :amount_tolerance");
+            sql.append(
+                    " AND ABS(CAST(original_amount AS DECIMAL(24,8)) - :amount) < :amount_tolerance");
             p.addValue("amount", amount);
             p.addValue("amount_tolerance", LEGACY_AMOUNT_TOLERANCE);
         }

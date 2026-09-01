@@ -7,8 +7,8 @@ import java.math.RoundingMode;
  * Canonical monetary value used by Cito calculation paths.
  *
  * <p>All authoritative calculations use four decimal places and HALF_UP rounding. Presentation
- * layers may format to a currency-specific display scale, but must not reduce calculation
- * precision before fees, tax, FX, ledger posting, settlement or reconciliation are complete.
+ * layers may format to a currency-specific display scale, but must not reduce calculation precision
+ * before fees, tax, FX, ledger posting, settlement or reconciliation are complete.
  */
 public final class MoneyAmount {
     public static final int SCALE = 4;
@@ -70,8 +70,8 @@ public final class MoneyAmount {
     }
 
     /**
-     * Compatibility-only conversion for adapters that still expose Double signatures. Never use
-     * the returned value for authoritative arithmetic.
+     * Compatibility-only conversion for adapters that still expose Double signatures. Never use the
+     * returned value for authoritative arithmetic.
      */
     @Deprecated(forRemoval = false)
     public Double asLegacyDouble() {

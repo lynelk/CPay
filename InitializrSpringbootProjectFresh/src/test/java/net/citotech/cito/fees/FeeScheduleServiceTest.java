@@ -40,8 +40,7 @@ class FeeScheduleServiceTest {
 
         FeeScheduleService service = new FeeScheduleService(jdbcTemplate);
         FeeSchedule result =
-                service.currentSchedule(
-                                "MTNMoMoPaymentGateway", 42L, "PAYIN", "CUSTOMER_CHARGE")
+                service.currentSchedule("MTNMoMoPaymentGateway", 42L, "PAYIN", "CUSTOMER_CHARGE")
                         .orElseThrow();
 
         assertThat(result.merchantId()).isEqualTo(42L);
@@ -75,8 +74,7 @@ class FeeScheduleServiceTest {
 
         FeeScheduleService service = new FeeScheduleService(jdbcTemplate);
         FeeSchedule result =
-                service.currentSchedule(
-                                "MTNMoMoPaymentGateway", 7L, "PAYOUT", "CUSTOMER_CHARGE")
+                service.currentSchedule("MTNMoMoPaymentGateway", 7L, "PAYOUT", "CUSTOMER_CHARGE")
                         .orElseThrow();
 
         assertThat(result.merchantId()).isNull();
@@ -168,8 +166,7 @@ class FeeScheduleServiceTest {
                         Instant.now(),
                         null);
 
-        assertThat(schedule.apply(new BigDecimal("123.4567")))
-                .isEqualByComparingTo("1.5241");
+        assertThat(schedule.apply(new BigDecimal("123.4567"))).isEqualByComparingTo("1.5241");
     }
 
     @Test

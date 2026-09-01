@@ -91,7 +91,8 @@ public class BillingInvoiceService {
                     invoice.currency());
         }
         if (!unstaged.isEmpty()) {
-            BigDecimal subtotal = MoneyAmount.normalize(repository.sumLineAmounts(billingInvoiceId));
+            BigDecimal subtotal =
+                    MoneyAmount.normalize(repository.sumLineAmounts(billingInvoiceId));
             repository.updateTotals(billingInvoiceId, subtotal, subtotal);
         }
         return unstaged.size();
@@ -181,7 +182,8 @@ public class BillingInvoiceService {
         if (claim.alreadyClaimed()) {
             return 0L;
         }
-        BigDecimal outstanding = MoneyAmount.normalize(repository.findOutstandingAmount(billingInvoiceId));
+        BigDecimal outstanding =
+                MoneyAmount.normalize(repository.findOutstandingAmount(billingInvoiceId));
         if (normalizedAmount.compareTo(outstanding) > 0) {
             throw new PaymentGatewayException(
                     "Billing payment allocation exceeds invoice outstanding amount");
@@ -234,7 +236,8 @@ public class BillingInvoiceService {
                     "Billing credit-note allocation repository is required for credit operations");
         }
         BillingInvoiceRecord invoice = requireFinalizedInvoiceLocked(billingInvoiceId);
-        BigDecimal outstanding = MoneyAmount.normalize(repository.findOutstandingAmount(billingInvoiceId));
+        BigDecimal outstanding =
+                MoneyAmount.normalize(repository.findOutstandingAmount(billingInvoiceId));
         if (normalizedGross.compareTo(outstanding) > 0) {
             throw new PaymentGatewayException(
                     "Billing credit note exceeds invoice outstanding amount");
@@ -282,7 +285,8 @@ public class BillingInvoiceService {
     public long voidInvoice(
             long billingInvoiceId, String reason, String requestedBy, String approvedBy) {
         BillingInvoiceRecord invoice = requireFinalizedInvoice(billingInvoiceId);
-        BigDecimal outstanding = MoneyAmount.normalize(repository.findOutstandingAmount(billingInvoiceId));
+        BigDecimal outstanding =
+                MoneyAmount.normalize(repository.findOutstandingAmount(billingInvoiceId));
         if (outstanding.compareTo(MoneyAmount.normalize(invoice.totalAmount())) != 0) {
             throw new PaymentGatewayException(
                     "Only a completely unpaid billing invoice can be voided; use refund/correction workflow for settled invoices");
@@ -333,7 +337,9 @@ public class BillingInvoiceService {
                 grossAmount
                         .multiply(originalTax)
                         .divide(originalTotal, MoneyAmount.SCALE, RoundingMode.HALF_UP);
-        return proportional.min(remainingTax).setScale(MoneyAmount.SCALE, MoneyAmount.ROUNDING_MODE);
+        return proportional
+                .min(remainingTax)
+                .setScale(MoneyAmount.SCALE, MoneyAmount.ROUNDING_MODE);
     }
 
     private BillingInvoiceRecord requireDraftInvoice(long billingInvoiceId) {
