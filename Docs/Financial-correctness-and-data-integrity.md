@@ -2,6 +2,8 @@
 
 This document is the normative financial-correctness policy for Cito. It applies to payment collection, payout, billing, fees, tax, FX, balances, reservations, reconciliation, settlement, invoicing, credit notes, treasury and financial reporting.
 
+Verification note: the September 2026 financial-correctness remediation is accepted for merge only after the exact PR head completes the full Maven/Spotless, billing-convergence, API/documentation, container-build and governance gates. Production activation additionally requires runtime confirmation that Flyway V110 is applied.
+
 ## 1. Canonical money policy
 
 Authoritative calculations use `BigDecimal` with four decimal places and `RoundingMode.HALF_UP` unless a documented external protocol requires greater intermediate precision. `MoneyAmount` is the canonical application helper.
