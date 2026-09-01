@@ -38,8 +38,7 @@ class InitialPasswordChangeControllerTest {
                                         "must_change_password",
                                         1)));
         when(jdbcTemplate.update(
-                        startsWith("UPDATE admins SET password"),
-                        any(MapSqlParameterSource.class)))
+                        startsWith("UPDATE admins SET password"), any(MapSqlParameterSource.class)))
                 .thenReturn(1);
         InitialPasswordChangeController controller =
                 new InitialPasswordChangeController(jdbcTemplate, sessions);
@@ -60,8 +59,7 @@ class InitialPasswordChangeControllerTest {
         assertThat(new JSONObject(result).getString("code")).isEqualTo("000");
         ArgumentCaptor<MapSqlParameterSource> parameters =
                 ArgumentCaptor.forClass(MapSqlParameterSource.class);
-        verify(jdbcTemplate)
-                .update(startsWith("UPDATE admins SET password"), parameters.capture());
+        verify(jdbcTemplate).update(startsWith("UPDATE admins SET password"), parameters.capture());
         assertThat(
                         PasswordUtils.verifyPassword(
                                 "New-Secure-Password-2",

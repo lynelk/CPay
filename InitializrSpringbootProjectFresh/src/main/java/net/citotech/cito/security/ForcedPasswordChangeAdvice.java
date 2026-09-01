@@ -30,8 +30,7 @@ public class ForcedPasswordChangeAdvice implements ResponseBodyAdvice<String> {
 
     @Override
     public boolean supports(
-            MethodParameter returnType,
-            Class<? extends HttpMessageConverter<?>> converterType) {
+            MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
         return returnType.getMethod() != null
                 && "authenticatedUser".equals(returnType.getMethod().getName());
     }
@@ -65,9 +64,7 @@ public class ForcedPasswordChangeAdvice implements ResponseBodyAdvice<String> {
 
         return new JSONObject()
                 .put("code", RESPONSE_CODE)
-                .put(
-                        "message",
-                        "You must choose a new password before accessing the platform.")
+                .put("message", "You must choose a new password before accessing the platform.")
                 .toString();
     }
 

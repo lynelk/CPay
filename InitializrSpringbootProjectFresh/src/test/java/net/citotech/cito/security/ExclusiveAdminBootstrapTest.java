@@ -17,7 +17,13 @@ class ExclusiveAdminBootstrapTest {
         SessionRevocationService sessions = mock(SessionRevocationService.class);
         ExclusiveAdminBootstrap bootstrap =
                 new ExclusiveAdminBootstrap(
-                        provisioner, sessions, false, "operation-1", "admin@example.com", "Admin", "");
+                        provisioner,
+                        sessions,
+                        false,
+                        "operation-1",
+                        "admin@example.com",
+                        "Admin",
+                        "");
 
         bootstrap.run(new DefaultApplicationArguments());
 

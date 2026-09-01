@@ -71,7 +71,10 @@ public class ExclusiveAdminProvisioner {
 
         List<Long> matchingTargetIds =
                 existingAdmins.stream()
-                        .filter(row -> email.equalsIgnoreCase(String.valueOf(row.get("email")).trim()))
+                        .filter(
+                                row ->
+                                        email.equalsIgnoreCase(
+                                                String.valueOf(row.get("email")).trim()))
                         .map(row -> ((Number) row.get("id")).longValue())
                         .toList();
         if (matchingTargetIds.size() > 1) {
@@ -135,8 +138,7 @@ public class ExclusiveAdminProvisioner {
         jdbcTemplate.update(
                 "DELETE FROM password_reset_tokens WHERE entity_type='ADMIN'",
                 new MapSqlParameterSource());
-        jdbcTemplate.update(
-                "DELETE FROM admin_privileges WHERE admin_id=:id", targetParameters);
+        jdbcTemplate.update("DELETE FROM admin_privileges WHERE admin_id=:id", targetParameters);
 
         Set<String> fullPrivileges = new LinkedHashSet<>(REQUIRED_PRIVILEGES);
         inheritedPrivileges.stream()
@@ -153,14 +155,10 @@ public class ExclusiveAdminProvisioner {
         }
 
         List<Long> revokedAdminIds =
-                existingAdmins.stream()
-                        .map(row -> ((Number) row.get("id")).longValue())
-                        .toList();
+                existingAdmins.stream().map(row -> ((Number) row.get("id")).longValue()).toList();
         List<Long> removedAdminIds =
                 revokedAdminIds.stream().filter(id -> id != targetAdminId).toList();
-        int removed =
-                jdbcTemplate.update(
-                        "DELETE FROM admins WHERE id<>:id", targetParameters);
+        int removed = jdbcTemplate.update("DELETE FROM admins WHERE id<>:id", targetParameters);
         if (removed != removedAdminIds.size()) {
             throw new IllegalStateException("Administrator inventory changed during provisioning");
         }

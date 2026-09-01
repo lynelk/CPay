@@ -16,8 +16,7 @@ public class ExclusiveAdminBootstrap implements ApplicationRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(ExclusiveAdminBootstrap.class);
     private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     private static final Pattern OPERATION_ID = Pattern.compile("[A-Za-z0-9._-]{8,64}");
-    private static final Pattern BCRYPT_12 =
-            Pattern.compile("\\$2[aby]\\$12\\$[./A-Za-z0-9]{53}");
+    private static final Pattern BCRYPT_12 = Pattern.compile("\\$2[aby]\\$12\\$[./A-Za-z0-9]{53}");
 
     private final ExclusiveAdminProvisioner provisioner;
     private final SessionRevocationService sessionRevocationService;

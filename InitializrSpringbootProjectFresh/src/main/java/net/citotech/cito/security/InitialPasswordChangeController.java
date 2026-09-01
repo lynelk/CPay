@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(path = "/auth", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(
+        path = "/auth",
+        produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
 public class InitialPasswordChangeController {
 
     static final String PENDING_ADMIN_ID_SESSION_ATTRIBUTE = "pendingAdminPasswordChangeId";
@@ -91,8 +93,7 @@ public class InitialPasswordChangeController {
 
         sessionRevocationService.revokeAllForAdmin(adminId);
         session.invalidate();
-        return response(
-                "000", "Password changed. Sign in again with your new password.");
+        return response("000", "Password changed. Sign in again with your new password.");
     }
 
     private Long pendingAdminId(HttpSession session) {
