@@ -1,38 +1,36 @@
 package net.citotech.cito;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import net.citotech.cito.money.MoneyAmount;
 
-/** Utility for parsing payment amounts before passing legacy Double-based code. */
-public class Amount {
-    private final BigDecimal value;
+/**
+ * @deprecated Use {@link MoneyAmount}. This compatibility wrapper remains only for older adapters
+ *     and delegates all precision/rounding policy to the canonical money type.
+ */
+@Deprecated(forRemoval = false)
+public final class Amount {
+    private final MoneyAmount value;
 
-    private Amount(BigDecimal value) {
+    private Amount(MoneyAmount value) {
         this.value = value;
     }
 
     public static Amount parse(String raw) {
-        if (raw == null || raw.trim().isEmpty()) {
-            throw new IllegalArgumentException("Amount is required");
-        }
-        BigDecimal parsed = new BigDecimal(raw.trim()).setScale(2, RoundingMode.HALF_UP);
-        if (parsed.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
-        }
-        return new Amount(parsed);
+        return new Amount(MoneyAmount.of(raw));
     }
 
     public BigDecimal asBigDecimal() {
-        return value;
+        return value.asBigDecimal();
     }
 
+    /** Compatibility boundary only. Do not perform authoritative arithmetic on Double values. */
+    @Deprecated(forRemoval = false)
     public Double asLegacyDouble() {
-        return value.doubleValue();
+        return value.asBigDecimal().doubleValue();
     }
 
     @Override
     public String toString() {
-        return value.toPlainString();
+        return value.toString();
     }
 }
-
