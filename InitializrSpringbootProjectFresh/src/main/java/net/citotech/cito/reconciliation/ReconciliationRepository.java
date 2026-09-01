@@ -13,6 +13,8 @@ import org.springframework.util.StringUtils;
 
 @Repository
 public class ReconciliationRepository {
+    private static final BigDecimal LEGACY_AMOUNT_TOLERANCE = new BigDecimal("0.0001");
+
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     public ReconciliationRepository(NamedParameterJdbcTemplate jdbcTemplate) {
@@ -53,7 +55,7 @@ public class ReconciliationRepository {
         p.addValue("provider_reference", row.providerReference);
         p.addValue("merchant_reference", row.merchantReference);
         p.addValue("amount", row.amount);
-        p.addValue("currency", row.currency);
+        p.addValue("currency", row.currency == null ? null : row.currency.trim().toUpperCase());
         jdbcTemplate.update(sql, p);
     }
 
@@ -82,14 +84,32 @@ public class ReconciliationRepository {
                 });
     }
 
+    /**
+     * Automatically matches only a unique, financially equivalent, final transaction candidate.
+     * A reference alone is never sufficient evidence. Ambiguous or financially inconsistent rows
+     * remain UNMATCHED for operator review.
+     */
     public int autoMatchByMerchantReference() {
         String sql =
-                "UPDATE reconciliation_records rr JOIN merchant_transactions_log tx ON"
-                        + " tx.tx_merchant_ref = rr.merchant_reference SET rr.transaction_id ="
-                        + " tx.tx_unique_id, rr.match_status='MATCHED',"
-                        + " rr.match_reason='merchant_reference' WHERE rr.match_status='UNMATCHED' AND"
-                        + " rr.merchant_reference IS NOT NULL";
-        return jdbcTemplate.update(sql, new MapSqlParameterSource());
+                "UPDATE reconciliation_records rr "
+                        + "JOIN ("
+                        + " SELECT rr2.id AS reconciliation_id, MIN(tx.tx_unique_id) AS transaction_id, COUNT(*) AS candidate_count"
+                        + " FROM reconciliation_records rr2"
+                        + " JOIN merchant_transactions_log tx ON tx.tx_merchant_ref = rr2.merchant_reference"
+                        + "  AND ABS(CAST(tx.original_amount AS DECIMAL(24,8)) - rr2.amount) < :amount_tolerance"
+                        + "  AND UPPER(tx.currency) = UPPER(rr2.currency)"
+                        + "  AND UPPER(tx.status) IN ('SUCCESS','SUCCESSFUL','COMPLETED','PAID')"
+                        + " WHERE rr2.match_status='UNMATCHED'"
+                        + "  AND rr2.merchant_reference IS NOT NULL"
+                        + "  AND rr2.amount IS NOT NULL"
+                        + "  AND rr2.currency IS NOT NULL"
+                        + " GROUP BY rr2.id HAVING COUNT(*) = 1"
+                        + ") candidate ON candidate.reconciliation_id = rr.id "
+                        + "SET rr.transaction_id = candidate.transaction_id, rr.match_status='MATCHED',"
+                        + " rr.match_reason='merchant_reference+amount+currency+final_status+unique_candidate' "
+                        + "WHERE rr.match_status='UNMATCHED'";
+        return jdbcTemplate.update(
+                sql, new MapSqlParameterSource("amount_tolerance", LEGACY_AMOUNT_TOLERANCE));
     }
 
     public void markOperatorMatch(long recordId, String transactionId, String reason) {
@@ -104,11 +124,10 @@ public class ReconciliationRepository {
     }
 
     /**
-     * Audit O2: candidate-transaction search backing the manual-match workbench. Queries {@code
-     * merchant_transactions_log} directly (read-only) rather than routing through the legacy
-     * session-authenticated transaction-log endpoint. {@code original_amount} is a legacy {@code
-     * double} column (pre-existing schema choice, not something this change alters), so amount
-     * matching uses a small epsilon comparison instead of exact equality.
+     * Candidate-transaction search backing the manual-match workbench. The legacy transaction
+     * amount column can contain floating-point history, so the search uses a narrow tolerance. This
+     * tolerance is for discovery only; automatic matching additionally requires currency, finality
+     * and uniqueness.
      */
     public List<CandidateTransaction> findCandidateTransactions(
             String reference,
@@ -130,12 +149,13 @@ public class ReconciliationRepository {
             p.addValue("reference", "%" + reference + "%");
         }
         if (amount != null) {
-            sql.append(" AND ABS(original_amount - :amount) < 0.01");
+            sql.append(" AND ABS(CAST(original_amount AS DECIMAL(24,8)) - :amount) < :amount_tolerance");
             p.addValue("amount", amount);
+            p.addValue("amount_tolerance", LEGACY_AMOUNT_TOLERANCE);
         }
         if (StringUtils.hasText(currency)) {
-            sql.append(" AND currency = :currency");
-            p.addValue("currency", currency);
+            sql.append(" AND UPPER(currency) = :currency");
+            p.addValue("currency", currency.trim().toUpperCase());
         }
         if (from != null) {
             sql.append(" AND created_on >= :from");
