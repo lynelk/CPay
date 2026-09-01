@@ -1,396 +1,79 @@
-# Cito — Cito Gateway
+# Cito
 
-Cito — One Gateway. Multiple Payment Networks. Complete Control.
+Cito is a multi-tenant payments, billing and financial-operations platform. It combines payment orchestration, merchant APIs, hosted payment journeys, callbacks/webhooks, reconciliation, settlement, immutable double-entry accounting, usage billing/BaaS, invoicing, communication metering, treasury controls, compliance workflows and operational reporting in one platform.
 
-Cito is a modern, extensible payments gateway designed to help businesses, fintechs, platforms, and developers collect, send, manage, reconcile, and monitor payments through a single integration.
+The repository was previously named **CPay**. Some compatibility identifiers and environment-variable prefixes still use `CPAY_`; they remain intentionally stable where changing them would break existing installations or merchant integrations.
 
-Instead of building separate connections to every payment provider, Cito provides the CPay module, which provides a unified gateway for services such as MTN MoMo, Airtel Money, Airtel OpenAPI, Safaricom M-Pesa, and Yo! Payments, with an adapter-based architecture that makes additional providers easier to integrate.
+## Current architecture
 
-Cito goes far beyond basic payment processing. It combines collections, payouts, transaction tracking, balance management, payment links, hosted checkout, invoices and request-to-pay, merchant webhooks, batch payouts, reconciliation, treasury monitoring, compliance/KYB workflows, communications, billing, and operational monitoring within one platform.
-
-For developers, Cito offers structured v1 and v2 APIs, request signing, idempotency protection, webhooks, sandbox environments, provider adapters, OpenAPI resources, and integration documentation. For merchants, it provides self-service onboarding, payment-channel configuration, sandbox-to-production controls, webhook management, transaction visibility, and payment tools without requiring constant administrator intervention.
-
-Security and reliability are built into the platform through capabilities such as signed requests and callbacks, replay protection, fraud and risk controls, step-up MFA for high-value payouts, encrypted credentials, maker-checker approvals, distributed processing controls, reconciliation safeguards, auditability, and double-entry ledger support.
-
-What sets Cito apart is its broader vision: it is not merely another payment API. It is a payments infrastructure and operations platform designed to connect merchants, payment networks, finance teams, compliance teams, developers, and administrators through one coherent system. Its modular architecture also extends into Billing-as-a-Service, SMS and email delivery, merchant usage metering, vending and ChargeNow integrations, regulatory reporting foundations, and provider certification workflows, making CPay suitable for businesses building much more than a checkout screen.
-
-Why Cito? Because integrations should not mean rebuilding the same provider connections, reconciliation logic, security controls, callbacks, billing systems, and operational tooling every time. Cito provides the foundation once, so developers can focus on building the products that run on top of it.
-**
-Cito: connect once, transact everywhere, operate with confidence..**
-
-## What Cito does
-
-| Capability | What it means |
+| Area | Implementation |
 |---|---|
-| Collections | Receive money from a customer through a supported mobile money provider. |
-| Payouts | Send money from a merchant or platform account to a customer or beneficiary. |
-| Transaction status checks | Confirm whether a payment is pending, successful, failed, or unresolved. |
-| Balance checks | Review available balances by merchant, channel, and currency. |
-| Merchant self-service | Allow merchants to register and configure their own supported channels. |
-| Provider callbacks | Receive and process updates from payment providers. |
-| Merchant callbacks | Notify merchants when a transaction changes status. |
-| Payment links and hosted checkout | Create payable links and invoices that customers can complete through hosted checkout routes. |
-| Sandbox and production controls | Let merchants test with sandbox credentials, then switch to production under configurable transaction caps. |
-| Reconciliation | Match provider statements against internal transaction records. |
-| Finance operations | Support review, adjustment, reporting, and daily close workflows. |
-| Compliance and KYB | Review merchant profiles, beneficial owners, KYC documents, screening events, and compliance cases. |
-| Communication delivery | Route SMS/email delivery through provider-aware services with delivery logs and billing usage metering. |
-| Vending and ChargeNow | Manage merchant-hosted vending locations, pricing, devices, rentals, and ChargeNow OEM sandbox setup. |
-| Operations monitoring | Track alerts, callback queues, operating controls, and readiness evidence. |
+| Backend | Java 21, Spring Boot 4.1 |
+| Frontend | React 18, Vite 8 |
+| Database | MySQL 9.4 in the current Railway production environment; migrations use Flyway |
+| APIs | Legacy `/api/v1/**` plus signed/versioned `/api/v2/**` |
+| Sessions | Spring Session JDBC |
+| Distributed jobs | ShedLock against the shared database |
+| Accounting | Immutable double-entry ledger, balanced independently per currency |
+| Billing | Metering, rating, tax, FX, charging, invoicing, BaaS and traceability |
+| Reconciliation | Provider statement import, deterministic matching, exceptions and governed settlement |
 
-## Supported payment channels
+## Financial correctness rules
 
-The current gateway design supports the following adapter-backed channels:
+Cito treats money as accounting data, not as a convenient floating-point suggestion.
 
-| Provider | Country | Supported use cases |
-|---|---|---|
-| MTN MoMo | Uganda | Collections, payouts, balance checks, callbacks |
-| Airtel Money | Uganda / Kenya | Collections, payouts, legacy API and OpenAPI support |
-| Airtel OpenAPI | Uganda | Collections, payouts, sandbox and certification preparation |
-| Safaricom M-Pesa | Kenya | STK Push, B2C payouts, balance checks |
-| Yo! Payments | Uganda | Collections, payouts (native v2 adapter, response signature verification) |
+1. **Authoritative monetary calculations use `BigDecimal`, four decimal places, `HALF_UP`.** Two-decimal formatting is presentation only and must never reduce calculation precision before fees, tax, FX, ledger posting, settlement or reconciliation are complete.
+2. **Every ledger transaction must balance DR = CR for each currency.** Corrections are new reversing entries; posted ledger entries are never edited in place.
+3. **Commercial idempotency is strict.** Reusing a reference with different commercial attributes fails closed.
+4. **Settlement batch attributes are immutable once opened.** An identical replay is allowed; a replay with another provider, channel, currency or amount is rejected.
+5. **Automatic reconciliation is multi-factor.** A merchant reference alone cannot create a match. The candidate must also match amount, currency, eligible final status and be unique. Ambiguous rows stay unmatched for review.
+6. **Fees are effective-dated and validated.** Flat and percentage charging are supported. `TIER` deliberately fails closed until a real tier-band model exists; it is never silently treated as a flat fee.
+7. **Tax and FX evidence is retained.** Effective-dated rules/rates are snapshotted against the commercial artifact that used them.
+8. **Partial credit notes cannot accumulate tax drift.** Revenue/tax allocations are stored at four decimals and the final full reversal absorbs any prior rounding residual without exceeding the original invoice tax.
 
-Provider adapters can execute through merchant-configured endpoint URLs. In production mode, missing endpoint URLs should block execution.
+See [`Docs/Financial-correctness-and-data-integrity.md`](Docs/Financial-correctness-and-data-integrity.md) for the detailed invariants and acceptance tests.
 
-New providers should be added through the gateway adapter pattern described in `Docs/Gateway-adapter-guide.md`.
-
-## Who uses Cito
-
-| User group | Main need |
-|---|---|
-| Merchants | Accept customer payments, make payouts, configure channels, and check transaction status. |
-| Operations teams | Monitor transactions, provider activity, callbacks, alerts, failed tasks, and operating controls. |
-| Finance teams | Reconcile provider statements, review exceptions, and complete daily close. |
-| Developers | Integrate merchant systems using the v1 or v2 API. |
-| Administrators | Manage readiness, callbacks, provider testing, channel approvals, and operational controls. |
-
-## Main components
+## Repository layout
 
 ```text
-InitializrSpringbootProjectFresh/   Spring Boot 4.1 backend and payment gateway services
-clientside/                         React-based admin and merchant portal
-Integrations/Citoconnect/           JavaScript reference client and integration bundle
-Docs/                               API, architecture, readiness, and operations documentation
-Sdk/                                Signing helpers and OpenAPI code-generation guidance
+InitializrSpringbootProjectFresh/   Active Spring Boot backend
+clientside/                         React/Vite admin and merchant portal
+Integrations/Citoconnect/           CitoConnect/reference integration assets
+Docs/                               Architecture, API, finance, security, readiness and runbooks
+Sdk/                                Signing helpers and SDK/OpenAPI material
+deployment/                         Deployment support assets
+Setup/                              Legacy/transitional installation helpers
 ```
 
-## API overview
+`InitializrSpringbootProjectFresh/src/main/resources/db/migration/` is the canonical schema history. The repository migration head is **V110**.
 
-Cito currently has two API generations.
+## Core capabilities
 
-### v1 API
+Cito provides payment collection and payout orchestration; payment links and hosted checkout; request-to-pay/invoicing; merchant self-service; signed merchant APIs; provider adapters; asynchronous callback and webhook handling; idempotency and replay protection; reconciliation and settlement; double-entry accounting; finance-close controls; treasury and provider balances; billing/metering/rating; BaaS charging; effective-dated pricing, tax and FX; communication metering; vending capabilities; compliance/KYB controls; audit trails; exports and operational analytics.
 
-The v1 API is the legacy merchant API. It is useful for existing integrations and supports core mobile money operations.
+Provider integrations represented in the codebase include MTN MoMo, Airtel Money, Airtel OpenAPI, Safaricom M-Pesa and Yo! Payments. Provider certification is separate from code existence: no integration should be described as live-certified unless its production credentials, callbacks, settlement evidence and provider acceptance have actually been verified.
 
-| Operation | Endpoint |
-|---|---|
-| Collect | `POST /api/v1/doMobileMoneyPayIn` |
-| Payout | `POST /api/v1/doMobileMoneyPayOut` |
-| Status check | `POST /api/v1/doTransactionCheckStatus` |
-| Balance check | `POST /api/v1/doGetBalances` |
+## Local development
 
-### v2 API
-
-The v2 API is the newer, more structured API. It introduces explicit fields for channel, country, currency, versioned request signing, idempotency, and clearer error responses. The compatibility `/api/v2/payments/*` routes remain available, while `/api/v2/native/payments/*` routes execute through the adapter-backed gateway flow.
-
-| Operation | Endpoint |
-|---|---|
-| Collect | `POST /api/v2/payments/collect` |
-| Payout | `POST /api/v2/payments/payout` |
-| Native collect | `POST /api/v2/native/payments/collect` |
-| Native payout | `POST /api/v2/native/payments/payout` |
-| Create payment link | `POST /api/v2/payment-links` |
-| Hosted checkout payment | `POST /api/v2/checkout/{token}/pay` |
-| Create invoice/request-to-pay | `POST /api/v2/invoices` |
-| Pay invoice | `POST /api/v2/invoices/pay/{token}` |
-| List channels | `GET /api/v2/channels` |
-| Transaction status | `GET /api/v2/payments/{reference}` |
-| Balance check | `GET /api/v2/balances?merchantNumber=...` |
-
-For developer details, see:
-
-- `Docs/Api/cpay-v2-openapi.yaml`
-- `Docs/Api/cpay-v2-postman-collection.json`
-- `Docs/Api-v2-signing.md`
-- `Docs/Api-v2-examples.md`
-- `Docs/Citoconnect-integration.md`
-
-## Merchant self-service
-
-Merchants can register through the merchant portal at:
-
-```text
-/signup
-```
-
-After registration, the merchant account is created in a pending approval state and the registration email must be verified before first login. Logged-in merchants can configure supported payment channels under:
-
-```text
-Merchant Dashboard -> Payment Channels
-```
-
-Channel setup includes endpoint URLs and channel-specific setup values. Stored values are encrypted server-side and shown back to the merchant only in masked form.
-
-Merchants can use the developer sandbox guide to copy starter credentials, test numbers, request headers, idempotency guidance, and example payloads. Each merchant/user can switch the active environment between `SANDBOX` and `PRODUCTION`; production traffic is capped by default at 10 transactions per day until an administrator raises or disables the limit through settings.
-
-Merchants can also manage their own webhook endpoints from `Merchant Dashboard -> Webhooks` — register an endpoint per event type, rotate its signing secret (shown exactly once), view the delivery log with per-attempt detail, and replay a failed delivery — without needing an admin to do it on their behalf.
-
-Merchants can create payment links and invoices/request-to-pay objects through the signed v2 API, review the status of their own batch payouts, and retry failed rows in a batch (`GET/POST /api/v2/merchant-self-service/batches/{batchId}[/retry-failed]`) without needing an admin to intervene.
-
-See:
-
-```text
-Docs/Merchant-self-service.md
-```
-
-## Admin and operations APIs
-
-CPay includes internal administrative APIs for controlled operations. These are not public merchant APIs.
-
-| Area | Purpose |
-|---|---|
-| Balance sync | Backfill normalized balances from legacy balances. |
-| Callback administration | Rotate callback signing values and requeue parked callbacks. |
-| Provider sandbox testing | Record provider sandbox validation runs. |
-| Statement validation | Validate provider statement files before import. |
-| Reconciliation finance | Review summaries and close reconciliation days. |
-| Reconciliation matching | Pair unmatched provider statement rows with a CPay transaction using an admin manual-match workbench, or trigger auto-match. |
-| Merchant statement export | Download a merchant's account statement (CSV/XLSX) for a date range, session-authenticated for admin use. |
-| Finance close approval | Reconciliation daily close and settlement batch close require a second admin's approval (maker-checker) before taking effect. |
-| Payout approvals | Payouts above a configurable threshold are held in a queue for a second admin to approve, reject, or cancel instead of executing immediately. |
-| Treasury positions | Review current channel/currency balance positions for cross-border/FX oversight. |
-| Regulator reporting | Generate a BoU-style daily cash-flow/transaction summary off the ledger, plus a PII inventory view. |
-| Webhook operations | Send a test callback to a merchant's registered webhook endpoint, or replay a delivery on their behalf, with an audit record. |
-| Callback secret status | See how many merchants still rely on the shared fallback callback-signing secret instead of their own rotated one. |
-| Operations dashboard | Track alerts, parked callbacks, and reconciliation exceptions. |
-| Operating controls | Review open operating-control event counts. |
-| Readiness dashboard | View non-manual market-readiness evidence counters, platform-wide or scoped to a single merchant. |
-| Compliance operations | Review screening summaries, compliance events/cases, and merchant compliance profiles. |
-| KYB review | Capture and review beneficial owners and merchant KYC/KYB documents. |
-| Provider certification | Review sandbox, callback, and statement evidence for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments. |
-| Treasury and balance monitoring | Review treasury positions and normalized float/balance read models. |
-| Communication operations | Configure SMS/email provider routing, templates, preferences, campaigns, delivery logs, credentials, and provider policies. |
-| Vending operations | Manage merchant-hosted vending locations, devices, rentals, and ChargeNow/OEM connector setup. |
-| Billing operations | Maintain billing tenants, usage events, price books, rated charges, invoices, and ledger traceability. |
-
-Admin routes are under `/api/v2/admin/**` and must be protected using admin credentials and operational controls.
-
-## Production and market-readiness status
-
-The codebase now includes software controls for:
-
-- merchant self-registration
-- merchant-managed channel setup
-- merchant sandbox guidance and per-user sandbox/production environment selection
-- adapter-backed provider endpoint execution using centralized `RestClient` transport
-- database-backed signup rate limiting
-- claim-based callback processing for multiple workers
-- distributed ShedLock coverage for every active scheduled job
-- bounded cleanup for API rate-limit rows, callback claims/tasks/signatures, reset tokens, terminal webhook deliveries, provider run logs, and expired sessions
-- capped legacy-ledger repair sweep for successful pay-in/pay-out rows missing normalized ledger entries
-- restricted trusted origins for API access
-- operating-control summary reporting
-- reconciliation and finance workflow foundations
-- risk/fraud authorization and double-entry ledger posting parity between the legacy and v2 payment paths
-- step-up MFA for high-value merchant payouts
-- distributed locking for multi-instance-safe money-movement crons
-- defense-in-depth method-level admin authorization alongside path-based access rules
-- a provider-to-merchant-safe error taxonomy so raw provider text never reaches a merchant response
-- a merchant portal webhook manager for registering endpoints, rotating signing secrets, viewing the delivery log, and replaying failed deliveries
-- merchant self-service webhook endpoints (secret rotation, delivery log, failed-delivery replay) protected by the portal session-authorization filter
-- uniform server-side CSV/XLSX export, now also covering the admin account-statement screen
-- typed, TanStack Query-backed admin/merchant portal modules (dashboard, transactions, reconciliation, audit trail, merchant account, webhooks) with loading/error/empty states and inline form validation
-- a responsive card layout for table-based modules on small screens
-- provider-specific statement parsers for MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments
-- a reconciliation manual-match workbench (admin UI) for pairing unmatched provider statement rows with CPay transactions, plus a candidate-transaction search endpoint
-- a per-merchant go-live readiness checklist alongside the existing platform-wide readiness dashboard
-- ledger-refreshed channel-balance read models for dashboard balance cards
-- automatic dependency-update pull requests (Dependabot) and a CI formatting check
-- Prometheus backlog gauges and alerts for parked callback tasks and failed merchant webhook deliveries
-- v1 request idempotency, matching the v2 path's existing coverage
-- required email verification before a merchant's first login
-- method-level authorization extended across the remaining admin controllers
-- a dedicated merchant RSA-key encryption key with a background re-encryption sweep, separate from channel-credential encryption
-- encrypted callback-signing secrets and the legacy per-merchant `hmac_secret` field at rest, with legacy-plaintext-tolerant decryption
-- uniform upload validation on every multipart admin upload endpoint, and a tightened CSP
-- merchant self-service batch-payout status and retry-failed endpoints
-- KYC tier caps wired into risk decisioning, and a payer-velocity risk rule
-- maker-checker approval for reconciliation daily close, settlement batch close, and payouts above a configurable threshold
-- a treasury position read API and admin webhook test-callback/replay tooling
-- admin portal modules for compliance, KYB review, provider certification, treasury/balance monitoring, finance close, settlement close, payout approvals, webhook operations, communication routing, and vending operations
-- payment links, hosted checkout, and invoice/request-to-pay APIs
-- an EFRIS e-receipt extension point and BoU-style regulator reporting generator (both honestly scoped as pending real regulator credentials/schema confirmation, not certified integrations)
-- a PII-masking utility applied to high-traffic payer-number logging
-- a first-class communication module (`communication/`) covering SMS/email delivery with a rule-based provider router, a `{placeholder}` template catalog, consent-preserving channel preferences, batch campaigns, a channel-agnostic delivery log, encrypted provider credentials and provider rate-limit policies, and billing usage metering bridged into the existing billing engine
-- a vending/ChargeNow platform module (`vending/`) for merchant-hosted vending locations, pricing policies, devices, rentals, and manufacturer connectors (including an atomic ChargeNow OEM sandbox-setup workflow and signed device callbacks), with admin and merchant portal screens
-- a `google-java-format` pin current through JDK 24+ toolchains so the CI/local formatting gate runs on modern JDKs
-
-Readiness documentation is available in:
-
-- `Docs/Architecture/Overview.md`
-- `Docs/Readme.md`
-- `Docs/Production-code-controls.md`
-- `Docs/sandbox-guide.md`
-- `Docs/Observability.md`
-- `Docs/Data-retention.md`
-- `Docs/Schema/Readme.md`
-- `Docs/Api-versioning-deprecation.md`
-- `Docs/Error-catalog.md`
-- `Docs/Pagination.md`
-- `Docs/Webhook-events.md`
-- `Docs/Developer-experience.md`
-- `Docs/Api-v2-examples.md`
-- `Docs/Provider-integration-roadmap.md`
-- `Docs/Security-authentication-roadmap.md`
-- `Docs/Testing-strategy.md`
-- `Docs/Money-ledger-and-orchestration-roadmap.md`
-- `Docs/Process-flow-controls.md`
-- `Docs/Reliability-scale-runbook.md`
-- `Docs/Merchant-facing-features-roadmap.md`
-- `Docs/Compliance-risk-controls.md`
-- `Docs/Readiness/Market-readiness-gates.md`
-- `Docs/Runbooks/Production-incident-response.md`
-- `Docs/Runbooks/Operations-alerts.md`
-- `Docs/Runbooks/Provider-certification-checklist.md`
-- `Docs/Runbooks/Security-and-access-control.md`
-- `Docs/Runbooks/Callback-security-and-requeue.md`
-- `Docs/Runbooks/Reconciliation-finance-daily-close.md`
-- `Docs/Runbooks/Provider-sandbox-and-statement-validation.md`
-
-Architecture decisions are recorded in `Docs/Adr/`, and release notes are tracked in `Changelog.md`.
-
-Manual sign-off is still required for real provider sandbox certification, staging migration validation, merchant callback verification, finance sign-off, security review, production monitoring setup, and regulatory or compliance approval. Code can support evidence. It cannot issue approvals because apparently institutions remain stubbornly human.
-
-## Security model
-
-| Control | Purpose |
-|---|---|
-| Merchant request signing | Confirms that a merchant API request came from the expected merchant system. |
-| Timestamp and nonce checks | Helps prevent replay of old API requests. |
-| Idempotency keys | Helps merchants safely retry payment submissions without creating duplicates. |
-| Signup rate limiting | Reduces repeated automated merchant registration attempts. |
-| Risk/fraud authorization | Screens both the legacy and v2 payment paths before a pay-in or pay-out is submitted. |
-| Step-up MFA for high-value payouts | Requires a fresh TOTP code for merchant payout batches above a configurable amount threshold. |
-| JDBC-backed sessions | Stores admin and merchant portal sessions in the database for multi-worker operation. |
-| CSRF token endpoint | Provides browser CSRF tokens through `GET /auth/csrf`; legacy API groups are exempted route-by-route instead of globally disabling CSRF. |
-| Admin route protection | Restricts internal operations to authorized administrators, enforced at both the URL-path level and the method level (`@PreAuthorize`). |
-| Trusted-origin API access | Limits browser access to configured origins. |
-| Signed callbacks | Allows merchants to verify that callback messages came from CPay. |
-| Provider response verification | Verifies signed provider responses (e.g. Yo! Payments) before trusting them. |
-| Merchant-safe error messages | Translates raw provider responses and internal exceptions into a stable, generic message before they reach a merchant — the raw detail stays internal. |
-| Callback task claims | Reduces duplicate callback delivery when multiple workers are running. |
-| Distributed cron locking | Prevents scheduled jobs from processing the same work twice across multiple instances. |
-| Maker-checker approvals | Requires a second admin to approve reconciliation daily close, settlement batch close, and above-threshold payouts before they take effect. |
-| KYC-tier and payer-velocity risk caps | Scales a merchant's transaction/daily limits to their KYC tier and caps how often the same payer identifier can transact in a rolling window. |
-| Dedicated merchant key encryption | Encrypts merchant RSA private keys on a key separate from channel-credential encryption, with a background sweep migrating legacy rows onto it. |
-| PII masking | Masks payer identifiers in high-traffic log lines. |
-| Operational cleanup | Keeps short-lived API, reset-token, callback, webhook, provider-run, and session rows bounded. |
-| Callback redelivery guard | Prevents repeated terminal provider callbacks with the same provider reference from re-applying statement or ledger effects. |
-| Ledger repair sweep | Backfills missing normalized ledger postings for successful legacy payment rows using an idempotent ledger reference. |
-| Audit and readiness records | Supports operational tracking and post-incident review. |
-
-Never commit `.env` files, provider access values, production URLs, private keys, merchant signing material, or callback signing values to the repository.
-
-## Local development prerequisites
-
-To run the project locally, you will need:
+Requirements:
 
 - Java 21
 - Maven
-- MySQL 8 or compatible database
-- Node.js 20.19.0 or later
-- npm
-
-## Local setup
-
-1. Create a local database, for example `cpayadmin`.
-2. Copy `.env.example` to `.env` and provide local values.
-3. Use the Flyway migrations under `InitializrSpringbootProjectFresh/src/main/resources/db/migration`; import legacy baseline SQL only when rebuilding an older local database that has not yet been reconciled.
-4. Start the backend from `InitializrSpringbootProjectFresh`.
-5. Start or build the frontend from `clientside`.
-
-For a local Docker database and backend, run:
-
-```bash
-docker compose up -d mysql
-docker compose up --build backend
-```
-
-The database is exposed on `127.0.0.1:3307` as `cpayadmin` with the local user `cpay` / `cpay-local`.
+- Node.js 20.19+ and npm
+- MySQL 8+ compatible database, or Docker for the provided local stack
+- Git
 
 Backend:
 
 ```bash
 cd InitializrSpringbootProjectFresh
 mvn clean package
+mvn test
+mvn verify
 java -jar target/cito-fresh-0.0.1-SNAPSHOT.jar
 ```
 
 Frontend:
-
-```bash
-cd clientside
-npm install
-npm run dev
-npm run build
-```
-
-## Key environment variables
-
-| Variable | Description |
-|---|---|
-| `DB_URL` | JDBC database connection URL. |
-| `DB_USERNAME` | Database username. |
-| `DB_PASSWORD` | Database password. |
-| `MAIL_HOST` | SMTP host for email notifications. |
-| `MAIL_PORT` | SMTP port. |
-| `MAIL_USERNAME` | SMTP username. |
-| `MAIL_PASSWORD` | SMTP password. |
-| `CUSTOM_GATEWAYSTATE` | Gateway mode, usually `SANDBOX` or `PRODUCTION`. |
-| `CORS_ALLOWED_ORIGINS` | Trusted merchant and admin portal origins. |
-| `APP_BASE_URL` | Public application URL used in generated links. |
-| `HTTP_PORT` | Backend HTTP port. |
-| `CUSTOM_LOCKFILEDIRECTORY` | Scheduler lock-file directory. |
-| `ACTUATOR_USERNAME` | Monitoring username. |
-| `ACTUATOR_PASSWORD` | Monitoring password. |
-| `SPRINGDOC_API_DOCS_ENABLED` | Enables `/v3/api-docs`; defaults to `false`. |
-| `SPRINGDOC_SWAGGER_UI_ENABLED` | Enables Swagger UI; defaults to `false`. |
-| `CPAY_SECURITY_NONCE_STORE` | v2 replay-protection nonce store; defaults to `jdbc` (shared, safe for clustered deployments). Set to `memory` only for a single-instance local dev run. |
-| `ADMIN_API_USERNAME` | Admin API username. |
-| `ADMIN_API_PASSWORD` | Admin API password. |
-| `CALLBACK_SIGNING_SECRET` | Fallback value used for callback signing where merchant-specific values are not configured. |
-| `MERCHANT_CHANNEL_ENCRYPTION_KEY` | Encryption key used for merchant channel credentials at rest. |
-| `CPAY_KEY_ENCRYPTION_KEY` | Dedicated 256-bit key for merchant RSA private keys at rest. |
-| `CPAY_TRUSTED_PROXY_IPS` | Comma-separated IP(s) of trusted reverse proxies/load balancers. `X-Forwarded-For`/`X-Real-IP` are only honored when the direct TCP peer is one of these; empty (default) means the app always uses the raw socket address. |
-
-The developer sandbox and production transaction cap are settings-table values, not environment variables:
-
-| Setting | Default | Purpose |
-|---|---|---|
-| `developer_sandbox_base_url` | `https://sandbox.cpay.example` | Base URL displayed in the merchant developer sandbox guide. |
-| `developer_production_base_url` | `https://api.cpay.example` | Production API base URL displayed beside sandbox examples. |
-| `developer_sandbox_merchant_number` | `1000000` | Fallback example merchant number when the caller has no assigned number. |
-| `developer_sandbox_idempotency_hours` | `24` | Idempotency window shown to novice developers. |
-| `developer_sandbox_retention_days` | `7` | Sandbox evidence/example retention guidance. |
-| `production_transaction_limit_enabled` | `true` | Enables the daily production cap. |
-| `production_transaction_limit_count` | `10` | Default daily production transaction cap per merchant. |
-| `yo_payments_channel_label` | `Yo! Payments` | Display label for the Yo! Payments channel. |
-
-## Testing and quality checks
-
-Typical local checks:
-
-```bash
-cd InitializrSpringbootProjectFresh
-mvn test
-mvn verify
-```
-
-`mvn test` excludes tests tagged `"docker"` (Testcontainers-based DB integration tests, the
-end-to-end suite) by default so a missing Docker daemon never blocks the build; run
-`mvn test -Ddocker.tests.excludedGroups=` in a Docker-capable environment for full coverage. A
-separate opt-in Gatling load-testing toolchain (`mvn gatling:test -Dgatling.simulationClass=...`)
-is never part of the default build.
 
 ```bash
 cd clientside
@@ -400,59 +83,84 @@ npm test
 npm run build
 ```
 
-The CI pipeline is expected to cover:
+Local Docker database/backend:
 
-- backend build and tests
-- frontend install and build
-- migration naming checks
-- API contract presence
-- OWASP dependency scanning
-- CodeQL security analysis
-- readiness documentation checks
+```bash
+docker compose up -d mysql
+docker compose up --build backend
+```
 
-## Documentation map
+See [`Installation.md`](Installation.md) for environment variables and setup details.
 
-| Document | Purpose |
-|---|---|
-| `Docs/Api/cpay-v2-openapi.yaml` | Machine-readable v2 API contract. |
-| `Docs/Api/cpay-v2-postman-collection.json` | Starter Postman collection for v2. |
-| `Docs/Readme.md` | Documentation index for architecture, API, merchant, operations, and runbook docs. |
-| `Docs/site/index.md` | Lightweight static developer docs landing page. |
-| `Docs/Architecture/Overview.md` | End-to-end system architecture, operational flows, and core ERD. |
-| `Docs/Api-v2-signing.md` | v2 request-signing rules. |
-| `Docs/Api-v2-examples.md` | Example v2 API requests. |
-| `Docs/Api-versioning-deprecation.md` | Versioning rules and legacy deprecation headers. |
-| `Docs/Error-catalog.md` | Stable public error code catalog. |
-| `Docs/Pagination.md` | Cursor pagination convention for list APIs. |
-| `Docs/Webhook-events.md` | Versioned webhook event registry. |
-| `Docs/Developer-experience.md` | SDK and docs portal expectations. |
-| `Docs/Merchant-self-service.md` | Merchant signup and payment-channel setup guide. |
-| `Docs/sandbox-guide.md` | Developer sandbox, environment switching, and production-limit guide. |
-| `Docs/Production-code-controls.md` | Production-control code summary. |
-| `Docs/Gateway-adapter-guide.md` | How to add or maintain provider adapters. |
-| `Docs/Vending-platform.md` | Merchant-hosted vending and ChargeNow/OEM workflow guide. |
-| `Docs/ChargeNow-OEM-sandbox-setup.md` | ChargeNow OEM sandbox setup and certification sequence. |
-| `Docs/Provider-integration-roadmap.md` | Provider adapter migration plan. |
-| `Docs/Security-authentication-roadmap.md` | Authentication and security-control roadmap. |
-| `Docs/Testing-strategy.md` | Money-movement and provider testing plan. |
-| `Docs/Money-ledger-and-orchestration-roadmap.md` | Target ledger and payment state-machine design. |
-| `Docs/Process-flow-controls.md` | Payin, payout, callback, signup, SMS, and recon controls. |
-| `Docs/Reliability-scale-runbook.md` | Scaling, backup, shutdown, and job-safety runbook. |
-| `Docs/Merchant-facing-features-roadmap.md` | Merchant product gap roadmap and new v2 endpoints. |
-| `Docs/Compliance-risk-controls.md` | EAC-context risk, KYC, AML, retention, and reporting controls. |
-| `Docs/Readiness/Market-readiness-gates.md` | Launch-readiness checklist. |
-| `Docs/Runbooks/` | Operational procedures for production support. |
+## Database migrations
 
-## Development roadmap
+Flyway migrations are append-only. Never edit an already-applied production migration to change financial behavior; add a new migration and document the cutover.
 
-The main focus areas are:
+Current financial-integrity migrations include ledger controls, billing tenancy/catalog/metering/rating, invoice and credit-note domains, BaaS charging and tax, provider treasury, pricing/rating evidence, tenant idempotency, entitlement bridging, marketplace/refund alignment and **V110 credit-note tax allocation evidence**.
 
-1. Complete real provider sandbox certification for MTN, Airtel, Airtel OpenAPI, and Safaricom.
-2. Complete staging migration validation and balance reconciliation signoff.
-3. Continue migrating older frontend screens to the current typed hooks, responsive table/card layouts, and page-level refresh patterns.
-4. Complete production monitoring, alerting, and support escalation setup.
-5. Complete security, compliance, and regulatory signoff before broad commercial launch.
+Production schema state must be verified from runtime logs after deployment rather than inferred merely because a migration exists in Git. A repository with a new migration and a database that has not applied it are, inconveniently, two different realities.
 
-## Final note
+## Testing and release gates
 
-Cito now has a stronger production-oriented software foundation: merchant self-service, channel setup, provider endpoint execution, sandbox controls, payment links, rate limiting, callback task claims, operating-control visibility, compliance/KYB review surfaces, treasury views, communication routing, vending workflows, and readiness documentation. It should still not be treated as production-certified until all provider, finance, security, and compliance gates are completed.
+Backend changes should pass:
+
+```bash
+cd InitializrSpringbootProjectFresh
+mvn test
+mvn verify
+```
+
+Docker-tagged integration tests can be enabled with:
+
+```bash
+mvn test -Ddocker.tests.excludedGroups=
+```
+
+Frontend changes should pass:
+
+```bash
+cd clientside
+npm run typecheck
+npm test
+npm run build
+```
+
+Financial changes must include regression tests for the invariant being changed. A green build is necessary but does not replace reconciliation, ledger and settlement evidence.
+
+The repository also contains GitHub Actions gates for billing convergence, financial/entitlement/isolation behavior, ISO governance/financial messaging and other production controls. See [`CI_CD_SETUP.md`](CI_CD_SETUP.md).
+
+## Production deployment
+
+The current hosted production topology uses Railway. Repository deployment descriptors request two backend and two frontend replicas in Amsterdam. MySQL is private and currently uses MySQL 9.4.
+
+**Important current limitation:** the native Railway three-data-node MySQL HA topology with two HAProxy instances has not yet been completed. Do not describe the database as HA until the live service has actually been converted and failover-tested. The database must remain private, backups must remain recoverable, and application database references must be reverified after any HA conversion.
+
+See [`Deployment.md`](Deployment.md) for deployment gates and production verification.
+
+## Security and operational principles
+
+- never commit production secrets, merchant keys or provider credentials;
+- require signed/idempotent requests where the API contract specifies them;
+- use shared JDBC nonce/session/lock storage in clustered production;
+- preserve maker-checker separation for high-risk finance actions;
+- keep callbacks/webhooks auditable and replay-safe;
+- prefer append-only corrections over mutation of financial history;
+- retain provider, tax, FX, ledger and reconciliation evidence required to reconstruct an outcome;
+- fail closed when a commercial calculation or provider state is unsupported or ambiguous.
+
+## Documentation
+
+Start with:
+
+- [`Installation.md`](Installation.md)
+- [`Deployment.md`](Deployment.md)
+- [`Contributing.md`](Contributing.md)
+- [`CI_CD_SETUP.md`](CI_CD_SETUP.md)
+- [`Docs/Financial-correctness-and-data-integrity.md`](Docs/Financial-correctness-and-data-integrity.md)
+- [`Docs/Money-ledger-and-orchestration-roadmap.md`](Docs/Money-ledger-and-orchestration-roadmap.md)
+- [`Docs/Readiness/Market-readiness-gates.md`](Docs/Readiness/Market-readiness-gates.md)
+- [`Docs/Runbooks/Reconciliation-finance-daily-close.md`](Docs/Runbooks/Reconciliation-finance-daily-close.md)
+
+## Compatibility note
+
+The product name is **Cito**. `CPay` remains in some Java class names, database identifiers, URLs/settings examples and `CPAY_*` environment variables for backward compatibility. Rename those only through an explicit compatibility migration, not cosmetic search-and-replace. Payment platforms have enough exciting failure modes without manufacturing new ones in configuration names.
