@@ -80,8 +80,12 @@ function Login(): React.ReactElement {
   const navigate = useNavigate();
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [passwordChangeRequired, setPasswordChangeRequired] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState('');
   const [showForgot, setShowForgot] = React.useState(false);
   const [appearance, setAppearance] = React.useState<AdminLoginAppearance>(defaultAppearance);
 
@@ -112,6 +116,7 @@ function Login(): React.ReactElement {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError('');
+    setSuccess('');
     if (!username || !password) {
       setError(strings.admin_login_required);
       return;
@@ -132,6 +137,10 @@ function Login(): React.ReactElement {
       if (res.code === '000') {
         localStorage.setItem('user', JSON.stringify(res.user));
         navigate('/dashboard');
+      } else if (res.code === 'PASSWORD_CHANGE_REQUIRED') {
+        localStorage.removeItem('user');
+        setPassword('');
+        setPasswordChangeRequired(true);
       } else {
         setError(res.message || `${strings.sign_in_failed} (${res.code}).`);
       }
@@ -142,7 +151,51 @@ function Login(): React.ReactElement {
     }
   }
 
+  async function handlePasswordChange(event: React.FormEvent) {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+    if (!newPassword || !confirmPassword) {
+      setError(strings.new_password_required);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError(strings.password_mismatch);
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await apiFetch(apiUrl('/auth/completeInitialPasswordChange'), {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+        body: JSON.stringify({
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        }),
+      });
+      const res = JSON.parse(await response.text());
+      if (res.code === '000') {
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordChangeRequired(false);
+        setSuccess(res.message || strings.password_change_complete);
+      } else {
+        setError(res.message || strings.unable_reset_password);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : strings.unable_reset_password);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const invalid = Boolean(error) && (!username || !password);
+  const passwordChangeInvalid = Boolean(error);
   const asideCards: AuthAsideCard[] = [
     { id: 'users', icon: 'users', title: setting(appearance, 'admin_login_users_title') },
     { id: 'approvals', icon: 'secure', title: setting(appearance, 'admin_login_approvals_title'), tone: 'success' },
@@ -172,32 +225,66 @@ function Login(): React.ReactElement {
       asideBenefits={asideBenefits}
       footer={`© ${new Date().getFullYear()} Core-Synergies`}
     >
-      <form className="ios-form" onSubmit={handleSubmit} noValidate>
-        {error ? <Alert variant="error">{error}</Alert> : null}
-        <TextField
-          id="admin-username"
-          label={strings.username_label}
-          value={username}
-          onValueChange={setUsername}
-          autoComplete="username"
-          invalid={invalid}
-        />
-        <PasswordField
-          id="admin-password"
-          label={strings.password_label}
-          value={password}
-          onValueChange={setPassword}
-          invalid={invalid}
-        />
-        <div className="ios-actions">
-          <Button type="submit" variant="primary" loading={loading} loadingLabel={strings.signing_in}>
-            {strings.sign_in}
-          </Button>
-          <Button type="button" variant="link" onClick={() => setShowForgot(true)}>
-            {strings.forgot_password_link}
-          </Button>
-        </div>
-      </form>
+      {passwordChangeRequired ? (
+        <form className="ios-form" onSubmit={handlePasswordChange} noValidate>
+          <Alert variant="warning">{strings.initial_password_change_instructions}</Alert>
+          {error ? <Alert variant="error">{error}</Alert> : null}
+          <PasswordField
+            id="admin-new-password"
+            label={strings.new_password_label}
+            value={newPassword}
+            onValueChange={setNewPassword}
+            autoComplete="new-password"
+            invalid={passwordChangeInvalid}
+          />
+          <PasswordField
+            id="admin-confirm-password"
+            label={strings.confirm_password_label}
+            value={confirmPassword}
+            onValueChange={setConfirmPassword}
+            autoComplete="new-password"
+            invalid={passwordChangeInvalid}
+          />
+          <div className="ios-actions">
+            <Button
+              type="submit"
+              variant="primary"
+              loading={loading}
+              loadingLabel={strings.changing_password}
+            >
+              {strings.change_password}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <form className="ios-form" onSubmit={handleSubmit} noValidate>
+          {success ? <Alert variant="success">{success}</Alert> : null}
+          {error ? <Alert variant="error">{error}</Alert> : null}
+          <TextField
+            id="admin-username"
+            label={strings.username_label}
+            value={username}
+            onValueChange={setUsername}
+            autoComplete="username"
+            invalid={invalid}
+          />
+          <PasswordField
+            id="admin-password"
+            label={strings.password_label}
+            value={password}
+            onValueChange={setPassword}
+            invalid={invalid}
+          />
+          <div className="ios-actions">
+            <Button type="submit" variant="primary" loading={loading} loadingLabel={strings.signing_in}>
+              {strings.sign_in}
+            </Button>
+            <Button type="button" variant="link" onClick={() => setShowForgot(true)}>
+              {strings.forgot_password_link}
+            </Button>
+          </div>
+        </form>
+      )}
       <ForgotPassword
         onCloseDialog={() => setShowForgot(false)}
         showForgotPassword={showForgot}
