@@ -1,8 +1,8 @@
 package net.citotech.cito.Model;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
+import net.citotech.cito.money.MoneyAmount;
 
 public class Transaction {
     public static String TX_TYPE_FLOAT_STOCK_CREDIT = "FLOAT STOCK CREDIT";
@@ -40,8 +40,8 @@ public class Transaction {
     long id;
     String merchant_id;
     String gateway_id;
-    BigDecimal original_amount = BigDecimal.ZERO;
-    BigDecimal charges = BigDecimal.ZERO;
+    BigDecimal original_amount = BigDecimal.ZERO.setScale(MoneyAmount.SCALE);
+    BigDecimal charges = BigDecimal.ZERO.setScale(MoneyAmount.SCALE);
     String status;
     String charging_method;
     String tx_request_trace;
@@ -55,7 +55,7 @@ public class Transaction {
     String updated_on;
     String payer_number;
     String tx_type;
-    BigDecimal tx_cost = BigDecimal.ZERO;
+    BigDecimal tx_cost = BigDecimal.ZERO.setScale(MoneyAmount.SCALE);
     String callback_url;
     String callback_trace;
     Long merchant_batch_transactions_log_id;
@@ -93,7 +93,7 @@ public class Transaction {
     }
 
     private BigDecimal money(Double value) {
-        return value == null ? BigDecimal.ZERO : BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
+        return value == null ? BigDecimal.ZERO.setScale(MoneyAmount.SCALE) : MoneyAmount.normalize(BigDecimal.valueOf(value));
     }
 
     public boolean isFinalStatusSet() { return isFinalStatusSet; }
@@ -113,7 +113,7 @@ public class Transaction {
     public Double getTx_cost() { return tx_cost.doubleValue(); }
     public BigDecimal getTxCostDecimal() { return tx_cost; }
     public void setTx_cost(Double tx_cost) { this.tx_cost = money(tx_cost); }
-    public void setTxCostDecimal(BigDecimal tx_cost) { this.tx_cost = tx_cost == null ? BigDecimal.ZERO : tx_cost.setScale(2, RoundingMode.HALF_UP); }
+    public void setTxCostDecimal(BigDecimal tx_cost) { this.tx_cost = tx_cost == null ? BigDecimal.ZERO.setScale(MoneyAmount.SCALE) : MoneyAmount.normalize(tx_cost); }
     public String getTx_type() { return tx_type; }
     public void setTx_type(String tx_type) { this.tx_type = tx_type; }
     public long getId() { return id; }
@@ -125,11 +125,11 @@ public class Transaction {
     public Double getOriginal_amount() { return original_amount.doubleValue(); }
     public BigDecimal getOriginalAmountDecimal() { return original_amount; }
     public void setOriginal_amount(Double original_amount) { this.original_amount = money(original_amount); }
-    public void setOriginalAmountDecimal(BigDecimal original_amount) { this.original_amount = original_amount == null ? BigDecimal.ZERO : original_amount.setScale(2, RoundingMode.HALF_UP); }
+    public void setOriginalAmountDecimal(BigDecimal original_amount) { this.original_amount = original_amount == null ? BigDecimal.ZERO.setScale(MoneyAmount.SCALE) : MoneyAmount.normalize(original_amount); }
     public Double getCharges() { return charges.doubleValue(); }
     public BigDecimal getChargesDecimal() { return charges; }
     public void setCharges(Double charges) { this.charges = money(charges); }
-    public void setChargesDecimal(BigDecimal charges) { this.charges = charges == null ? BigDecimal.ZERO : charges.setScale(2, RoundingMode.HALF_UP); }
+    public void setChargesDecimal(BigDecimal charges) { this.charges = charges == null ? BigDecimal.ZERO.setScale(MoneyAmount.SCALE) : MoneyAmount.normalize(charges); }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getCharging_method() { return charging_method; }
@@ -161,4 +161,3 @@ public class Transaction {
     public String getCallback_status() { return callback_status; }
     public void setCallback_status(String callback_status) { this.callback_status = callback_status != null ? callback_status : "PENDING"; }
 }
-
