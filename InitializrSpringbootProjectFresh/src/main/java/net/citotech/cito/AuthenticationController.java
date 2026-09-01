@@ -762,17 +762,15 @@ public class AuthenticationController {
                 return GeneralException
                     .getError("104", String.format(GeneralException.ERRORS_104, userEmail));
             }
-            boolean secureResetTokenValid =
-                    isResetTokenValid("ADMIN", u.getId(), u.getEmail(), verificationCode);
-            if (!secureResetTokenValid) {
-                if ("TRUE".equals(u.getIs_verification_timedout())) {
-                    return GeneralException
-                        .getError("105", GeneralException.ERRORS_105);
-                }
-                if (!legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
-                    return GeneralException
-                        .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
-                }
+            if (u.getIs_verification_timedout().equals("TRUE")) {
+                return GeneralException
+                    .getError("105", GeneralException.ERRORS_105);
+            }
+
+            if (!isResetTokenValid("ADMIN", u.getId(), u.getEmail(), verificationCode)
+                    && !legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
+                return GeneralException
+                    .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
             }
 
             String sql = "UPDATE "+Common.DB_TABLE_ADMIN+" "
@@ -849,17 +847,15 @@ public class AuthenticationController {
                     .getError("104", String.format(GeneralException.ERRORS_104, userEmail));
             }
             
-            boolean secureResetTokenValid =
-                    isResetTokenValid("MERCHANT_ADMIN", u.getId(), u.getEmail(), verificationCode);
-            if (!secureResetTokenValid) {
-                if ("TRUE".equals(u.getIs_verification_timedout())) {
-                    return GeneralException
-                        .getError("105", GeneralException.ERRORS_105);
-                }
-                if (!legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
-                    return GeneralException
-                        .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
-                }
+            if (u.getIs_verification_timedout().equals("TRUE")) {
+                return GeneralException
+                    .getError("105", GeneralException.ERRORS_105);
+            }
+
+            if (!isResetTokenValid("MERCHANT_ADMIN", u.getId(), u.getEmail(), verificationCode)
+                    && !legacyVerificationMatches(u.getEmail_verification_code(), verificationCode)) {
+                return GeneralException
+                    .getError("106", String.format(GeneralException.ERRORS_106, verificationCode));
             }
             
             //Now set the time when the email verification has to be sent.

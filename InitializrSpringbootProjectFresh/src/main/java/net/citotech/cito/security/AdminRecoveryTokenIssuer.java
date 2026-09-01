@@ -64,6 +64,12 @@ public class AdminRecoveryTokenIssuer {
 
         long accountId = ((Number) account.get("id")).longValue();
         String canonicalEmail = String.valueOf(account.get("email")).trim().toLowerCase(Locale.ROOT);
+        Instant issuedAt = Instant.now();
+        Timestamp expiresAt =
+                Timestamp.from(issuedAt.plus(expiryMinutes, ChronoUnit.MINUTES));
+        Timestamp legacyWindowStart =
+                Timestamp.from(
+                        issuedAt.plus(Math.max(0L, expiryMinutes - 5L), ChronoUnit.MINUTES));
         MapSqlParameterSource tokenParameters =
                 new MapSqlParameterSource()
                         .addValue("entity_type", ENTITY_TYPE)
@@ -71,11 +77,7 @@ public class AdminRecoveryTokenIssuer {
                         .addValue("email", canonicalEmail)
                         .addValue("token_hash", tokenSha256)
                         .addValue("request_ip", REQUEST_SOURCE)
-                        .addValue(
-                                "expires_at",
-                                Timestamp.from(
-                                        Instant.now()
-                                                .plus(expiryMinutes, ChronoUnit.MINUTES)));
+                        .addValue("expires_at", expiresAt);
 
         try {
             int inserted =
@@ -84,7 +86,26 @@ public class AdminRecoveryTokenIssuer {
                                     + "(entity_type, entity_id, email, token_hash, request_ip, expires_at) "
                                     + "VALUES (:entity_type, :entity_id, :email, :token_hash, :request_ip, :expires_at)",
                             tokenParameters);
-            return inserted == 1 ? IssueResult.ISSUED : IssueResult.ALREADY_PROCESSED;
+            if (inserted != 1) {
+                return IssueResult.ALREADY_PROCESSED;
+            }
+
+            MapSqlParameterSource accountUpdateParameters =
+                    new MapSqlParameterSource()
+                            .addValue("id", accountId)
+                            .addValue("email_verification_sent_on", legacyWindowStart);
+            int updated =
+                    jdbcTemplate.update(
+                            "UPDATE "
+                                    + Common.DB_TABLE_ADMIN
+                                    + " SET email_verification_sent_on=:email_verification_sent_on "
+                                    + "WHERE id=:id",
+                            accountUpdateParameters);
+            if (updated != 1) {
+                throw new IllegalStateException(
+                        "Admin recovery token issued but account reset window was not updated");
+            }
+            return IssueResult.ISSUED;
         } catch (DuplicateKeyException ignored) {
             return IssueResult.ALREADY_PROCESSED;
         }

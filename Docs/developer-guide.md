@@ -178,10 +178,10 @@ The current platform lineage strengthens production safety with fail-closed conf
 ### Admin password-reset semantics
 
 `POST /auth/resetPassword` accepts a single-use token from the hardened
-`password_reset_tokens` store. Its expiry is authoritative even when the legacy administrator
-email-timestamp column is stale. Legacy verification codes retain their shorter timestamp check
-during the transition. An operational recovery may issue only a hashed, short-lived token for an
-existing active administrator; it cannot create, activate, or grant privileges to an account.
+`password_reset_tokens` store. During the legacy-column transition, an operational recovery aligns
+the administrator email-timestamp window with the token's configured expiry. Recovery may issue
+only a hashed, short-lived token for an existing active administrator; it cannot create, activate,
+or grant privileges to an account.
 
 Minimum integration expectations:
 

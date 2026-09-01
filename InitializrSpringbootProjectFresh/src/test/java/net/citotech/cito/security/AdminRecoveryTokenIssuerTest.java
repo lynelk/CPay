@@ -3,6 +3,7 @@ package net.citotech.cito.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,7 +43,10 @@ class AdminRecoveryTokenIssuerTest {
         assertThat(result).isEqualTo(AdminRecoveryTokenIssuer.IssueResult.ISSUED);
         ArgumentCaptor<MapSqlParameterSource> parameters =
                 ArgumentCaptor.forClass(MapSqlParameterSource.class);
-        verify(jdbcTemplate).update(anyString(), parameters.capture());
+        verify(jdbcTemplate)
+                .update(startsWith("INSERT INTO password_reset_tokens"), parameters.capture());
+        verify(jdbcTemplate)
+                .update(startsWith("UPDATE admins"), any(MapSqlParameterSource.class));
         assertThat(parameters.getValue().getValue("entity_type")).isEqualTo("ADMIN");
         assertThat(parameters.getValue().getValue("entity_id")).isEqualTo(7L);
         assertThat(parameters.getValue().getValue("email")).isEqualTo("admin@example.com");
