@@ -1,5 +1,12 @@
+upstream cito_backend {
+    zone cito_backend 64k;
+    resolver ${DNS_RESOLVER} valid=10s ipv4=on ipv6=on;
+    resolver_timeout 3s;
+    server ${BACKEND_UPSTREAM} resolve;
+}
+
 server {
-    # Railway private networking is IPv6-first. Bind explicitly on both stacks
+    # Railway private networking is dual-stack. Bind explicitly on both stacks
     # so health checks and public proxy traffic can reach nginx reliably.
     listen ${PORT} default_server;
     listen [::]:${PORT} default_server;
@@ -23,7 +30,7 @@ server {
         proxy_http_version 1.1;
         proxy_connect_timeout 3s;
         proxy_read_timeout 5s;
-        proxy_pass http://${BACKEND_UPSTREAM}/status/health;
+        proxy_pass http://cito_backend/status/health;
     }
 
     # Browser-internal controller calls use /api/ui. Remove only that UI
@@ -43,7 +50,7 @@ server {
         proxy_set_header X-Forwarded-Port $http_x_forwarded_port;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
-        proxy_pass http://${BACKEND_UPSTREAM}/;
+        proxy_pass http://cito_backend/;
     }
 
     # Expose the backend health endpoint through the single public edge for
@@ -53,7 +60,7 @@ server {
         proxy_http_version 1.1;
         proxy_connect_timeout 3s;
         proxy_read_timeout 5s;
-        proxy_pass http://${BACKEND_UPSTREAM}/status/health;
+        proxy_pass http://cito_backend/status/health;
     }
 
     # Public CPay gateway. Preserve /api because the backend already exposes
@@ -69,7 +76,7 @@ server {
         proxy_set_header X-Forwarded-Port $http_x_forwarded_port;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
-        proxy_pass http://${BACKEND_UPSTREAM};
+        proxy_pass http://cito_backend;
     }
 
     # Temporary compatibility for older clients/bookmarks that called backend
@@ -85,7 +92,7 @@ server {
         proxy_set_header X-Forwarded-Port $http_x_forwarded_port;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
-        proxy_pass http://${BACKEND_UPSTREAM};
+        proxy_pass http://cito_backend;
     }
 
     # Fingerprinted Vite assets can be cached aggressively.
