@@ -55,7 +55,7 @@ public class ExclusiveAdminProvisioner {
                                 + "VALUES (:operation_id, :target_email_sha256)",
                         operationParameters);
         if (claimed == 0) {
-            return ProvisionResult.alreadyProcessed();
+            return ProvisionResult.processedResult();
         }
 
         List<Map<String, Object>> existingAdmins =
@@ -225,7 +225,7 @@ public class ExclusiveAdminProvisioner {
             int grantedPrivilegeCount,
             List<Long> revokedAdminIds) {
 
-        static ProvisionResult alreadyProcessed() {
+        static ProvisionResult processedResult() {
             return new ProvisionResult(true, 0L, 0, 0, List.of());
         }
     }
