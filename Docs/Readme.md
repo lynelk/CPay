@@ -1,73 +1,67 @@
-# CPay Documentation Index
+# Cito Documentation Index
 
-Use this index as the front door for CPay documentation. The root `Readme.md` explains the product
-and local setup at a high level; this folder contains the architecture, API, operations, security,
-merchant, and provider-specific detail.
+This folder is the detailed documentation set for **Cito**. The product/repository was previously named CPay, so some API filenames, compatibility routes and environment-variable prefixes retain the old name deliberately.
 
-## Start Here
+## Start here
 
-| Document | Use it for |
+| Document | Purpose |
 |---|---|
-| `Architecture/Overview.md` | System context, package map, main flows, ERD, and operational contracts. |
-| `site/index.md` | Lightweight developer-docs landing page for merchant integrators. |
-| `Api/cpay-v2-openapi.yaml` | Machine-readable v2 API contract. |
-| `Api-v2-signing.md` | Required signing headers and canonical request format. |
-| `Api-v2-examples.md` | Copyable collect, payout, maker-checker, webhook, and admin examples. |
-| `sandbox-guide.md` | Sandbox credentials, test scenarios, environment switching, and production-limit behavior. |
-| `Merchant-self-service.md` | Merchant signup, channel setup, webhooks, batch payouts, payment links, and invoices. |
+| `../Readme.md` | Product overview, current architecture and production posture |
+| `Financial-correctness-and-data-integrity.md` | Normative money, ledger, tax, FX, reconciliation and settlement invariants |
+| `Architecture/Overview.md` | System/package architecture and main flows |
+| `Api/cpay-v2-openapi.yaml` | Machine-readable v2 API contract |
+| `Api-v2-signing.md` | Signed-request contract |
+| `Api-v2-examples.md` | v2 integration examples |
+| `sandbox-guide.md` | Sandbox/environment behavior |
+| `Merchant-self-service.md` | Merchant journeys and controls |
 
-## Current Product Areas
+## Financial and operational documentation
 
-| Area | Main docs |
+| Area | Main documents |
 |---|---|
-| Payment channels | `Gateway-adapter-guide.md`, `Payment-channel-schema.md`, `Provider-integration-roadmap.md` |
-| Yo! Payments | `Gateway-adapter-guide.md`, `Provider-integration-roadmap.md`, `Runbooks/Provider-certification-checklist.md` |
-| Payment links and hosted checkout | `Merchant-facing-features-roadmap.md`, `Api-v2-examples.md`, OpenAPI spec |
-| Invoices/request-to-pay | `Merchant-facing-features-roadmap.md`, `Webhook-events.md`, OpenAPI spec |
-| Merchant sandbox | `sandbox-guide.md`, `developer-guide.md`, `Developer-experience.md` |
-| Webhooks | `Webhook-events.md`, `Runbooks/Callback-security-and-requeue.md` |
-| Reconciliation and settlement | `Process-flow-controls.md`, `Runbooks/Reconciliation-finance-daily-close.md` |
-| Ledger and billing | `Money-ledger-and-orchestration-roadmap.md`, `Adr/0003-billing-tenant-model.md`, `Adr/0004-billing-ledger-integration.md`, `Adr/0005-billing-outbox-design.md` |
-| Compliance and KYB | `Compliance-risk-controls.md`, `Security-authentication-roadmap.md` |
-| Provider certification | `Runbooks/Provider-certification-checklist.md`, `Runbooks/Provider-sandbox-and-statement-validation.md` |
-| Treasury and balance monitoring | `Architecture/Overview.md`, `Production-code-controls.md` |
-| Communication delivery | `Production-code-controls.md`, `Data-retention.md`, `Observability.md` |
-| Vending/ChargeNow | `Vending-platform.md`, `ChargeNow-OEM-sandbox-setup.md` |
+| Money and ledger | `Financial-correctness-and-data-integrity.md`, `Money-ledger-and-orchestration-roadmap.md`, `Adr/0004-billing-ledger-integration.md` |
+| Billing/BaaS | `Financial-correctness-and-data-integrity.md`, ADRs `0003`–`0005`, billing implementation/specification documents in this repository |
+| Reconciliation and settlement | `Financial-correctness-and-data-integrity.md`, `Process-flow-controls.md`, `Runbooks/Reconciliation-finance-daily-close.md` |
+| Production readiness | `Production-code-controls.md`, `Readiness/Market-readiness-gates.md`, `Readiness/Market-readiness-tracker.md` |
+| Reliability/HA | `Reliability-scale-runbook.md`, `Runbooks/Backup-restore-dr.md`, root `Deployment.md` |
+| Security | `Security-authentication-roadmap.md`, `Runbooks/Security-and-access-control.md`, `Runbooks/Callback-security-and-requeue.md` |
+| Provider certification | `Provider-integration-roadmap.md`, `Runbooks/Provider-certification-checklist.md`, `Runbooks/Provider-sandbox-and-statement-validation.md` |
+| Observability | `Observability.md`, `Runbooks/Operations-alerts.md`, `Runbooks/Production-incident-response.md` |
 
-## Operations And Release Readiness
+## Current financial source-of-truth rules
 
-| Document | Use it for |
-|---|---|
-| `Production-code-controls.md` | What production-supporting code controls exist today. |
-| `Readiness/Market-readiness-gates.md` | Launch-readiness checklist and manual signoff gates. |
-| `Reliability-scale-runbook.md` | HA, graceful shutdown, backups, and scaling expectations. |
-| `Data-retention.md` | Retention classes and cleanup/archival behavior. |
-| `Observability.md` | Logging, metrics, alerting, tracing, and operations-dashboard expectations. |
-| `Runbooks/Production-incident-response.md` | Incident severity and response workflow. |
-| `Runbooks/Operations-alerts.md` | Alert-specific triage steps. |
-| `Runbooks/Security-and-access-control.md` | Admin, merchant, callback, and access-value controls. |
-| `Runbooks/Backup-restore-dr.md` | Backup cadence, restore drill, and RPO/RTO expectations. |
+Documentation that predates the September 2026 financial-correctness pass must be interpreted consistently with `Financial-correctness-and-data-integrity.md`:
 
-## Architecture Decisions
+- authoritative money calculations use four-decimal `BigDecimal` and HALF_UP rounding;
+- display precision is separate from calculation precision;
+- ledger entries are append-only and balance per currency;
+- settlement commercial attributes are immutable after batch creation;
+- automatic reconciliation requires reference, amount, currency, eligible final status and a unique candidate;
+- legacy `FeeSchedule` supports flat and percentage charging only; unsupported tier schedules fail closed;
+- the separate billing rating engine may implement genuine tier pricing and must not be confused with the legacy fee-schedule adapter;
+- tax and FX evidence is effective-dated/snapshotted;
+- credit-note revenue/tax allocations conserve the original invoice and record exact rounding residual resolution;
+- a balanced ledger alone does not prove finance close completion.
 
-Architecture decisions live under `Adr/`:
+## Deployment status notes
 
-- `0001-gateway-adapter-boundary.md`
-- `0002-cpay-system-of-record.md`
-- `0003-billing-tenant-model.md`
-- `0004-billing-ledger-integration.md`
-- `0005-billing-outbox-design.md`
-- `0006-webhook-catalog-schema-per-type.md`
+Repository configuration and production runtime evidence are different things. The current Cito Railway application targets two backend and two frontend replicas in Amsterdam and a private MySQL 9.4 database. Native Railway MySQL HA is **not complete** until the live database has been converted to the planned three data nodes plus two HAProxy instances and a controlled leader failover has been verified.
 
-Add a new ADR when a change affects money movement, callback semantics, ledger/accounting behavior,
-provider boundaries, retention, security posture, or externally visible API contracts.
+The repository Flyway migration head is **V110**. Production must be checked after deployment to confirm the live schema has actually applied it.
 
-## Maintenance Rules
+## Architecture decisions
 
-- Update this index when adding a major document, route family, module, or operational workflow.
-- Update `Api/cpay-v2-openapi.yaml` and `Api-v2-examples.md` when merchant-facing v2 routes change.
-- Update `sandbox-guide.md` when test credentials, environment switching, or production caps change.
-- Update `Production-code-controls.md` and `Readiness/Market-readiness-gates.md` when a readiness
-  recommendation moves from roadmap to working code.
-- Regenerate schema snapshots under `Schema/snapshots/` from a freshly migrated database before
-  tagging a release.
+ADRs live under `Adr/`. Add/update an ADR when a change materially alters money movement, accounting, billing tenancy, callback/webhook semantics, provider boundaries, security posture, retention or externally visible contracts.
+
+## Documentation maintenance
+
+When code changes behavior:
+
+1. update the root source-of-truth document(s);
+2. update the affected detailed document/runbook;
+3. update OpenAPI/examples if the public API changed;
+4. update readiness controls if a gap becomes implemented or a new limitation is discovered;
+5. update schema/migration references when the Flyway head changes;
+6. distinguish implemented code from production-verified or externally certified capability.
+
+Do not preserve a stale statement merely because it has survived several releases. Documentation is not a museum, despite occasional evidence to the contrary.

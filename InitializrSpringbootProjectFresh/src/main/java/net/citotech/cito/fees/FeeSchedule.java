@@ -2,8 +2,10 @@ package net.citotech.cito.fees;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.money.MoneyAmount;
 
-/** One versioned, effective-dated fee schedule row (audit A5). */
+/** One versioned, effective-dated fee schedule row. */
 public record FeeSchedule(
         long id,
         String gatewayId,
@@ -16,14 +18,17 @@ public record FeeSchedule(
         Instant effectiveTo) {
 
     public BigDecimal apply(BigDecimal transactionAmount) {
+        if (transactionAmount == null || transactionAmount.signum() < 0) {
+            throw new PaymentGatewayException("transactionAmount must be non-negative");
+        }
         if ("FLAT_FEE".equals(chargingMethod)) {
-            return amount;
+            return MoneyAmount.normalize(amount);
         }
         if ("PERCENTAGE".equals(chargingMethod)) {
-            return transactionAmount.multiply(amount).divide(BigDecimal.valueOf(100));
+            return MoneyAmount.normalize(
+                    transactionAmount.multiply(amount).divide(BigDecimal.valueOf(100)));
         }
-        // TIER schedules are not yet computed automatically - callers should treat amount as a
-        // starting-tier flat charge until per-tier bands are added.
-        return amount;
+        throw new PaymentGatewayException(
+                "Unsupported charging method " + chargingMethod + "; tier pricing is not enabled");
     }
 }

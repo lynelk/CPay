@@ -48,6 +48,7 @@ class AdapterNativePaymentServiceTest {
                 mock(SharedProviderAccessService.class);
         ProviderTreasuryService treasuryService = mock(ProviderTreasuryService.class);
         GatewayExecutionService gatewayExecutionService = new GatewayExecutionService();
+        BigDecimal canonicalAmount = new BigDecimal("1000.0000");
         when(environmentService.normalizedEnvironment("PRODUCTION")).thenReturn("PRODUCTION");
         when(sharedProviderAccessService.isReady(
                         any(Merchant.class),
@@ -56,7 +57,7 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(new BigDecimal("1000.00"))))
+                        eq(canonicalAmount)))
                 .thenReturn(true);
         CredentialContext credentialContext =
                 new CredentialContext(
@@ -73,7 +74,7 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(new BigDecimal("1000.00"))))
+                        eq(canonicalAmount)))
                 .thenReturn(credentialContext);
 
         AdapterNativePaymentService service =
@@ -99,7 +100,7 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(new BigDecimal("1000.00")));
+                        eq(canonicalAmount));
         verify(sharedProviderAccessService)
                 .resolve(
                         any(Merchant.class),
@@ -108,14 +109,14 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(new BigDecimal("1000.00")));
+                        eq(canonicalAmount));
         verify(treasuryService)
                 .beginShared(
                         eq(credentialContext),
                         any(Merchant.class),
                         eq("mtn_momo"),
                         eq("PRODUCTION"),
-                        eq(new BigDecimal("1000.00")),
+                        eq(canonicalAmount),
                         eq("PROD-REF-1"));
         assertThat(result.getEnvironment()).isEqualTo("PRODUCTION");
         assertThat(adapter.lastRequest.getMetadata())

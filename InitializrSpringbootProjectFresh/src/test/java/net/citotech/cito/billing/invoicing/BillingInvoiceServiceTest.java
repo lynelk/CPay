@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 class BillingInvoiceServiceTest {
 
     private final BillingInvoiceRepository repository = mock(BillingInvoiceRepository.class);
+    private final BillingCreditAllocationRepository creditAllocationRepository =
+            mock(BillingCreditAllocationRepository.class);
     private final BillingCompletenessGateService completenessGateService =
             mock(BillingCompletenessGateService.class);
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService =
@@ -35,6 +37,7 @@ class BillingInvoiceServiceTest {
     private final BillingInvoiceService service =
             new BillingInvoiceService(
                     repository,
+                    creditAllocationRepository,
                     completenessGateService,
                     ledgerAccountTemplateService,
                     fundingService);
@@ -91,9 +94,12 @@ class BillingInvoiceServiceTest {
 
         assertThat(service.stageCharges(55L)).isEqualTo(2);
         verify(repository)
-                .insertLine(55L, 201L, "PAYMENT:collection_count", new BigDecimal("100"), "UGX");
-        verify(repository).insertLine(55L, 202L, "SMS:message_count", new BigDecimal("50"), "UGX");
-        verify(repository).updateTotals(55L, new BigDecimal("150"), new BigDecimal("150"));
+                .insertLine(
+                        55L, 201L, "PAYMENT:collection_count", new BigDecimal("100.0000"), "UGX");
+        verify(repository)
+                .insertLine(55L, 202L, "SMS:message_count", new BigDecimal("50.0000"), "UGX");
+        verify(repository)
+                .updateTotals(55L, new BigDecimal("150.0000"), new BigDecimal("150.0000"));
     }
 
     @Test
@@ -151,7 +157,7 @@ class BillingInvoiceServiceTest {
                         eq(7L),
                         eq("UGX"),
                         eq(LocalDate.of(2026, 1, 31)),
-                        eq(new BigDecimal("1000"))))
+                        eq(new BigDecimal("1000.0000"))))
                 .thenReturn(
                         new BillingTaxSnapshot(
                                 10L,
@@ -163,7 +169,7 @@ class BillingInvoiceServiceTest {
         when(ledgerAccountTemplateService.postCustomerCharge(
                         eq(7L),
                         eq("UGX"),
-                        eq(new BigDecimal("1000")),
+                        eq(new BigDecimal("1000.0000")),
                         eq(new BigDecimal("180.0000")),
                         eq("BINV-1"),
                         any()))
@@ -174,7 +180,7 @@ class BillingInvoiceServiceTest {
         verify(repository)
                 .updateTaxAndTotals(
                         55L,
-                        new BigDecimal("1000"),
+                        new BigDecimal("1000.0000"),
                         new BigDecimal("180.0000"),
                         new BigDecimal("1180.0000"));
     }
@@ -199,7 +205,7 @@ class BillingInvoiceServiceTest {
         when(repository.findForUpdate(55L))
                 .thenReturn(Optional.of(finalizedInvoice("1000", "180", "1180")));
         when(fundingService.claim(
-                        7L, "PAY-1", "UGX", new BigDecimal("100"), false, "INVOICE", "55"))
+                        7L, "PAY-1", "UGX", new BigDecimal("100.0000"), false, "INVOICE", "55"))
                 .thenReturn(
                         new net.citotech.cito.billing.integration.cpay.BillingPaymentFundingService
                                 .FundingClaim(
@@ -223,6 +229,47 @@ class BillingInvoiceServiceTest {
                                         "same-user"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("different actors");
+    }
+
+    @Test
+    void finalCreditAbsorbsRemainingTaxRoundingResidualExactly() {
+        BillingInvoiceRecord invoice = finalizedInvoice("1000", "180", "1180");
+        when(repository.findForUpdate(55L)).thenReturn(Optional.of(invoice));
+        when(repository.findOutstandingAmount(55L)).thenReturn(new BigDecimal("393.3334"));
+        when(creditAllocationRepository.totalsForInvoice(55L))
+                .thenReturn(
+                        new BillingCreditAllocationRepository.CreditTotals(
+                                new BigDecimal("786.6666"),
+                                new BigDecimal("666.6666"),
+                                new BigDecimal("120.0000")));
+        when(ledgerAccountTemplateService.postCreditNoteWithTax(
+                        eq(7L),
+                        eq("UGX"),
+                        eq(new BigDecimal("333.3334")),
+                        eq(new BigDecimal("60.0000")),
+                        any(),
+                        any()))
+                .thenReturn(700L);
+        when(repository.reduceOutstanding(55L, new BigDecimal("393.3334"))).thenReturn(1);
+
+        assertThat(
+                        service.issueCreditNote(
+                                55L,
+                                new BigDecimal("393.3334"),
+                                "Final correction",
+                                "maker",
+                                "checker"))
+                .isEqualTo(700L);
+
+        verify(creditAllocationRepository)
+                .insert(
+                        eq(7L),
+                        eq(55L),
+                        any(),
+                        eq(new BigDecimal("393.3334")),
+                        eq(new BigDecimal("333.3334")),
+                        eq(new BigDecimal("60.0000")),
+                        eq("UGX"));
     }
 
     private BillingInvoiceRecord draftInvoice() {
