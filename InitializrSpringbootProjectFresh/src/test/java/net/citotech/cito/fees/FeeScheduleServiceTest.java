@@ -17,11 +17,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-/**
- * Covers audit A5: fee schedules are versioned and effective-dated (creating a new one closes
- * the previous one's window rather than overwriting it), and a per-merchant override wins over
- * the global default when both are active.
- */
 @SuppressWarnings({"rawtypes", "unchecked"})
 class FeeScheduleServiceTest {
 
@@ -29,16 +24,25 @@ class FeeScheduleServiceTest {
     void currentScheduleReturnsTheMerchantOverrideWhenOnePasses() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         ResultSet merchantRow = scheduleRow(1L, "MTNMoMoPaymentGateway", 42L, "PERCENTAGE", "1.50");
-        when(jdbcTemplate.query(anyString(),
-                org.mockito.ArgumentMatchers.argThat((MapSqlParameterSource p) -> p != null && java.util.Objects.equals(42L, p.getValue("merchant_id"))),
-                any(RowMapper.class)))
-            .thenAnswer(invocation -> {
-                RowMapper mapper = invocation.getArgument(2);
-                return List.of(mapper.mapRow(merchantRow, 1));
-            });
+        when(jdbcTemplate.query(
+                        anyString(),
+                        org.mockito.ArgumentMatchers.argThat(
+                                (MapSqlParameterSource p) ->
+                                        p != null
+                                                && java.util.Objects.equals(
+                                                        42L, p.getValue("merchant_id"))),
+                        any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            return List.of(mapper.mapRow(merchantRow, 1));
+                        });
 
         FeeScheduleService service = new FeeScheduleService(jdbcTemplate);
-        FeeSchedule result = service.currentSchedule("MTNMoMoPaymentGateway", 42L, "PAYIN", "CUSTOMER_CHARGE").orElseThrow();
+        FeeSchedule result =
+                service.currentSchedule(
+                                "MTNMoMoPaymentGateway", 42L, "PAYIN", "CUSTOMER_CHARGE")
+                        .orElseThrow();
 
         assertThat(result.merchantId()).isEqualTo(42L);
         assertThat(result.amount()).isEqualByComparingTo("1.50");
@@ -48,20 +52,32 @@ class FeeScheduleServiceTest {
     void currentScheduleFallsBackToTheGlobalDefaultWhenNoMerchantOverrideExists() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         ResultSet globalRow = scheduleRow(2L, "MTNMoMoPaymentGateway", null, "FLAT_FEE", "500");
-        when(jdbcTemplate.query(anyString(),
-                org.mockito.ArgumentMatchers.argThat((MapSqlParameterSource p) -> p != null && p.getValue("merchant_id") == null),
-                any(RowMapper.class)))
-            .thenAnswer(invocation -> {
-                RowMapper mapper = invocation.getArgument(2);
-                return List.of(mapper.mapRow(globalRow, 1));
-            });
-        when(jdbcTemplate.query(anyString(),
-                org.mockito.ArgumentMatchers.argThat((MapSqlParameterSource p) -> p != null && java.util.Objects.equals(7L, p.getValue("merchant_id"))),
-                any(RowMapper.class)))
-            .thenReturn(List.of());
+        when(jdbcTemplate.query(
+                        anyString(),
+                        org.mockito.ArgumentMatchers.argThat(
+                                (MapSqlParameterSource p) ->
+                                        p != null && p.getValue("merchant_id") == null),
+                        any(RowMapper.class)))
+                .thenAnswer(
+                        invocation -> {
+                            RowMapper mapper = invocation.getArgument(2);
+                            return List.of(mapper.mapRow(globalRow, 1));
+                        });
+        when(jdbcTemplate.query(
+                        anyString(),
+                        org.mockito.ArgumentMatchers.argThat(
+                                (MapSqlParameterSource p) ->
+                                        p != null
+                                                && java.util.Objects.equals(
+                                                        7L, p.getValue("merchant_id"))),
+                        any(RowMapper.class)))
+                .thenReturn(List.of());
 
         FeeScheduleService service = new FeeScheduleService(jdbcTemplate);
-        FeeSchedule result = service.currentSchedule("MTNMoMoPaymentGateway", 7L, "PAYOUT", "CUSTOMER_CHARGE").orElseThrow();
+        FeeSchedule result =
+                service.currentSchedule(
+                                "MTNMoMoPaymentGateway", 7L, "PAYOUT", "CUSTOMER_CHARGE")
+                        .orElseThrow();
 
         assertThat(result.merchantId()).isNull();
         assertThat(result.amount()).isEqualByComparingTo("500");
@@ -69,32 +85,131 @@ class FeeScheduleServiceTest {
 
     @Test
     void createRejectsAnInvalidService() {
-        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
-        FeeScheduleService service = new FeeScheduleService(jdbcTemplate);
+        FeeScheduleService service = new FeeScheduleService(mock(NamedParameterJdbcTemplate.class));
 
-        assertThatThrownBy(() -> service.create("MTNMoMoPaymentGateway", null, "BOGUS", "CUSTOMER_CHARGE",
-                "PERCENTAGE", new BigDecimal("1.5"), null, "tester"))
-            .isInstanceOf(PaymentGatewayException.class)
-            .hasMessageContaining("service");
+        assertThatThrownBy(
+                        () ->
+                                service.create(
+                                        "MTNMoMoPaymentGateway",
+                                        null,
+                                        "BOGUS",
+                                        "CUSTOMER_CHARGE",
+                                        "PERCENTAGE",
+                                        new BigDecimal("1.5"),
+                                        null,
+                                        "tester"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("service");
     }
 
     @Test
-    void percentageScheduleAppliesAgainstTheTransactionAmount() {
-        FeeSchedule schedule = new FeeSchedule(1L, "MTNMoMoPaymentGateway", null, "PAYIN", "CUSTOMER_CHARGE",
-            "PERCENTAGE", new BigDecimal("2"), Instant.now(), null);
+    void createRejectsTierUntilRealTierBandsExist() {
+        FeeScheduleService service = new FeeScheduleService(mock(NamedParameterJdbcTemplate.class));
 
-        assertThat(schedule.apply(new BigDecimal("1000"))).isEqualByComparingTo("20");
+        assertThatThrownBy(
+                        () ->
+                                service.create(
+                                        "MTNMoMoPaymentGateway",
+                                        null,
+                                        "PAYIN",
+                                        "CUSTOMER_CHARGE",
+                                        "TIER",
+                                        new BigDecimal("500"),
+                                        null,
+                                        "tester"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("chargingMethod");
+    }
+
+    @Test
+    void createRejectsNonPositiveAndImpossiblePercentageFees() {
+        FeeScheduleService service = new FeeScheduleService(mock(NamedParameterJdbcTemplate.class));
+
+        assertThatThrownBy(
+                        () ->
+                                service.create(
+                                        "gw",
+                                        null,
+                                        "PAYIN",
+                                        "CUSTOMER_CHARGE",
+                                        "FLAT_FEE",
+                                        BigDecimal.ZERO,
+                                        null,
+                                        "tester"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("greater than zero");
+
+        assertThatThrownBy(
+                        () ->
+                                service.create(
+                                        "gw",
+                                        null,
+                                        "PAYIN",
+                                        "CUSTOMER_CHARGE",
+                                        "PERCENTAGE",
+                                        new BigDecimal("100.0001"),
+                                        null,
+                                        "tester"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("100");
+    }
+
+    @Test
+    void percentageScheduleUsesFourDecimalCalculationPrecision() {
+        FeeSchedule schedule =
+                new FeeSchedule(
+                        1L,
+                        "MTNMoMoPaymentGateway",
+                        null,
+                        "PAYIN",
+                        "CUSTOMER_CHARGE",
+                        "PERCENTAGE",
+                        new BigDecimal("1.2345"),
+                        Instant.now(),
+                        null);
+
+        assertThat(schedule.apply(new BigDecimal("123.4567")))
+                .isEqualByComparingTo("1.5241");
     }
 
     @Test
     void flatFeeScheduleIgnoresTheTransactionAmount() {
-        FeeSchedule schedule = new FeeSchedule(1L, "MTNMoMoPaymentGateway", null, "PAYIN", "CUSTOMER_CHARGE",
-            "FLAT_FEE", new BigDecimal("500"), Instant.now(), null);
+        FeeSchedule schedule =
+                new FeeSchedule(
+                        1L,
+                        "MTNMoMoPaymentGateway",
+                        null,
+                        "PAYIN",
+                        "CUSTOMER_CHARGE",
+                        "FLAT_FEE",
+                        new BigDecimal("500"),
+                        Instant.now(),
+                        null);
 
-        assertThat(schedule.apply(new BigDecimal("1000000"))).isEqualByComparingTo("500");
+        assertThat(schedule.apply(new BigDecimal("1000000"))).isEqualByComparingTo("500.0000");
     }
 
-    private ResultSet scheduleRow(long id, String gatewayId, Long merchantId, String chargingMethod, String amount) {
+    @Test
+    void unsupportedScheduleNeverFallsBackToFlatFee() {
+        FeeSchedule schedule =
+                new FeeSchedule(
+                        1L,
+                        "gw",
+                        null,
+                        "PAYIN",
+                        "CUSTOMER_CHARGE",
+                        "TIER",
+                        new BigDecimal("500"),
+                        Instant.now(),
+                        null);
+
+        assertThatThrownBy(() -> schedule.apply(new BigDecimal("1000")))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("Unsupported");
+    }
+
+    private ResultSet scheduleRow(
+            long id, String gatewayId, Long merchantId, String chargingMethod, String amount) {
         ResultSet row = mock(ResultSet.class);
         try {
             when(row.getLong("id")).thenReturn(id);
@@ -109,7 +224,8 @@ class FeeScheduleServiceTest {
             when(row.getString("charge_type")).thenReturn("CUSTOMER_CHARGE");
             when(row.getString("charging_method")).thenReturn(chargingMethod);
             when(row.getBigDecimal("amount")).thenReturn(new BigDecimal(amount));
-            when(row.getTimestamp("effective_from")).thenReturn(java.sql.Timestamp.from(Instant.now().minusSeconds(60)));
+            when(row.getTimestamp("effective_from"))
+                    .thenReturn(java.sql.Timestamp.from(Instant.now().minusSeconds(60)));
             when(row.getTimestamp("effective_to")).thenReturn(null);
         } catch (Exception e) {
             throw new IllegalStateException(e);
