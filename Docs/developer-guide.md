@@ -174,6 +174,15 @@ An FX quote does not move money. Creating or authorizing a transfer is a high-im
 
 The current platform lineage strengthens production safety with fail-closed configuration checks, hardened session/security-header defaults, stronger password hashing and independent account/network login throttling budgets. API clients should preserve that posture rather than weakening it at integration boundaries.
 
+
+### Admin password-reset semantics
+
+`POST /auth/resetPassword` accepts a single-use token from the hardened
+`password_reset_tokens` store. During the legacy-column transition, an operational recovery aligns
+the administrator email-timestamp window with the token's configured expiry. Recovery may issue
+only a hashed, short-lived token for an existing active administrator; it cannot create, activate,
+or grant privileges to an account.
+
 Minimum integration expectations:
 
 - least-privilege credentials and scopes;
