@@ -1,35 +1,43 @@
-# CPay Deployment Guide
+# Cito Deployment Guide
 
-This guide covers a Linux service deployment for the CPay backend and the production frontend artifact. It assumes the release has already passed the build, test, provider, security, finance, and operations gates listed in `Docs/Readiness/Market-readiness-gates.md`.
+This guide describes the production deployment and verification requirements for Cito. The repository still contains some `CPAY_*` environment variables and legacy deployment helpers for backward compatibility; the product and repository are now **Cito**.
 
-## Runtime
+## Production runtime
 
-| Item | Value |
+| Item | Current requirement |
 |---|---|
-| Backend | Spring Boot 4.1, Java 21 |
+| Backend | Spring Boot 4.1 on Java 21 |
 | Backend artifact | `InitializrSpringbootProjectFresh/target/cito-fresh-0.0.1-SNAPSHOT.jar` |
-| Default backend port | `8081` through `HTTP_PORT` |
-| Frontend | React 18, Vite 8, output in `clientside/build` |
-| Database | MySQL 8 compatible |
-| Sessions | Spring Session JDBC tables managed by Flyway baseline migration |
-| Distributed locking | ShedLock, backed by the same MySQL database (`shedlock` table) |
+| Frontend | React 18 / Vite 8 |
+| Database | MySQL-compatible; current Railway production service uses MySQL 9.4 |
+| Migrations | Flyway, repository head V110 |
+| Sessions | Spring Session JDBC |
+| Distributed jobs | ShedLock on the shared database |
+| Health | backend `/status/health`; frontend `/readyz` in Railway |
 
-## Multiple Instances / High Availability
+## Current Railway topology
 
-The status-check and payout crons (`testCheckstatusCron`, `paymentsPayCron`) are safe to run across
-more than one backend instance behind a load balancer: they hold a distributed lock (ShedLock,
-backed by a `shedlock` row in the shared database) for the duration of each run, so two instances
-cannot process the same batch of pending transactions or payouts concurrently. This requires no
-extra configuration beyond every instance sharing the same database — do not point separate
-instances at separate databases, or the distributed lock has nothing shared to coordinate through.
+Repository Railway descriptors request:
 
-## Build Artifacts
+- two backend replicas in Amsterdam;
+- two frontend replicas in Amsterdam;
+- a private MySQL service;
+- no public MySQL endpoint;
+- hourly logical backups.
+
+The application must not be declared database-HA merely because application replicas exist. **The native Railway MySQL HA conversion to three data nodes plus two HAProxy instances is still an outstanding production task until the live environment is converted and failover-tested.** After that conversion, all database consumers, including backup jobs, must be verified against the HA endpoint rather than a hard-coded standalone MySQL hostname.
+
+Do not delete production volumes or backups to simulate failover.
+
+## Build and verification
 
 Backend:
 
 ```bash
 cd InitializrSpringbootProjectFresh
 mvn clean package
+mvn test
+mvn verify
 ```
 
 Frontend:
@@ -42,177 +50,123 @@ npm test
 npm run build
 ```
 
-## Server Directories
-
-Create the backend service directories:
+Docker-tagged backend integration tests are opt-in:
 
 ```bash
-sudo mkdir -p /opt/cpay/bin
-sudo mkdir -p /etc/cpay
-sudo mkdir -p /var/opt/cpay/locks
-sudo chown -R cpay:cpay /opt/cpay /var/opt/cpay
-sudo chmod 750 /etc/cpay
-sudo chmod 755 /var/opt/cpay/locks
+mvn test -Ddocker.tests.excludedGroups=
 ```
 
-Copy the backend artifact:
+A financial release must also pass the repository's billing, accounting, reconciliation and governance CI gates. Green CI is necessary, but deployment is not accepted until runtime evidence is checked.
 
-```bash
-sudo cp InitializrSpringbootProjectFresh/target/cito-fresh-0.0.1-SNAPSHOT.jar /opt/cpay/bin/
-sudo chown cpay:cpay /opt/cpay/bin/cito-fresh-0.0.1-SNAPSHOT.jar
-```
+## Database migration gate
 
-The legacy helper scripts under `Setup/` have also been updated to use `/opt/cpay`, `/var/log/cpay`, `/var/opt/cpay/locks`, and the `cito-fresh-0.0.1-SNAPSHOT.jar` artifact. Prefer the systemd service below for production, and use the scripts only for controlled manual installs or transitional hosts.
+Before production rollout:
 
-## Environment File
+1. back up the live database and verify the backup is readable;
+2. test new migrations on a representative staging/restored copy where practical;
+3. verify that no previously applied Flyway migration was edited;
+4. deploy the backend and inspect startup logs for Flyway validation and migration success;
+5. verify the runtime schema version. For this release the expected repository head is **V110**;
+6. stop rollout if Flyway reports checksum mismatches, partial migration state or schema validation errors.
 
-Create `/etc/cpay/.env` and keep it outside source control.
+V110 adds immutable tax/revenue allocation evidence for billing credit notes and is part of the financial-correctness fix. It must be present before relying on the updated credit-note workflow.
 
-```bash
-DB_URL=jdbc:mysql://db-host:3306/cpayadmin
-DB_USERNAME=cpay_user
-DB_PASSWORD=replace_with_secret
+## Financial deployment invariants
 
-HTTP_PORT=8081
-APP_BASE_URL=https://cpay.coresynergi.es
-CORS_ALLOWED_ORIGINS=https://cpay.coresynergi.es,https://portal.coresynergi.es
+After deployment verify all of the following:
 
+- authoritative monetary calculations remain four-decimal `BigDecimal` with HALF_UP rounding;
+- ledger postings balance debits and credits independently for every currency;
+- duplicate transaction/idempotency references do not create duplicate financial postings;
+- a settlement batch can be replayed only with identical provider, channel, currency and amount;
+- a conflicting settlement replay is rejected and cannot rewrite the operational amount independently of the ledger;
+- automatic reconciliation does not match on merchant reference alone and leaves ambiguous candidates unmatched;
+- unsupported `TIER` fee schedules fail rather than charge a disguised flat fee;
+- fee schedules reject non-positive amounts and percentages above 100%;
+- invoice tax, credit-note tax and FX evidence retain four-decimal precision;
+- cumulative credit-note tax can never exceed the original invoice tax and a complete credit reversal resolves any remaining rounding residual exactly.
+
+See `Docs/Financial-correctness-and-data-integrity.md`.
+
+## Multiple backend instances
+
+Schedulers and workers that may run on more than one backend replica must coordinate through shared database locking/claiming. Both backend instances must point at the same writable database endpoint. Verify ShedLock ownership in logs or database evidence when testing scheduled reconciliation, payout and cleanup work.
+
+Spring Session must use JDBC in clustered production so a user session is not tied to one backend process.
+
+## Required production configuration
+
+Secrets and credentials must live outside source control. Representative variables include:
+
+```text
+DB_URL
+DB_USERNAME
+DB_PASSWORD
 CUSTOM_GATEWAYSTATE=PRODUCTION
 CUSTOM_SSL_SKIP_VERIFY=false
-CUSTOM_LOCKFILEDIRECTORY=/var/opt/cpay/locks
-
-MAIL_HOST=smtp.example.com
-MAIL_PORT=587
-MAIL_USERNAME=replace_with_secret
-MAIL_PASSWORD=replace_with_secret
-
-ACTUATOR_USERNAME=replace_with_secret
-ACTUATOR_PASSWORD=replace_with_secret
-ADMIN_API_USERNAME=replace_with_secret
-ADMIN_API_PASSWORD=replace_with_secret
-
-CALLBACK_SIGNING_SECRET=replace_with_long_random_secret
-MERCHANT_CHANNEL_ENCRYPTION_KEY=replace_with_long_random_secret
-CPAY_KEY_ENCRYPTION_KEY=replace_with_dedicated_base64_32_byte_key
-
-SPRINGDOC_API_DOCS_ENABLED=false
-SPRINGDOC_SWAGGER_UI_ENABLED=false
+CORS_ALLOWED_ORIGINS
+APP_BASE_URL
+ACTUATOR_USERNAME
+ACTUATOR_PASSWORD
+ADMIN_API_USERNAME
+ADMIN_API_PASSWORD
+CALLBACK_SIGNING_SECRET
+MERCHANT_CHANNEL_ENCRYPTION_KEY
+CPAY_KEY_ENCRYPTION_KEY
 CPAY_SECURITY_NONCE_STORE=jdbc
 ```
 
-Production channel credentials should be configured through the application settings and merchant channel setup flow. Do not place provider secrets, private keys, merchant signing material, or callback signing values in the repository.
+Keep the historical `CPAY_*` names where they are part of the deployed compatibility contract. A future rename requires an explicit dual-read migration period.
 
-## Systemd Service
+Production API documentation/Swagger should remain disabled unless there is an approved operational reason to expose it:
 
-Create `/etc/systemd/system/cpay.service`:
-
-```ini
-[Unit]
-Description=CPay Core Payments Gateway Backend
-After=network.target mysqld.service
-
-[Service]
-User=cpay
-Group=cpay
-WorkingDirectory=/opt/cpay
-EnvironmentFile=/etc/cpay/.env
-ExecStart=/usr/bin/java -jar /opt/cpay/bin/cito-fresh-0.0.1-SNAPSHOT.jar
-SuccessExitStatus=143
-Restart=always
-RestartSec=10
-NoNewPrivileges=true
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
+```text
+SPRINGDOC_API_DOCS_ENABLED=false
+SPRINGDOC_SWAGGER_UI_ENABLED=false
 ```
 
-Start the service:
+Provider production endpoints and credentials must be configured for the intended merchant/channel environment. Code presence is not provider certification.
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable cpay
-sudo systemctl start cpay
-sudo systemctl status cpay
-```
+## Health and smoke checks
 
-View logs:
+After rollout verify the public application routes and private runtime evidence. At minimum:
 
-```bash
-sudo journalctl -u cpay -f
-```
+- backend `/status/health` responds successfully;
+- frontend `/readyz` responds successfully;
+- both expected backend and frontend replicas are healthy;
+- Hikari connects successfully;
+- Flyway reports the expected schema version;
+- no persistent database communication errors appear;
+- Spring Session JDBC is functioning across backend replicas;
+- ShedLock prevents duplicate scheduler execution;
+- payment initiation/status paths remain idempotent;
+- callbacks/webhooks do not double-deliver after retry;
+- reconciliation imports, automatic matching and manual review work;
+- trial balance reports balanced for each active currency;
+- settlement open/replay/close behavior is correct;
+- invoice create/finalize/pay/credit/void paths post the expected ledger entries;
+- a fresh scheduled database backup completes successfully.
 
-## Frontend Deployment
+## Controlled MySQL HA failover gate
 
-Build the frontend from `clientside` and deploy `clientside/build` behind HTTPS. The frontend should be served from an origin listed in `CORS_ALLOWED_ORIGINS`.
+Once native Railway MySQL HA is enabled, perform a controlled leader switchover using the platform's supported leader action. Verify:
 
-For local testing, Vite runs on `http://localhost:3000` and proxies backend routes to `http://localhost:8081`. Production should use the public HTTPS origin and a reverse proxy/load balancer.
+1. the HAProxy private endpoint remains stable;
+2. application connections briefly retry rather than requiring configuration changes;
+3. both backend replicas reconnect to the new primary;
+4. workers and schedulers resume without duplicate processing;
+5. payment, webhook and reconciliation logs show no duplicated financial outcomes;
+6. backups still connect through the intended HA endpoint;
+7. MySQL remains private.
 
-## GitHub Deployment Pipeline
+Only after this test should the database layer be described as HA-ready.
 
-The repository includes a manual GitHub Actions workflow at `.github/workflows/deploy-cpay.yml`. It connects to the server over SSH and runs `deployment/scripts/deploy-server.sh`.
+## Finance-close caution
 
-The server deployment script is idempotent. It installs the required CentOS/RHEL packages, ensures MySQL is running on the server, creates `/etc/cpay/.env` if it does not already exist, pulls the selected branch into `/opt/cpay/source`, builds the Vite frontend and Spring Boot backend, writes the systemd and Nginx configuration, restarts the services, and verifies `/status/health`.
+A balanced ledger is only one finance-close condition. Do not mark a business day financially closed unless required statements/imports, reconciliation exceptions, maker-checker approvals and close evidence are present. `ledger_balanced=true` by itself is not equivalent to a completed finance close. Humans have tried to make that shortcut before; accountants remain unimpressed.
 
-Required repository secrets:
+## Rollback
 
-| Secret | Purpose |
-|---|---|
-| `CPAY_DEPLOY_HOST` | Server IP or hostname. |
-| `CPAY_DEPLOY_USER` | SSH user with passwordless sudo, for example `opc` on Oracle Linux. |
-| `CPAY_DEPLOY_SSH_KEY` | Private SSH key accepted by the server. |
-| `CPAY_DEPLOY_PORT` | SSH port; use `22` unless changed. |
-| `CPAY_DOMAIN` | Public domain, for example `cpay.coresynergi.es`. |
+Application rollback must not roll back already-applied financial history or destructive schema changes. Prefer forward fixes and append-only correcting entries. Before reverting an application release, confirm that the older code understands the current Flyway schema and financial records.
 
-Optional repository secrets:
-
-| Secret | Default |
-|---|---|
-| `CPAY_APP_ROOT` | `/opt/cpay` |
-| `CPAY_REPO_URL` | `https://github.com/lynelk/CPay.git` |
-| `CPAY_MYSQL_ROOT_PASSWORD` | Empty; set only if the server's local MySQL root account requires a password |
-
-The current workflow is manually triggered from GitHub Actions. Use the `branch` input to deploy a specific branch. The server-side script performs a hard reset to `origin/<branch>`, so production-only edits should live in `/etc/cpay/.env`, not inside the repository checkout.
-
-## Health and Smoke Checks
-
-After deployment, verify:
-
-```bash
-curl -i https://cpay.coresynergi.es/status/health
-curl -i https://cpay.coresynergi.es/auth/csrf
-curl -i -u "$ACTUATOR_USERNAME:$ACTUATOR_PASSWORD" https://cpay.coresynergi.es/actuator/health
-```
-
-Then run functional smoke checks for:
-
-- admin login and logout
-- merchant login and logout
-- merchant self-signup
-- merchant payment-channel save, test, and submit
-- merchant sandbox/production environment switch and production transaction cap behavior
-- payment-link and invoice/request-to-pay creation plus hosted checkout payment path
-- v1 collect, payout, status, balance, and SMS endpoints
-- v2 native collect and payout
-- callback signing and callback requeue
-- compliance/KYB, provider certification, treasury/balance monitoring, communication, and vending admin screens
-- MTN, Airtel, Airtel OpenAPI, Safaricom, and Yo! Payments sandbox scenarios
-
-## Production Controls
-
-Before enabling live traffic, confirm:
-
-- Flyway migrations have been tested against a staging database copy.
-- `CUSTOM_GATEWAYSTATE=PRODUCTION`.
-- `CUSTOM_SSL_SKIP_VERIFY=false`.
-- `SPRINGDOC_API_DOCS_ENABLED=false`.
-- `SPRINGDOC_SWAGGER_UI_ENABLED=false`.
-- `CPAY_SECURITY_NONCE_STORE=jdbc` for clustered or multi-worker production deployments.
-- `CORS_ALLOWED_ORIGINS` contains only approved HTTPS origins.
-- Admin and actuator credentials are separate, strong, and stored outside source control.
-- Provider production endpoint URLs and credentials are configured for the correct merchant/channel environment.
-- Developer sandbox settings and production transaction-cap settings have been reviewed in the admin portal.
-- `CPAY_KEY_ENCRYPTION_KEY` is set to a dedicated random value rather than left to fall back onto `MERCHANT_CHANNEL_ENCRYPTION_KEY`.
-- Maker-checker payout and finance-close approval thresholds/roles have been reviewed with finance and operations.
-- EFRIS e-receipt delivery (`CPAY_EFRIS_DELIVER_ENABLED`) and any regulator-reporting output are not treated as certified/compliant until confirmed with real EFRIS/URA and BoU requirements — see `Claude.md`'s `efris/`/`reporting/` notes.
-- Finance, provider, security, monitoring, and compliance signoffs are recorded.
+Never delete a production database volume or the verified backup destination as a rollback technique.
