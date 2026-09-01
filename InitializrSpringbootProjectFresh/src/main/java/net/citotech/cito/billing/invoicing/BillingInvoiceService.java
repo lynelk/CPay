@@ -10,6 +10,7 @@ import net.citotech.cito.billing.reconciliation.BillingCompletenessGateService;
 import net.citotech.cito.billing.tax.BillingTaxSnapshot;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.money.MoneyAmount;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class BillingInvoiceService {
     private final BillingLedgerAccountTemplateService ledgerAccountTemplateService;
     private final BillingPaymentFundingService fundingService;
 
+    @Autowired
     public BillingInvoiceService(
             BillingInvoiceRepository repository,
             BillingCreditAllocationRepository creditAllocationRepository,
@@ -33,6 +35,24 @@ public class BillingInvoiceService {
         this.completenessGateService = completenessGateService;
         this.ledgerAccountTemplateService = ledgerAccountTemplateService;
         this.fundingService = fundingService;
+    }
+
+    /**
+     * Compatibility constructor for existing non-Spring test fixtures that exercise pre-credit-note
+     * invoice flows. Production dependency injection always uses the five-argument constructor.
+     */
+    @Deprecated(forRemoval = false)
+    public BillingInvoiceService(
+            BillingInvoiceRepository repository,
+            BillingCompletenessGateService completenessGateService,
+            BillingLedgerAccountTemplateService ledgerAccountTemplateService,
+            BillingPaymentFundingService fundingService) {
+        this(
+                repository,
+                null,
+                completenessGateService,
+                ledgerAccountTemplateService,
+                fundingService);
     }
 
     @Transactional
@@ -208,6 +228,10 @@ public class BillingInvoiceService {
         }
         if (reason == null || reason.isBlank()) {
             throw new PaymentGatewayException("Billing credit-note reason is required");
+        }
+        if (creditAllocationRepository == null) {
+            throw new PaymentGatewayException(
+                    "Billing credit-note allocation repository is required for credit operations");
         }
         BillingInvoiceRecord invoice = requireFinalizedInvoiceLocked(billingInvoiceId);
         BigDecimal outstanding = MoneyAmount.normalize(repository.findOutstandingAmount(billingInvoiceId));
