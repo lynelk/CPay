@@ -19,7 +19,10 @@ function readApiBase(): string {
     typeof process !== 'undefined' && process.env
       ? (process.env as Record<string, string | undefined>).REACT_APP_API_BASE
       : undefined;
-  return legacy ?? '/api/ui';
+  // vite.config keeps the legacy symbol defined as an empty string when no
+  // override is supplied. Treat that empty value as "not configured" so the
+  // production same-origin namespace remains the default in tests and builds.
+  return legacy || '/api/ui';
 }
 
 export const API_BASE: string = readApiBase();
@@ -37,6 +40,13 @@ export function apiUrl(path: string): string {
   // again. Without this guard those calls became /api/ui/api/ui/... in
   // production and never matched the nginx UI proxy namespace correctly.
   if (suffix === base || suffix.startsWith(`${base}/`)) {
+    return suffix;
+  }
+
+  // Public gateway contracts already live below /api on Spring and nginx
+  // preserves that prefix. Only the browser-only legacy controller families
+  // need the /api/ui namespace.
+  if (suffix === '/api' || suffix.startsWith('/api/')) {
     return suffix;
   }
 

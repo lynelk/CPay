@@ -274,6 +274,14 @@ public class AdapterNativePaymentService {
             PaymentChannelAdapter adapter,
             String environment,
             CredentialContext credentialContext) {
+        Object configuredCurrency = credentialContext.credentials().get("baseCurrency");
+        if ("mtn_momo".equalsIgnoreCase(adapter.channelCode())
+                && configuredCurrency != null
+                && !String.valueOf(configuredCurrency)
+                        .equalsIgnoreCase(String.valueOf(request.getCurrency()))) {
+            throw new PaymentGatewayException(
+                    "MTN request currency must match the configured baseCurrency");
+        }
         Map<String, String> metadata = new HashMap<>();
         metadata.put("currency", request.getCurrency());
         metadata.put("country", request.getCountry());

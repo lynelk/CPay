@@ -7,6 +7,10 @@ export interface TreasuryAccount {
   environment: string;
   countryCode: string;
   currencyCode: string;
+  accountRole: 'MASTER' | 'COLLECTION' | 'DISBURSEMENT';
+  displayName?: string | null;
+  parentAccountId?: number | null;
+  prefundRequired: 'YES' | 'NO';
   bookBalance: number;
   reservedBalance: number;
   pendingOutgoingBalance: number;

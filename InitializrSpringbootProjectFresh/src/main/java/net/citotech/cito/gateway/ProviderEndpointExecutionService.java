@@ -2,11 +2,16 @@ package net.citotech.cito.gateway;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.GateWayResponse;
 import net.citotech.cito.Model.HttpRequestResponse;
+import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -31,6 +36,9 @@ public class ProviderEndpointExecutionService {
             String displayName,
             String operation,
             PaymentGatewayRequest request) {
+        if (MtnMomoCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+            return executeMtn(displayName, operation, request);
+        }
         String endpointKey = operation.toLowerCase() + "Url";
         String endpointUrl = request.getMetadata().get(endpointKey);
         String gatewayState = request.getMetadata().getOrDefault("gatewayState", "SANDBOX");
@@ -128,7 +136,8 @@ public class ProviderEndpointExecutionService {
                     status = "FAILED";
                     runStatus = "SIGNATURE_INVALID";
                     recordMessage =
-                            "Provider response signature verification failed - response rejected as untrusted";
+                            "Provider response signature verification failed - response rejected as"
+                                    + " untrusted";
                 }
             }
 
@@ -185,6 +194,277 @@ public class ProviderEndpointExecutionService {
         }
     }
 
+    private GateWayResponse executeMtn(
+            String displayName, String operation, PaymentGatewayRequest request) {
+        Map<String, String> credentials = request.getMetadata();
+        String gatewayState = credentials.getOrDefault("gatewayState", "SANDBOX");
+        String baseUrl = credentials.get("baseUrl");
+        String endpoint = MtnMomoCredentialSchema.endpoint(credentials, operation);
+        if (isBlank(baseUrl)) {
+            if ("PRODUCTION".equalsIgnoreCase(gatewayState)) {
+                throw new PaymentGatewayException(
+                        "MTN MoMo baseUrl is required in production mode");
+            }
+            SandboxScenario scenario = sandboxScenario(operation, request.getAccountIdentifier());
+            GateWayResponse simulated =
+                    response(
+                            MtnMomoCredentialSchema.CHANNEL_CODE,
+                            displayName,
+                            operation,
+                            request,
+                            scenario.httpStatus,
+                            scenario.transactionStatus,
+                            scenario.message);
+            record(
+                    MtnMomoCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    "CPAY_SANDBOX_SIMULATOR",
+                    scenario.httpStatus,
+                    scenario.runStatus,
+                    scenario.message);
+            return simulated;
+        }
+        if (!circuitBreaker.allowRequest(MtnMomoCredentialSchema.CHANNEL_CODE)) {
+            String message = "MTN MoMo provider calls are temporarily suspended";
+            record(
+                    MtnMomoCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    endpoint,
+                    0,
+                    "CIRCUIT_OPEN",
+                    message);
+            return response(
+                    MtnMomoCredentialSchema.CHANNEL_CODE,
+                    displayName,
+                    operation,
+                    request,
+                    0,
+                    "FAILED",
+                    message);
+        }
+
+        String providerReference = UUID.randomUUID().toString();
+        String requestBody = mtnBody(operation, request);
+        try {
+            String token = mtnAccessToken(operation, credentials, gatewayState, false);
+            HttpRequestResponse providerResponse =
+                    sendMtn(
+                            operation,
+                            request,
+                            credentials,
+                            endpoint,
+                            providerReference,
+                            requestBody,
+                            token);
+            if (providerResponse.getStatusCode() == 401) {
+                token = mtnAccessToken(operation, credentials, gatewayState, true);
+                providerResponse =
+                        sendMtn(
+                                operation,
+                                request,
+                                credentials,
+                                endpoint,
+                                providerReference,
+                                requestBody,
+                                token);
+            }
+            int httpStatus = providerResponse.getStatusCode();
+            String responseBody =
+                    providerResponse.getResponse() == null ? "" : providerResponse.getResponse();
+            boolean accepted = httpStatus == 202;
+            String runStatus = accepted ? "PENDING" : "FAILED";
+            if (accepted) {
+                circuitBreaker.recordSuccess(MtnMomoCredentialSchema.CHANNEL_CODE);
+                saveProviderReference(providerReference, request.getReference());
+            } else {
+                circuitBreaker.recordFailure(MtnMomoCredentialSchema.CHANNEL_CODE);
+            }
+            record(
+                    MtnMomoCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    endpoint,
+                    httpStatus,
+                    runStatus,
+                    responseBody);
+            String message =
+                    accepted
+                            ? "Accepted by MTN MoMo; awaiting final callback or status poll"
+                            : ProviderErrorTranslator.translateProviderResponse(
+                                            httpStatus, responseBody)
+                                    .merchantMessage();
+            GateWayResponse result =
+                    response(
+                            MtnMomoCredentialSchema.CHANNEL_CODE,
+                            displayName,
+                            operation,
+                            request,
+                            httpStatus,
+                            runStatus,
+                            message);
+            result.setNetworkId(providerReference);
+            result.setRequestTrace("requestHash=" + safeHash(requestBody));
+            return result;
+        } catch (PaymentGatewayException e) {
+            circuitBreaker.recordFailure(MtnMomoCredentialSchema.CHANNEL_CODE);
+            record(
+                    MtnMomoCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    endpoint,
+                    0,
+                    "FAILED",
+                    e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            circuitBreaker.recordFailure(MtnMomoCredentialSchema.CHANNEL_CODE);
+            record(
+                    MtnMomoCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    endpoint,
+                    0,
+                    "FAILED",
+                    e.getMessage());
+            throw new PaymentGatewayException("MTN MoMo execution failed: " + e.getMessage());
+        }
+    }
+
+    private HttpRequestResponse sendMtn(
+            String operation,
+            PaymentGatewayRequest request,
+            Map<String, String> credentials,
+            String endpoint,
+            String providerReference,
+            String requestBody,
+            String token) {
+        String prefix = MtnMomoCredentialSchema.productPrefix(operation);
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("Authorization", "Bearer " + token);
+        headers.put(
+                "Ocp-Apim-Subscription-Key",
+                required(credentials.get(prefix + "SubscriptionKey"), prefix + "SubscriptionKey"));
+        headers.put(
+                "X-Target-Environment",
+                required(credentials.get("targetEnvironment"), "targetEnvironment"));
+        headers.put("X-Reference-Id", providerReference);
+        headers.put("Content-Type", "application/json");
+        String callbackUrl = credentials.get("callbackUrl");
+        if (!isBlank(callbackUrl)) {
+            headers.put(
+                    "X-Callback-Url",
+                    callbackUrl.trim().replaceAll("/+$", "") + "/" + providerReference);
+        }
+        return Common.doHttpRequest("POST", endpoint, requestBody, headers);
+    }
+
+    private String mtnAccessToken(
+            String operation,
+            Map<String, String> credentials,
+            String environment,
+            boolean forceRefresh) {
+        String prefix = MtnMomoCredentialSchema.productPrefix(operation);
+        String apiUser = required(credentials.get(prefix + "ApiUser"), prefix + "ApiUser");
+        String apiKey = required(credentials.get(prefix + "ApiKey"), prefix + "ApiKey");
+        String subscriptionKey =
+                required(credentials.get(prefix + "SubscriptionKey"), prefix + "SubscriptionKey");
+        String fingerprint = safeHash(apiUser + "|" + subscriptionKey);
+        String segment =
+                prefix.toUpperCase()
+                        + ":"
+                        + fingerprint.substring(0, Math.min(16, fingerprint.length()));
+        if (!forceRefresh) {
+            Optional<ProviderToken> cached =
+                    tokenStoreService.findValid(
+                            MtnMomoCredentialSchema.CHANNEL_CODE, segment, environment);
+            if (cached != null && cached.isPresent()) return cached.get().getTokenValue();
+        }
+
+        Map<String, String> headers = new LinkedHashMap<>();
+        String basic =
+                Base64.getEncoder()
+                        .encodeToString((apiUser + ":" + apiKey).getBytes(StandardCharsets.UTF_8));
+        headers.put("Authorization", "Basic " + basic);
+        headers.put("Ocp-Apim-Subscription-Key", subscriptionKey);
+        HttpRequestResponse tokenResponse =
+                Common.doHttpRequest(
+                        "POST",
+                        MtnMomoCredentialSchema.tokenEndpoint(credentials, operation),
+                        "",
+                        headers);
+        if (tokenResponse.getStatusCode() < 200 || tokenResponse.getStatusCode() >= 300) {
+            throw new PaymentGatewayException(
+                    "MTN MoMo OAuth token request failed with HTTP "
+                            + tokenResponse.getStatusCode());
+        }
+        JSONObject json = new JSONObject(tokenResponse.getResponse());
+        String accessToken = json.optString("access_token", "").trim();
+        if (accessToken.isEmpty()) {
+            throw new PaymentGatewayException(
+                    "MTN MoMo OAuth response did not include access_token");
+        }
+        long expiresIn = Math.max(60L, json.optLong("expires_in", 3600L));
+        tokenStoreService.save(
+                MtnMomoCredentialSchema.CHANNEL_CODE,
+                segment,
+                environment,
+                accessToken,
+                Instant.now().plusSeconds(Math.max(30L, expiresIn - 60L)));
+        return accessToken;
+    }
+
+    private String mtnBody(String operation, PaymentGatewayRequest request) {
+        String description = truncate(request.getDescription(), 160);
+        JSONObject body =
+                new JSONObject()
+                        .put("amount", String.valueOf(request.getAmount()))
+                        .put(
+                                "currency",
+                                required(request.getMetadata().get("currency"), "currency"))
+                        .put("externalId", required(request.getReference(), "reference"))
+                        .put("payerMessage", description)
+                        .put("payeeNote", description);
+        String partyKey = "PAYOUT".equalsIgnoreCase(operation) ? "payee" : "payer";
+        body.put(
+                partyKey,
+                new JSONObject()
+                        .put(
+                                "partyIdType",
+                                request.getMetadata().getOrDefault("partyIdType", "MSISDN"))
+                        .put(
+                                "partyId",
+                                required(request.getAccountIdentifier(), "accountIdentifier")));
+        return body.toString();
+    }
+
+    private void saveProviderReference(String providerReference, String merchantReference) {
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO provider_conversation_references (provider_code, conversation_id,"
+                            + " tx_reference) VALUES (:provider,:conversation,:reference) ON DUPLICATE"
+                            + " KEY UPDATE tx_reference=:reference",
+                    new MapSqlParameterSource()
+                            .addValue("provider", MtnMomoCredentialSchema.CHANNEL_CODE)
+                            .addValue("conversation", providerReference)
+                            .addValue("reference", merchantReference));
+        } catch (Exception ignored) {
+            // The provider request is already accepted. A missing correlation row must be surfaced
+            // by reconciliation/status polling without converting the accepted request to failure.
+        }
+    }
+
+    private String required(String value, String field) {
+        if (isBlank(value)) throw new PaymentGatewayException("MTN MoMo " + field + " is required");
+        return value.trim();
+    }
+
+    private String truncate(String value, int maxLength) {
+        String safe = value == null ? "" : value.trim();
+        return safe.length() <= maxLength ? safe : safe.substring(0, maxLength);
+    }
+
     private GateWayResponse response(
             String channelCode,
             String displayName,
@@ -211,7 +491,11 @@ public class ProviderEndpointExecutionService {
             String status,
             String message) {
         String sql =
-                "INSERT INTO provider_endpoint_runs (channel_code, operation_name, reference_value, endpoint_url, http_status, request_hash, response_summary, run_status, merchant_number, environment) VALUES (:channel_code, :operation_name, :reference_value, :endpoint_url, :http_status, :request_hash, :response_summary, :run_status, :merchant_number, :environment)";
+                "INSERT INTO provider_endpoint_runs (channel_code, operation_name, reference_value,"
+                        + " endpoint_url, http_status, request_hash, response_summary, run_status,"
+                        + " merchant_number, environment) VALUES (:channel_code, :operation_name,"
+                        + " :reference_value, :endpoint_url, :http_status, :request_hash,"
+                        + " :response_summary, :run_status, :merchant_number, :environment)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("channel_code", channelCode);
         p.addValue("operation_name", operation);

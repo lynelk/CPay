@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import net.citotech.cito.Model.Merchant;
+import net.citotech.cito.gateway.MtnMomoCredentialSchema;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
@@ -232,7 +233,10 @@ public class SharedProviderAccessService {
                         requiredText(body.get("environment"), "environment"));
         String country = normalizeCountry(requiredText(body.get("countryCode"), "countryCode"));
         String currency = normalizeCurrency(requiredText(body.get("currencyCode"), "currencyCode"));
-        if ("PRODUCTION".equals(environment)) {
+        ensureTreasuryAccounts(channel, environment, country, currency);
+        if (MtnMomoCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channel)) {
+            MtnMomoCredentialSchema.validate(credentials, environment, country, currency);
+        } else if ("PRODUCTION".equals(environment)) {
             requiredText(credentials.get("collectUrl"), "credentials.collectUrl");
             requiredText(credentials.get("payoutUrl"), "credentials.payoutUrl");
         }
@@ -252,6 +256,26 @@ public class SharedProviderAccessService {
                         + "ON DUPLICATE KEY UPDATE credential_payload=:payload, credential_mask=:mask, status='CONFIGURED', updated_by=:actor, approved_by=NULL, approved_at=NULL, disabled_by=NULL, disabled_at=NULL",
                 p);
         return platformCredential(channel, environment, country, currency);
+    }
+
+    private void ensureTreasuryAccounts(
+            String channel, String environment, String country, String currency) {
+        Integer count =
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM provider_treasury_accounts "
+                                + "WHERE channel_code=:channel AND environment=:environment "
+                                + "AND country_code=:country AND currency_code=:currency "
+                                + "AND account_role IN ('COLLECTION','DISBURSEMENT')",
+                        new MapSqlParameterSource()
+                                .addValue("channel", channel)
+                                .addValue("environment", environment)
+                                .addValue("country", country)
+                                .addValue("currency", currency),
+                        Integer.class);
+        if (count == null || count != 2) {
+            throw new PaymentGatewayException(
+                    "Collection and Disbursement treasury sub-accounts must exist before saving platform credentials");
+        }
     }
 
     @Transactional
@@ -452,7 +476,12 @@ public class SharedProviderAccessService {
         for (Map.Entry<String, Object> entry : values.entrySet()) {
             String key = entry.getKey();
             String value = text(entry.getValue());
-            if (key.toLowerCase(Locale.ROOT).contains("url")) result.put(key, value);
+            String normalizedKey = key.toLowerCase(Locale.ROOT);
+            if (normalizedKey.contains("url")
+                    || normalizedKey.endsWith("host")
+                    || normalizedKey.endsWith("environment")
+                    || normalizedKey.endsWith("currency")
+                    || normalizedKey.equals("partyidtype")) result.put(key, value);
             else if (value.length() <= 4) result.put(key, "****");
             else
                 result.put(

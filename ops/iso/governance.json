@@ -117,7 +117,7 @@
       "target": "no unaccepted actively exploited/critical Internet-facing finding beyond 72 hours",
       "measurementSource": "CodeQL, OWASP/dependency and vulnerability register",
       "reviewCadence": "WEEKLY",
-      "nextReviewAt": "2026-09-01"
+      "nextReviewAt": "2026-09-02"
     },
     {
       "id": "OBJ-SM-01",
@@ -150,7 +150,7 @@
       "target": "0 unresolved material variances at approved close",
       "measurementSource": "reconciliation/settlement close records",
       "reviewCadence": "DAILY",
-      "nextReviewAt": "2026-09-01",
+      "nextReviewAt": "2026-09-02",
       "lastReviewedAt": "2026-08-31",
       "reviewOutcome": "EVIDENCE_PENDING",
       "reviewEvidence": "ops/iso/evidence/finance-objective-review-2026-08-31.md"
