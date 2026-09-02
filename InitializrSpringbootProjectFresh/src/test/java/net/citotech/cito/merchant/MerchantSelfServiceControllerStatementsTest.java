@@ -203,7 +203,10 @@ class MerchantSelfServiceControllerStatementsTest {
                                 net.citotech.cito.merchant.MerchantNotificationPreferenceService
                                         .class),
                         mock(MerchantEmailVerificationService.class),
-                        mock(net.citotech.cito.webhook.MerchantWebhookService.class));
+                        mock(net.citotech.cito.webhook.MerchantWebhookService.class),
+                        mock(
+                                net.citotech.cito.sharedprovider
+                                        .SharedProviderDefaultEntitlementService.class));
         return MockMvcBuilders.standaloneSetup(controller).build();
     }
 }

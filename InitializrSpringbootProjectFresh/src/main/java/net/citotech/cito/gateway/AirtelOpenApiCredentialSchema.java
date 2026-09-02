@@ -1,0 +1,92 @@
+package net.citotech.cito.gateway;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/** Canonical Airtel Africa OpenAPI credential contract for merchant and platform stores. */
+public final class AirtelOpenApiCredentialSchema {
+    public static final String CHANNEL_CODE = "airtel_open_api";
+    public static final String SANDBOX_BASE_URL = "https://openapiuat.airtel.africa";
+    public static final String PRODUCTION_BASE_URL = "https://openapi.airtel.africa";
+
+    private AirtelOpenApiCredentialSchema() {}
+
+    public static void validate(
+            Map<String, ?> credentials,
+            String environment,
+            String countryCode,
+            String currencyCode) {
+        List<String> required =
+                List.of(
+                        "baseUrl",
+                        "clientId",
+                        "clientSecret",
+                        "country",
+                        "currency",
+                        "apiPin",
+                        "publicKey");
+        List<String> missing = new ArrayList<>();
+        for (String field : required) {
+            if (blank(value(credentials, field))) missing.add(field);
+        }
+        if (!missing.isEmpty()) {
+            throw new PaymentGatewayException(
+                    "Missing required Airtel OpenAPI credential field(s): "
+                            + String.join(", ", missing));
+        }
+        URI base = httpsUri(value(credentials, "baseUrl"));
+        if (base.getQuery() != null || base.getFragment() != null) {
+            throw new PaymentGatewayException("Airtel baseUrl cannot contain a query or fragment");
+        }
+        String environmentValue = normalize(environment);
+        String host = base.getHost().toLowerCase(Locale.ROOT);
+        if ("PRODUCTION".equals(environmentValue) && host.contains("openapiuat")) {
+            throw new PaymentGatewayException(
+                    "Airtel production credentials cannot use the UAT base URL");
+        }
+        if ("SANDBOX".equals(environmentValue) && !host.contains("openapiuat")) {
+            throw new PaymentGatewayException(
+                    "Airtel sandbox credentials must use the UAT base URL");
+        }
+        if (!normalize(countryCode).equals(normalize(value(credentials, "country")))) {
+            throw new PaymentGatewayException(
+                    "Airtel country must match the credential scope country");
+        }
+        if (!normalize(currencyCode).equals(normalize(value(credentials, "currency")))) {
+            throw new PaymentGatewayException(
+                    "Airtel currency must match the credential scope currency");
+        }
+        if (!value(credentials, "publicKey").contains("BEGIN PUBLIC KEY")) {
+            throw new PaymentGatewayException(
+                    "Airtel publicKey must be the RSA public key issued for PIN encryption");
+        }
+    }
+
+    private static URI httpsUri(String raw) {
+        try {
+            URI uri = URI.create(raw);
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || blank(uri.getHost())) {
+                throw new IllegalArgumentException();
+            }
+            return uri;
+        } catch (Exception ignored) {
+            throw new PaymentGatewayException("Airtel baseUrl must be a valid HTTPS URL");
+        }
+    }
+
+    private static String value(Map<String, ?> map, String key) {
+        Object value = map == null ? null : map.get(key);
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private static boolean blank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+}
