@@ -10,6 +10,7 @@ import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.gateway.MtnMomoCredentialSchema;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -82,11 +83,27 @@ public class MerchantChannelCredentialService {
 
     private Map<String, Object> sandboxCredentials(PaymentChannelAdapter adapter) {
         Map<String, Object> credentials = new LinkedHashMap<>();
+        String channelCode = adapter.channelCode();
+        if (MtnMomoCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+            credentials.put("baseUrl", MtnMomoCredentialSchema.SANDBOX_BASE_URL);
+            credentials.put("targetEnvironment", "sandbox");
+            credentials.put("baseCurrency", "EUR");
+            credentials.put("callbackHost", "");
+            credentials.put("callbackUrl", "");
+            credentials.put("collectionApiUser", "");
+            credentials.put("collectionApiKey", "");
+            credentials.put("collectionSubscriptionKey", "");
+            credentials.put("collectionSecondarySubscriptionKey", "");
+            credentials.put("disbursementApiUser", "");
+            credentials.put("disbursementApiKey", "");
+            credentials.put("disbursementSubscriptionKey", "");
+            credentials.put("disbursementSecondarySubscriptionKey", "");
+            return credentials;
+        }
         credentials.put("collectUrl", "");
         credentials.put("payoutUrl", "");
         credentials.put("authHeaderName", "X-CPay-Sandbox-Key");
         credentials.put("authHeaderValue", "sandbox-test-key");
-        String channelCode = adapter.channelCode();
         if ("safaricom_mpesa".equalsIgnoreCase(channelCode)) {
             credentials.put("shortCode", "174379");
             credentials.put("consumerKey", "sandbox-consumer-key");
@@ -123,7 +140,7 @@ public class MerchantChannelCredentialService {
         String environment = normalizedEnvironment(text(body.get("environment")));
         Map<String, Object> credentials = asMap(body.get("credentials"));
         PaymentChannelAdapter adapter = registry.findByChannelCode(channelCode).orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
-        validateRequiredCredentials(adapter.channelCode(), credentials, environment);
+        validateRequiredCredentials(adapter, credentials, environment);
         String payload = toJson(credentials);
         String encrypted = cryptoService.encrypt(payload);
         String mask = toJson(mask(credentials));
@@ -149,11 +166,13 @@ public class MerchantChannelCredentialService {
         String environment = normalizedEnvironment(text(body.get("environment")));
         Map<String, Object> saved = find(user.getMerchant_id(), channelCode, environment);
         if (saved == null) throw new PaymentGatewayException("Channel credentials are not configured");
-        registry.findByChannelCode(channelCode).orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
+        PaymentChannelAdapter adapter = registry.findByChannelCode(channelCode).orElseThrow(() -> new PaymentGatewayException("Unsupported channel: " + channelCode));
+        Map<String, Object> credentials = loadDecrypted(user.getMerchant_id(), channelCode, environment);
+        validateRequiredCredentials(adapter, credentials, environment);
         MapSqlParameterSource p = params(user.getMerchant_id(), channelCode, environment);
         p.addValue("status", "PRODUCTION".equals(environment) ? "CONFIGURED" : "SANDBOX_TESTED");
         p.addValue("test_status", "PASSED");
-        p.addValue("message", "Credential structure and endpoint configuration are complete for " + environment);
+        p.addValue("message", "Credential structure validated locally for " + environment + "; no provider request was sent");
         jdbcTemplate.update("UPDATE merchant_channel_credentials SET status=:status, last_test_status=:test_status, last_test_message=:message, last_tested_at=CURRENT_TIMESTAMP WHERE merchant_id=:merchant_id AND channel_code=:channel_code AND environment=:environment", p);
         audit(user.getMerchant_id(), channelCode, environment, environment + "_TEST", user.getEmail(), "Merchant ran channel readiness test");
         return find(user.getMerchant_id(), channelCode, environment);
@@ -196,9 +215,13 @@ public class MerchantChannelCredentialService {
 
     public Map<String, Object> loadDecrypted(Merchant merchant, String channelCode, String environment) {
         if (merchant == null) throw new PaymentGatewayException("Merchant is required");
+        return loadDecrypted(merchant.getId(), channelCode, environment);
+    }
+
+    private Map<String, Object> loadDecrypted(Long merchantId, String channelCode, String environment) {
         String sql = "SELECT credential_payload FROM merchant_channel_credentials WHERE merchant_id=:merchant_id AND channel_code=:channel_code AND environment=:environment LIMIT 1";
         MapSqlParameterSource p = new MapSqlParameterSource();
-        p.addValue("merchant_id", merchant.getId());
+        p.addValue("merchant_id", merchantId);
         p.addValue("channel_code", channelCode);
         p.addValue("environment", normalizedEnvironment(environment));
         String encrypted = jdbcTemplate.queryForObject(sql, p, String.class);
@@ -225,7 +248,16 @@ public class MerchantChannelCredentialService {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private void validateRequiredCredentials(String channelCode, Map<String, Object> credentials, String environment) {
+    private void validateRequiredCredentials(PaymentChannelAdapter adapter, Map<String, Object> credentials, String environment) {
+        String channelCode = adapter.channelCode();
+        if (MtnMomoCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+            MtnMomoCredentialSchema.validate(
+                    credentials,
+                    environment,
+                    adapter.countryCode(),
+                    text(credentials.get("baseCurrency")));
+            return;
+        }
         List<String> required = new ArrayList<>();
         if ("PRODUCTION".equals(normalizedEnvironment(environment))) {
             required.add("collectUrl");
@@ -252,7 +284,12 @@ public class MerchantChannelCredentialService {
         Map<String, Object> masked = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : credentials.entrySet()) {
             String value = text(entry.getValue());
-            if (entry.getKey().toLowerCase().contains("url")) masked.put(entry.getKey(), value);
+            String key = entry.getKey().toLowerCase();
+            if (key.contains("url")
+                    || key.endsWith("host")
+                    || key.endsWith("environment")
+                    || key.endsWith("currency")
+                    || key.equals("partyidtype")) masked.put(entry.getKey(), value);
             else if (value.length() <= 4) masked.put(entry.getKey(), "****");
             else masked.put(entry.getKey(), value.substring(0, 2) + "****" + value.substring(value.length() - 2));
         }
@@ -305,4 +342,3 @@ public class MerchantChannelCredentialService {
     @SuppressWarnings("unchecked")
     private Map<String, Object> parseJson(String json) { try { return objectMapper.readValue(json, Map.class); } catch (Exception e) { return new LinkedHashMap<>(); } }
 }
-

@@ -42,10 +42,11 @@ public class ProviderTreasuryService {
         List<Map<String, Object>> rows =
                 jdbc.queryForList(
                         "SELECT id, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, "
+                                + "account_role AS accountRole, display_name AS displayName, parent_account_id AS parentAccountId, prefund_required AS prefundRequired, "
                                 + "book_balance AS bookBalance, reserved_balance AS reservedBalance, pending_outgoing_balance AS pendingOutgoingBalance, "
                                 + "pending_incoming_balance AS pendingIncomingBalance, provider_reported_balance AS providerReportedBalance, "
                                 + "low_float_threshold AS lowFloatThreshold, reconciliation_state AS reconciliationState, updated_at AS updatedAt "
-                                + "FROM provider_treasury_accounts ORDER BY environment, country_code, currency_code, channel_code",
+                                + "FROM provider_treasury_accounts ORDER BY environment, country_code, currency_code, channel_code, FIELD(account_role,'MASTER','COLLECTION','DISBURSEMENT')",
                         Map.of());
         for (Map<String, Object> row : rows) enrichAccount(row);
         return rows;
@@ -99,7 +100,11 @@ public class ProviderTreasuryService {
         String operation = context.operation();
         Map<String, Object> account =
                 lockAccount(
-                        channelCode, environment, context.countryCode(), context.currencyCode());
+                        channelCode,
+                        environment,
+                        context.countryCode(),
+                        context.currencyCode(),
+                        operation);
         long accountId = number(account.get("id"));
         String idempotency =
                 "SHARED:"
@@ -230,6 +235,50 @@ public class ProviderTreasuryService {
         }
         if (success) settle(row, providerReference, required(actor, "actor"));
         else fail(row, providerReference, required(actor, "actor"));
+        return reservationById(reservationId);
+    }
+
+    /** Resolve an MTN asynchronous result using both the unguessable provider UUID and externalId. */
+    @Transactional
+    public Map<String, Object> resolveProviderCallback(
+            String channelCode,
+            String providerReference,
+            String externalId,
+            String providerStatus,
+            String financialTransactionId) {
+        List<Map<String, Object>> matches =
+                jdbc.queryForList(
+                        "SELECT r.id FROM provider_treasury_reservations r "
+                                + "JOIN provider_treasury_accounts a ON a.id=r.treasury_account_id "
+                                + "WHERE a.channel_code=:channel AND r.provider_reference=:provider_reference LIMIT 1",
+                        new MapSqlParameterSource()
+                                .addValue("channel", required(channelCode, "channelCode"))
+                                .addValue(
+                                        "provider_reference",
+                                        required(providerReference, "providerReference")));
+        if (matches.isEmpty()) {
+            throw new PaymentGatewayException("Provider callback reference was not found");
+        }
+        long reservationId = number(matches.get(0).get("id"));
+        Map<String, Object> row = lockReservation(reservationId);
+        if (!required(externalId, "externalId")
+                .equals(text(row.get("merchant_reference")))) {
+            throw new PaymentGatewayException("Provider callback externalId does not match");
+        }
+        String current = text(row.get("status"));
+        if ("SETTLED".equals(current) || "RELEASED".equals(current) || "FAILED".equals(current)) {
+            return reservationById(reservationId);
+        }
+        Outcome outcome = classify(providerStatus);
+        // Keep the MTN X-Reference-Id as the durable correlation key so a duplicate callback to
+        // the transaction-specific URL remains idempotent. The financial transaction id is
+        // provider evidence, not a replacement for the correlation UUID.
+        String finalReference = providerReference;
+        if (outcome == Outcome.SUCCESS) {
+            settle(row, finalReference, "PROVIDER_CALLBACK:" + channelCode);
+        } else if (outcome == Outcome.FAILURE) {
+            fail(row, finalReference, "PROVIDER_CALLBACK:" + channelCode);
+        }
         return reservationById(reservationId);
     }
 
@@ -908,15 +957,22 @@ public class ProviderTreasuryService {
     }
 
     private Map<String, Object> lockAccount(
-            String channel, String environment, String country, String currency) {
+            String channel,
+            String environment,
+            String country,
+            String currency,
+            String operation) {
+        String accountRole =
+                "PAYOUT".equalsIgnoreCase(operation) ? "DISBURSEMENT" : "COLLECTION";
         List<Map<String, Object>> rows =
                 jdbc.queryForList(
-                        "SELECT * FROM provider_treasury_accounts WHERE channel_code=:channel AND environment=:environment AND country_code=:country AND currency_code=:currency FOR UPDATE",
+                        "SELECT * FROM provider_treasury_accounts WHERE channel_code=:channel AND environment=:environment AND country_code=:country AND currency_code=:currency AND account_role=:account_role FOR UPDATE",
                         new MapSqlParameterSource()
                                 .addValue("channel", channel)
                                 .addValue("environment", environment.toUpperCase(Locale.ROOT))
                                 .addValue("country", country.toUpperCase(Locale.ROOT))
-                                .addValue("currency", currency.toUpperCase(Locale.ROOT)));
+                                .addValue("currency", currency.toUpperCase(Locale.ROOT))
+                                .addValue("account_role", accountRole));
         if (rows.isEmpty())
             throw new PaymentGatewayException(
                     "CPay provider treasury account is not configured for "
@@ -924,7 +980,9 @@ public class ProviderTreasuryService {
                             + "/"
                             + country
                             + "/"
-                            + currency);
+                            + currency
+                            + "/"
+                            + accountRole);
         return rows.get(0);
     }
 
@@ -942,7 +1000,7 @@ public class ProviderTreasuryService {
     private Map<String, Object> accountById(long id) {
         List<Map<String, Object>> rows =
                 jdbc.queryForList(
-                        "SELECT id, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, book_balance AS bookBalance, reserved_balance AS reservedBalance, pending_outgoing_balance AS pendingOutgoingBalance, pending_incoming_balance AS pendingIncomingBalance, provider_reported_balance AS providerReportedBalance, low_float_threshold AS lowFloatThreshold, reconciliation_state AS reconciliationState, updated_at AS updatedAt FROM provider_treasury_accounts WHERE id=:id",
+                        "SELECT id, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, account_role AS accountRole, display_name AS displayName, parent_account_id AS parentAccountId, prefund_required AS prefundRequired, book_balance AS bookBalance, reserved_balance AS reservedBalance, pending_outgoing_balance AS pendingOutgoingBalance, pending_incoming_balance AS pendingIncomingBalance, provider_reported_balance AS providerReportedBalance, low_float_threshold AS lowFloatThreshold, reconciliation_state AS reconciliationState, updated_at AS updatedAt FROM provider_treasury_accounts WHERE id=:id",
                         new MapSqlParameterSource().addValue("id", id));
         if (rows.isEmpty())
             throw new PaymentGatewayException("Provider treasury account not found: " + id);

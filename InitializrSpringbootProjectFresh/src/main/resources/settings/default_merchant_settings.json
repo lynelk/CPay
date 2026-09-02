@@ -38,16 +38,16 @@
   {
     "name": "gw_mtn_api_url_sandbox",
     "label": "MTN Sandbox API URL",
-    "setting_value": "",
+    "setting_value": "https://sandbox.momodeveloper.mtn.com",
     "setting_group": "MTN",
     "description": "MTN sandbox API base URL for this merchant."
   },
   {
     "name": "gw_mtn_api_env",
-    "label": "MTN API Environment",
-    "setting_value": "",
+    "label": "MTN Target Environment",
+    "setting_value": "mtnuganda",
     "setting_group": "MTN",
-    "description": "MTN environment value; use live for production or sandbox/test values as configured."
+    "description": "Value sent in X-Target-Environment. Uganda production uses mtnuganda; sandbox uses sandbox."
   },
   {
     "name": "gw_mtn_api_base_currency",
@@ -59,9 +59,9 @@
   {
     "name": "gw_mtn_api_base_currency_sandbox",
     "label": "MTN Sandbox Base Currency",
-    "setting_value": "UGX",
+    "setting_value": "EUR",
     "setting_group": "MTN",
-    "description": "MTN sandbox transaction currency for this merchant."
+    "description": "MTN sandbox transaction currency. The MTN sandbox accepts EUR."
   },
   {
     "name": "gw_mtn_api_collections_user_id",
@@ -79,10 +79,17 @@
   },
   {
     "name": "gw_mtn_api_collections_subscription_key",
-    "label": "MTN Collections Subscription Key",
+    "label": "MTN Collections Primary Subscription Key",
     "setting_value": "",
     "setting_group": "MTN",
-    "description": "MTN live collections subscription key for this merchant."
+    "description": "MTN live Collection product primary subscription key (Ocp-Apim-Subscription-Key)."
+  },
+  {
+    "name": "gw_mtn_api_collections_secondary_subscription_key",
+    "label": "MTN Collections Secondary Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "Optional MTN live Collection product secondary subscription key for controlled rotation."
   },
   {
     "name": "gw_mtn_api_disbursements_user_id",
@@ -100,10 +107,17 @@
   },
   {
     "name": "gw_mtn_api_disbursements_subscription_key",
-    "label": "MTN Disbursements Subscription Key",
+    "label": "MTN Disbursements Primary Subscription Key",
     "setting_value": "",
     "setting_group": "MTN",
-    "description": "MTN live disbursements subscription key for this merchant."
+    "description": "MTN live Disbursement product primary subscription key (Ocp-Apim-Subscription-Key)."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_secondary_subscription_key",
+    "label": "MTN Disbursements Secondary Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "Optional MTN live Disbursement product secondary subscription key for controlled rotation."
   },
   {
     "name": "gw_mtn_api_collections_user_id_sandbox",
@@ -121,10 +135,17 @@
   },
   {
     "name": "gw_mtn_api_collections_subscription_key_sandbox",
-    "label": "MTN Sandbox Collections Subscription Key",
+    "label": "MTN Sandbox Collections Primary Subscription Key",
     "setting_value": "",
     "setting_group": "MTN",
-    "description": "MTN sandbox collections subscription key for this merchant."
+    "description": "MTN sandbox Collection product primary subscription key."
+  },
+  {
+    "name": "gw_mtn_api_collections_secondary_subscription_key_sandbox",
+    "label": "MTN Sandbox Collections Secondary Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "Optional MTN sandbox Collection product secondary subscription key."
   },
   {
     "name": "gw_mtn_api_disbursements_user_id_sandbox",
@@ -142,10 +163,31 @@
   },
   {
     "name": "gw_mtn_api_disbursements_subscription_key_sandbox",
-    "label": "MTN Sandbox Disbursements Subscription Key",
+    "label": "MTN Sandbox Disbursements Primary Subscription Key",
     "setting_value": "",
     "setting_group": "MTN",
-    "description": "MTN sandbox disbursements subscription key for this merchant."
+    "description": "MTN sandbox Disbursement product primary subscription key."
+  },
+  {
+    "name": "gw_mtn_api_disbursements_secondary_subscription_key_sandbox",
+    "label": "MTN Sandbox Disbursements Secondary Subscription Key",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "Optional MTN sandbox Disbursement product secondary subscription key."
+  },
+  {
+    "name": "gw_mtn_api_callback_host",
+    "label": "MTN Callback Host",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "Hostname registered on the MTN API user, without scheme, port or path."
+  },
+  {
+    "name": "gw_mtn_api_callback_url",
+    "label": "MTN Callback URL",
+    "setting_value": "",
+    "setting_group": "MTN",
+    "description": "HTTPS CPay callback endpoint on the registered callback host; do not use the merchant webhook URL."
   },
   {
     "name": "gw_mtn_api_cost_of_inbound_payment",

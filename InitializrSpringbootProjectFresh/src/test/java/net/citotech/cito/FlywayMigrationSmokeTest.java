@@ -41,8 +41,14 @@ class FlywayMigrationSmokeTest {
         assertTrue(result.migrationsExecuted > 0, "A clean schema must execute migrations");
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
-            assertEquals("105", latestSuccessfulVersion(connection));
+            assertEquals("112", latestSuccessfulVersion(connection));
             assertEquals(4, auditProtectionTriggerCount(connection));
+            assertEquals(5, treasuryAccountRoleCount(connection, "MASTER"));
+            assertEquals(5, treasuryAccountRoleCount(connection, "COLLECTION"));
+            assertEquals(5, treasuryAccountRoleCount(connection, "DISBURSEMENT"));
+            assertEquals(3, mtnScopeAccountCount(connection, "PRODUCTION", "UGX"));
+            assertEquals(3, mtnScopeAccountCount(connection, "SANDBOX", "EUR"));
+            assertEquals(0, nonZeroSeededTreasuryAccountCount(connection));
         }
     }
 
@@ -72,6 +78,47 @@ class FlywayMigrationSmokeTest {
                 assertTrue(resultSet.next(), "Trigger count query must return a row");
                 return resultSet.getInt(1);
             }
+        }
+    }
+
+    private static int treasuryAccountRoleCount(Connection connection, String role)
+            throws SQLException {
+        try (PreparedStatement statement =
+                connection.prepareStatement(
+                        "SELECT COUNT(*) FROM provider_treasury_accounts WHERE account_role=?")) {
+            statement.setString(1, role);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                assertTrue(resultSet.next(), "Treasury account role count must return a row");
+                return resultSet.getInt(1);
+            }
+        }
+    }
+
+    private static int mtnScopeAccountCount(
+            Connection connection, String environment, String currency) throws SQLException {
+        try (PreparedStatement statement =
+                connection.prepareStatement(
+                        "SELECT COUNT(*) FROM provider_treasury_accounts "
+                                + "WHERE channel_code='mtn_momo' AND environment=? AND currency_code=?")) {
+            statement.setString(1, environment);
+            statement.setString(2, currency);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                assertTrue(resultSet.next(), "MTN treasury scope count must return a row");
+                return resultSet.getInt(1);
+            }
+        }
+    }
+
+    private static int nonZeroSeededTreasuryAccountCount(Connection connection)
+            throws SQLException {
+        try (PreparedStatement statement =
+                        connection.prepareStatement(
+                                "SELECT COUNT(*) FROM provider_treasury_accounts "
+                                        + "WHERE book_balance<>0 OR reserved_balance<>0 "
+                                        + "OR pending_outgoing_balance<>0 OR pending_incoming_balance<>0");
+                ResultSet resultSet = statement.executeQuery()) {
+            assertTrue(resultSet.next(), "Seeded treasury balance count must return a row");
+            return resultSet.getInt(1);
         }
     }
 
