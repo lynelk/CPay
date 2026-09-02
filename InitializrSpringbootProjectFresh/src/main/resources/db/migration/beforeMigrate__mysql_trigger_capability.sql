@@ -8,6 +8,13 @@
 --
 -- Existing databases where V28 is already successful are intentionally exempt because Flyway will
 -- not recreate those triggers.
+--
+-- This callback can execute concurrently when multiple application replicas start together. The
+-- helper procedure is schema-global, so serialize only this short preflight with a MySQL named lock
+-- to prevent DROP/CREATE/CALL/DROP races between replicas. Named locks are connection-scoped and
+-- are released automatically if the connection terminates unexpectedly.
+
+SELECT GET_LOCK('cpay_flyway_mysql_trigger_capability', 60);
 
 DROP PROCEDURE IF EXISTS cpay_assert_mysql_trigger_capability;
 
@@ -45,3 +52,4 @@ DELIMITER ;
 
 CALL cpay_assert_mysql_trigger_capability();
 DROP PROCEDURE IF EXISTS cpay_assert_mysql_trigger_capability;
+SELECT RELEASE_LOCK('cpay_flyway_mysql_trigger_capability');
