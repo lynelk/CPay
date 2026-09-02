@@ -3,6 +3,7 @@ package net.citotech.cito.api.v2;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,7 +58,8 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(canonicalAmount)))
+                        eq(canonicalAmount),
+                        isNull()))
                 .thenReturn(true);
         CredentialContext credentialContext =
                 new CredentialContext(
@@ -74,7 +76,8 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(canonicalAmount)))
+                        eq(canonicalAmount),
+                        isNull()))
                 .thenReturn(credentialContext);
 
         AdapterNativePaymentService service =
@@ -100,7 +103,8 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(canonicalAmount));
+                        eq(canonicalAmount),
+                        isNull());
         verify(sharedProviderAccessService)
                 .resolve(
                         any(Merchant.class),
@@ -109,7 +113,8 @@ class AdapterNativePaymentServiceTest {
                         eq("UG"),
                         eq("UGX"),
                         eq("COLLECT"),
-                        eq(canonicalAmount));
+                        eq(canonicalAmount),
+                        isNull());
         verify(treasuryService)
                 .beginShared(
                         eq(credentialContext),

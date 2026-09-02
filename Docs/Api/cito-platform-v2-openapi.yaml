@@ -28,6 +28,7 @@ tags:
   - name: Notifications
   - name: Provider Operations
   - name: Public Experience
+  - name: Merchant Self Service
 paths:
   /api/v2/identity/capabilities:
     get:
@@ -706,6 +707,137 @@ paths:
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses:
         '200': {description: Event accepted}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/signup:
+    post:
+      tags: [Merchant Self Service]
+      summary: Register a merchant for approval
+      operationId: registerMerchantSelfService
+      security: []
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '201': {description: Merchant registration created}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/verify-email:
+    post:
+      tags: [Merchant Self Service]
+      summary: Confirm a merchant user's email verification code
+      operationId: verifyMerchantEmail
+      security: []
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Verification result}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/verify-email/resend:
+    post:
+      tags: [Merchant Self Service]
+      summary: Request another merchant email verification code
+      operationId: resendMerchantEmailVerification
+      security: []
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Generic non-enumerating response}
+        '429': {description: Request rate limited}
+  /api/v2/merchant-self-service/channels:
+    get:
+      tags: [Merchant Self Service]
+      summary: List CPay Shared Payments and merchant-owned provider channels
+      operationId: listMerchantPaymentChannels
+      responses:
+        '200': {description: Environment-aware payment channels and masked configuration}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v2/merchant-self-service/channels/save:
+    post:
+      tags: [Merchant Self Service]
+      summary: Save encrypted merchant-owned provider credentials
+      operationId: saveMerchantPaymentChannel
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Masked configured channel}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/channels/test:
+    post:
+      tags: [Merchant Self Service]
+      summary: Validate a merchant-owned provider credential structure
+      operationId: testMerchantPaymentChannel
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Local readiness validation result}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/channels/submit:
+    post:
+      tags: [Merchant Self Service]
+      summary: Submit a merchant-owned provider credential for production approval
+      operationId: submitMerchantPaymentChannel
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Submitted channel status}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/environment:
+    get:
+      tags: [Merchant Self Service]
+      summary: Read the merchant user's active gateway environment
+      operationId: getMerchantGatewayEnvironment
+      responses:
+        '200': {description: Active environment and production limit status}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Merchant Self Service]
+      summary: Change the merchant user's active gateway environment
+      operationId: setMerchantGatewayEnvironment
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Updated environment}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/settlement-preference:
+    get:
+      tags: [Merchant Self Service]
+      summary: Read the merchant settlement preference
+      operationId: getMerchantSettlementPreference
+      responses:
+        '200': {description: Merchant settlement preference}
+    post:
+      tags: [Merchant Self Service]
+      summary: Save the merchant settlement preference
+      operationId: saveMerchantSettlementPreference
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Saved settlement preference}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v2/merchant-self-service/sandbox-guide:
+    get:
+      tags: [Merchant Self Service]
+      summary: Read the guided merchant sandbox integration values
+      operationId: getMerchantSandboxGuide
+      responses:
+        '200': {description: Sandbox guide and deterministic test accounts}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v2/merchant-self-service/statements:
+    get:
+      tags: [Merchant Self Service]
+      summary: Export a merchant statement from the authenticated portal session
+      operationId: exportMerchantSelfServiceStatement
+      parameters:
+        - {name: startDate, in: query, required: true, schema: {type: string, format: date}}
+        - {name: endDate, in: query, required: true, schema: {type: string, format: date}}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [json, csv, xlsx]}}
+      responses:
+        '200': {description: Statement data or requested export}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v2/merchant-self-service/notification-preferences:
+    get:
+      tags: [Merchant Self Service]
+      summary: List merchant notification preferences
+      operationId: listMerchantNotificationPreferences
+      responses:
+        '200': {description: Catalog-complete notification preferences}
+    post:
+      tags: [Merchant Self Service]
+      summary: Save a merchant notification preference
+      operationId: saveMerchantNotificationPreference
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Saved notification preference}
         '400': {$ref: '#/components/responses/BadRequest'}
 components:
   securitySchemes:

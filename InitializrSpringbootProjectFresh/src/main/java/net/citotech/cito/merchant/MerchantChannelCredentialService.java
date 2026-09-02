@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.MerchantUser;
+import net.citotech.cito.gateway.AirtelOpenApiCredentialSchema;
 import net.citotech.cito.gateway.MtnMomoCredentialSchema;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
@@ -102,6 +103,20 @@ public class MerchantChannelCredentialService {
             credentials.put("disbursementApiKey", "");
             credentials.put("disbursementSubscriptionKey", "");
             credentials.put("disbursementSecondarySubscriptionKey", "");
+            return credentials;
+        }
+        if (AirtelOpenApiCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+            credentials.put("baseUrl", AirtelOpenApiCredentialSchema.SANDBOX_BASE_URL);
+            credentials.put("clientId", "");
+            credentials.put("clientSecret", "");
+            credentials.put("country", "UG");
+            credentials.put("currency", "UGX");
+            credentials.put("apiPin", "");
+            credentials.put("publicKey", "");
+            credentials.put("tokenPath", "/auth/oauth2/token");
+            credentials.put("collectionPath", "/merchant/v2/payments/");
+            credentials.put("payoutPath", "/standard/v2/disbursements/");
+            credentials.put("balancePath", "/standard/v2/users/balance");
             return credentials;
         }
         credentials.put("collectUrl", "");
@@ -339,6 +354,14 @@ public class MerchantChannelCredentialService {
                     text(credentials.get("baseCurrency")));
             return;
         }
+        if (AirtelOpenApiCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+            AirtelOpenApiCredentialSchema.validate(
+                    credentials,
+                    environment,
+                    text(credentials.get("country")),
+                    text(credentials.get("currency")));
+            return;
+        }
         List<String> required = new ArrayList<>();
         if ("PRODUCTION".equals(normalizedEnvironment(environment))) {
             required.add("collectUrl");
@@ -349,10 +372,6 @@ public class MerchantChannelCredentialService {
             required.add("consumerKey");
             required.add("consumerSecret");
             required.add("passKey");
-        } else if ("airtel_open_api".equalsIgnoreCase(channelCode)) {
-            required.add("clientId");
-            required.add("clientSecret");
-            required.add("subscriberMsisdn");
         } else {
             required.add("apiUser");
             required.add("apiKey");
