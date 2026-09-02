@@ -9,17 +9,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.sharedprovider.SharedProviderAccessService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 class ProviderTreasuryServiceTest {
     private NamedParameterJdbcTemplate jdbc;
@@ -134,8 +136,7 @@ class ProviderTreasuryServiceTest {
         assertTrue(reservation.treasuryAccountId() == 31L);
         ArgumentCaptor<MapSqlParameterSource> parameters =
                 ArgumentCaptor.forClass(MapSqlParameterSource.class);
-        verify(jdbc)
-                .queryForList(contains("account_role=:account_role"), parameters.capture());
+        verify(jdbc).queryForList(contains("account_role=:account_role"), parameters.capture());
         assertTrue("COLLECTION".equals(parameters.getValue().getValue("account_role")));
     }
 }

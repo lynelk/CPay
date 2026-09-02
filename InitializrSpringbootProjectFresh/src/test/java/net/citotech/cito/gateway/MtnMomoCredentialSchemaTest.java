@@ -4,9 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.junit.jupiter.api.Test;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 class MtnMomoCredentialSchemaTest {
 
@@ -25,9 +26,7 @@ class MtnMomoCredentialSchemaTest {
         credentials.put("baseCurrency", "UGX");
 
         assertThatThrownBy(
-                        () ->
-                                MtnMomoCredentialSchema.validate(
-                                        credentials, "SANDBOX", "UG", "UGX"))
+                        () -> MtnMomoCredentialSchema.validate(credentials, "SANDBOX", "UG", "UGX"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("must use EUR");
     }
@@ -38,9 +37,7 @@ class MtnMomoCredentialSchemaTest {
         credentials.put("callbackUrl", "https://wrong.example/callbacks/mtn");
 
         assertThatThrownBy(
-                        () ->
-                                MtnMomoCredentialSchema.validate(
-                                        credentials, "SANDBOX", "UG", "EUR"))
+                        () -> MtnMomoCredentialSchema.validate(credentials, "SANDBOX", "UG", "EUR"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("must match");
     }
@@ -53,8 +50,7 @@ class MtnMomoCredentialSchemaTest {
         values.put("payoutUrl", "https://untrusted.example/transfer");
 
         assertThat(MtnMomoCredentialSchema.endpoint(values, "COLLECT"))
-                .isEqualTo(
-                        "https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay");
+                .isEqualTo("https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay");
         assertThat(MtnMomoCredentialSchema.endpoint(values, "PAYOUT"))
                 .isEqualTo("https://sandbox.momodeveloper.mtn.com/disbursement/v1_0/transfer");
     }

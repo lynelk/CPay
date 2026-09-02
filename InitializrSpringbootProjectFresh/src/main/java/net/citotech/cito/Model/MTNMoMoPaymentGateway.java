@@ -1,5 +1,13 @@
 package net.citotech.cito.Model;
 
+import net.citotech.cito.Common;
+import net.citotech.cito.SettingsController;
+import net.citotech.cito.gateway.ProviderToken;
+import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -13,12 +21,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.citotech.cito.Common;
-import net.citotech.cito.SettingsController;
-import net.citotech.cito.gateway.ProviderToken;
-import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * @author josephtabajjwa
@@ -164,7 +166,9 @@ public class MTNMoMoPaymentGateway extends PaymentGateway {
 
             if (rs.getStatusCode() != 200) {
                 Logger.getLogger(SettingsController.class.getName())
-                        .log(Level.SEVERE, "MTN balance request failed with HTTP " + rs.getStatusCode());
+                        .log(
+                                Level.SEVERE,
+                                "MTN balance request failed with HTTP " + rs.getStatusCode());
                 gwResponse.setHttpStatus(rs.getStatusCode() + "");
 
                 String res = "";
@@ -377,7 +381,9 @@ public class MTNMoMoPaymentGateway extends PaymentGateway {
 
             if (rs.getStatusCode() != 200) {
                 Logger.getLogger(SettingsController.class.getName())
-                        .log(Level.SEVERE, "MTN status request failed with HTTP " + rs.getStatusCode());
+                        .log(
+                                Level.SEVERE,
+                                "MTN status request failed with HTTP " + rs.getStatusCode());
                 gwResponse.setHttpStatus(rs.getStatusCode() + "");
 
                 String res = "";
@@ -502,7 +508,9 @@ public class MTNMoMoPaymentGateway extends PaymentGateway {
 
             if (rs.getStatusCode() != 202) {
                 Logger.getLogger(SettingsController.class.getName())
-                        .log(Level.SEVERE, "MTN request-to-pay failed with HTTP " + rs.getStatusCode());
+                        .log(
+                                Level.SEVERE,
+                                "MTN request-to-pay failed with HTTP " + rs.getStatusCode());
                 gwResponse.setHttpStatus(rs.getStatusCode() + "");
 
                 String res = "";

@@ -73,7 +73,9 @@ public final class MtnMomoCredentialSchema {
         }
         URI callbackUrl = httpsUri(value(credentials, "callbackUrl"), "callbackUrl");
         String callbackHost = value(credentials, "callbackHost").toLowerCase(Locale.ROOT);
-        if (callbackHost.contains(":") || callbackHost.contains("/") || callbackHost.contains(" ")) {
+        if (callbackHost.contains(":")
+                || callbackHost.contains("/")
+                || callbackHost.contains(" ")) {
             throw new PaymentGatewayException(
                     "MTN callbackHost must be a hostname without scheme, port or path");
         }

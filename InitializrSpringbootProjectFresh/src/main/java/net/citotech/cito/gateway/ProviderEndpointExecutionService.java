@@ -1,5 +1,14 @@
 package net.citotech.cito.gateway;
 
+import net.citotech.cito.Common;
+import net.citotech.cito.Model.GateWayResponse;
+import net.citotech.cito.Model.HttpRequestResponse;
+
+import org.json.JSONObject;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Service;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -8,13 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import net.citotech.cito.Common;
-import net.citotech.cito.Model.GateWayResponse;
-import net.citotech.cito.Model.HttpRequestResponse;
-import org.json.JSONObject;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Service;
 
 @Service
 public class ProviderEndpointExecutionService {
@@ -136,7 +138,8 @@ public class ProviderEndpointExecutionService {
                     status = "FAILED";
                     runStatus = "SIGNATURE_INVALID";
                     recordMessage =
-                            "Provider response signature verification failed - response rejected as untrusted";
+                            "Provider response signature verification failed - response rejected as"
+                                + " untrusted";
                 }
             }
 
@@ -249,7 +252,14 @@ public class ProviderEndpointExecutionService {
         try {
             String token = mtnAccessToken(operation, credentials, gatewayState, false);
             HttpRequestResponse providerResponse =
-                    sendMtn(operation, request, credentials, endpoint, providerReference, requestBody, token);
+                    sendMtn(
+                            operation,
+                            request,
+                            credentials,
+                            endpoint,
+                            providerReference,
+                            requestBody,
+                            token);
             if (providerResponse.getStatusCode() == 401) {
                 token = mtnAccessToken(operation, credentials, gatewayState, true);
                 providerResponse =
@@ -361,9 +371,7 @@ public class ProviderEndpointExecutionService {
         String apiUser = required(credentials.get(prefix + "ApiUser"), prefix + "ApiUser");
         String apiKey = required(credentials.get(prefix + "ApiKey"), prefix + "ApiKey");
         String subscriptionKey =
-                required(
-                        credentials.get(prefix + "SubscriptionKey"),
-                        prefix + "SubscriptionKey");
+                required(credentials.get(prefix + "SubscriptionKey"), prefix + "SubscriptionKey");
         String fingerprint = safeHash(apiUser + "|" + subscriptionKey);
         String segment =
                 prefix.toUpperCase()
@@ -379,8 +387,7 @@ public class ProviderEndpointExecutionService {
         Map<String, String> headers = new LinkedHashMap<>();
         String basic =
                 Base64.getEncoder()
-                        .encodeToString(
-                                (apiUser + ":" + apiKey).getBytes(StandardCharsets.UTF_8));
+                        .encodeToString((apiUser + ":" + apiKey).getBytes(StandardCharsets.UTF_8));
         headers.put("Authorization", "Basic " + basic);
         headers.put("Ocp-Apim-Subscription-Key", subscriptionKey);
         HttpRequestResponse tokenResponse =
@@ -397,7 +404,8 @@ public class ProviderEndpointExecutionService {
         JSONObject json = new JSONObject(tokenResponse.getResponse());
         String accessToken = json.optString("access_token", "").trim();
         if (accessToken.isEmpty()) {
-            throw new PaymentGatewayException("MTN MoMo OAuth response did not include access_token");
+            throw new PaymentGatewayException(
+                    "MTN MoMo OAuth response did not include access_token");
         }
         long expiresIn = Math.max(60L, json.optLong("expires_in", 3600L));
         tokenStoreService.save(
@@ -436,9 +444,9 @@ public class ProviderEndpointExecutionService {
     private void saveProviderReference(String providerReference, String merchantReference) {
         try {
             jdbcTemplate.update(
-                    "INSERT INTO provider_conversation_references (provider_code, conversation_id, tx_reference) "
-                            + "VALUES (:provider,:conversation,:reference) "
-                            + "ON DUPLICATE KEY UPDATE tx_reference=:reference",
+                    "INSERT INTO provider_conversation_references (provider_code, conversation_id,"
+                        + " tx_reference) VALUES (:provider,:conversation,:reference) ON DUPLICATE"
+                        + " KEY UPDATE tx_reference=:reference",
                     new MapSqlParameterSource()
                             .addValue("provider", MtnMomoCredentialSchema.CHANNEL_CODE)
                             .addValue("conversation", providerReference)
@@ -485,7 +493,11 @@ public class ProviderEndpointExecutionService {
             String status,
             String message) {
         String sql =
-                "INSERT INTO provider_endpoint_runs (channel_code, operation_name, reference_value, endpoint_url, http_status, request_hash, response_summary, run_status, merchant_number, environment) VALUES (:channel_code, :operation_name, :reference_value, :endpoint_url, :http_status, :request_hash, :response_summary, :run_status, :merchant_number, :environment)";
+                "INSERT INTO provider_endpoint_runs (channel_code, operation_name, reference_value,"
+                    + " endpoint_url, http_status, request_hash, response_summary, run_status,"
+                    + " merchant_number, environment) VALUES (:channel_code, :operation_name,"
+                    + " :reference_value, :endpoint_url, :http_status, :request_hash,"
+                    + " :response_summary, :run_status, :merchant_number, :environment)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("channel_code", channelCode);
         p.addValue("operation_name", operation);

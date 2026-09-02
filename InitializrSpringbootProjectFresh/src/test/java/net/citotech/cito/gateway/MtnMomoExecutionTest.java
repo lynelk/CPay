@@ -9,6 +9,13 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+
+import net.citotech.cito.Model.GateWayResponse;
+
+import org.json.JSONObject;
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -18,10 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import net.citotech.cito.Model.GateWayResponse;
-import org.json.JSONObject;
-import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 class MtnMomoExecutionTest {
 
@@ -45,7 +48,9 @@ class MtnMomoExecutionTest {
                 "/collection/v1_0/requesttopay",
                 exchange -> {
                     paymentBody.set(
-                            new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                            new String(
+                                    exchange.getRequestBody().readAllBytes(),
+                                    StandardCharsets.UTF_8));
                     callbackUrl.set(exchange.getRequestHeaders().getFirst("X-Callback-Url"));
                     referenceId.set(exchange.getRequestHeaders().getFirst("X-Reference-Id"));
                     assertThat(exchange.getRequestHeaders().getFirst("Authorization"))
@@ -91,15 +96,9 @@ class MtnMomoExecutionTest {
             assertThat(body.getString("currency")).isEqualTo("EUR");
             assertThat(body.getString("externalId")).isEqualTo("ORDER-100");
             assertThat(body.getJSONObject("payer").getString("partyIdType")).isEqualTo("MSISDN");
-            assertThat(body.getJSONObject("payer").getString("partyId"))
-                    .isEqualTo("46733123499");
+            assertThat(body.getJSONObject("payer").getString("partyId")).isEqualTo("46733123499");
             verify(tokenStore)
-                    .save(
-                            anyString(),
-                            anyString(),
-                            anyString(),
-                            anyString(),
-                            any(Instant.class));
+                    .save(anyString(), anyString(), anyString(), anyString(), any(Instant.class));
         } finally {
             server.stop(0);
         }
