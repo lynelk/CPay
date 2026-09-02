@@ -263,12 +263,7 @@ class MerchantModuleDashboardC extends React.Component {
         const channels = Array.isArray(this.state.portalSummary?.activeChannels)
             ? this.state.portalSummary.activeChannels.slice(0, 6)
             : [];
-        const fallback = [
-            { channel_code: 'mtn_momo', display_name: 'MTN MoMo', environment: this.state.portalSummary?.environment || 'SANDBOX', status: 'Ready' },
-            { channel_code: 'airtel_open_api', display_name: 'Airtel Money', environment: this.state.portalSummary?.environment || 'SANDBOX', status: 'Ready' },
-            { channel_code: 'yo_payments', display_name: 'Yo! Payments', environment: this.state.portalSummary?.environment || 'SANDBOX', status: 'Available' },
-        ];
-        const items = channels.length ? channels : fallback;
+        const items = channels;
         const limit = this.state.portalSummary?.productionLimit || {};
         return (
             <article className="cpay-dashboard-card cpay-dashboard-card-channels">
@@ -296,8 +291,9 @@ class MerchantModuleDashboardC extends React.Component {
                         </button>
                     ))}
                 </div>
+                {!items.length ? <p className="cpay-dashboard-card-copy">No payment channels are configured in this environment.</p> : null}
                 <p className="cpay-dashboard-card-copy">
-                    Production cap: {limit.enabled === false ? 'disabled' : `${limit.remainingToday ?? limit.limit ?? 10} of ${limit.limit ?? 10} remaining today`}.
+                    Production cap: {limit.enabled === false ? 'disabled' : (limit.limit != null ? `${limit.remainingToday ?? limit.limit} of ${limit.limit} remaining today` : 'not configured')}.
                 </p>
             </article>
         );

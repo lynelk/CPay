@@ -1,2 +1,5 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
+Allow: /
+Disallow: /bo/
+Sitemap: https://cito-frontend-production.up.railway.app/sitemap.xml

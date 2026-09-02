@@ -4,6 +4,7 @@
  * This is the single place application code should perform HTTP from.
  */
 import { apiUrl } from '../config';
+import { environmentForCurrentPath } from '../environment';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -41,6 +42,7 @@ export async function apiFetch(input: RequestInfo | URL, options: RequestInit = 
     credentials: 'include',
     ...options,
     headers: {
+      'X-Cito-Environment': environmentForCurrentPath(),
       ...options.headers,
     },
   });

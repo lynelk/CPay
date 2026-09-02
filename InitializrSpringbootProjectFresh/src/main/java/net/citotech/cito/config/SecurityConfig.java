@@ -50,6 +50,8 @@ public class SecurityConfig {
                     "/api/v2/payments/**",
                     "/api/v2/production-maturity/**",
                     "/api/v2/vending/**",
+                    "/api/public/analytics/events",
+                    "/api/public/sales-enquiries",
                     "/actuator/**",
                     "/status/**");
 
@@ -63,7 +65,11 @@ public class SecurityConfig {
                     "/api/v2/fx/**");
 
     static final List<String> PUBLIC_ANONYMOUS_API_PATTERNS =
-            List.of("/api/public/embedded/onboarding/**");
+            List.of(
+                    "/api/public/embedded/onboarding/**",
+                    "/api/public/analytics/events",
+                    "/api/public/sales-enquiries",
+                    "/api/public/status");
 
     static final List<String> PUBLIC_SIGNED_API_PATTERNS =
             List.of(
@@ -91,7 +97,13 @@ public class SecurityConfig {
                     "/api/v2/session/me",
                     "/api/v2/merchant/**",
                     "/api/v2/merchant-self-service/**",
-                    "/api/v2/portal/**");
+                    "/api/v2/portal/**",
+                    "/api/v2/merchants/**",
+                    "/api/v2/transactions/**",
+                    "/api/v2/support/**",
+                    "/api/v2/search",
+                    "/api/v2/notifications/**",
+                    "/api/v2/provider-incidents/**");
 
     static final List<String> PUBLIC_PAGE_AND_LEGACY_PORTAL_PATTERNS =
             List.of(
