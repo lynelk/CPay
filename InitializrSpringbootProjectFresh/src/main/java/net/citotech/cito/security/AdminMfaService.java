@@ -18,9 +18,10 @@ public class AdminMfaService {
     private final TotpService totpService;
     private final MerchantChannelCryptoService cryptoService;
 
-    public AdminMfaService(NamedParameterJdbcTemplate jdbcTemplate,
-                           TotpService totpService,
-                           MerchantChannelCryptoService cryptoService) {
+    public AdminMfaService(
+            NamedParameterJdbcTemplate jdbcTemplate,
+            TotpService totpService,
+            MerchantChannelCryptoService cryptoService) {
         this.jdbcTemplate = jdbcTemplate;
         this.totpService = totpService;
         this.cryptoService = cryptoService;
@@ -33,9 +34,9 @@ public class AdminMfaService {
         p.addValue("admin_id", admin.id);
         p.addValue("secret", cryptoService.encrypt(secret));
         jdbcTemplate.update(
-            "INSERT INTO admin_mfa_totp (admin_id, secret_value, enabled_flag) VALUES (:admin_id, :secret, 'NO') "
-                + "ON DUPLICATE KEY UPDATE secret_value=:secret, enabled_flag='NO', verified_at=NULL, updated_at=CURRENT_TIMESTAMP",
-            p);
+                "INSERT INTO admin_mfa_totp (admin_id, secret_value, enabled_flag) VALUES (:admin_id, :secret, 'NO') "
+                        + "ON DUPLICATE KEY UPDATE secret_value=:secret, enabled_flag='NO', verified_at=NULL, updated_at=CURRENT_TIMESTAMP",
+                p);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("adminEmail", admin.email);
         response.put("secret", secret);
@@ -50,24 +51,30 @@ public class AdminMfaService {
             return false;
         }
         jdbcTemplate.update(
-            "UPDATE admin_mfa_totp SET enabled_flag='YES', verified_at=CURRENT_TIMESTAMP WHERE admin_id=:admin_id",
-            new MapSqlParameterSource("admin_id", admin.id));
+                "UPDATE admin_mfa_totp SET enabled_flag='YES', verified_at=CURRENT_TIMESTAMP WHERE admin_id=:admin_id",
+                new MapSqlParameterSource("admin_id", admin.id));
         return true;
     }
 
     public boolean isEnabled(long adminId) {
         try {
-            Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM admin_mfa_totp WHERE admin_id=:admin_id AND enabled_flag='YES'",
-                new MapSqlParameterSource("admin_id", adminId),
-                Integer.class);
+            Integer count =
+                    jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM admin_mfa_totp WHERE admin_id=:admin_id AND enabled_flag='YES'",
+                            new MapSqlParameterSource("admin_id", adminId),
+                            Integer.class);
             return count != null && count > 0;
         } catch (BadSqlGrammarException ex) {
             // Fail closed: an unreadable MFA store must never be treated as "MFA disabled",
             // or a broken/missing table would silently bypass the second factor at login.
-            Logger.getLogger(AdminMfaService.class.getName()).log(Level.SEVERE,
-                "Admin MFA store is unreadable (admin_id=" + adminId + "); denying login instead of "
-                    + "bypassing MFA", ex);
+            Logger.getLogger(AdminMfaService.class.getName())
+                    .log(
+                            Level.SEVERE,
+                            "Admin MFA store is unreadable (admin_id="
+                                    + adminId
+                                    + "); denying login instead of "
+                                    + "bypassing MFA",
+                            ex);
             throw new PaymentGatewayException("MFA verification is temporarily unavailable", ex);
         }
     }
@@ -88,10 +95,11 @@ public class AdminMfaService {
     }
 
     private String secretForAdmin(long adminId) {
-        List<String> rows = jdbcTemplate.query(
-            "SELECT secret_value FROM admin_mfa_totp WHERE admin_id=:admin_id LIMIT 1",
-            new MapSqlParameterSource("admin_id", adminId),
-            (rs, rowNum) -> rs.getString("secret_value"));
+        List<String> rows =
+                jdbcTemplate.query(
+                        "SELECT secret_value FROM admin_mfa_totp WHERE admin_id=:admin_id LIMIT 1",
+                        new MapSqlParameterSource("admin_id", adminId),
+                        (rs, rowNum) -> rs.getString("secret_value"));
         if (rows.isEmpty()) {
             throw new PaymentGatewayException("MFA is not enrolled for admin");
         }
@@ -103,16 +111,16 @@ public class AdminMfaService {
     }
 
     private AdminIdentity findAdmin(String email) {
-        List<AdminIdentity> rows = jdbcTemplate.query(
-            "SELECT id, email FROM admins WHERE email=:email LIMIT 1",
-            new MapSqlParameterSource("email", email),
-            (rs, rowNum) -> new AdminIdentity(rs.getLong("id"), rs.getString("email")));
+        List<AdminIdentity> rows =
+                jdbcTemplate.query(
+                        "SELECT id, email FROM admins WHERE email=:email LIMIT 1",
+                        new MapSqlParameterSource("email", email),
+                        (rs, rowNum) -> new AdminIdentity(rs.getLong("id"), rs.getString("email")));
         if (rows.isEmpty()) {
             throw new PaymentGatewayException("Admin was not found");
         }
         return rows.get(0);
     }
 
-    private record AdminIdentity(long id, String email) {
-    }
+    private record AdminIdentity(long id, String email) {}
 }

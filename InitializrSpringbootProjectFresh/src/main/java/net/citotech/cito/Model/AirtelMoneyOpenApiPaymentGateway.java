@@ -106,7 +106,8 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
 
     public void setTransactionContext(String environment, String country, String currency) {
         this.mode = environment == null ? "SANDBOX" : environment.trim().toUpperCase();
-        if (country != null && !country.trim().isEmpty()) this.country = country.trim().toUpperCase();
+        if (country != null && !country.trim().isEmpty())
+            this.country = country.trim().toUpperCase();
         if (currency != null && !currency.trim().isEmpty())
             this.base_currency = currency.trim().toUpperCase();
     }

@@ -41,7 +41,8 @@ class AirtelOpenApiCredentialSchemaTest {
                         PaymentGatewayException.class,
                         () ->
                                 AirtelOpenApiCredentialSchema.validate(
-                                        credentials(AirtelOpenApiCredentialSchema.PRODUCTION_BASE_URL),
+                                        credentials(
+                                                AirtelOpenApiCredentialSchema.PRODUCTION_BASE_URL),
                                         "PRODUCTION",
                                         "KE",
                                         "KES"));

@@ -45,8 +45,7 @@ public class ProviderTreasuryAdminController {
 
     @PostMapping("/accounts/{id}/refresh-provider-balance")
     public Map<String, Object> refreshProviderBalance(@PathVariable long id) {
-        permissions.require(
-                "PAYMENT_BALANCE_REFRESH", "provider-balance-refresh", "account:" + id);
+        permissions.require("PAYMENT_BALANCE_REFRESH", "provider-balance-refresh", "account:" + id);
         return balanceRefresh.refresh(id);
     }
 
@@ -66,14 +65,16 @@ public class ProviderTreasuryAdminController {
     @PostMapping("/adjustments/{id}/approve")
     public Map<String, Object> approveAdjustment(
             @PathVariable long id, Authentication authentication) {
-        permissions.require("RECONCILIATION_MANAGE", "provider-adjustment-approve", "adjustment:" + id);
+        permissions.require(
+                "RECONCILIATION_MANAGE", "provider-adjustment-approve", "adjustment:" + id);
         return service.approveAdjustment(id, actor(authentication));
     }
 
     @PostMapping("/adjustments/{id}/reject")
     public Map<String, Object> rejectAdjustment(
             @PathVariable long id, Authentication authentication) {
-        permissions.require("RECONCILIATION_MANAGE", "provider-adjustment-reject", "adjustment:" + id);
+        permissions.require(
+                "RECONCILIATION_MANAGE", "provider-adjustment-reject", "adjustment:" + id);
         return service.rejectAdjustment(id, actor(authentication));
     }
 
@@ -88,7 +89,8 @@ public class ProviderTreasuryAdminController {
             @PathVariable long id,
             @RequestBody Map<String, Object> body,
             Authentication authentication) {
-        permissions.require("RECONCILIATION_MANAGE", "provider-reservation-resolve", "reservation:" + id);
+        permissions.require(
+                "RECONCILIATION_MANAGE", "provider-reservation-resolve", "reservation:" + id);
         boolean success =
                 Boolean.TRUE.equals(body.get("success"))
                         || "true".equalsIgnoreCase(String.valueOf(body.get("success")));

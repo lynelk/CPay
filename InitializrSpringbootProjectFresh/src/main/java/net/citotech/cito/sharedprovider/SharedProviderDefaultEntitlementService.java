@@ -30,8 +30,7 @@ public class SharedProviderDefaultEntitlementService {
         List<Long> merchantIds =
                 jdbc.query(
                         "SELECT id FROM merchants WHERE status='ACTIVE' AND account_number NOT LIKE 'CITO-%'",
-                        Map.of(),
-                        (rs, rowNum) -> rs.getLong("id"));
+                        Map.of(), (rs, rowNum) -> rs.getLong("id"));
         merchantIds.forEach(this::provisionMerchant);
     }
 
@@ -41,8 +40,7 @@ public class SharedProviderDefaultEntitlementService {
         Integer eligible =
                 jdbc.queryForObject(
                         "SELECT COUNT(*) FROM merchants WHERE id=:id AND status='ACTIVE' AND account_number NOT LIKE 'CITO-%'",
-                        new MapSqlParameterSource("id", merchantId),
-                        Integer.class);
+                        new MapSqlParameterSource("id", merchantId), Integer.class);
         if (eligible == null || eligible == 0) return;
         grantApi(merchantId, "MOBILE_MONEY_PAYIN");
 
@@ -110,7 +108,9 @@ public class SharedProviderDefaultEntitlementService {
         for (Map<String, Object> rail : rails) {
             BigDecimal daily = decimal(rail.get("dailyLimit"));
             BigDecimal used = decimal(rail.get("usedToday"));
-            rail.put("remainingToday", daily == null ? null : daily.subtract(used).max(BigDecimal.ZERO));
+            rail.put(
+                    "remainingToday",
+                    daily == null ? null : daily.subtract(used).max(BigDecimal.ZERO));
             rail.put(
                     "ready",
                     "ACTIVE".equals(rail.get("status"))
@@ -119,7 +119,9 @@ public class SharedProviderDefaultEntitlementService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("channelCode", "cpay_shared");
         result.put("displayName", "CPay Shared Payments");
-        result.put("description", "Use CPay-managed MTN and Airtel connections until your own credentials are approved.");
+        result.put(
+                "description",
+                "Use CPay-managed MTN and Airtel connections until your own credentials are approved.");
         result.put("environment", env);
         result.put("status", overallStatus(rails));
         result.put("credentialSource", SharedProviderAccessService.PLATFORM_SHARED);
@@ -163,9 +165,7 @@ public class SharedProviderDefaultEntitlementService {
                         + " WHEN allowed_apis IS NULL OR TRIM(allowed_apis)='' THEN :api"
                         + " ELSE CONCAT(TRIM(TRAILING ',' FROM allowed_apis),',',:api) END"
                         + " WHERE id=:merchant AND FIND_IN_SET(:api,REPLACE(COALESCE(allowed_apis,''),' ',''))=0",
-                new MapSqlParameterSource()
-                        .addValue("merchant", merchantId)
-                        .addValue("api", api));
+                new MapSqlParameterSource().addValue("merchant", merchantId).addValue("api", api));
     }
 
     private String overallStatus(List<Map<String, Object>> rails) {
@@ -178,9 +178,7 @@ public class SharedProviderDefaultEntitlementService {
 
     private BigDecimal decimal(Object value) {
         if (value == null) return null;
-        return value instanceof BigDecimal amount
-                ? amount
-                : new BigDecimal(String.valueOf(value));
+        return value instanceof BigDecimal amount ? amount : new BigDecimal(String.valueOf(value));
     }
 
     private String required(String value, String field) {

@@ -10,9 +10,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import net.citotech.cito.Common;
+import net.citotech.cito.Model.AirtelMoneyOpenApiPaymentGateway;
 import net.citotech.cito.Model.GateWayResponse;
 import net.citotech.cito.Model.HttpRequestResponse;
-import net.citotech.cito.Model.AirtelMoneyOpenApiPaymentGateway;
 import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -61,11 +61,11 @@ public class ProviderEndpointExecutionService {
                                 + "/"
                                 + prefix
                                 + "/v1_0/account/balance";
-                return balanceResponse(Common.doHttpRequest("GET", endpoint, "", headers), "availableBalance");
+                return balanceResponse(
+                        Common.doHttpRequest("GET", endpoint, "", headers), "availableBalance");
             }
             if (AirtelOpenApiCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
-                AirtelOpenApiCredentialSchema.validate(
-                        credentials, environment, country, currency);
+                AirtelOpenApiCredentialSchema.validate(credentials, environment, country, currency);
                 JSONObject tokenBody =
                         new JSONObject()
                                 .put("client_id", credentials.get("clientId"))
@@ -80,11 +80,14 @@ public class ProviderEndpointExecutionService {
                                 tokenBody.toString(),
                                 Map.of("Content-Type", "application/json"));
                 if (tokenResponse == null || tokenResponse.getStatusCode() != 200) {
-                    return new ProviderBalanceResult(false, null, "Airtel OAuth token request failed");
+                    return new ProviderBalanceResult(
+                            false, null, "Airtel OAuth token request failed");
                 }
-                String token = new JSONObject(tokenResponse.getResponse()).optString("access_token", "");
+                String token =
+                        new JSONObject(tokenResponse.getResponse()).optString("access_token", "");
                 if (token.isBlank()) {
-                    return new ProviderBalanceResult(false, null, "Airtel OAuth response omitted access_token");
+                    return new ProviderBalanceResult(
+                            false, null, "Airtel OAuth response omitted access_token");
                 }
                 Map<String, String> headers = new LinkedHashMap<>();
                 headers.put("Authorization", "Bearer " + token);
@@ -98,7 +101,9 @@ public class ProviderEndpointExecutionService {
                         "balance");
             }
             return new ProviderBalanceResult(
-                    false, null, "Direct balance synchronization is not supported for this channel");
+                    false,
+                    null,
+                    "Direct balance synchronization is not supported for this channel");
         } catch (Exception e) {
             return new ProviderBalanceResult(
                     false,
@@ -109,9 +114,7 @@ public class ProviderEndpointExecutionService {
 
     private ProviderBalanceResult balanceResponse(
             HttpRequestResponse response, String balanceField) {
-        if (response == null
-                || response.getStatusCode() < 200
-                || response.getStatusCode() >= 300) {
+        if (response == null || response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
             int status = response == null ? 0 : response.getStatusCode();
             return new ProviderBalanceResult(
                     false, null, "Provider balance endpoint returned HTTP " + status);
@@ -134,8 +137,7 @@ public class ProviderEndpointExecutionService {
         return base + (path.startsWith("/") ? path : "/" + path);
     }
 
-    public record ProviderBalanceResult(
-            boolean available, BigDecimal balance, String message) {}
+    public record ProviderBalanceResult(boolean available, BigDecimal balance, String message) {}
 
     public GateWayResponse execute(
             String channelCode,
@@ -446,10 +448,7 @@ public class ProviderEndpointExecutionService {
         Map<String, String> credentials = request.getMetadata();
         String environment = credentials.getOrDefault("gatewayState", "SANDBOX");
         AirtelOpenApiCredentialSchema.validate(
-                credentials,
-                environment,
-                credentials.get("country"),
-                credentials.get("currency"));
+                credentials, environment, credentials.get("country"), credentials.get("currency"));
         if (!circuitBreaker.allowRequest(AirtelOpenApiCredentialSchema.CHANNEL_CODE)) {
             String message = "Airtel OpenAPI provider calls are temporarily suspended";
             record(

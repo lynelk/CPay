@@ -147,8 +147,7 @@ class SharedProviderAccessServiceTest {
                         "COLLECT",
                         new BigDecimal("100.00"),
                         SharedProviderAccessService.PLATFORM_SHARED));
-        verify(merchantCredentials, never())
-                .ensureChannelReady(merchant, "mtn_momo", "PRODUCTION");
+        verify(merchantCredentials, never()).ensureChannelReady(merchant, "mtn_momo", "PRODUCTION");
     }
 
     @Test

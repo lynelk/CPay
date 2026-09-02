@@ -13,7 +13,8 @@ public class AdminPermissionService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final AdminAuditService auditService;
 
-    public AdminPermissionService(NamedParameterJdbcTemplate jdbcTemplate, AdminAuditService auditService) {
+    public AdminPermissionService(
+            NamedParameterJdbcTemplate jdbcTemplate, AdminAuditService auditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.auditService = auditService;
     }
@@ -64,7 +65,8 @@ public class AdminPermissionService {
     }
 
     private void add(String roleName, String permissionCode) {
-        String sql = "INSERT IGNORE INTO admin_permissions (role_name, permission_code) VALUES (:role_name, :permission_code)";
+        String sql =
+                "INSERT IGNORE INTO admin_permissions (role_name, permission_code) VALUES (:role_name, :permission_code)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("role_name", roleName);
         p.addValue("permission_code", permissionCode);

@@ -109,7 +109,8 @@ public class ProviderLiveTestService {
         BigDecimal maximum = SettingsRegistry.getDecimal("provider_live_test_max_amount", jdbc);
         if (amount.compareTo(maximum) > 0) {
             throw new PaymentGatewayException(
-                    "Live test amount exceeds the configured maximum of " + maximum.toPlainString());
+                    "Live test amount exceeds the configured maximum of "
+                            + maximum.toPlainString());
         }
         String party = normalizeParty(body.get("party"));
         String reference = "LIVE-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
@@ -188,8 +189,10 @@ public class ProviderLiveTestService {
             PaymentRequest request = paymentRequest(row, merchant, party);
             PaymentResult result =
                     "COLLECT".equals(row.get("operation"))
-                            ? payments.collect(request, merchant, String.valueOf(row.get("environment")))
-                            : payments.payout(request, merchant, String.valueOf(row.get("environment")));
+                            ? payments.collect(
+                                    request, merchant, String.valueOf(row.get("environment")))
+                            : payments.payout(
+                                    request, merchant, String.valueOf(row.get("environment")));
             String status = finalStatus(result == null ? null : result.getStatus());
             jdbc.update(
                     "UPDATE provider_live_tests SET status=:status, provider_reference=:provider,"
@@ -199,7 +202,9 @@ public class ProviderLiveTestService {
                             .addValue("id", id)
                             .addValue("status", status)
                             .addValue("provider", result == null ? null : result.getTransactionId())
-                            .addValue("message", result == null ? "No provider response" : result.getMessage())
+                            .addValue(
+                                    "message",
+                                    result == null ? "No provider response" : result.getMessage())
                             .addValue("terminal", "PENDING_PROVIDER".equals(status) ? 0 : 1));
             event(id, "PROVIDER_RESPONSE", status, safeMessage(result), actor);
         } catch (RuntimeException e) {
@@ -214,7 +219,8 @@ public class ProviderLiveTestService {
         }
     }
 
-    private PaymentRequest paymentRequest(Map<String, Object> row, Merchant merchant, String party) {
+    private PaymentRequest paymentRequest(
+            Map<String, Object> row, Merchant merchant, String party) {
         PaymentRequest request = new PaymentRequest();
         request.setMerchantNumber(merchant.getAccount_number());
         request.setAmount(String.valueOf(row.get("amount")));
@@ -225,8 +231,10 @@ public class ProviderLiveTestService {
         request.setDescription("CPay admin live " + row.get("operation") + " test");
         request.setMetadata(
                 Map.of(
-                        "credentialSource", SharedProviderAccessService.PLATFORM_SHARED,
-                        "environment", String.valueOf(row.get("environment"))));
+                        "credentialSource",
+                        SharedProviderAccessService.PLATFORM_SHARED,
+                        "environment",
+                        String.valueOf(row.get("environment"))));
         PaymentPartyRequest paymentParty = new PaymentPartyRequest();
         paymentParty.setType("MSISDN");
         paymentParty.setValue(party);
@@ -325,7 +333,8 @@ public class ProviderLiveTestService {
 
     private BigDecimal amount(Object value) {
         try {
-            BigDecimal amount = new BigDecimal(required(value, "amount")).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal amount =
+                    new BigDecimal(required(value, "amount")).setScale(4, RoundingMode.HALF_UP);
             if (amount.signum() <= 0) throw new NumberFormatException();
             return amount;
         } catch (NumberFormatException e) {
@@ -349,12 +358,16 @@ public class ProviderLiveTestService {
     private String safeMessage(PaymentResult result) {
         if (result == null) return "No provider response";
         String message = result.getMessage();
-        return message == null || message.isBlank() ? "Provider status: " + result.getStatus() : message;
+        return message == null || message.isBlank()
+                ? "Provider status: " + result.getStatus()
+                : message;
     }
 
     private String safeError(RuntimeException error) {
         String message = error.getMessage();
-        return message == null || message.isBlank() ? "Provider execution failed" : message.substring(0, Math.min(1000, message.length()));
+        return message == null || message.isBlank()
+                ? "Provider execution failed"
+                : message.substring(0, Math.min(1000, message.length()));
     }
 
     private long number(Object value) {

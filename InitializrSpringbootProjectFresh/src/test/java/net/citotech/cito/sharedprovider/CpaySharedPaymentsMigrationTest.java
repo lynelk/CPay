@@ -17,7 +17,8 @@ class CpaySharedPaymentsMigrationTest {
         assertThat(migration)
                 .contains("shared_provider_default_collection_per_transaction_limit")
                 .contains("shared_provider_default_payout_enabled', 'false'")
-                .contains("CASE WHEN operations.operation = 'COLLECT' THEN 'ACTIVE' ELSE 'PENDING' END")
+                .contains(
+                        "CASE WHEN operations.operation = 'COLLECT' THEN 'ACTIVE' ELSE 'PENDING' END")
                 .contains("m.account_number NOT LIKE 'CITO-%'");
     }
 

@@ -28,8 +28,7 @@ public class SharedProviderAdminController {
 
     @GetMapping("/entitlements")
     public List<Map<String, Object>> entitlements() {
-        permissions.require(
-                "SHARED_PAYMENT_ENTITLEMENT_MANAGE", "shared-entitlement-list", "all");
+        permissions.require("SHARED_PAYMENT_ENTITLEMENT_MANAGE", "shared-entitlement-list", "all");
         return service.listEntitlements();
     }
 
@@ -61,7 +60,9 @@ public class SharedProviderAdminController {
     public Map<String, Object> disableEntitlement(
             @PathVariable long id, Authentication authentication) {
         permissions.require(
-                "SHARED_PAYMENT_ENTITLEMENT_MANAGE", "shared-entitlement-disable", "entitlement:" + id);
+                "SHARED_PAYMENT_ENTITLEMENT_MANAGE",
+                "shared-entitlement-disable",
+                "entitlement:" + id);
         return service.disableEntitlement(id, actor(authentication));
     }
 

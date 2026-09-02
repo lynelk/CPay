@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import net.citotech.cito.Model.Merchant;
-import net.citotech.cito.gateway.MtnMomoCredentialSchema;
 import net.citotech.cito.gateway.AirtelOpenApiCredentialSchema;
+import net.citotech.cito.gateway.MtnMomoCredentialSchema;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
@@ -60,14 +60,7 @@ public class SharedProviderAccessService {
             String operation,
             BigDecimal amount) {
         return isReady(
-                merchant,
-                channelCode,
-                environment,
-                country,
-                currency,
-                operation,
-                amount,
-                null);
+                merchant, channelCode, environment, country, currency, operation, amount, null);
     }
 
     public boolean isReady(
@@ -121,14 +114,7 @@ public class SharedProviderAccessService {
             String operation,
             BigDecimal amount) {
         return resolve(
-                merchant,
-                channelCode,
-                environment,
-                country,
-                currency,
-                operation,
-                amount,
-                null);
+                merchant, channelCode, environment, country, currency, operation, amount, null);
     }
 
     @Transactional
@@ -633,9 +619,7 @@ public class SharedProviderAccessService {
                         + " WHEN allowed_apis IS NULL OR TRIM(allowed_apis)='' THEN :api"
                         + " ELSE CONCAT(TRIM(TRAILING ',' FROM allowed_apis),',',:api) END"
                         + " WHERE id=:merchant AND FIND_IN_SET(:api,REPLACE(COALESCE(allowed_apis,''),' ',''))=0",
-                new MapSqlParameterSource()
-                        .addValue("merchant", merchantId)
-                        .addValue("api", api));
+                new MapSqlParameterSource().addValue("merchant", merchantId).addValue("api", api));
     }
 
     private String requiredActor(String actor) {

@@ -84,7 +84,8 @@ public class ProviderBalanceRefreshService {
                 jdbc.queryForList(
                         "SELECT * FROM provider_treasury_accounts WHERE id=:id",
                         new MapSqlParameterSource("id", id));
-        if (rows.isEmpty()) throw new PaymentGatewayException("Provider treasury account not found");
+        if (rows.isEmpty())
+            throw new PaymentGatewayException("Provider treasury account not found");
         return rows.get(0);
     }
 
@@ -99,7 +100,8 @@ public class ProviderBalanceRefreshService {
     }
 
     private String safe(String value) {
-        String message = value == null || value.isBlank() ? "Provider balance is unavailable" : value;
+        String message =
+                value == null || value.isBlank() ? "Provider balance is unavailable" : value;
         return message.substring(0, Math.min(500, message.length()));
     }
 
