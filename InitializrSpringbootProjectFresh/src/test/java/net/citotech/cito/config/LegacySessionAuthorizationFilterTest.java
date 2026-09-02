@@ -139,8 +139,7 @@ class LegacySessionAuthorizationFilterTest {
                                 java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
         try {
             MockHttpServletRequest request =
-                    new MockHttpServletRequest(
-                            "GET", "/api/v2/admin/provider-treasury/accounts");
+                    new MockHttpServletRequest("GET", "/api/v2/admin/provider-treasury/accounts");
             MockHttpServletResponse response = new MockHttpServletResponse();
             MockFilterChain chain = new MockFilterChain();
 
