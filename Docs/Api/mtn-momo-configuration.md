@@ -60,6 +60,19 @@ Never log Authorization headers, subscription keys, API keys, bearer tokens, or 
 Production egress IPs must be whitelisted for Disbursement during MTN onboarding, and MTN callback
 source IPs should be restricted at the load balancer/firewall.
 
+## Administrator authentication
+
+The CPay platform credential editor at `/bo/admin/provider-treasury` uses the signed-in human
+administrator's portal session. Its provider-treasury and shared-provider API calls require
+`ROLE_ADMIN`, matching the rest of Cito's `/api/v2/admin/**` surface. Do not enter a portal password,
+MTN API key, or subscription key into a browser-native HTTP Basic dialog. An expired or missing
+portal session returns Cito's JSON `401` response without a `WWW-Authenticate` challenge so the UI
+can send the operator back through the normal administrator login.
+
+The separate `ADMIN_API` Basic identity remains available for approved machine integrations. It is
+not a substitute for a human operator identity: credential edits and approvals retain their actor
+identity, audit trail, and maker-checker separation.
+
 ## Default account topology
 
 Each provider/country/currency/environment scope has one non-posting `MASTER` control account and

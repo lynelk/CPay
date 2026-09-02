@@ -27,6 +27,8 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
                     "/merchants",
                     "/settings",
                     "/transactions",
+                    "/api/v2/admin/provider-treasury",
+                    "/api/v2/admin/shared-provider",
                     "/api/v2/merchant-self-service/channels",
                     "/api/v2/merchant-self-service/batches",
                     "/api/v2/merchant-self-service/webhooks",
@@ -82,7 +84,10 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
      * Security historically knew only the shared ADMIN_API basic-auth principal. Bridge the real
      * session identity into the SecurityContext so /api/v2/admin/** authorizes the same signed-in
      * operator and maker-checker/audit code receives a human identity rather than a shared service
-     * username. Merchant sessions are deliberately never promoted to ROLE_ADMIN.
+     * username. Merchant sessions are deliberately never promoted to ROLE_ADMIN. Browser-facing
+     * provider administration routes are included in {@link #PORTAL_SESSION_PREFIXES} so a missing
+     * portal session receives Cito's JSON 401 response instead of triggering the browser's native
+     * HTTP Basic credential dialog. A pre-authenticated ADMIN_API request still passes this gate.
      */
     private void bridgeAdminSessionIdentity(HttpSession session) {
         if (session == null || !(session.getAttribute("user") instanceof User user)) {

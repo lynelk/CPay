@@ -62,9 +62,9 @@ public class RestExceptionHandler {
      * Audit E3: a method-security denial surfaced by {@code @PreAuthorize} on the {@code
      * /api/v2/admin/**} controllers (e.g. HTTP Basic with an unknown/non-admin principal) must be
      * an explicit 403, not fall into the catch-all below and hide as a 500. The {@code
-     * LegacySessionAuthorizationFilter} never populates the SecurityContext, so a portal session
-     * can never satisfy {@code hasRole("ADMIN")} at the method layer - which is exactly the
-     * defense-in-depth the annotation is meant to add on top of the path matcher.
+     * LegacySessionAuthorizationFilter} bridges a valid legacy administrator session into the
+     * SecurityContext so interactive administrators and the machine ADMIN_API identity satisfy the
+     * same {@code hasRole("ADMIN")} defense-in-depth check.
      */
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseBody

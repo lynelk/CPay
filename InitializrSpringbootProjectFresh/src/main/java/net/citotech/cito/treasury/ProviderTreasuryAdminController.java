@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v2/admin/provider-treasury")
-@PreAuthorize("hasAnyRole('GATEWAY_ADMIN','PAYMENTS_ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class ProviderTreasuryAdminController {
     private final ProviderTreasuryService service;
 

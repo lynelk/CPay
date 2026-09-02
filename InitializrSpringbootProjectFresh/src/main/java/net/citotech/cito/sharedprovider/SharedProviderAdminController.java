@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** Administrative surface for CPay-sponsored provider credentials and merchant entitlements. */
 @RestController
 @RequestMapping("/api/v2/admin/shared-provider")
-@PreAuthorize("hasAnyRole('GATEWAY_ADMIN','PAYMENTS_ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class SharedProviderAdminController {
     private final SharedProviderAccessService service;
 

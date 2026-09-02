@@ -50,6 +50,8 @@ class AdminControllerPreAuthorizeCoverageTest {
                     net.citotech.cito.reporting.ReportingAdminController.class,
                     net.citotech.cito.scheduler.TransactionLogArchivalController.class,
                     net.citotech.cito.security.AdminMfaController.class,
+                    net.citotech.cito.sharedprovider.SharedProviderAdminController.class,
+                    net.citotech.cito.treasury.ProviderTreasuryAdminController.class,
                     net.citotech.cito.webhook.MerchantWebhookController.class);
 
     @Test
