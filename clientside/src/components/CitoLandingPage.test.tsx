@@ -12,12 +12,12 @@ function renderLandingPage() {
 }
 
 describe('CitoLandingPage', () => {
-  it('positions Cito as the gateway and CPay as the payments service', () => {
+  it('positions Cito as the gateway and Cito Payments as the payments product', () => {
     renderLandingPage();
 
     expect(screen.getByRole('heading', { level: 1, name: /connect your business through cito/i })).toBeInTheDocument();
     expect(screen.getByText(/cito is the gateway/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/cpay is cito's payments service/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/cito payments is the payment product/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { level: 2, name: /^gateway$/i })).toBeInTheDocument();
   });
 
@@ -31,12 +31,12 @@ describe('CitoLandingPage', () => {
     signUpLinks.forEach((link) => expect(link).toHaveAttribute('href', '/signup'));
   });
 
-  it('exposes CPay developer documentation and supported payment channels', () => {
+  it('exposes Cito Payments developer documentation and supported payment channels', () => {
     renderLandingPage();
 
-    expect(screen.getByText(/CPay · Collections/i)).toBeInTheDocument();
-    expect(screen.getByText(/CPay · Payouts/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /cpay api documentation/i })[0]).toHaveAttribute(
+    expect(screen.getByText(/Cito Payments · Collections/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cito Payments · Payouts/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /cito payments api documentation/i })[0]).toHaveAttribute(
       'href',
       'https://lynelk.github.io/CPay/',
     );
@@ -46,10 +46,7 @@ describe('CitoLandingPage', () => {
   it('includes direct Cito sales and support contact paths', () => {
     renderLandingPage();
 
-    expect(screen.getByRole('link', { name: /discuss Cito services for your business/i })).toHaveAttribute(
-      'href',
-      'mailto:info@citotech.net',
-    );
+    expect(screen.getByRole('link', { name: /discuss Cito services for your business/i })).toHaveAttribute('href', '/contact');
     expect(screen.getByRole('link', { name: /get help with an existing Cito account/i })).toHaveAttribute(
       'href',
       'mailto:support@citotech.net',

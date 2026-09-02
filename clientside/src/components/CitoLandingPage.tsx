@@ -8,16 +8,16 @@ const SIGN_UP_PATH = '/signup';
 
 const capabilities = [
   ['Collect payments', 'Receive customer payments across supported payment channels.'],
-  ['Make payouts', 'Send funds to customers, suppliers, and beneficiaries through CPay.'],
+  ['Make payouts', 'Send funds to customers, suppliers, and beneficiaries through Cito Payments.'],
   ['Payment links & invoices', 'Create hosted payment experiences without building checkout from scratch.'],
   ['Reconciliation', 'Track payment status, references, balances, and transaction outcomes centrally.'],
   ['Webhooks & automation', 'Connect transaction events to business workflows with verifiable callbacks.'],
-  ['Developer APIs', 'Build with CPay API v2, OpenAPI, SDK helpers, Postman, and sandbox tooling.'],
+  ['Developer APIs', 'Build with Cito Payments API v2, OpenAPI, SDK helpers, Postman, and sandbox tooling.'],
 ] as const;
 
 const audiences = [
   ['Businesses & merchants', 'Use Cito as the secure front door to payment and operational services.'],
-  ['Platforms & developers', 'Integrate CPay and other Cito services through documented interfaces.'],
+  ['Platforms & developers', 'Integrate Cito Payments and other Cito services through documented interfaces.'],
   ['Institutions', 'Centralize access to collections, reporting, controls, and reconciliation.'],
   ['Technology partners', 'Connect providers and value-added services through the Cito integration layer.'],
 ] as const;
@@ -47,7 +47,7 @@ function CitoLandingPage(): React.ReactElement {
           <span><strong>Cito</strong><small>Gateway</small></span>
         </a>
         <nav className="cito-nav" aria-label="Primary navigation">
-          <a href="#cpay">Products</a><a href="#about">About</a><a href="#developers">Developers</a><a href="#contact">Contact</a>
+          <Link to="/payments">Payments</Link><Link to="/billing">Billing</Link><Link to="/operations-platform">Operations</Link><Link to="/developer-platform">Developers</Link><Link to="/status">Status</Link>
         </nav>
         <div className="cito-header-actions">
           <Link className="cito-button cito-button-quiet" to={SIGN_IN_PATH}>Sign in</Link>
@@ -57,7 +57,7 @@ function CitoLandingPage(): React.ReactElement {
           <summary aria-label="Open navigation">Menu</summary>
           <div className="cito-mobile-panel">
             <Link to={SIGN_UP_PATH}>Get started</Link><Link to={SIGN_IN_PATH}>Sign in</Link>
-            <a href="#cpay">Products</a><a href="#developers">Developers</a><a href="#about">About</a><a href="#contact">Contact</a>
+            <Link to="/payments">Payments</Link><Link to="/developer-platform">Developers</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link>
           </div>
         </details>
       </header>
@@ -67,34 +67,34 @@ function CitoLandingPage(): React.ReactElement {
           <div className="cito-hero-copy">
             <p className="cito-eyebrow">One secure gateway for connected business services</p>
             <h1>Connect your business through Cito.</h1>
-            <p className="cito-lead">Cito is the gateway: one secure entry point for business services, integrations, and operations. CPay is Cito&apos;s payments service, providing collections, payouts, reconciliation, hosted payment experiences, and developer APIs.</p>
+            <p className="cito-lead">Cito is the gateway: one secure entry point for payments, billing, business services, integrations, and operations. Cito Payments provides collections, payouts, reconciliation, hosted payment experiences, and developer APIs.</p>
             <div className="cito-hero-actions">
               <Link className="cito-button cito-button-primary cito-button-large" to={SIGN_UP_PATH}>Create Cito account</Link>
               <Link className="cito-button cito-button-secondary cito-button-large" to={SIGN_IN_PATH}>Sign in to Cito</Link>
             </div>
-            <a className="cito-text-link" href={DOCS_URL}>Developer? Explore the CPay API <span aria-hidden="true">→</span></a>
+            <Link className="cito-text-link" to="/developer-platform">Developer? Explore the Cito Payments API <span aria-hidden="true">→</span></Link>
           </div>
           <aside className="cito-product-card" aria-label="Cito gateway services summary">
             <div className="cito-product-card-head"><div><span className="cito-product-kicker">Cito</span><h2>Gateway</h2></div><span className="cito-status"><span aria-hidden="true" /> Services available</span></div>
-            <p className="cito-product-intro">One access layer for Cito services. Payments are delivered through CPay.</p>
-            <div className="cito-product-grid"><span>CPay · Collections</span><span>CPay · Payouts</span><span>Payment links</span><span>Invoices</span><span>Reconciliation</span><span>Developer APIs</span></div>
-            <div className="cito-provider-row" aria-label="CPay supported payment networks"><strong>CPay connected channels</strong><p>MTN MoMo · Airtel Money · Airtel OpenAPI · Safaricom M-Pesa · Yo! Payments</p></div>
+            <p className="cito-product-intro">One access layer for Cito services. Payments are delivered through Cito Payments.</p>
+            <div className="cito-product-grid"><span>Cito Payments · Collections</span><span>Cito Payments · Payouts</span><span>Payment links</span><span>Invoices</span><span>Reconciliation</span><span>Developer APIs</span></div>
+            <div className="cito-provider-row" aria-label="Cito Payments supported payment networks"><strong>Cito Payments connected channels</strong><p>MTN MoMo · Airtel Money · Airtel OpenAPI · Safaricom M-Pesa · Yo! Payments</p></div>
           </aside>
         </section>
 
         <section className="cito-trust-strip" aria-label="Platform strengths"><span>Secure Cito gateway</span><span>Unified account access</span><span>Built for developers</span><span>Merchant self-service</span></section>
 
         <section className="cito-section cito-about" id="about">
-          <div className="cito-section-heading"><p className="cito-eyebrow">About Cito</p><h2>The gateway between your business and connected digital services.</h2><p>Cito Technologies builds digital infrastructure that helps organizations simplify access to payments, integrations, and operational services. Users enter through Cito, then access the services their approved account is entitled to use. CPay is the payments service within that broader Cito experience.</p></div>
+          <div className="cito-section-heading"><p className="cito-eyebrow">About Cito</p><h2>The gateway between your business and connected digital services.</h2><p>Cito Technologies builds digital infrastructure that helps organizations simplify access to payments, integrations, and operational services. Users enter through Cito, then access the services their approved account is entitled to use. Cito Payments is the payment product within that broader Cito experience.</p></div>
           <div className="cito-pillars">
             <article><span>01</span><h3>Gateway</h3><p>One clear entry point for accounts, services, integrations, and operational access.</p></article>
-            <article><span>02</span><h3>Payments</h3><p>Use CPay for collections, payouts, reconciliation, payment links, and invoices.</p></article>
+            <article><span>02</span><h3>Payments</h3><p>Use Cito Payments for collections, payouts, reconciliation, payment links, and invoices.</p></article>
             <article><span>03</span><h3>Connectivity</h3><p>Connect applications, providers, and customer experiences through APIs and webhooks.</p></article>
           </div>
         </section>
 
         <section className="cito-section cito-cpay" id="cpay">
-          <div className="cito-section-heading cito-section-heading-center"><p className="cito-eyebrow">CPay · Payments by Cito</p><h2>Payment operations delivered through Cito.</h2><p>CPay is Cito&apos;s payments service. It provides one controlled payments interface for collections, payouts, transaction management, reconciliation, and payment-provider integrations.</p></div>
+          <div className="cito-section-heading cito-section-heading-center"><p className="cito-eyebrow">Cito Payments</p><h2>Payment operations delivered through Cito.</h2><p>Cito Payments provides one controlled payments interface for collections, payouts, transaction management, reconciliation, and payment-provider integrations.</p></div>
           <div className="cito-feature-grid">{capabilities.map(([title, copy], index) => <article className="cito-feature-card" key={title}><span>{String(index + 1).padStart(2, '0')}</span><h3>{title}</h3><p>{copy}</p></article>)}</div>
         </section>
 
@@ -117,22 +117,22 @@ function CitoLandingPage(): React.ReactElement {
         </section>
 
         <section className="cito-section cito-developers" id="developers">
-          <div className="cito-developer-copy"><p className="cito-eyebrow">For developers</p><h2>Integrate through Cito.</h2><p>Cito provides the access layer; CPay provides the payments API. Build with documented APIs, first-party signing helpers, webhooks, and a controlled sandbox environment.</p><div className="cito-developer-actions"><a className="cito-button cito-button-light" href={DOCS_URL}>CPay API documentation</a><a className="cito-button cito-button-outline-light" href={`${DOCS_URL}site/index.html#getting-started`}>Quickstart</a></div><p className="cito-developer-resources">OpenAPI · Postman · Node.js · Python · PHP · Webhooks · Error catalog</p></div>
-          <div className="cito-quickstart" aria-label="CPay developer quickstart"><span className="cito-quickstart-label">CPay API v2</span><ol><li><span>01</span> Create your Cito account</li><li><span>02</span> Configure a sandbox merchant</li><li><span>03</span> Obtain and sign with merchant credentials</li><li><span>04</span> Make a test collection</li><li><span>05</span> Receive and verify a webhook</li><li><span>06</span> Complete production readiness</li></ol></div>
+          <div className="cito-developer-copy"><p className="cito-eyebrow">For developers</p><h2>Integrate through Cito.</h2><p>Cito provides the access layer and the Cito Payments API. Build with documented APIs, first-party signing helpers, webhooks, and a controlled sandbox environment.</p><div className="cito-developer-actions"><a className="cito-button cito-button-light" href={DOCS_URL}>Cito Payments API documentation</a><a className="cito-button cito-button-outline-light" href={`${DOCS_URL}site/index.html#getting-started`}>Quickstart</a></div><p className="cito-developer-resources">OpenAPI · Postman · Node.js · Python · PHP · Webhooks · Error catalog</p></div>
+          <div className="cito-quickstart" aria-label="Cito Payments developer quickstart"><span className="cito-quickstart-label">Cito Payments API v2</span><ol><li><span>01</span> Create your Cito account</li><li><span>02</span> Configure a sandbox merchant</li><li><span>03</span> Obtain and sign with merchant credentials</li><li><span>04</span> Make a test collection</li><li><span>05</span> Receive and verify a webhook</li><li><span>06</span> Complete production readiness</li></ol></div>
         </section>
 
         <section className="cito-section cito-audiences"><div className="cito-section-heading cito-section-heading-center"><p className="cito-eyebrow">Who Cito is for</p><h2>One gateway for organizations that need connected services.</h2></div><div className="cito-audience-grid">{audiences.map(([title, copy]) => <article key={title}><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
 
         <section className="cito-section cito-security"><div className="cito-section-heading"><p className="cito-eyebrow">Trust & control</p><h2>Built for controlled business access and financial operations.</h2><p>Security controls cover request authentication, environments, credential protection, access review, audit trails, and callback delivery.</p></div><div className="cito-security-grid">{securityControls.map(([title, copy]) => <article key={title}><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
 
-        <section className="cito-section cito-contact" id="contact"><div className="cito-section-heading"><p className="cito-eyebrow">Contact</p><h2>Talk to Cito.</h2><p>Choose the route that matches what you need and reach the appropriate team directly.</p></div><div className="cito-contact-grid"><a href="mailto:info@citotech.net"><span>Sales</span><strong>Discuss Cito services for your business</strong><small>info@citotech.net</small></a><a href="mailto:support@citotech.net"><span>Support</span><strong>Get help with an existing Cito account</strong><small>support@citotech.net</small></a><a href={DOCS_URL}><span>Developers</span><strong>Open CPay integration documentation</strong><small>CPay API v2 documentation</small></a></div></section>
+        <section className="cito-section cito-contact" id="contact"><div className="cito-section-heading"><p className="cito-eyebrow">Contact</p><h2>Talk to Cito.</h2><p>Choose the route that matches what you need and reach the appropriate team directly.</p></div><div className="cito-contact-grid"><Link to="/contact"><span>Sales</span><strong>Discuss Cito services for your business</strong><small>Submit a sales enquiry</small></Link><a href="mailto:support@citotech.net"><span>Support</span><strong>Get help with an existing Cito account</strong><small>support@citotech.net</small></a><a href={DOCS_URL}><span>Developers</span><strong>Open Cito Payments integration documentation</strong><small>Cito Payments API v2 documentation</small></a></div></section>
 
-        <section className="cito-final-cta"><div><p className="cito-eyebrow">Start with Cito</p><h2>Ready to connect your business?</h2><p>Start your account journey through Cito, access CPay in sandbox when approved, and build your integrations from one gateway.</p></div><div className="cito-final-actions"><Link className="cito-button cito-button-light" to={SIGN_UP_PATH}>Get started</Link><Link className="cito-button cito-button-outline-light" to={SIGN_IN_PATH}>Sign in to Cito</Link></div></section>
+        <section className="cito-final-cta"><div><p className="cito-eyebrow">Start with Cito</p><h2>Ready to connect your business?</h2><p>Start your account journey through Cito, access Cito Payments in sandbox when approved, and build your integrations from one gateway.</p></div><div className="cito-final-actions"><Link className="cito-button cito-button-light" to={SIGN_UP_PATH}>Get started</Link><Link className="cito-button cito-button-outline-light" to={SIGN_IN_PATH}>Sign in to Cito</Link></div></section>
       </main>
 
       <footer className="cito-footer">
-        <div className="cito-footer-brand"><strong>Cito</strong><span>The gateway to connected business services. CPay provides payment capabilities.</span></div>
-        <div className="cito-footer-links"><div><strong>Services</strong><a href="#cpay">CPay</a><a href="#access">Cito access</a></div><div><strong>Developers</strong><a href={DOCS_URL}>CPay documentation</a><a href={`${DOCS_URL}Api/cpay-v2-openapi.yaml`}>OpenAPI</a></div><div><strong>Company</strong><a href="#about">About Cito</a><a href="#contact">Contact</a></div><div><strong>Access</strong><Link to={SIGN_UP_PATH}>Create account</Link><Link to={SIGN_IN_PATH}>Sign in</Link></div></div>
+        <div className="cito-footer-brand"><strong>Cito</strong><span>The gateway to connected business services, including Cito Payments.</span></div>
+        <div className="cito-footer-links"><div><strong>Services</strong><Link to="/payments">Cito Payments</Link><Link to="/billing">Cito Billing</Link><Link to="/operations-platform">Cito Operations</Link></div><div><strong>Developers</strong><a href={DOCS_URL}>Cito Payments documentation</a><a href={`${DOCS_URL}Api/cpay-v2-openapi.yaml`}>OpenAPI</a></div><div><strong>Company</strong><Link to="/about">About Cito</Link><Link to="/contact">Contact</Link></div><div><strong>Access</strong><Link to={SIGN_UP_PATH}>Create account</Link><Link to={SIGN_IN_PATH}>Sign in</Link></div></div>
         <div className="cito-footer-bottom"><span>© {new Date().getFullYear()} Core-Synergies</span><span>Cito Gateway</span></div>
       </footer>
     </div>

@@ -31,7 +31,13 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
                     "/api/v2/merchant-self-service/batches",
                     "/api/v2/merchant-self-service/webhooks",
                     "/api/v2/merchant-self-service/vending",
-                    "/api/v2/portal");
+                    "/api/v2/portal",
+                    "/api/v2/merchants",
+                    "/api/v2/transactions",
+                    "/api/v2/support",
+                    "/api/v2/search",
+                    "/api/v2/notifications",
+                    "/api/v2/provider-incidents");
     private static final List<String> PUBLIC_SETTINGS_PATHS =
             List.of("/settings/public-login-appearance");
 
@@ -51,6 +57,7 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
                 session != null
                         && (session.getAttribute("user") != null
                                 || session.getAttribute("merchantUser") != null);
+        loggedIn = loggedIn || hasAdministratorAuthentication();
         if (loggedIn) {
             filterChain.doFilter(request, response);
             return;
@@ -60,6 +67,14 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter().write(GeneralException.getError("107", GeneralException.ERRORS_107));
+    }
+
+    private boolean hasAdministratorAuthentication() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
     /**
@@ -76,9 +91,7 @@ public class LegacySessionAuthorizationFilter extends OncePerRequestFilter {
         String principal = adminPrincipal(user);
         UsernamePasswordAuthenticationToken authentication =
                 UsernamePasswordAuthenticationToken.authenticated(
-                        principal,
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
         authentication.setDetails("legacy-admin-session:" + user.getId());
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }

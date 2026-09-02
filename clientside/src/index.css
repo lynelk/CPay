@@ -4103,3 +4103,35 @@ button.cpay-dashboard-metric-card:focus-visible {
     gap: 4px;
   }
 }
+/* Unified product-experience trust and async-state primitives. */
+.cito-environment-switcher { display: inline-flex; align-items: center; gap: 8px; }
+.cito-environment-switcher select { min-height: 34px; border: 1px solid var(--ios-separator); border-radius: 9px; background: var(--ios-card-bg); color: var(--ios-text); padding: 0 28px 0 9px; }
+.cito-state { display: grid; justify-items: start; gap: 8px; padding: 24px; }
+.cito-state h3, .cito-state p { margin: 0; }
+.cito-state p { color: var(--ios-text-secondary); max-width: 68ch; }
+.cito-state--error { border-color: var(--ios-red); }
+.cito-skeleton { display: grid; gap: 12px; padding: 20px 0; }
+.cito-skeleton span { display: block; height: 18px; width: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--ios-fill) 25%, var(--ios-separator) 50%, var(--ios-fill) 75%); background-size: 200% 100%; animation: cito-skeleton-pulse 1.3s linear infinite; }
+.cito-skeleton span:nth-child(2) { width: 76%; }.cito-skeleton span:nth-child(3) { width: 48%; }
+@keyframes cito-skeleton-pulse { to { background-position: -200% 0; } }
+.cito-timeline, .cito-stepper { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.cito-timeline li, .cito-stepper__item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; position: relative; padding: 0 0 22px; }
+.cito-timeline li > span, .cito-stepper__item > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ios-blue); color: white; font-weight: 700; z-index: 1; }
+.cito-timeline li > span::after, .cito-stepper__item > span::after { content: ''; position: absolute; top: 28px; bottom: 0; left: 13px; width: 2px; background: var(--ios-separator); }
+.cito-timeline li:last-child > span::after, .cito-stepper__item:last-child > span::after { display: none; }
+.cito-timeline li > span::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: white; }
+.cito-timeline li div, .cito-stepper__item div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
+.cito-timeline small, .cito-stepper small { flex-basis: 100%; color: var(--ios-text-secondary); }
+.cito-timeline p, .cito-stepper p { flex-basis: 100%; margin: 0; color: var(--ios-text-secondary); }
+.cito-stepper__item--completed > span { background: var(--ios-green); }
+.cito-stepper__item--blocked > span, .cito-stepper__item--failed > span { background: var(--ios-red); }
+.cito-confirmation-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgb(0 0 0 / 56%); }
+.cito-confirmation { width: min(520px, 100%); border-radius: 18px; padding: 24px; background: var(--ios-card-bg); box-shadow: var(--ios-shadow-3); display: grid; gap: 16px; }
+.cito-confirmation h2, .cito-confirmation p { margin: 0; }.cito-confirmation > div { display: flex; justify-content: flex-end; gap: 10px; }
+.cito-workspace-stack { display: grid; gap: 18px; }.cito-workspace-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.cito-workspace-toolbar label { display: grid; gap: 6px; min-width: min(320px, 100%); }.cito-result-list { display: grid; gap: 10px; }
+.cito-result-item { padding: 14px; border: 1px solid var(--ios-separator); border-radius: 12px; display: grid; gap: 5px; }
+.cito-result-item small { color: var(--ios-text-secondary); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (prefers-reduced-motion: reduce) { .cito-skeleton span { animation: none; } }

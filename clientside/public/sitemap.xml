@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://cito-frontend-production.up.railway.app/</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/payments</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/payouts</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/billing</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/operations-platform</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/developer-platform</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/security</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/about</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/contact</loc></url>
+  <url><loc>https://cito-frontend-production.up.railway.app/status</loc></url>
+</urlset>

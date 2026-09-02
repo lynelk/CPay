@@ -13,6 +13,9 @@ const LayoutMerchant = lazy(() => import('./components/LayoutMerchant'));
 const OperationsConsole = lazy(() => import('./features/OperationsConsole'));
 const ProviderTreasuryConsole = lazy(() => import('./features/ProviderTreasuryConsole'));
 const ProductionMaturityDashboard = lazy(() => import('./features/productionMaturity/ProductionMaturityDashboard'));
+const PublicProductPage = lazy(() => import('./components/PublicExperiencePages').then((module) => ({ default: module.PublicProductPage })));
+const PublicStatusPage = lazy(() => import('./components/PublicExperiencePages').then((module) => ({ default: module.PublicStatusPage })));
+const PublicContactPage = lazy(() => import('./components/PublicExperiencePages').then((module) => ({ default: module.PublicContactPage })));
 
 function RouteFallback(): React.ReactElement {
   return <div style={{ padding: 24 }}>Loading…</div>;
@@ -24,6 +27,15 @@ function Routers(): React.ReactElement {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<CitoLandingPage />} />
+          <Route path="/payments" element={<PublicProductPage page="payments" />} />
+          <Route path="/payouts" element={<PublicProductPage page="payouts" />} />
+          <Route path="/billing" element={<PublicProductPage page="billing" />} />
+          <Route path="/operations-platform" element={<PublicProductPage page="operations" />} />
+          <Route path="/developer-platform" element={<PublicProductPage page="developer-platform" />} />
+          <Route path="/about" element={<PublicProductPage page="about" />} />
+          <Route path="/security" element={<PublicProductPage page="security" />} />
+          <Route path="/status" element={<PublicStatusPage />} />
+          <Route path="/contact" element={<PublicContactPage />} />
           <Route path="/signup" element={<CitoSignupGateway />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 

@@ -7,8 +7,9 @@ import Progress from "./Progress";
 import Logo from "../media/images/gwlogo.png";
 import {
   Shell, Sidebar, Brand, TopBar, IconButton, UserChip, Page,
-  Button, ThemeToggle, Icons,
+  Button, EnvironmentSwitcher, ThemeToggle, Icons,
 } from '../ui';
+import ExperienceWorkspace from '../features/ExperienceWorkspace';
 
 import ModuleDashboard from './modules/ModuleDashboard';
 import ModuleCitoPlatform from './modules/ModuleCitoPlatform';
@@ -37,6 +38,19 @@ import { apiUrl } from '../shared/config';
 import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
+  home: { title: 'Home', subtitle: 'Role-sensitive platform priorities, live health, and actions' },
+  'merchants-accounts': { title: 'Merchants & Accounts', subtitle: 'Activation, account controls, lifecycle, and merchant 360' },
+  'money-operations': { title: 'Money Operations', subtitle: 'Payments, payouts, refunds, disputes, reconciliation, and settlements' },
+  'risk-compliance': { title: 'Risk & Compliance', subtitle: 'KYB, screening, reviews, and compliance controls' },
+  'providers-integrations': { title: 'Providers & Integrations', subtitle: 'Credentials, certification, health, incidents, and routing' },
+  platform: { title: 'Platform', subtitle: 'Service catalogue, entitlements, communications, and access governance' },
+  administration: { title: 'Administration', subtitle: 'Users, roles, audit, settings, and support operations' },
+  engineering: { title: 'Engineering / Internal', subtitle: 'Production maturity, observability, and internal control planes' },
+  search: { title: 'Global Search', subtitle: 'Scoped search across merchants, transactions, and support cases' },
+  support: { title: 'Support', subtitle: 'Cases, SLA queues, and merchant context' },
+  notifications: { title: 'Notifications', subtitle: 'Operational and account updates' },
+  'transaction-detail': { title: 'Transaction Detail', subtitle: 'Finality, provider, reconciliation, and settlement evidence' },
+  'provider-incidents': { title: 'Provider Incidents', subtitle: 'Incident handling and safe status communication' },
   dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_admin },
   citoplatform: { title: 'Cito Control Plane', subtitle: 'Service catalogue, merchant entitlements and access governance' },
   vending: { title: 'Vending', subtitle: 'Multi-tenant device estate, rentals, callbacks and manufacturer commands' },
@@ -60,6 +74,30 @@ const menuTitles = {
   settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_admin },
 };
 
+const adminRoutes = {
+  home: '/bo/admin/home',
+  'merchants-accounts': '/bo/admin/merchants-accounts',
+  'money-operations': '/bo/admin/money-operations',
+  treasury: '/bo/admin/treasury',
+  'risk-compliance': '/bo/admin/risk-compliance',
+  'providers-integrations': '/bo/admin/providers-integrations',
+  platform: '/bo/admin/platform',
+  administration: '/bo/admin/administration',
+  engineering: '/bo/admin/engineering',
+  search: '/bo/admin/search',
+  support: '/bo/admin/support',
+  notifications: '/bo/admin/notifications',
+  settings: '/bo/admin/administration/settings',
+};
+
+function adminMenuFromPath(pathname) {
+  if (/\/bo\/admin\/transactions\/[^/]+/.test(pathname)) return 'transaction-detail';
+  if (pathname.includes('/providers-integrations/incidents')) return 'provider-incidents';
+  const segment = pathname.replace(/^\/bo\/admin\/?/, '').split('/')[0];
+  const aliases = { dashboard: 'home', merchants: 'merchants-accounts', transactions: 'money-operations', compliance: 'risk-compliance', certification: 'providers-integrations', citoplatform: 'platform', admins: 'administration', productionmaturity: 'engineering' };
+  return aliases[segment] || (menuTitles[segment] ? segment : 'home');
+}
+
 class LayoutWithOutRouter extends React.Component {
   constructor(props) {
     super(props);
@@ -69,10 +107,10 @@ class LayoutWithOutRouter extends React.Component {
       loader: false,
       isLogged: false,
       progressValue: 0,
-      currentMenuKey: 'dashboard',
+      currentMenuKey: adminMenuFromPath(props.location?.pathname || ''),
       refreshTick: 0,
       user: readStoredUser('admin'),
-      currentMenuItem: this.renderModule('dashboard', 0),
+      currentMenuItem: this.renderModule(adminMenuFromPath(props.location?.pathname || ''), 0),
     };
     this.menuChanged = this.menuChanged.bind(this);
     this.refreshCurrentPage = this.refreshCurrentPage.bind(this);
@@ -95,6 +133,15 @@ class LayoutWithOutRouter extends React.Component {
     }
   }
 
+  componentDidUpdate(previousProps) {
+    if (previousProps.location?.pathname !== this.props.location?.pathname) {
+      const item = adminMenuFromPath(this.props.location.pathname);
+      if (item !== this.state.currentMenuKey) {
+        this.setState({ currentMenuKey: item, currentMenuItem: this.renderModule(item, this.state.refreshTick) });
+      }
+    }
+  }
+
   renderModule(item, refreshSignal = this.state?.refreshTick || 0) {
     const moduleProps = {
       sessionExpired: this.sessionExpired?.bind(this),
@@ -104,6 +151,19 @@ class LayoutWithOutRouter extends React.Component {
     };
 
     switch (item) {
+      case 'home': return <ModuleDashboard {...moduleProps} />;
+      case 'merchants-accounts': return <ModuleMerchants {...moduleProps} />;
+      case 'money-operations': return <ModuleTransactions {...moduleProps} />;
+      case 'risk-compliance': return <ModuleCompliance {...moduleProps} />;
+      case 'providers-integrations': return <ModuleCertification {...moduleProps} />;
+      case 'platform': return <ModuleCitoPlatform {...moduleProps} />;
+      case 'administration': return <ModuleAdmins {...moduleProps} />;
+      case 'engineering': return <ProductionMaturityDashboard {...moduleProps} />;
+      case 'search': return <ExperienceWorkspace portal="admin" section="search" />;
+      case 'support': return <ExperienceWorkspace portal="admin" section="support" />;
+      case 'notifications': return <ExperienceWorkspace portal="admin" section="notifications" />;
+      case 'transaction-detail': return <ExperienceWorkspace portal="admin" section="transaction-detail" />;
+      case 'provider-incidents': return <ExperienceWorkspace portal="admin" section="provider-incidents" />;
       case 'citoplatform': return <ModuleCitoPlatform {...moduleProps} />;
       case 'vending': return <ModuleVending {...moduleProps} />;
       case 'admins': return <ModuleAdmins {...moduleProps} />;
@@ -172,6 +232,8 @@ class LayoutWithOutRouter extends React.Component {
       return;
     }
 
+    const route = adminRoutes[item];
+    if (route) this.props.history.push(route);
     this.setState({
       currentMenuKey: item,
       currentMenuItem: this.renderModule(item, this.state.refreshTick),
@@ -280,8 +342,10 @@ class LayoutWithOutRouter extends React.Component {
             }
             right={
               <>
+                <EnvironmentSwitcher portal="admin" />
                 <ThemeToggle />
-                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>{strings.settings}</Button>
+                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('search')}>Search</Button>
+                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('notifications')}>Notifications</Button>
                 <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button>
                 <UserChip name={user.name || 'User'} meta={user.email || 'Signed in'} />
               </>

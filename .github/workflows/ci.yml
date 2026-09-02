@@ -255,6 +255,8 @@ jobs:
         env:
           CI: "true"
           NODE_OPTIONS: "--openssl-legacy-provider"
+      - name: Run WCAG experience regression
+        run: npx vitest run src/ui/ExperienceStates.test.tsx
       - name: Run typecheck
         run: npm run typecheck
         env:
@@ -279,6 +281,10 @@ jobs:
           test -s Docs/Runbooks/Operations-alerts.md
           test -s Docs/Runbooks/Callback-security-and-requeue.md
           test -s Docs/Runbooks/Reconciliation-finance-daily-close.md
+          test -s Docs/Runbooks/Merchant-activation-and-support.md
+          test -s Docs/Runbooks/Provider-incidents-and-public-status.md
           test -s Docs/Architecture/Overview.md
+          test -s Docs/Product/Unified-product-experience.md
+          test -s Docs/Observability/Product-experience-KPIs.md
           test -s Docs/Production-code-controls.md
           test -s Docs/Readiness/Market-readiness-tracker.md

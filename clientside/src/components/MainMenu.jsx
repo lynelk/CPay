@@ -2,66 +2,38 @@ import React from 'react';
 import { NavGroup, NavItem, Icons } from '../ui';
 
 const navGroups = [
-  {
-    title: 'Workspace',
-    items: [
-      { value: 'dashboard', text: 'Dashboard', Icon: Icons.DashboardIcon },
-      { value: 'citoplatform', text: 'Cito Control Plane', Icon: Icons.LightningIcon },
-      { value: 'vending', text: 'Vending', Icon: Icons.StoreIcon },
-      { value: 'merchants', text: 'Merchants', Icon: Icons.StoreIcon },
-      { value: 'transactions', text: 'Transactions', Icon: Icons.ReceiptIcon },
-      { value: 'reconciliation', text: 'Reconciliation', Icon: Icons.ReconcileIcon },
-      { value: 'financeclose', text: 'Finance Close', Icon: Icons.CalendarIcon },
-      { value: 'payoutapprovals', text: 'Payout Approvals', Icon: Icons.PaymentsIcon },
-      { value: 'payoutcontrols', text: 'Payout Controls', Icon: Icons.CardsIcon },
-      { value: 'settlementclose', text: 'Settlement Close', Icon: Icons.ReconcileIcon },
-      { value: 'webhookops', text: 'Webhook Ops', Icon: Icons.SmsIcon },
-      { value: 'communicationrouting', text: 'Communication Routing', Icon: Icons.SmsIcon },
-    ],
-  },
-  {
-    title: 'Oversight',
-    items: [
-      { value: 'compliance', text: 'Compliance', Icon: Icons.ShieldIcon },
-      { value: 'kybreview', text: 'KYB Review', Icon: Icons.UsersIcon },
-      { value: 'certification', text: 'Certification', Icon: Icons.CheckIcon },
-      { value: 'sandboxgolive', text: 'Sandbox Go-Live', Icon: Icons.LightningIcon },
-      { value: 'treasury', text: 'Treasury', Icon: Icons.BarChartIcon },
-      { value: 'productionmaturity', text: 'Maturity', Icon: Icons.LightningIcon },
-    ],
-  },
-  {
-    title: 'Administration',
-    items: [
-      { value: 'admins', text: 'Administrators', Icon: Icons.UsersIcon },
-      { value: 'audittrail', text: 'Audit Trail', Icon: Icons.HistoryIcon },
-      { value: 'settings', text: 'Settings', Icon: Icons.SettingsIcon },
-    ],
-  },
+  { title: 'Operate', items: [
+    { value: 'home', text: 'Home', Icon: Icons.DashboardIcon },
+    { value: 'merchants-accounts', text: 'Merchants & Accounts', Icon: Icons.StoreIcon },
+    { value: 'money-operations', text: 'Money Operations', Icon: Icons.PaymentsIcon },
+    { value: 'treasury', text: 'Treasury', Icon: Icons.BarChartIcon },
+  ] },
+  { title: 'Control', items: [
+    { value: 'risk-compliance', text: 'Risk & Compliance', Icon: Icons.ShieldIcon },
+    { value: 'providers-integrations', text: 'Providers & Integrations', Icon: Icons.LightningIcon },
+    { value: 'platform', text: 'Platform', Icon: Icons.CardsIcon },
+  ] },
+  { title: 'Manage', items: [
+    { value: 'administration', text: 'Administration', Icon: Icons.UsersIcon },
+    { value: 'engineering', text: 'Engineering / Internal', Icon: Icons.SettingsIcon },
+  ] },
 ];
 
-/** Admin portal navigation. Renders iOS nav items; selection is host-driven. */
+/** Canonical admin information architecture. Selection is route-driven by the host shell. */
 export default function MainMenu({ activeItem, onChangeMenu }) {
   return (
     <>
       {navGroups.map((group) => (
         <NavGroup title={group.title} key={group.title}>
           {group.items.map((item) => (
-            <NavItem
-              key={item.value}
-              icon={<item.Icon size={20} />}
-              active={activeItem === item.value}
-              onClick={() => onChangeMenu(item.value)}
-            >
+            <NavItem key={item.value} icon={<item.Icon size={20} />} active={activeItem === item.value} onClick={() => onChangeMenu(item.value)}>
               {item.text}
             </NavItem>
           ))}
         </NavGroup>
       ))}
       <NavGroup bottom>
-        <NavItem danger icon={<Icons.LogoutIcon size={20} />} onClick={() => onChangeMenu('exit')}>
-          Logout
-        </NavItem>
+        <NavItem danger icon={<Icons.LogoutIcon size={20} />} onClick={() => onChangeMenu('exit')}>Logout</NavItem>
       </NavGroup>
     </>
   );
