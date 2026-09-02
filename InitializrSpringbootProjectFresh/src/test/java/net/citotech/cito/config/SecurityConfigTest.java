@@ -54,7 +54,11 @@ class SecurityConfigTest {
     @Test
     void apiAuthorizationMatchersAreExplicitAndDoNotPermitEveryApiRoute() {
         assertThat(SecurityConfig.PUBLIC_ANONYMOUS_API_PATTERNS)
-                .containsExactly("/api/public/embedded/onboarding/**")
+                .containsExactly(
+                        "/api/public/embedded/onboarding/**",
+                        "/api/public/analytics/events",
+                        "/api/public/sales-enquiries",
+                        "/api/public/status")
                 .doesNotContain("/api/public/**", "/api/**");
         assertThat(SecurityConfig.PUBLIC_SIGNED_API_PATTERNS).doesNotContain("/api/**");
         assertThat(SecurityConfig.PUBLIC_SESSION_API_PATTERNS).doesNotContain("/api/**");

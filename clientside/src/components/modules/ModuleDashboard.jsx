@@ -48,30 +48,11 @@ const metricSparkPoints = {
     settlement: [36, 42, 39, 44, 50, 46, 53, 58, 52, 61, 57, 64],
 };
 
-const actionCenterItems = [
-    { tone: 'critical', title: 'High failure spike on Airtel Payments', meta: '842 failures in the last 2 hours', due: 'Due now', action: 'Investigate' },
-    { tone: 'critical', title: 'Held amount above threshold', meta: 'KES 1.72M held across channels', due: 'Due now', action: 'Review holds' },
-    { tone: 'warning', title: 'Airtel float below target', meta: '0.7 days runway remaining', due: '15m ago', action: 'Top up float' },
-    { tone: 'warning', title: '312 transactions in retry queue', meta: 'Next retry in 23 minutes', due: '20m ago', action: 'Preview retries' },
-    { tone: 'info', title: '3 settlement exceptions pending review', meta: 'MTN settlement batch needs attention', due: '45m ago', action: 'View details' },
-];
-
-const failureReasons = [
-    { label: 'Insufficient Float', count: 312, percent: '37.1%' },
-    { label: 'Receiver Unavailable', count: 188, percent: '22.3%' },
-    { label: 'Timeout', count: 142, percent: '16.9%' },
-    { label: 'Partner Rejected', count: 103, percent: '12.2%' },
-    { label: 'Invalid Account', count: 69, percent: '8.2%' },
-    { label: 'Other', count: 28, percent: '3.3%' },
-];
-
-const channelHealthRows = [
-    { channel: 'MTN', success: '97.8%', trend: '+1.6pp', latency: '1.2s', tone: 'good' },
-    { channel: 'Airtel', success: '94.1%', trend: '-2.3pp', latency: '2.8s', tone: 'warning' },
-    { channel: 'M-Pesa', success: '-', trend: '-', latency: '-', tone: 'neutral' },
-    { channel: 'Yo! Payments', success: '-', trend: 'New', latency: '-', tone: 'info' },
-    { channel: 'Bank (ACH)', success: '99.2%', trend: '+0.7pp', latency: '1.1s', tone: 'good' },
-];
+// Dashboard operational lists are populated only from live APIs. Empty arrays are intentional:
+// no production-looking examples or inferred incidents may be substituted for absent data.
+const actionCenterItems = [];
+const failureReasons = [];
+const channelHealthRows = [];
 
 const quickActions = ['Add Merchant', 'Make Payout', 'Top Up Float', 'View Settlements', 'Preview Retries', 'Download Report'];
 
@@ -284,23 +265,24 @@ function ModuleDashboardC(props) {
             ? portalSummary.activeChannels
             : [];
         const active = activeChannels.filter(channel => ['ACTIVE', 'SANDBOX_TESTED', 'SUBMITTED_FOR_APPROVAL'].includes(channel.status));
-        return active.length || 4;
+        return active.length;
     }
 
     function renderMetricStrip(collectionTotal, balanceTotal, failedCount) {
         const summary = portalSummary || {};
-        const processedTotal = numberValue(summary.payIns) || collectionTotal || 24800000;
+        const processedTotal = numberValue(summary.payIns) || collectionTotal;
         const payoutTotal = numberValue(summary.payOuts);
-        const transactionCount = numberValue(summary.transactions) || failedCount || 842;
+        const transactionCount = numberValue(summary.transactions);
         const merchantCount = numberValue(summary.merchants);
         const limit = summary.productionLimit || {};
+        const successRate = transactionCount > 0 ? `${(((transactionCount - failedCount) / transactionCount) * 100).toFixed(1)}%` : 'Awaiting data';
         const cards = [
-            { id: 'processed', tone: 'info', icon: 'PV', label: 'Processed Value', value: formatAmount(processedTotal), comparison: 'vs yesterday', delta: '+12.6%' },
-            { id: 'success', tone: 'success', icon: 'SR', label: 'Success Rate', value: '96.7%', comparison: 'vs yesterday', delta: '+1.8pp' },
-            { id: 'failed', tone: 'danger', icon: 'TX', label: 'Transactions', value: formatCount(transactionCount), comparison: 'all channels', delta: '+15.2%' },
-            { id: 'held', tone: 'danger', icon: 'PO', label: 'Payout Value', value: formatAmount(payoutTotal || balanceTotal || 1720000), comparison: 'vs yesterday', delta: '+24.7%' },
-            { id: 'retry', tone: 'warning', icon: 'CH', label: 'Active Channels', value: formatCount(computeActiveChannelCount()), comparison: 'configured', delta: '+1' },
-            { id: 'settlement', tone: 'warning', icon: 'LM', label: 'Production Limit', value: limit.enabled === false ? 'Off' : `${limit.limit || 10}/day`, comparison: `${limit.usedToday || 0} used`, delta: merchantCount ? `${formatCount(merchantCount)} merchants` : 'Ready' },
+            { id: 'processed', tone: 'info', icon: 'PV', label: 'Processed Value', value: formatAmount(processedTotal), comparison: 'live source', delta: '' },
+            { id: 'success', tone: 'success', icon: 'SR', label: 'Success Rate', value: successRate, comparison: 'recorded transactions', delta: '' },
+            { id: 'failed', tone: 'danger', icon: 'TX', label: 'Transactions', value: formatCount(transactionCount), comparison: 'all channels', delta: '' },
+            { id: 'held', tone: 'danger', icon: 'PO', label: 'Payout Value', value: formatAmount(payoutTotal), comparison: 'successful payouts', delta: '' },
+            { id: 'retry', tone: 'warning', icon: 'CH', label: 'Active Channels', value: formatCount(computeActiveChannelCount()), comparison: 'configured', delta: '' },
+            { id: 'settlement', tone: 'warning', icon: 'LM', label: 'Production Limit', value: limit.enabled === false ? 'Off' : (limit.limit != null ? `${limit.limit}/day` : 'Not configured'), comparison: `${limit.usedToday || 0} used`, delta: merchantCount ? `${formatCount(merchantCount)} merchants` : '' },
         ];
 
         return (
@@ -413,12 +395,12 @@ function ModuleDashboardC(props) {
                     <a href="#failure-reasons" className="cpay-dashboard-inline-link">View all</a>
                 </header>
                 <div className="cpay-failure-summary">
-                    <span><strong>{formatCount(failedCount || 842)}</strong>Total failed</span>
-                    <span><strong>{formatAmount(1720000)}</strong>Held amount</span>
-                    <span><strong>6.9%</strong>Failure ratio</span>
+                    <span><strong>{formatCount(failedCount)}</strong>Total failed</span>
+                    <span><strong>Unavailable</strong>Held amount</span>
+                    <span><strong>Unavailable</strong>Failure ratio</span>
                 </div>
                 <div className="cpay-failure-layout">
-                    <div className="cpay-failure-bars" aria-label={`${formatCount(failedCount || 842)} total failures`}>
+                    <div className="cpay-failure-bars" aria-label={`${formatCount(failedCount)} total failures`}>
                         {failureReasons.slice(0, 4).map(reason => (
                             <div className="cpay-failure-bar" key={reason.label}>
                                 <span>{reason.label}</span>
@@ -613,7 +595,7 @@ function ModuleDashboardC(props) {
 
     const balanceTotal = latestDatasetTotal(chartDataTxNetworkBalances);
     const collectionTotal = numericValues(chartData).reduce((total, value) => total + value, 0);
-    const failedCount = numericValues(chartDataTxTypes).length * 97;
+    const failedCount = numberValue(portalSummary?.failedTransactions);
 
     return (
         <div className="cpay-dashboard cpay-dashboard--console">
@@ -652,11 +634,11 @@ function ModuleDashboardC(props) {
                             <span>Trend</span>
                             <h3>Processed Value vs Failed Amount Held</h3>
                         </div>
-                        <strong>{formatAmount(collectionTotal || 24800000)}</strong>
+                        <strong>{formatAmount(collectionTotal)}</strong>
                     </header>
                     <div className="cpay-dashboard-summary-pills">
-                        <span><em />Processed Value <strong>{formatAmount(collectionTotal || 24800000)}</strong></span>
-                        <span><em />Failed Amount Held <strong>{formatAmount(balanceTotal || 1720000)}</strong></span>
+                        <span><em />Processed Value <strong>{formatAmount(collectionTotal)}</strong></span>
+                        <span><em />Network Balance <strong>{formatAmount(balanceTotal)}</strong></span>
                     </div>
                     {renderChart(chartData, 'Processed value trends will appear when data loads.')}
                 </article>

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cito Platform API
-  version: 2.0.0
+  version: 2.1.0
   description: >-
     Merchant platform APIs that sit alongside the CPay payments contract. Operations use
     the authentication mechanism declared by the contract, including Cito merchant sessions
@@ -23,6 +23,11 @@ tags:
   - name: Analytics
   - name: Embedded Cito
   - name: Integrations
+  - name: Product Experience
+  - name: Support
+  - name: Notifications
+  - name: Provider Operations
+  - name: Public Experience
 paths:
   /api/v2/identity/capabilities:
     get:
@@ -485,6 +490,223 @@ paths:
       operationId: queueIntegrationJob
       requestBody: {$ref: '#/components/requestBodies/GenericJson'}
       responses: {'200': {description: Job queued}}
+  /api/v2/merchants/{merchantId}/overview:
+    get:
+      tags: [Product Experience]
+      summary: Read the authoritative merchant overview
+      operationId: getMerchantExperienceOverview
+      parameters:
+        - {name: merchantId, in: path, required: true, schema: {type: integer, format: int64}}
+        - {name: X-Cito-Environment, in: header, required: false, schema: {type: string, enum: [SANDBOX, PRODUCTION]}}
+      responses:
+        '200': {description: 'Live merchant, lifecycle, entitlement, support, and transaction summary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {description: Merchant tenant scope denied}
+        '503': {$ref: '#/components/responses/DataUnavailable'}
+  /api/v2/merchants/{merchantId}/lifecycle:
+    get:
+      tags: [Product Experience]
+      summary: Read the canonical fifteen-step merchant activation lifecycle
+      operationId: getMerchantActivationLifecycle
+      parameters:
+        - {name: merchantId, in: path, required: true, schema: {type: integer, format: int64}}
+      responses:
+        '200': {description: 'Lifecycle status, blocker, owner, next action, and ordered steps'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {description: Merchant tenant scope denied}
+        '503': {$ref: '#/components/responses/DataUnavailable'}
+  /api/v2/merchants/{merchantId}/lifecycle/steps/{stepCode}:
+    patch:
+      tags: [Product Experience]
+      summary: Update one activation step through its responsible workflow
+      operationId: updateMerchantActivationStep
+      parameters:
+        - {name: merchantId, in: path, required: true, schema: {type: integer, format: int64}}
+        - {name: stepCode, in: path, required: true, schema: {type: string}}
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Recomputed lifecycle and ordered steps}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {description: Caller is not responsible for this step}
+        '404': {description: Merchant or lifecycle step not found}
+  /api/v2/transactions/{reference}:
+    get:
+      tags: [Product Experience]
+      summary: Read canonical transaction detail by Cito, merchant, or provider reference
+      operationId: getCanonicalTransaction
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string, maxLength: 255}}
+      responses:
+        '200': {description: Transaction detail with masked payer and explicit finality}
+        '404': {description: Transaction not found in the caller scope}
+        '503': {$ref: '#/components/responses/DataUnavailable'}
+  /api/v2/transactions/{reference}/timeline:
+    get:
+      tags: [Product Experience]
+      summary: Read transaction state, provider, reconciliation, and settlement timeline
+      operationId: getCanonicalTransactionTimeline
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string, maxLength: 255}}
+      responses:
+        '200': {description: Ordered processing and reconciliation evidence}
+        '404': {description: Transaction not found in the caller scope}
+        '503': {$ref: '#/components/responses/DataUnavailable'}
+  /api/v2/transactions/{reference}/support-context:
+    get:
+      tags: [Support]
+      summary: Read safe transaction context for customer support
+      operationId: getTransactionSupportContext
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string, maxLength: 255}}
+      responses:
+        '200': {description: 'Masked transaction, lifecycle, related cases, and safe retry guidance'}
+        '404': {description: Transaction not found in the caller scope}
+        '503': {$ref: '#/components/responses/DataUnavailable'}
+  /api/v2/search:
+    get:
+      tags: [Product Experience]
+      summary: Search platform records within role and tenant scope
+      operationId: searchProductExperience
+      parameters:
+        - {name: q, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 120}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+      responses:
+        '200': {description: 'Scoped merchant, transaction, and support-case matches'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '503': {$ref: '#/components/responses/DataUnavailable'}
+  /api/v2/support/cases:
+    get:
+      tags: [Support]
+      summary: List support cases in the caller scope
+      operationId: listSupportCases
+      parameters:
+        - {name: status, in: query, required: false, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200': {description: Scoped case queue with SLA timestamps}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Support]
+      summary: Create a contextual support case
+      operationId: createSupportCase
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Support case created with reference}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v2/support/cases/{reference}:
+    get:
+      tags: [Support]
+      summary: Read one support case and its visible event timeline
+      operationId: getSupportCase
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Scoped support case and event timeline}
+        '404': {description: Case not found in caller scope}
+    patch:
+      tags: [Support]
+      summary: Assign or update a support case as an administrator
+      operationId: updateSupportCase
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string}}
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Case status updated}
+        '403': {description: Administrator access required}
+        '404': {description: Case not found}
+  /api/v2/support/cases/{reference}/events:
+    post:
+      tags: [Support]
+      summary: Add a customer-visible or internal support-case event
+      operationId: addSupportCaseEvent
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string}}
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Case event recorded}
+        '404': {description: Case not found in caller scope}
+  /api/v2/notifications:
+    get:
+      tags: [Notifications]
+      summary: List active notifications for the signed-in recipient
+      operationId: listUserNotifications
+      parameters:
+        - {name: unreadOnly, in: query, required: false, schema: {type: boolean, default: false}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200': {description: Recipient-scoped notification centre}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v2/notifications/{reference}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark one recipient-scoped notification read
+      operationId: markNotificationRead
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Notification marked read}
+        '404': {description: Notification not found in recipient scope}
+  /api/v2/provider-incidents:
+    get:
+      tags: [Provider Operations]
+      summary: List provider incidents for administrators
+      operationId: listProviderIncidents
+      parameters:
+        - {name: activeOnly, in: query, required: false, schema: {type: boolean, default: false}}
+      responses:
+        '200': {description: Provider incident operations list}
+        '403': {description: Administrator access required}
+    post:
+      tags: [Provider Operations]
+      summary: Open a provider incident with separate public and internal context
+      operationId: createProviderIncident
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Provider incident opened}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {description: Administrator access required}
+  /api/v2/provider-incidents/{reference}:
+    patch:
+      tags: [Provider Operations]
+      summary: Update or resolve a provider incident
+      operationId: updateProviderIncident
+      parameters:
+        - {name: reference, in: path, required: true, schema: {type: string}}
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Incident status updated}
+        '403': {description: Administrator access required}
+        '404': {description: Incident not found}
+  /api/public/status:
+    get:
+      tags: [Public Experience]
+      summary: Read safe public production service status
+      operationId: getPublicServiceStatus
+      security: []
+      responses:
+        '200': {description: Overall state and public fields from active production incidents}
+        '503': {$ref: '#/components/responses/DataUnavailable'}
+  /api/public/sales-enquiries:
+    post:
+      tags: [Public Experience]
+      summary: Submit a consented sales enquiry
+      operationId: createSalesEnquiry
+      security: []
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Enquiry accepted with reference}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/public/analytics/events:
+    post:
+      tags: [Public Experience]
+      summary: Record an allowlisted privacy-conscious funnel event
+      operationId: recordProductAnalyticsEvent
+      security: []
+      requestBody: {$ref: '#/components/requestBodies/GenericJson'}
+      responses:
+        '200': {description: Event accepted}
+        '400': {$ref: '#/components/responses/BadRequest'}
 components:
   securitySchemes:
     CPayV2Signature:
@@ -518,6 +740,11 @@ components:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     UnauthorizedSignedRequest:
       description: A valid signed merchant request is required
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    DataUnavailable:
+      description: Live data is temporarily unavailable; no fallback values were substituted
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}

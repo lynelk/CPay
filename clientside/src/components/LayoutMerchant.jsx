@@ -7,8 +7,9 @@ import Progress from "./Progress";
 import Logo from "../media/images/gwlogo.png";
 import {
   Shell, Sidebar, Brand, TopBar, IconButton, UserChip, Page,
-  Button, ThemeToggle, Icons,
+  Button, EnvironmentSwitcher, ThemeToggle, Icons,
 } from '../ui';
+import ExperienceWorkspace from '../features/ExperienceWorkspace';
 
 import MerchantModuleDashboard from './modules/merchant/MerchantModuleDashboard';
 import MerchantModuleAdmins from './modules/merchant/MerchantModuleAdmins';
@@ -29,6 +30,16 @@ import { apiUrl } from '../shared/config';
 import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
+  home: { title: 'Home', subtitle: 'Activation status, balances, live activity, and next actions' },
+  'balances-settlements': { title: 'Balances & Settlements', subtitle: 'Available funds, statements, reconciliation, and settlement evidence' },
+  customers: { title: 'Customers', subtitle: 'Customers created by real payment and billing journeys' },
+  developers: { title: 'Developers', subtitle: 'Sandbox, applications, credentials, webhooks, logs, and go-live' },
+  services: { title: 'Services', subtitle: 'Entitled Cito products and service configuration' },
+  reports: { title: 'Reports', subtitle: 'Transactions, statements, exports, and operational reports' },
+  business: { title: 'Business', subtitle: 'Team, roles, billing, and commercial context' },
+  help: { title: 'Help', subtitle: 'Support cases with transaction and account context' },
+  notifications: { title: 'Notifications', subtitle: 'Account, payment, and operational updates' },
+  'transaction-detail': { title: 'Transaction Detail', subtitle: 'Finality, provider, reconciliation, and settlement evidence' },
   dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_merchant },
   sandbox: { title: 'Sandbox & Go-Live', subtitle: 'Test safely, certify the integration, and graduate to production' },
   'cito-services': { title: 'Cito Services', subtitle: 'Entitlements, orchestration, marketplace, intelligence and platform tools' },
@@ -44,6 +55,27 @@ const menuTitles = {
   settings: { title: strings.settings, subtitle: strings.menu_settings_subtitle_merchant },
 };
 
+const merchantRoutes = {
+  home: '/bo/partner/home',
+  payments: '/bo/partner/payments',
+  'balances-settlements': '/bo/partner/balances-settlements',
+  customers: '/bo/partner/customers',
+  developers: '/bo/partner/developers',
+  services: '/bo/partner/services',
+  reports: '/bo/partner/reports',
+  business: '/bo/partner/business',
+  help: '/bo/partner/help',
+  settings: '/bo/partner/settings',
+  notifications: '/bo/partner/notifications',
+};
+
+function merchantMenuFromPath(pathname) {
+  if (/\/bo\/partner\/transactions\/[^/]+/.test(pathname)) return 'transaction-detail';
+  const segment = pathname.replace(/^\/bo\/partner\/?/, '').split('/')[0];
+  const aliases = { dashboard: 'home', statement: 'balances-settlements', sandbox: 'developers', 'cito-services': 'services', transactions: 'reports' };
+  return aliases[segment] || (menuTitles[segment] ? segment : 'home');
+}
+
 class LayoutMerchantWithOutRouter extends React.Component {
   constructor(props) {
     super(props);
@@ -53,10 +85,11 @@ class LayoutMerchantWithOutRouter extends React.Component {
       loader: false,
       isLogged: false,
       progressValue: 0,
-      currentMenuKey: 'dashboard',
+      currentMenuKey: merchantMenuFromPath(props.location?.pathname || ''),
       refreshTick: 0,
       user: readStoredUser('merchant'),
-      currentMenuItem: this.renderModule('dashboard', 0),
+      currentMenuItem: this.renderModule(merchantMenuFromPath(props.location?.pathname || ''), 0),
+      entitlements: undefined,
     };
     this.menuChanged = this.menuChanged.bind(this);
     this.refreshCurrentPage = this.refreshCurrentPage.bind(this);
@@ -76,6 +109,30 @@ class LayoutMerchantWithOutRouter extends React.Component {
       });
     } else {
       this.setState({ isLogged: true });
+      this.loadEntitlements();
+    }
+  }
+
+  componentDidUpdate(previousProps) {
+    if (previousProps.location?.pathname !== this.props.location?.pathname) {
+      const item = merchantMenuFromPath(this.props.location.pathname);
+      if (item !== this.state.currentMenuKey) {
+        this.setState({ currentMenuKey: item, currentMenuItem: this.renderModule(item, this.state.refreshTick) });
+      }
+    }
+  }
+
+  async loadEntitlements() {
+    const merchantId = Number(this.state.user?.merchant_id || this.state.user?.merchantId);
+    if (!Number.isFinite(merchantId) || merchantId <= 0) return;
+    try {
+      const response = await apiFetch(`/api/v2/merchants/${merchantId}/overview`);
+      if (!response.ok) return;
+      const body = await response.json();
+      const rows = Array.isArray(body.entitlements) ? body.entitlements : [];
+      if (rows.length) this.setState({ entitlements: rows.filter(row => !['REVOKED', 'EXPIRED', 'DISABLED'].includes(String(row.status))).map(row => row.service_code) });
+    } catch {
+      // Navigation remains usable when entitlement metadata is temporarily unavailable.
     }
   }
 
@@ -88,6 +145,16 @@ class LayoutMerchantWithOutRouter extends React.Component {
     };
 
     switch (item) {
+      case 'home': return <><ExperienceWorkspace portal="merchant" section="lifecycle" /><MerchantModuleDashboard {...moduleProps} /></>;
+      case 'balances-settlements': return <MerchantModuleMerchantAccount {...moduleProps} />;
+      case 'customers': return <ExperienceWorkspace portal="merchant" section="customers" />;
+      case 'developers': return <MerchantModuleSandbox {...moduleProps} />;
+      case 'services': return <MerchantModuleCitoServices {...moduleProps} />;
+      case 'reports': return <MerchantModuleTransactions {...moduleProps} />;
+      case 'business': return <ExperienceWorkspace portal="merchant" section="business" />;
+      case 'help': return <ExperienceWorkspace portal="merchant" section="support" />;
+      case 'notifications': return <ExperienceWorkspace portal="merchant" section="notifications" />;
+      case 'transaction-detail': return <ExperienceWorkspace portal="merchant" section="transaction-detail" />;
       case 'sandbox': return <MerchantModuleSandbox {...moduleProps} />;
       case 'cito-services': return <MerchantModuleCitoServices {...moduleProps} />;
       case 'channels': return <MerchantModulePaymentChannels {...moduleProps} />;
@@ -148,6 +215,8 @@ class LayoutMerchantWithOutRouter extends React.Component {
       return;
     }
 
+    const route = merchantRoutes[item];
+    if (route) this.props.history.push(route);
     this.setState({
       currentMenuKey: item,
       currentMenuItem: this.renderModule(item, this.state.refreshTick),
@@ -213,7 +282,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
         navOpen={this.state.navOpen}
         sidebar={
           <Sidebar brand={<Brand logo={Logo} name="Cito" product="Merchant Workspace" />}>
-            <MainMenuMerchant activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} />
+            <MainMenuMerchant activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} entitlements={this.state.entitlements} />
           </Sidebar>
         }
         topbar={
@@ -231,8 +300,9 @@ class LayoutMerchantWithOutRouter extends React.Component {
             }
             right={
               <>
+                <EnvironmentSwitcher portal="merchant" />
                 <ThemeToggle />
-                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('settings')}>{strings.settings}</Button>
+                <Button variant="ghost" className="ios-btn--sm" onClick={() => this.goToScreen('notifications')}>Notifications</Button>
                 <Button variant="primary" className="ios-btn--sm" onClick={this.refreshCurrentPage}>{strings.refresh}</Button>
                 <UserChip
                   name={user.name || user.username || 'Merchant User'}
