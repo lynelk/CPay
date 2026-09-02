@@ -49,6 +49,10 @@ public class ProviderTreasuryService {
                                 + " pending_outgoing_balance AS pendingOutgoingBalance,"
                                 + " pending_incoming_balance AS pendingIncomingBalance,"
                                 + " provider_reported_balance AS providerReportedBalance,"
+                                + " provider_balance_status AS providerBalanceStatus,"
+                                + " provider_balance_updated_at AS providerBalanceUpdatedAt,"
+                                + " provider_balance_message AS providerBalanceMessage,"
+                                + " TIMESTAMPDIFF(SECOND,provider_balance_updated_at,CURRENT_TIMESTAMP(6)) AS providerBalanceAgeSeconds,"
                                 + " low_float_threshold AS lowFloatThreshold, reconciliation_state AS"
                                 + " reconciliationState, updated_at AS updatedAt FROM"
                                 + " provider_treasury_accounts ORDER BY environment, country_code,"
@@ -592,6 +596,9 @@ public class ProviderTreasuryService {
                         .addValue("actor", required(actor, "actor")));
         jdbc.update(
                 "UPDATE provider_treasury_accounts SET provider_reported_balance=:reported,"
+                        + " provider_balance_status='AVAILABLE',"
+                        + " provider_balance_updated_at=CURRENT_TIMESTAMP(6),"
+                        + " provider_balance_message='Updated from reconciliation evidence',"
                         + " reconciliation_state=:state, lock_version=lock_version+1 WHERE id=:id",
                 new MapSqlParameterSource()
                         .addValue("id", accountId)
@@ -1107,6 +1114,10 @@ public class ProviderTreasuryService {
                                 + " pending_outgoing_balance AS pendingOutgoingBalance,"
                                 + " pending_incoming_balance AS pendingIncomingBalance,"
                                 + " provider_reported_balance AS providerReportedBalance,"
+                                + " provider_balance_status AS providerBalanceStatus,"
+                                + " provider_balance_updated_at AS providerBalanceUpdatedAt,"
+                                + " provider_balance_message AS providerBalanceMessage,"
+                                + " TIMESTAMPDIFF(SECOND,provider_balance_updated_at,CURRENT_TIMESTAMP(6)) AS providerBalanceAgeSeconds,"
                                 + " low_float_threshold AS lowFloatThreshold, reconciliation_state AS"
                                 + " reconciliationState, updated_at AS updatedAt FROM"
                                 + " provider_treasury_accounts WHERE id=:id",
@@ -1127,6 +1138,9 @@ public class ProviderTreasuryService {
         row.put("availableBalance", available);
         row.put("lowFloat", available.compareTo(threshold) <= 0);
         Object reported = row.get("providerReportedBalance");
+        row.put(
+                "providerBalanceAvailable",
+                reported != null && "AVAILABLE".equals(row.get("providerBalanceStatus")));
         row.put(
                 "reconciliationVariance",
                 reported == null

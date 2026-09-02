@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.gateway.MtnMomoCredentialSchema;
+import net.citotech.cito.gateway.AirtelOpenApiCredentialSchema;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.merchant.MerchantChannelCredentialService;
 import net.citotech.cito.merchant.MerchantChannelCryptoService;
@@ -58,10 +59,44 @@ public class SharedProviderAccessService {
             String currency,
             String operation,
             BigDecimal amount) {
+        return isReady(
+                merchant,
+                channelCode,
+                environment,
+                country,
+                currency,
+                operation,
+                amount,
+                null);
+    }
+
+    public boolean isReady(
+            Merchant merchant,
+            String channelCode,
+            String environment,
+            String country,
+            String currency,
+            String operation,
+            BigDecimal amount,
+            String preferredSource) {
+        String source = normalizeSource(preferredSource);
+        if (PLATFORM_SHARED.equals(source)) {
+            return findActiveEntitlement(
+                                    merchant,
+                                    channelCode,
+                                    environment,
+                                    country,
+                                    currency,
+                                    operation,
+                                    amount)
+                            != null
+                    && hasActivePlatformCredential(channelCode, environment, country, currency);
+        }
         try {
             merchantCredentials.ensureChannelReady(merchant, channelCode, environment);
             return true;
         } catch (PaymentGatewayException ignored) {
+            if (MERCHANT.equals(source)) return false;
             return findActiveEntitlement(
                                     merchant,
                                     channelCode,
@@ -85,20 +120,47 @@ public class SharedProviderAccessService {
             String currency,
             String operation,
             BigDecimal amount) {
+        return resolve(
+                merchant,
+                channelCode,
+                environment,
+                country,
+                currency,
+                operation,
+                amount,
+                null);
+    }
+
+    @Transactional
+    public CredentialContext resolve(
+            Merchant merchant,
+            String channelCode,
+            String environment,
+            String country,
+            String currency,
+            String operation,
+            BigDecimal amount,
+            String preferredSource) {
         requireMerchant(merchant);
         String env = environments.normalizedEnvironment(environment);
-        try {
-            merchantCredentials.ensureChannelReady(merchant, channelCode, env);
-            return new CredentialContext(
-                    MERCHANT,
-                    merchantCredentials.loadDecrypted(merchant, channelCode, env),
-                    null,
-                    normalizeCountry(country),
-                    normalizeCurrency(currency),
-                    normalizeOperation(operation));
-        } catch (PaymentGatewayException ignored) {
-            // Deliberate fallback. A merchant without its own approved credentials must pass the
-            // explicit shared-provider entitlement and platform-credential controls below.
+        String source = normalizeSource(preferredSource);
+        if (!PLATFORM_SHARED.equals(source)) {
+            try {
+                merchantCredentials.ensureChannelReady(merchant, channelCode, env);
+                return new CredentialContext(
+                        MERCHANT,
+                        merchantCredentials.loadDecrypted(merchant, channelCode, env),
+                        null,
+                        normalizeCountry(country),
+                        normalizeCurrency(currency),
+                        normalizeOperation(operation));
+            } catch (PaymentGatewayException ignored) {
+                if (MERCHANT.equals(source)) {
+                    throw new PaymentGatewayException(
+                            "Approved merchant-owned credentials are required for " + channelCode);
+                }
+                // Default behavior falls back to the explicitly entitled shared connection.
+            }
         }
 
         Map<String, Object> entitlement =
@@ -124,7 +186,18 @@ public class SharedProviderAccessService {
 
     public List<Map<String, Object>> listEntitlements() {
         return jdbc.queryForList(
-                "SELECT id, merchant_id AS merchantId, channel_code AS channelCode, environment, country_code AS countryCode, currency_code AS currencyCode, operation, status, per_transaction_limit AS perTransactionLimit, daily_limit AS dailyLimit, requested_by AS requestedBy, requested_at AS requestedAt, approved_by AS approvedBy, approved_at AS approvedAt, notes FROM shared_provider_entitlements ORDER BY updated_at DESC",
+                "SELECT e.id, e.merchant_id AS merchantId, m.name AS merchantName,"
+                        + " m.account_number AS merchantNumber, e.channel_code AS channelCode,"
+                        + " e.environment, e.country_code AS countryCode,"
+                        + " e.currency_code AS currencyCode, e.operation, e.status,"
+                        + " e.per_transaction_limit AS perTransactionLimit, e.daily_limit AS dailyLimit,"
+                        + " COALESCE(u.approved_amount,0) AS usedToday,"
+                        + " e.requested_by AS requestedBy, e.requested_at AS requestedAt,"
+                        + " e.approved_by AS approvedBy, e.approved_at AS approvedAt, e.notes"
+                        + " FROM shared_provider_entitlements e JOIN merchants m ON m.id=e.merchant_id"
+                        + " LEFT JOIN shared_provider_daily_usage u ON u.entitlement_id=e.id"
+                        + " AND u.usage_date=CURRENT_DATE AND u.operation='AUTHORIZED'"
+                        + " ORDER BY e.updated_at DESC",
                 Map.of());
     }
 
@@ -184,6 +257,9 @@ public class SharedProviderAccessService {
         jdbc.update(
                 "UPDATE shared_provider_entitlements SET status='ACTIVE', approved_by=:actor, approved_at=CURRENT_TIMESTAMP(6) WHERE id=:id",
                 new MapSqlParameterSource().addValue("id", id).addValue("actor", approver));
+        if ("PAYOUT".equals(text(row.get("operation")))) {
+            grantMerchantApi(number(row.get("merchant_id")), "MOBILE_MONEY_PAYOUT");
+        }
         return entitlementById(id);
     }
 
@@ -236,6 +312,8 @@ public class SharedProviderAccessService {
         ensureTreasuryAccounts(channel, environment, country, currency);
         if (MtnMomoCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channel)) {
             MtnMomoCredentialSchema.validate(credentials, environment, country, currency);
+        } else if (AirtelOpenApiCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channel)) {
+            AirtelOpenApiCredentialSchema.validate(credentials, environment, country, currency);
         } else if ("PRODUCTION".equals(environment)) {
             requiredText(credentials.get("collectUrl"), "credentials.collectUrl");
             requiredText(credentials.get("payoutUrl"), "credentials.payoutUrl");
@@ -366,6 +444,12 @@ public class SharedProviderAccessService {
             throw new PaymentGatewayException(
                     "No approved CPay platform credential is configured for " + channel);
         return parseJson(crypto.decrypt(rows.get(0)));
+    }
+
+    /** Decrypt an approved platform credential only for a server-side provider operation. */
+    public Map<String, Object> loadActivePlatformCredential(
+            String channel, String environment, String country, String currency) {
+        return loadPlatformCredential(channel, environment, country, currency);
     }
 
     private void consumeDailyLimit(Map<String, Object> entitlement, BigDecimal amount) {
@@ -531,6 +615,27 @@ public class SharedProviderAccessService {
         if (!operation.equals("COLLECT") && !operation.equals("PAYOUT"))
             throw new PaymentGatewayException("operation must be COLLECT or PAYOUT");
         return operation;
+    }
+
+    private String normalizeSource(String value) {
+        String source = text(value).toUpperCase(Locale.ROOT);
+        if (source.isEmpty()) return "";
+        if (!MERCHANT.equals(source) && !PLATFORM_SHARED.equals(source)) {
+            throw new PaymentGatewayException(
+                    "credentialSource must be MERCHANT or PLATFORM_SHARED");
+        }
+        return source;
+    }
+
+    private void grantMerchantApi(long merchantId, String api) {
+        jdbc.update(
+                "UPDATE merchants SET allowed_apis=CASE"
+                        + " WHEN allowed_apis IS NULL OR TRIM(allowed_apis)='' THEN :api"
+                        + " ELSE CONCAT(TRIM(TRAILING ',' FROM allowed_apis),',',:api) END"
+                        + " WHERE id=:merchant AND FIND_IN_SET(:api,REPLACE(COALESCE(allowed_apis,''),' ',''))=0",
+                new MapSqlParameterSource()
+                        .addValue("merchant", merchantId)
+                        .addValue("api", api));
     }
 
     private String requiredActor(String actor) {

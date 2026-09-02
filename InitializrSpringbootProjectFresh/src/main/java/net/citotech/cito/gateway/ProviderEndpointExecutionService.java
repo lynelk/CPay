@@ -1,5 +1,6 @@
 package net.citotech.cito.gateway;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import net.citotech.cito.Common;
 import net.citotech.cito.Model.GateWayResponse;
 import net.citotech.cito.Model.HttpRequestResponse;
+import net.citotech.cito.Model.AirtelMoneyOpenApiPaymentGateway;
 import org.json.JSONObject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -31,6 +33,110 @@ public class ProviderEndpointExecutionService {
         this.circuitBreaker = circuitBreaker;
     }
 
+    public ProviderBalanceResult fetchBalance(
+            String channelCode,
+            String accountRole,
+            String environment,
+            String country,
+            String currency,
+            Map<String, String> credentials) {
+        try {
+            if (MtnMomoCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+                String operation =
+                        "DISBURSEMENT".equalsIgnoreCase(accountRole) ? "PAYOUT" : "COLLECT";
+                String token = mtnAccessToken(operation, credentials, environment, false);
+                String prefix = MtnMomoCredentialSchema.productPrefix(operation);
+                Map<String, String> headers = new LinkedHashMap<>();
+                headers.put("Authorization", "Bearer " + token);
+                headers.put(
+                        "Ocp-Apim-Subscription-Key",
+                        required(
+                                credentials.get(prefix + "SubscriptionKey"),
+                                prefix + "SubscriptionKey"));
+                headers.put(
+                        "X-Target-Environment",
+                        required(credentials.get("targetEnvironment"), "targetEnvironment"));
+                String endpoint =
+                        credentials.get("baseUrl").replaceAll("/+$", "")
+                                + "/"
+                                + prefix
+                                + "/v1_0/account/balance";
+                return balanceResponse(Common.doHttpRequest("GET", endpoint, "", headers), "availableBalance");
+            }
+            if (AirtelOpenApiCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+                AirtelOpenApiCredentialSchema.validate(
+                        credentials, environment, country, currency);
+                JSONObject tokenBody =
+                        new JSONObject()
+                                .put("client_id", credentials.get("clientId"))
+                                .put("client_secret", credentials.get("clientSecret"))
+                                .put("grant_type", "client_credentials");
+                String base = credentials.get("baseUrl").replaceAll("/+$", "");
+                String tokenPath = credentials.getOrDefault("tokenPath", "/auth/oauth2/token");
+                HttpRequestResponse tokenResponse =
+                        Common.doHttpRequest(
+                                "POST",
+                                absolute(base, tokenPath),
+                                tokenBody.toString(),
+                                Map.of("Content-Type", "application/json"));
+                if (tokenResponse == null || tokenResponse.getStatusCode() != 200) {
+                    return new ProviderBalanceResult(false, null, "Airtel OAuth token request failed");
+                }
+                String token = new JSONObject(tokenResponse.getResponse()).optString("access_token", "");
+                if (token.isBlank()) {
+                    return new ProviderBalanceResult(false, null, "Airtel OAuth response omitted access_token");
+                }
+                Map<String, String> headers = new LinkedHashMap<>();
+                headers.put("Authorization", "Bearer " + token);
+                headers.put("Accept", "application/json");
+                headers.put("X-Country", country);
+                headers.put("X-Currency", currency);
+                String balancePath =
+                        credentials.getOrDefault("balancePath", "/standard/v2/users/balance");
+                return balanceResponse(
+                        Common.doHttpRequest("GET", absolute(base, balancePath), "", headers),
+                        "balance");
+            }
+            return new ProviderBalanceResult(
+                    false, null, "Direct balance synchronization is not supported for this channel");
+        } catch (Exception e) {
+            return new ProviderBalanceResult(
+                    false,
+                    null,
+                    "Provider balance request failed (" + e.getClass().getSimpleName() + ")");
+        }
+    }
+
+    private ProviderBalanceResult balanceResponse(
+            HttpRequestResponse response, String balanceField) {
+        if (response == null
+                || response.getStatusCode() < 200
+                || response.getStatusCode() >= 300) {
+            int status = response == null ? 0 : response.getStatusCode();
+            return new ProviderBalanceResult(
+                    false, null, "Provider balance endpoint returned HTTP " + status);
+        }
+        JSONObject json = new JSONObject(response.getResponse());
+        String raw = json.optString(balanceField, "");
+        if (raw.isBlank() && json.optJSONObject("data") != null) {
+            raw = json.getJSONObject("data").optString(balanceField, "");
+        }
+        if (raw.isBlank()) {
+            return new ProviderBalanceResult(
+                    false, null, "Provider balance response omitted " + balanceField);
+        }
+        return new ProviderBalanceResult(
+                true, new BigDecimal(raw.replace(",", "")), "Provider balance synchronized");
+    }
+
+    private String absolute(String base, String path) {
+        if (path.startsWith("https://")) return path;
+        return base + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    public record ProviderBalanceResult(
+            boolean available, BigDecimal balance, String message) {}
+
     public GateWayResponse execute(
             String channelCode,
             String displayName,
@@ -38,6 +144,9 @@ public class ProviderEndpointExecutionService {
             PaymentGatewayRequest request) {
         if (MtnMomoCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
             return executeMtn(displayName, operation, request);
+        }
+        if (AirtelOpenApiCredentialSchema.CHANNEL_CODE.equalsIgnoreCase(channelCode)) {
+            return executeAirtel(displayName, operation, request);
         }
         String endpointKey = operation.toLowerCase() + "Url";
         String endpointUrl = request.getMetadata().get(endpointKey);
@@ -330,6 +439,116 @@ public class ProviderEndpointExecutionService {
                     e.getMessage());
             throw new PaymentGatewayException("MTN MoMo execution failed: " + e.getMessage());
         }
+    }
+
+    private GateWayResponse executeAirtel(
+            String displayName, String operation, PaymentGatewayRequest request) {
+        Map<String, String> credentials = request.getMetadata();
+        String environment = credentials.getOrDefault("gatewayState", "SANDBOX");
+        AirtelOpenApiCredentialSchema.validate(
+                credentials,
+                environment,
+                credentials.get("country"),
+                credentials.get("currency"));
+        if (!circuitBreaker.allowRequest(AirtelOpenApiCredentialSchema.CHANNEL_CODE)) {
+            String message = "Airtel OpenAPI provider calls are temporarily suspended";
+            record(
+                    AirtelOpenApiCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    credentials.get("baseUrl"),
+                    0,
+                    "CIRCUIT_OPEN",
+                    message);
+            return response(
+                    AirtelOpenApiCredentialSchema.CHANNEL_CODE,
+                    displayName,
+                    operation,
+                    request,
+                    0,
+                    "FAILED",
+                    message);
+        }
+        try {
+            AirtelMoneyOpenApiPaymentGateway gateway = new AirtelMoneyOpenApiPaymentGateway();
+            gateway.setApiDetails(
+                    credentials.get("baseUrl"),
+                    requiredAirtel(credentials.get("clientId"), "clientId"),
+                    requiredAirtel(credentials.get("clientSecret"), "clientSecret"),
+                    requiredAirtel(credentials.get("apiPin"), "apiPin"));
+            gateway.setTransactionContext(
+                    environment, credentials.get("country"), credentials.get("currency"));
+            gateway.setEndpointDetails(
+                    credentials.get("tokenPath"),
+                    credentials.get("collectionPath"),
+                    credentials.get("payoutPath"),
+                    credentials.get("balancePath"),
+                    credentials.get("collectionStatusPath"),
+                    credentials.get("payoutStatusPath"));
+            gateway.setPublicKey(requiredAirtel(credentials.get("publicKey"), "publicKey"));
+            GateWayResponse result =
+                    "PAYOUT".equalsIgnoreCase(operation)
+                            ? gateway.doPayOut(
+                                    request.getAmount(),
+                                    request.getAccountIdentifier(),
+                                    request.getReference(),
+                                    request.getDescription())
+                            : gateway.doPayIn(
+                                    request.getAmount(),
+                                    request.getAccountIdentifier(),
+                                    request.getReference(),
+                                    request.getDescription());
+            int httpStatus = parseStatus(result == null ? null : result.getHttpStatus());
+            String transactionStatus =
+                    result == null || result.getTransactionStatus() == null
+                            ? "UNDETERMINED"
+                            : result.getTransactionStatus();
+            if (httpStatus >= 200
+                    && httpStatus < 300
+                    && !"FAILED".equalsIgnoreCase(transactionStatus)) {
+                circuitBreaker.recordSuccess(AirtelOpenApiCredentialSchema.CHANNEL_CODE);
+            } else {
+                circuitBreaker.recordFailure(AirtelOpenApiCredentialSchema.CHANNEL_CODE);
+            }
+            record(
+                    AirtelOpenApiCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    credentials.get("baseUrl"),
+                    httpStatus,
+                    transactionStatus,
+                    result == null ? "No provider response" : result.getMessage());
+            return result;
+        } catch (PaymentGatewayException e) {
+            circuitBreaker.recordFailure(AirtelOpenApiCredentialSchema.CHANNEL_CODE);
+            throw e;
+        } catch (Exception e) {
+            circuitBreaker.recordFailure(AirtelOpenApiCredentialSchema.CHANNEL_CODE);
+            record(
+                    AirtelOpenApiCredentialSchema.CHANNEL_CODE,
+                    operation,
+                    request,
+                    credentials.get("baseUrl"),
+                    0,
+                    "FAILED",
+                    e.getClass().getSimpleName());
+            throw new PaymentGatewayException("Airtel OpenAPI execution failed");
+        }
+    }
+
+    private int parseStatus(String value) {
+        try {
+            return Integer.parseInt(value == null ? "0" : value);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private String requiredAirtel(String value, String field) {
+        if (isBlank(value)) {
+            throw new PaymentGatewayException("Airtel OpenAPI " + field + " is required");
+        }
+        return value.trim();
     }
 
     private HttpRequestResponse sendMtn(

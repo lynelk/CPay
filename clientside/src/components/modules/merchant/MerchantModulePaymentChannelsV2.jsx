@@ -15,11 +15,18 @@ const FIELD_LABELS = {
   passKey: 'Pass key',
   clientId: 'Client ID',
   clientSecret: 'Client secret',
-  subscriberMsisdn: 'Subscriber MSISDN',
+  apiPin: 'Disbursement API PIN',
+  publicKey: 'Airtel RSA public key',
+  country: 'Airtel country code',
+  currency: 'Airtel currency code',
+  tokenPath: 'OAuth token path',
+  collectionPath: 'Collection path',
+  payoutPath: 'Disbursement path',
+  balancePath: 'Balance path',
   apiUser: 'API user',
   apiKey: 'API key',
   collectionAccount: 'Collection account',
-  baseUrl: 'MTN API base URL',
+  baseUrl: 'Provider API base URL',
   targetEnvironment: 'X-Target-Environment',
   baseCurrency: 'MTN transaction currency',
   callbackHost: 'Registered callback host',
@@ -35,7 +42,7 @@ const FIELD_LABELS = {
 };
 
 const SECRET_FIELDS = new Set([
-  'authHeaderValue', 'consumerKey', 'consumerSecret', 'passKey', 'clientSecret', 'apiKey',
+  'authHeaderValue', 'consumerKey', 'consumerSecret', 'passKey', 'clientSecret', 'apiKey', 'apiPin',
   'collectionApiUser', 'collectionApiKey', 'collectionSubscriptionKey', 'collectionSecondarySubscriptionKey',
   'disbursementApiUser', 'disbursementApiKey', 'disbursementSubscriptionKey', 'disbursementSecondarySubscriptionKey',
 ]);
@@ -175,13 +182,21 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
       'disbursementApiUser', 'disbursementApiKey', 'disbursementSubscriptionKey', 'disbursementSecondarySubscriptionKey',
     ];
     if (channelCode === 'safaricom_mpesa') return base.concat(['shortCode', 'consumerKey', 'consumerSecret', 'passKey']);
-    if (channelCode === 'airtel_open_api') return base.concat(['clientId', 'clientSecret', 'subscriberMsisdn']);
+    if (channelCode === 'airtel_open_api') return [
+      'baseUrl', 'clientId', 'clientSecret', 'country', 'currency', 'apiPin', 'publicKey',
+      'tokenPath', 'collectionPath', 'payoutPath', 'balancePath',
+    ];
     return base.concat(['apiUser', 'apiKey', 'collectionAccount']);
   }
 
   select(channel) {
     const selected = environmentRecord(channel, this.state.environment);
     this.setState({ selected, values: selected.credentials || {}, message: '' });
+  }
+
+  selectChannelCode(channelCode) {
+    const channel = this.state.channels.find(item => item.channelCode === channelCode);
+    if (channel) this.select(channel);
   }
 
   update(field, value) {
@@ -195,7 +210,9 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
       values: { ...(this.state.selected.sandboxCredentials || {}) },
       message: isMtn
         ? 'Official MTN sandbox defaults loaded. Add your provisioned Collection and Disbursement credentials before saving.'
-        : 'Sandbox credentials loaded for local testing.',
+        : this.state.selected.channelCode === 'airtel_open_api'
+          ? 'Official Airtel UAT endpoints loaded. Add the client ID, client secret, API PIN, and Airtel RSA public key issued for your application.'
+          : 'Sandbox credentials loaded for local testing.',
     });
   }
 
@@ -325,6 +342,42 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
       );
     }
 
+    if (selected.channelCode === 'cpay_shared') {
+      const rails = Array.isArray(selected.rails) ? selected.rails : [];
+      return (
+        <Card className="ios-channel-panel">
+          <Toolbar>
+            <div>
+              <h3 className="ios-section-title" style={{ margin: 0 }}>CPay Shared Payments</h3>
+              <p className="ios-channel-subtitle">CPay-managed MTN and Airtel access while your own provider credentials are not approved.</p>
+            </div>
+            <Toolbar.Spacer />
+            <Badge tone={statusTone(selected.status)}>{selected.status || 'NOT_AVAILABLE'}</Badge>
+          </Toolbar>
+          <div className="ios-channel-sandbox-callout">
+            <div>
+              <strong>No provider credentials required from you</strong>
+              <span>Collections use the first entitled, ready underlying rail. Payouts require separate approval and sufficient prefunded CPay disbursement float.</span>
+            </div>
+          </div>
+          <div className="ios-channel-test-list">
+            {rails.length ? rails.map((rail, index) => (
+              <span key={`${rail.channelCode}-${rail.operation}-${index}`}>
+                <strong>{rail.channelCode === 'mtn_momo' ? 'MTN MoMo' : 'Airtel Open API'} · {rail.operation}</strong>
+                <code>{rail.currencyCode} {rail.perTransactionLimit ?? 'No'} per transaction</code>
+                <em>{rail.status} · {rail.credentialStatus} · {rail.remainingToday ?? '—'} remaining today</em>
+              </span>
+            )) : <span><strong>Not available in {this.state.environment}</strong><em>Switch to Production or ask an administrator to provision this environment.</em></span>}
+          </div>
+          <Toolbar>
+            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.selectChannelCode('mtn_momo')}>Add own MTN credentials</Button>
+            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.selectChannelCode('airtel_open_api')}>Add own Airtel credentials</Button>
+          </Toolbar>
+          <p className="ios-channel-subtitle">Once your approved provider-owned credentials are active, they take precedence. CPay Shared Payments will not silently take over that transaction path.</p>
+        </Card>
+      );
+    }
+
     return (
       <Card className="ios-channel-panel">
         <Toolbar>
@@ -341,6 +394,8 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
               <strong>Guided sandbox mode</strong>
               <span>{selected.channelCode === 'mtn_momo'
                 ? 'Use EUR, X-Target-Environment sandbox, and separate Collection and Disbursement product credentials provisioned by MTN.'
+                : selected.channelCode === 'airtel_open_api'
+                  ? 'Use the Airtel UAT base URL and the OAuth client credentials, API PIN, and RSA public key issued in the Airtel developer portal.'
                 : 'Blank endpoints use CPay\'s deterministic simulator; add URLs only when testing your own callback receiver.'}</span>
             </div>
             <Button variant="ghost" className="ios-btn--sm" onClick={() => this.applySandboxCredentials()}>Load sandbox template</Button>
@@ -395,7 +450,9 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
                   onClick={() => this.select(channel)}
                 >
                   <strong>{channel.displayName}</strong>
-                  <span>{channel.countryCode} {channel.channelCode === 'mtn_momo' && this.state.environment === 'SANDBOX' ? 'EUR' : channel.currencyCode} - {this.state.environment}</span>
+                  <span>{channel.channelCode === 'cpay_shared'
+                    ? `MTN + Airtel · ${this.state.environment}`
+                    : `${channel.countryCode} ${channel.channelCode === 'mtn_momo' && this.state.environment === 'SANDBOX' ? 'EUR' : channel.currencyCode} - ${this.state.environment}`}</span>
                   <Badge tone={statusTone(environmentChannel.status)}>{environmentChannel.status || 'NOT_CONFIGURED'}</Badge>
                 </button>
               );

@@ -3,7 +3,9 @@ package net.citotech.cito.merchant;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -17,6 +19,7 @@ import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.reconciliation.MerchantSettlementPreference;
 import net.citotech.cito.reconciliation.MerchantSettlementPreferenceService;
 import net.citotech.cito.security.SimpleRateLimitService;
+import net.citotech.cito.sharedprovider.SharedProviderDefaultEntitlementService;
 import net.citotech.cito.webhook.MerchantWebhookService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -44,6 +47,7 @@ public class MerchantSelfServiceController {
     private final MerchantNotificationPreferenceService notificationPreferenceService;
     private final MerchantEmailVerificationService emailVerificationService;
     private final MerchantWebhookService webhookService;
+    private final SharedProviderDefaultEntitlementService sharedProviderDefaults;
 
     public MerchantSelfServiceController(
             MerchantSelfServiceSignupService signupService,
@@ -55,7 +59,8 @@ public class MerchantSelfServiceController {
             NamedParameterJdbcTemplate jdbcTemplate,
             MerchantNotificationPreferenceService notificationPreferenceService,
             MerchantEmailVerificationService emailVerificationService,
-            MerchantWebhookService webhookService) {
+            MerchantWebhookService webhookService,
+            SharedProviderDefaultEntitlementService sharedProviderDefaults) {
         this.signupService = signupService;
         this.channelService = channelService;
         this.environmentService = environmentService;
@@ -66,6 +71,7 @@ public class MerchantSelfServiceController {
         this.notificationPreferenceService = notificationPreferenceService;
         this.emailVerificationService = emailVerificationService;
         this.webhookService = webhookService;
+        this.sharedProviderDefaults = sharedProviderDefaults;
     }
 
     @PostMapping(path = "/signup")
@@ -153,7 +159,13 @@ public class MerchantSelfServiceController {
     @GetMapping(path = "/channels")
     public ResponseEntity<?> channels(HttpServletRequest request) {
         try {
-            return ResponseEntity.ok(channelService.list(currentMerchantUser(request)));
+            MerchantUser user = currentMerchantUser(request);
+            String environment =
+                    String.valueOf(environmentService.getPreference(user).get("environment"));
+            List<Map<String, Object>> channels = new ArrayList<>();
+            channels.add(sharedProviderDefaults.merchantAccess(user.getMerchant_id(), environment));
+            channels.addAll(channelService.list(user));
+            return ResponseEntity.ok(channels);
         } catch (PaymentGatewayException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(error("MERCHANT_SESSION_REQUIRED", e.getMessage()));

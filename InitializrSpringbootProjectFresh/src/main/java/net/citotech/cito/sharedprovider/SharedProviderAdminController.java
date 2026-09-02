@@ -2,6 +2,7 @@ package net.citotech.cito.sharedprovider;
 
 import java.util.List;
 import java.util.Map;
+import net.citotech.cito.admin.AdminPermissionService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,60 +18,79 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class SharedProviderAdminController {
     private final SharedProviderAccessService service;
+    private final AdminPermissionService permissions;
 
-    public SharedProviderAdminController(SharedProviderAccessService service) {
+    public SharedProviderAdminController(
+            SharedProviderAccessService service, AdminPermissionService permissions) {
         this.service = service;
+        this.permissions = permissions;
     }
 
     @GetMapping("/entitlements")
     public List<Map<String, Object>> entitlements() {
+        permissions.require(
+                "SHARED_PAYMENT_ENTITLEMENT_MANAGE", "shared-entitlement-list", "all");
         return service.listEntitlements();
     }
 
     @PostMapping("/entitlements")
     public Map<String, Object> requestEntitlement(
             @RequestBody Map<String, Object> body, Authentication authentication) {
+        permissions.require(
+                "SHARED_PAYMENT_ENTITLEMENT_MANAGE", "shared-entitlement-request", "merchant");
         return service.requestEntitlement(body, actor(authentication));
     }
 
     @PostMapping("/entitlements/{id}/approve")
     public Map<String, Object> approveEntitlement(
             @PathVariable long id, Authentication authentication) {
+        permissions.require(
+                "SHARED_PAYMENT_LIMIT_APPROVE", "shared-entitlement-approve", "entitlement:" + id);
         return service.approveEntitlement(id, actor(authentication));
     }
 
     @PostMapping("/entitlements/{id}/reject")
     public Map<String, Object> rejectEntitlement(
             @PathVariable long id, Authentication authentication) {
+        permissions.require(
+                "SHARED_PAYMENT_LIMIT_APPROVE", "shared-entitlement-reject", "entitlement:" + id);
         return service.rejectEntitlement(id, actor(authentication));
     }
 
     @PostMapping("/entitlements/{id}/disable")
     public Map<String, Object> disableEntitlement(
             @PathVariable long id, Authentication authentication) {
+        permissions.require(
+                "SHARED_PAYMENT_ENTITLEMENT_MANAGE", "shared-entitlement-disable", "entitlement:" + id);
         return service.disableEntitlement(id, actor(authentication));
     }
 
     @GetMapping("/credentials")
     public List<Map<String, Object>> credentials() {
+        permissions.require("PROVIDER_CREDENTIAL_MANAGE", "provider-credential-list", "all");
         return service.listPlatformCredentials();
     }
 
     @PostMapping("/credentials")
     public Map<String, Object> saveCredential(
             @RequestBody Map<String, Object> body, Authentication authentication) {
+        permissions.require("PROVIDER_CREDENTIAL_MANAGE", "provider-credential-save", "scope");
         return service.savePlatformCredential(body, actor(authentication));
     }
 
     @PostMapping("/credentials/{id}/approve")
     public Map<String, Object> approveCredential(
             @PathVariable long id, Authentication authentication) {
+        permissions.require(
+                "PROVIDER_CREDENTIAL_APPROVE", "provider-credential-approve", "credential:" + id);
         return service.approvePlatformCredential(id, actor(authentication));
     }
 
     @PostMapping("/credentials/{id}/disable")
     public Map<String, Object> disableCredential(
             @PathVariable long id, Authentication authentication) {
+        permissions.require(
+                "PROVIDER_CREDENTIAL_MANAGE", "provider-credential-disable", "credential:" + id);
         return service.disablePlatformCredential(id, actor(authentication));
     }
 

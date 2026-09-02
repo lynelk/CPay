@@ -104,6 +104,13 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
                 valueOrCurrent(disbursementStatusPath, this.disbursementStatusPath);
     }
 
+    public void setTransactionContext(String environment, String country, String currency) {
+        this.mode = environment == null ? "SANDBOX" : environment.trim().toUpperCase();
+        if (country != null && !country.trim().isEmpty()) this.country = country.trim().toUpperCase();
+        if (currency != null && !currency.trim().isEmpty())
+            this.base_currency = currency.trim().toUpperCase();
+    }
+
     String tokenUrl() {
         return endpoint(tokenPath);
     }
@@ -548,7 +555,13 @@ public class AirtelMoneyOpenApiPaymentGateway extends PaymentGateway {
     }
 
     private String stripCountryCode(String msisdn) {
-        return msisdn != null && msisdn.length() > 3 ? msisdn.substring(3) : msisdn;
+        if (msisdn == null) return null;
+        String normalized = msisdn.trim().replace(" ", "").replace("-", "");
+        if (normalized.startsWith("+")) normalized = normalized.substring(1);
+        if (normalized.startsWith("256") && normalized.length() > 9) {
+            return normalized.substring(3);
+        }
+        return normalized;
     }
 
     private GateWayResponse gatewayError(String message, String transactionStatus, String trace) {

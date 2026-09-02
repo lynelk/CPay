@@ -169,6 +169,62 @@ public final class SettingsRegistry {
                 "Sandbox transaction data retention window shown to merchants in the developer "
                         + "sandbox guide, in days.");
 
+        // CPay Shared Payments defaults and controlled admin transaction tests.
+        register(
+                "shared_provider_default_enabled",
+                SettingType.BOOLEAN,
+                "true",
+                "shared-payments",
+                "Automatically provision shared-provider entitlements for active merchants.");
+        register(
+                "shared_provider_default_country",
+                SettingType.STRING,
+                "UG",
+                "shared-payments",
+                "ISO country code used for default shared-provider entitlements.");
+        register(
+                "shared_provider_default_currency",
+                SettingType.STRING,
+                "UGX",
+                "shared-payments",
+                "ISO currency used for default shared-provider entitlements.");
+        register(
+                "shared_provider_default_collection_per_transaction_limit",
+                SettingType.DECIMAL,
+                "500000.0000",
+                "shared-payments",
+                "Per-transaction limit for automatically provisioned shared collections.");
+        register(
+                "shared_provider_default_collection_daily_limit",
+                SettingType.DECIMAL,
+                "2000000.0000",
+                "shared-payments",
+                "Daily total limit for automatically provisioned shared collections.");
+        register(
+                "shared_provider_default_payout_per_transaction_limit",
+                SettingType.DECIMAL,
+                "100000.0000",
+                "shared-payments",
+                "Per-transaction limit for approved shared payouts.");
+        register(
+                "shared_provider_default_payout_daily_limit",
+                SettingType.DECIMAL,
+                "500000.0000",
+                "shared-payments",
+                "Daily total limit for approved shared payouts.");
+        register(
+                "shared_provider_default_payout_enabled",
+                SettingType.BOOLEAN,
+                "false",
+                "shared-payments",
+                "Whether automatically provisioned shared payouts are activated immediately.");
+        register(
+                "provider_live_test_max_amount",
+                SettingType.DECIMAL,
+                "10000.0000",
+                "shared-payments",
+                "Maximum amount for an admin-initiated provider transaction test.");
+
         // Float balance alerting (FloatAlertScheduler.java).
         register(
                 "float_alert_email",

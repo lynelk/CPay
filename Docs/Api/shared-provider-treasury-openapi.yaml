@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CPay Shared Provider and Provider Treasury Admin API
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     Administrative contract for CPay-sponsored provider credentials, merchant shared-provider
     entitlements, and controlled provider treasury/float operations. All endpoints require an
@@ -143,6 +143,76 @@ paths:
               schema:
                 type: array
                 items: {$ref: '#/components/schemas/TreasuryAccount'}
+  /api/v2/admin/provider-treasury/accounts/{id}/refresh-provider-balance:
+    post:
+      tags: [Provider Treasury]
+      summary: Synchronize a collection or disbursement wallet balance from its provider
+      operationId: refreshProviderTreasuryBalance
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200':
+          description: Synchronization status. An unavailable response never substitutes zero.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderBalanceStatus'}
+  /api/v2/admin/provider-treasury/merchants:
+    get:
+      tags: [Provider Treasury]
+      summary: List active merchants eligible for a controlled provider transaction test
+      operationId: listProviderTestMerchants
+      responses:
+        '200':
+          description: Active, interactive merchant accounts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ProviderTestMerchant'}
+  /api/v2/admin/provider-treasury/live-tests:
+    get:
+      tags: [Provider Treasury]
+      summary: List audited provider transaction tests and their event timelines
+      operationId: listProviderLiveTests
+      responses:
+        '200':
+          description: Most recent live provider tests.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ProviderLiveTest'}
+    post:
+      tags: [Provider Treasury]
+      summary: Request a collection or payout provider transaction test
+      operationId: requestProviderLiveTest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProviderLiveTestRequest'}
+      responses:
+        '200':
+          description: Collection execution result, or payout pending independent approval.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderLiveTest'}
+  /api/v2/admin/provider-treasury/live-tests/{id}/approve:
+    post:
+      tags: [Provider Treasury]
+      summary: Approve and execute a payout test as a different administrator
+      operationId: approveProviderLiveTest
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProviderLiveTestApproval'}
+      responses:
+        '200':
+          description: Executed payout test.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderLiveTest'}
   /api/v2/admin/provider-treasury/adjustments:
     get:
       tags: [Provider Treasury]
@@ -365,6 +435,11 @@ components:
         pendingOutgoingBalance: {type: number}
         pendingIncomingBalance: {type: number}
         providerReportedBalance: {type: number, nullable: true}
+        providerBalanceStatus: {type: string, enum: [NOT_SYNCHRONIZED, AVAILABLE, UNAVAILABLE]}
+        providerBalanceAvailable: {type: boolean}
+        providerBalanceUpdatedAt: {type: string, format: date-time, nullable: true}
+        providerBalanceAgeSeconds: {type: integer, format: int64, nullable: true}
+        providerBalanceMessage: {type: string, nullable: true}
         availableBalance: {type: number}
         lowFloatThreshold: {type: number}
         reconciliationState: {type: string}
@@ -395,3 +470,43 @@ components:
         providerReportedBalance: {type: number}
         evidenceReference: {type: string}
         notes: {type: string}
+    ProviderBalanceStatus:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        providerReportedBalance: {type: number, nullable: true}
+        providerBalanceStatus: {type: string, enum: [AVAILABLE, UNAVAILABLE]}
+        providerBalanceUpdatedAt: {type: string, format: date-time, nullable: true}
+        providerBalanceMessage: {type: string, nullable: true}
+    ProviderTestMerchant:
+      type: object
+      required: [id, name, merchantNumber, status]
+      properties:
+        id: {type: integer, format: int64}
+        name: {type: string}
+        merchantNumber: {type: string}
+        status: {type: string, enum: [ACTIVE]}
+    ProviderLiveTestRequest:
+      type: object
+      required: [merchantId, channelCode, environment, countryCode, currencyCode, operation, amount, party, idempotencyKey]
+      properties:
+        merchantId: {type: integer, format: int64}
+        channelCode: {type: string, enum: [mtn_momo, airtel_open_api]}
+        environment: {type: string, enum: [SANDBOX, PRODUCTION]}
+        countryCode: {type: string}
+        currencyCode: {type: string}
+        operation: {type: string, enum: [COLLECT, PAYOUT]}
+        amount: {type: number, exclusiveMinimum: true, minimum: 0}
+        party: {type: string, description: International MSISDN; encrypted at rest and masked in responses.}
+        idempotencyKey: {type: string}
+        confirmProduction: {type: boolean, description: Required and true for PRODUCTION.}
+        mfaCode: {type: string, writeOnly: true, description: Required for PRODUCTION and never stored.}
+    ProviderLiveTestApproval:
+      type: object
+      properties:
+        confirmProduction: {type: boolean, description: Required and true for a PRODUCTION payout.}
+        mfaCode: {type: string, writeOnly: true, description: Required for PRODUCTION and never stored.}
+    ProviderLiveTest:
+      type: object
+      additionalProperties: true
+      description: Audited test metadata and event history; contains only the masked party value.

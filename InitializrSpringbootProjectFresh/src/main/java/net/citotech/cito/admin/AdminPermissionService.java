@@ -23,6 +23,15 @@ public class AdminPermissionService {
         if (authentication == null || !hasAdmin(authentication)) {
             throw new AccessDeniedException("Admin role is required");
         }
+        Integer granted =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM admin_permissions WHERE role_name='ADMIN' AND permission_code=:permission",
+                        new MapSqlParameterSource("permission", permissionCode),
+                        Integer.class);
+        if (granted == null || granted == 0) {
+            auditService.record(permissionCode, actionName, resourceReference, "denied");
+            throw new AccessDeniedException("Admin permission is required: " + permissionCode);
+        }
         auditService.record(permissionCode, actionName, resourceReference, "allowed");
     }
 
@@ -32,6 +41,17 @@ public class AdminPermissionService {
         add("ADMIN", "RECONCILIATION_IMPORT");
         add("ADMIN", "RECONCILIATION_APPROVE");
         add("ADMIN", "PROVIDER_SANDBOX_VALIDATION");
+        add("ADMIN", "PAYMENT_BALANCE_VIEW");
+        add("ADMIN", "PAYMENT_BALANCE_REFRESH");
+        add("ADMIN", "SHARED_PAYMENT_ENTITLEMENT_MANAGE");
+        add("ADMIN", "SHARED_PAYMENT_LIMIT_APPROVE");
+        add("ADMIN", "LIVE_COLLECTION_TEST");
+        add("ADMIN", "LIVE_DISBURSEMENT_TEST");
+        add("ADMIN", "LIVE_DISBURSEMENT_APPROVE");
+        add("ADMIN", "PROVIDER_CREDENTIAL_MANAGE");
+        add("ADMIN", "PROVIDER_CREDENTIAL_APPROVE");
+        add("ADMIN", "RECONCILIATION_VIEW");
+        add("ADMIN", "RECONCILIATION_MANAGE");
     }
 
     private boolean hasAdmin(Authentication authentication) {
@@ -51,4 +71,3 @@ public class AdminPermissionService {
         jdbcTemplate.update(sql, p);
     }
 }
-

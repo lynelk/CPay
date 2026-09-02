@@ -76,6 +76,17 @@ public class AdminMfaService {
         return totpService.verify(secretForAdmin(adminId), code);
     }
 
+    /** Require an enrolled, valid TOTP for a high-risk admin action. */
+    public void requireCode(String email, String code) {
+        AdminIdentity admin = findAdmin(email);
+        if (!isEnabled(admin.id)) {
+            throw new PaymentGatewayException("MFA enrollment is required for live payment tests");
+        }
+        if (code == null || code.trim().isEmpty() || !verifyAdminCode(admin.id, code.trim())) {
+            throw new PaymentGatewayException("A valid MFA code is required");
+        }
+    }
+
     private String secretForAdmin(long adminId) {
         List<String> rows = jdbcTemplate.query(
             "SELECT secret_value FROM admin_mfa_totp WHERE admin_id=:admin_id LIMIT 1",

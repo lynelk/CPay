@@ -126,6 +126,52 @@ class SharedProviderAccessServiceTest {
     }
 
     @Test
+    void explicitSharedSourceDoesNotUseReadyMerchantCredentials() {
+        when(jdbc.queryForList(
+                        contains("FROM shared_provider_entitlements"),
+                        any(MapSqlParameterSource.class)))
+                .thenReturn(List.of(entitlement("500.00", "1000.00")));
+        when(jdbc.queryForObject(
+                        contains("COUNT(*) FROM platform_channel_credentials"),
+                        any(MapSqlParameterSource.class),
+                        eq(Integer.class)))
+                .thenReturn(1);
+
+        assertTrue(
+                service.isReady(
+                        merchant,
+                        "mtn_momo",
+                        "PRODUCTION",
+                        "UG",
+                        "UGX",
+                        "COLLECT",
+                        new BigDecimal("100.00"),
+                        SharedProviderAccessService.PLATFORM_SHARED));
+        verify(merchantCredentials, never())
+                .ensureChannelReady(merchant, "mtn_momo", "PRODUCTION");
+    }
+
+    @Test
+    void explicitMerchantSourceDoesNotFallBackToSharedCredentials() {
+        merchantCredentialsNotReady();
+
+        assertFalse(
+                service.isReady(
+                        merchant,
+                        "mtn_momo",
+                        "PRODUCTION",
+                        "UG",
+                        "UGX",
+                        "COLLECT",
+                        new BigDecimal("100.00"),
+                        SharedProviderAccessService.MERCHANT));
+        verify(jdbc, never())
+                .queryForList(
+                        contains("FROM shared_provider_entitlements"),
+                        any(MapSqlParameterSource.class));
+    }
+
+    @Test
     void makerCannotApproveOwnEntitlement() {
         when(jdbc.queryForList(
                         contains("FROM shared_provider_entitlements WHERE id=:id FOR UPDATE"),

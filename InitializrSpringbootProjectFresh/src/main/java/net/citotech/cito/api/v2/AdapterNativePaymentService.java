@@ -85,7 +85,8 @@ public class AdapterNativePaymentService {
                         request.getCountry(),
                         request.getCurrency(),
                         "COLLECT",
-                        amount);
+                        amount,
+                        credentialSource(request));
         PaymentGatewayRequest gatewayRequest =
                 adapterRequest(
                         request,
@@ -139,7 +140,8 @@ public class AdapterNativePaymentService {
                         request.getCountry(),
                         request.getCurrency(),
                         "PAYOUT",
-                        amount);
+                        amount,
+                        credentialSource(request));
         PaymentGatewayRequest gatewayRequest =
                 adapterRequest(
                         request,
@@ -210,7 +212,8 @@ public class AdapterNativePaymentService {
                     request.getCountry(),
                     request.getCurrency(),
                     operation,
-                    amount)) {
+                    amount,
+                    credentialSource(request))) {
                 throw new PaymentGatewayException(
                         "Channel is not ready for merchant-owned or CPay shared-provider execution: "
                                 + adapter.channelCode());
@@ -234,7 +237,8 @@ public class AdapterNativePaymentService {
                         request.getCountry(),
                         request.getCurrency(),
                         operation,
-                        amount)) {
+                        amount,
+                        credentialSource(request))) {
                     throw new PaymentGatewayException(
                             "Candidate has no ready merchant or shared-provider credential path");
                 }
@@ -302,6 +306,12 @@ public class AdapterNativePaymentService {
                 request.getDescription(),
                 request.getCallbackUrl(),
                 metadata);
+    }
+
+    private String credentialSource(PaymentRequest request) {
+        return request == null || request.getMetadata() == null
+                ? null
+                : request.getMetadata().get("credentialSource");
     }
 
     private void validate(PaymentRequest request, Merchant merchant, boolean collect, String api) {

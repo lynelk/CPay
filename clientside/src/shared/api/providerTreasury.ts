@@ -17,6 +17,11 @@ export interface TreasuryAccount {
   pendingIncomingBalance: number;
   availableBalance: number;
   providerReportedBalance?: number | null;
+  providerBalanceStatus: string;
+  providerBalanceAvailable: boolean;
+  providerBalanceUpdatedAt?: string | null;
+  providerBalanceAgeSeconds?: number | null;
+  providerBalanceMessage?: string | null;
   lowFloatThreshold: number;
   lowFloat: boolean;
   reconciliationState: string;
@@ -41,6 +46,8 @@ export interface TreasuryAdjustment {
 export interface SharedProviderEntitlement {
   id: number;
   merchantId: number;
+  merchantName?: string;
+  merchantNumber?: string;
   channelCode: string;
   environment: string;
   countryCode: string;
@@ -49,8 +56,49 @@ export interface SharedProviderEntitlement {
   status: string;
   perTransactionLimit?: number | null;
   dailyLimit?: number | null;
+  usedToday?: number;
   requestedBy?: string;
   approvedBy?: string;
+}
+
+export interface ProviderTestMerchant {
+  id: number;
+  name: string;
+  merchantNumber: string;
+  status: string;
+}
+
+export interface ProviderLiveTestEvent {
+  sequenceNumber: number;
+  eventType: string;
+  status: string;
+  message?: string;
+  actor: string;
+  createdAt: string;
+}
+
+export interface ProviderLiveTest {
+  id: number;
+  testReference: string;
+  idempotencyKey: string;
+  merchantId: number;
+  merchantName: string;
+  merchantNumber: string;
+  channelCode: string;
+  credentialSource: 'PLATFORM_SHARED';
+  environment: 'SANDBOX' | 'PRODUCTION';
+  countryCode: string;
+  currencyCode: string;
+  operation: 'COLLECT' | 'PAYOUT';
+  amount: number;
+  partyMask: string;
+  status: string;
+  providerReference?: string | null;
+  resultMessage?: string | null;
+  requestedBy: string;
+  approvedBy?: string | null;
+  treasuryStatus?: string | null;
+  events: ProviderLiveTestEvent[];
 }
 
 export interface PlatformCredential {
@@ -78,6 +126,18 @@ export function useTreasuryAccounts() {
 
 export function useTreasuryAdjustments() {
   return useQuery({ queryKey: ['provider-treasury', 'adjustments'], queryFn: () => request<TreasuryAdjustment[]>('/api/v2/admin/provider-treasury/adjustments') });
+}
+
+export function useProviderTestMerchants() {
+  return useQuery({ queryKey: ['provider-treasury', 'merchants'], queryFn: () => request<ProviderTestMerchant[]>('/api/v2/admin/provider-treasury/merchants') });
+}
+
+export function useProviderLiveTests() {
+  return useQuery({
+    queryKey: ['provider-treasury', 'live-tests'],
+    queryFn: () => request<ProviderLiveTest[]>('/api/v2/admin/provider-treasury/live-tests'),
+    refetchInterval: (query) => (query.state.data ?? []).some((row) => ['QUEUED', 'PROCESSING', 'PENDING_PROVIDER', 'PENDING_APPROVAL'].includes(row.status)) ? 3000 : false,
+  });
 }
 
 export function useSharedProviderEntitlements() {
@@ -120,10 +180,34 @@ export function useSetLowFloatThreshold() {
   });
 }
 
+export function useRefreshProviderBalance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => post<Partial<TreasuryAccount>>(`/api/v2/admin/provider-treasury/accounts/${id}/refresh-provider-balance`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-treasury', 'accounts'] }),
+  });
+}
+
 export function useReconcileTreasuryAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) => post<TreasuryAccount>(`/api/v2/admin/provider-treasury/accounts/${id}/reconcile`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-treasury'] }),
+  });
+}
+
+export function useCreateProviderLiveTest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => post<ProviderLiveTest>('/api/v2/admin/provider-treasury/live-tests', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-treasury'] }),
+  });
+}
+
+export function useApproveProviderLiveTest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) => post<ProviderLiveTest>(`/api/v2/admin/provider-treasury/live-tests/${id}/approve`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-treasury'] }),
   });
 }
