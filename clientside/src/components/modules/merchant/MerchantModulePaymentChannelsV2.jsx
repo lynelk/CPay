@@ -19,7 +19,26 @@ const FIELD_LABELS = {
   apiUser: 'API user',
   apiKey: 'API key',
   collectionAccount: 'Collection account',
+  baseUrl: 'MTN API base URL',
+  targetEnvironment: 'X-Target-Environment',
+  baseCurrency: 'MTN transaction currency',
+  callbackHost: 'Registered callback host',
+  callbackUrl: 'CPay callback URL',
+  collectionApiUser: 'Collection API user',
+  collectionApiKey: 'Collection API key',
+  collectionSubscriptionKey: 'Collection primary subscription key',
+  collectionSecondarySubscriptionKey: 'Collection secondary subscription key (optional)',
+  disbursementApiUser: 'Disbursement API user',
+  disbursementApiKey: 'Disbursement API key',
+  disbursementSubscriptionKey: 'Disbursement primary subscription key',
+  disbursementSecondarySubscriptionKey: 'Disbursement secondary subscription key (optional)',
 };
+
+const SECRET_FIELDS = new Set([
+  'authHeaderValue', 'consumerKey', 'consumerSecret', 'passKey', 'clientSecret', 'apiKey',
+  'collectionApiUser', 'collectionApiKey', 'collectionSubscriptionKey', 'collectionSecondarySubscriptionKey',
+  'disbursementApiUser', 'disbursementApiKey', 'disbursementSubscriptionKey', 'disbursementSecondarySubscriptionKey',
+]);
 
 const ENVIRONMENTS = [
   { id: 'SANDBOX', label: 'Sandbox', copy: 'Use guided credentials and deterministic test numbers.' },
@@ -150,6 +169,11 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
 
   fieldsFor(channelCode) {
     const base = ['collectUrl', 'payoutUrl', 'authHeaderName', 'authHeaderValue'];
+    if (channelCode === 'mtn_momo') return [
+      'baseUrl', 'targetEnvironment', 'baseCurrency', 'callbackHost', 'callbackUrl',
+      'collectionApiUser', 'collectionApiKey', 'collectionSubscriptionKey', 'collectionSecondarySubscriptionKey',
+      'disbursementApiUser', 'disbursementApiKey', 'disbursementSubscriptionKey', 'disbursementSecondarySubscriptionKey',
+    ];
     if (channelCode === 'safaricom_mpesa') return base.concat(['shortCode', 'consumerKey', 'consumerSecret', 'passKey']);
     if (channelCode === 'airtel_open_api') return base.concat(['clientId', 'clientSecret', 'subscriberMsisdn']);
     return base.concat(['apiUser', 'apiKey', 'collectionAccount']);
@@ -166,7 +190,13 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
 
   applySandboxCredentials() {
     if (!this.state.selected) return;
-    this.setState({ values: { ...(this.state.selected.sandboxCredentials || {}) }, message: 'Sandbox credentials loaded for local testing.' });
+    const isMtn = this.state.selected.channelCode === 'mtn_momo';
+    this.setState({
+      values: { ...(this.state.selected.sandboxCredentials || {}) },
+      message: isMtn
+        ? 'Official MTN sandbox defaults loaded. Add your provisioned Collection and Disbursement credentials before saving.'
+        : 'Sandbox credentials loaded for local testing.',
+    });
   }
 
   async save() {
@@ -300,7 +330,7 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
         <Toolbar>
           <div>
             <h3 className="ios-section-title" style={{ margin: 0 }}>{selected.displayName}</h3>
-            <p className="ios-channel-subtitle">{selected.countryCode} {selected.currencyCode} - {this.state.environment}</p>
+            <p className="ios-channel-subtitle">{selected.countryCode} {selected.channelCode === 'mtn_momo' && this.state.environment === 'SANDBOX' ? 'EUR' : selected.currencyCode} - {this.state.environment}</p>
           </div>
           <Toolbar.Spacer />
           <Badge tone={statusTone(selected.status)}>{selected.status || 'NOT_CONFIGURED'}</Badge>
@@ -309,9 +339,11 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
           <div className="ios-channel-sandbox-callout">
             <div>
               <strong>Guided sandbox mode</strong>
-              <span>Blank endpoints use CPay's deterministic simulator; add URLs only when testing your own callback receiver.</span>
+              <span>{selected.channelCode === 'mtn_momo'
+                ? 'Use EUR, X-Target-Environment sandbox, and separate Collection and Disbursement product credentials provisioned by MTN.'
+                : 'Blank endpoints use CPay\'s deterministic simulator; add URLs only when testing your own callback receiver.'}</span>
             </div>
-            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.applySandboxCredentials()}>Use sandbox credentials</Button>
+            <Button variant="ghost" className="ios-btn--sm" onClick={() => this.applySandboxCredentials()}>Load sandbox template</Button>
           </div>
         ) : null}
         <div className="ios-channel-form">
@@ -322,7 +354,8 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
               label={FIELD_LABELS[field] || field}
               value={this.state.values[field] || ''}
               onValueChange={(value) => this.update(field, value)}
-              autoComplete="off"
+              type={SECRET_FIELDS.has(field) ? 'password' : 'text'}
+              autoComplete={SECRET_FIELDS.has(field) ? 'new-password' : 'off'}
             />
           ))}
         </div>
@@ -362,7 +395,7 @@ class MerchantModulePaymentChannelsV2 extends React.Component {
                   onClick={() => this.select(channel)}
                 >
                   <strong>{channel.displayName}</strong>
-                  <span>{channel.countryCode} {channel.currencyCode} - {this.state.environment}</span>
+                  <span>{channel.countryCode} {channel.channelCode === 'mtn_momo' && this.state.environment === 'SANDBOX' ? 'EUR' : channel.currencyCode} - {this.state.environment}</span>
                   <Badge tone={statusTone(environmentChannel.status)}>{environmentChannel.status || 'NOT_CONFIGURED'}</Badge>
                 </button>
               );

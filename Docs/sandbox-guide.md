@@ -59,13 +59,16 @@ Use provider-appropriate EAC test numbers. Conventional sandbox MSISDNs:
 
 | Provider | Test MSISDN |
 | --- | --- |
-| MTN MoMo | `256771000001` |
+| MTN MoMo (CPay simulator) | `256771000001` |
+| MTN MoMo (official sandbox success) | Any number not reserved by MTN, for example `46733123499` |
 | Airtel Money | `256751000001` |
 | Safaricom M-Pesa | `254700000001` |
 | Yo! Payments | `256700000001` |
 
-Confirm exact test numbers with the provider sandbox documentation; these are the CPay
-example set.
+The CPay simulator examples are not provider-issued credentials or test accounts. In MTN's
+official sandbox, `46733123450` through the documented scenario range produce specific failure or
+pending outcomes; any other number succeeds. MTN sandbox requests use `EUR` and target environment
+`sandbox`. See `Docs/Api/mtn-momo-configuration.md` before switching from the simulator to MTN.
 
 ## 5. Available scenarios
 

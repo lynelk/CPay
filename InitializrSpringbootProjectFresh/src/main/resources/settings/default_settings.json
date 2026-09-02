@@ -443,28 +443,28 @@
   {
     "name": "float_stock_account",
     "label": "Float Stock Account",
-    "setting_value": "",
+    "setting_value": "CITO-FLOAT-STOCK",
     "setting_group": "Accounts",
     "description": "Merchant/account number used for float stock."
   },
   {
     "name": "revenue_account",
     "label": "Revenue Account",
-    "setting_value": "",
+    "setting_value": "CITO-GATEWAY-REVENUE",
     "setting_group": "Accounts",
     "description": "Merchant/account number used for revenue postings."
   },
   {
     "name": "suspense_account",
     "label": "Suspense Account",
-    "setting_value": "",
+    "setting_value": "CITO-GATEWAY-SUSPENSE",
     "setting_group": "Accounts",
     "description": "Merchant/account number used for suspense postings."
   },
   {
     "name": "sms_revenue_account",
     "label": "SMS Revenue Account",
-    "setting_value": "",
+    "setting_value": "CITO-SMS-REVENUE",
     "setting_group": "Accounts",
     "description": "Merchant/account number used for SMS revenue postings."
   },

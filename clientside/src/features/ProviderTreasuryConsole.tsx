@@ -72,7 +72,13 @@ export default function ProviderTreasuryConsole(): React.ReactElement {
   const [notice, setNotice] = useState('');
   const [adjustment, setAdjustment] = useState({ adjustmentType: 'CREDIT', sourceAccountId: '', destinationAccountId: '', amount: '', reason: '', externalReference: '', evidenceReference: '', valueDate: new Date().toISOString().slice(0, 10) });
   const [entitlement, setEntitlement] = useState({ merchantId: '', channelCode: 'airtel_money', environment: 'PRODUCTION', countryCode: 'UG', currencyCode: 'UGX', operation: 'COLLECT', perTransactionLimit: '', dailyLimit: '', notes: '' });
-  const [credential, setCredential] = useState({ channelCode: 'airtel_money', environment: 'PRODUCTION', countryCode: 'UG', currencyCode: 'UGX', collectUrl: '', payoutUrl: '', authHeaderName: '', authHeaderValue: '', tokenAlias: '' });
+  const [credential, setCredential] = useState({
+    channelCode: 'airtel_money', environment: 'PRODUCTION', countryCode: 'UG', currencyCode: 'UGX',
+    collectUrl: '', payoutUrl: '', authHeaderName: '', authHeaderValue: '', tokenAlias: '',
+    baseUrl: '', targetEnvironment: '', baseCurrency: 'UGX', callbackHost: '', callbackUrl: '',
+    collectionApiUser: '', collectionApiKey: '', collectionSubscriptionKey: '', collectionSecondarySubscriptionKey: '',
+    disbursementApiUser: '', disbursementApiKey: '', disbursementSubscriptionKey: '', disbursementSecondarySubscriptionKey: '',
+  });
 
   useEffect(() => {
     if (!isAuthenticated) navigate('/admin');
@@ -113,13 +119,29 @@ export default function ProviderTreasuryConsole(): React.ReactElement {
 
   const submitCredential = (event: FormEvent) => {
     event.preventDefault();
-    const providerCredentials: Record<string, string> = {
-      collectUrl: credential.collectUrl,
-      payoutUrl: credential.payoutUrl,
-    };
-    if (credential.authHeaderName) providerCredentials.authHeaderName = credential.authHeaderName;
-    if (credential.authHeaderValue) providerCredentials.authHeaderValue = credential.authHeaderValue;
-    if (credential.tokenAlias) providerCredentials.tokenAlias = credential.tokenAlias;
+    const providerCredentials: Record<string, string> = credential.channelCode === 'mtn_momo'
+      ? {
+        baseUrl: credential.baseUrl,
+        targetEnvironment: credential.targetEnvironment,
+        baseCurrency: credential.baseCurrency,
+        callbackHost: credential.callbackHost,
+        callbackUrl: credential.callbackUrl,
+        collectionApiUser: credential.collectionApiUser,
+        collectionApiKey: credential.collectionApiKey,
+        collectionSubscriptionKey: credential.collectionSubscriptionKey,
+        disbursementApiUser: credential.disbursementApiUser,
+        disbursementApiKey: credential.disbursementApiKey,
+        disbursementSubscriptionKey: credential.disbursementSubscriptionKey,
+      }
+      : { collectUrl: credential.collectUrl, payoutUrl: credential.payoutUrl };
+    if (credential.channelCode === 'mtn_momo') {
+      if (credential.collectionSecondarySubscriptionKey) providerCredentials.collectionSecondarySubscriptionKey = credential.collectionSecondarySubscriptionKey;
+      if (credential.disbursementSecondarySubscriptionKey) providerCredentials.disbursementSecondarySubscriptionKey = credential.disbursementSecondarySubscriptionKey;
+    } else {
+      if (credential.authHeaderName) providerCredentials.authHeaderName = credential.authHeaderName;
+      if (credential.authHeaderValue) providerCredentials.authHeaderValue = credential.authHeaderValue;
+      if (credential.tokenAlias) providerCredentials.tokenAlias = credential.tokenAlias;
+    }
     saveCredential.mutate({
       channelCode: credential.channelCode,
       environment: credential.environment,
@@ -131,6 +153,7 @@ export default function ProviderTreasuryConsole(): React.ReactElement {
 
   const accountColumns = [
     { key: 'provider', header: 'Provider', render: (row: TreasuryAccount) => <strong>{row.channelCode}</strong> },
+    { key: 'account', header: 'Account', render: (row: TreasuryAccount) => <span>{row.accountRole}{row.prefundRequired === 'YES' ? ' · prefund' : ''}</span> },
     { key: 'scope', header: 'Scope', render: (row: TreasuryAccount) => `${row.environment} · ${row.countryCode} · ${row.currencyCode}` },
     { key: 'book', header: 'Book', render: (row: TreasuryAccount) => money(row.bookBalance, row.currencyCode) },
     { key: 'reserved', header: 'Reserved', render: (row: TreasuryAccount) => money(row.reservedBalance, row.currencyCode) },
@@ -220,8 +243,8 @@ export default function ProviderTreasuryConsole(): React.ReactElement {
         <Card>
           <form onSubmit={submitAdjustment} style={gridStyle}>
             <label>Action<select style={fieldStyle} value={adjustment.adjustmentType} onChange={(e) => setAdjustment({ ...adjustment, adjustmentType: e.target.value })}><option>CREDIT</option><option>DEBIT</option><option>REBALANCE</option></select></label>
-            <label>Source account<select style={fieldStyle} value={adjustment.sourceAccountId} onChange={(e) => setAdjustment({ ...adjustment, sourceAccountId: e.target.value })}><option value="">External / none</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.id} · {a.channelCode} · {a.currencyCode}</option>)}</select></label>
-            <label>Destination account<select style={fieldStyle} value={adjustment.destinationAccountId} onChange={(e) => setAdjustment({ ...adjustment, destinationAccountId: e.target.value })}><option value="">External / none</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.id} · {a.channelCode} · {a.currencyCode}</option>)}</select></label>
+            <label>Source account<select style={fieldStyle} value={adjustment.sourceAccountId} onChange={(e) => setAdjustment({ ...adjustment, sourceAccountId: e.target.value })}><option value="">External / none</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.id} · {a.channelCode} · {a.accountRole} · {a.currencyCode}</option>)}</select></label>
+            <label>Destination account<select style={fieldStyle} value={adjustment.destinationAccountId} onChange={(e) => setAdjustment({ ...adjustment, destinationAccountId: e.target.value })}><option value="">External / none</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.id} · {a.channelCode} · {a.accountRole} · {a.currencyCode}</option>)}</select></label>
             <label>Amount<input required style={fieldStyle} inputMode="decimal" value={adjustment.amount} onChange={(e) => setAdjustment({ ...adjustment, amount: e.target.value })} /></label>
             <label>Reason<input required style={fieldStyle} value={adjustment.reason} onChange={(e) => setAdjustment({ ...adjustment, reason: e.target.value })} /></label>
             <label>Bank/provider reference<input required style={fieldStyle} value={adjustment.externalReference} onChange={(e) => setAdjustment({ ...adjustment, externalReference: e.target.value })} /></label>
@@ -255,15 +278,37 @@ export default function ProviderTreasuryConsole(): React.ReactElement {
         <Card>
           <p style={{ color: 'var(--ios-secondary)' }}>Secrets are encrypted at rest. After save, only masked values are returned. Credential editor and approver must be different operators.</p>
           <form onSubmit={submitCredential} style={gridStyle}>
-            <label>Channel<select style={fieldStyle} value={credential.channelCode} onChange={(e) => setCredential({ ...credential, channelCode: e.target.value })}><option value="airtel_money">Airtel Money</option><option value="airtel_open_api">Airtel Open API</option><option value="mtn_momo">MTN MoMo</option><option value="safaricom_mpesa">Safaricom M-Pesa</option></select></label>
-            <label>Environment<select style={fieldStyle} value={credential.environment} onChange={(e) => setCredential({ ...credential, environment: e.target.value })}><option>PRODUCTION</option><option>SANDBOX</option></select></label>
+            <label>Channel<select style={fieldStyle} value={credential.channelCode} onChange={(e) => {
+              const channelCode = e.target.value;
+              setCredential({ ...credential, channelCode, ...(channelCode === 'mtn_momo' ? { baseCurrency: credential.environment === 'SANDBOX' ? 'EUR' : 'UGX', currencyCode: credential.environment === 'SANDBOX' ? 'EUR' : 'UGX', baseUrl: credential.environment === 'SANDBOX' ? 'https://sandbox.momodeveloper.mtn.com' : '', targetEnvironment: credential.environment === 'SANDBOX' ? 'sandbox' : 'mtnuganda' } : {}) });
+            }}><option value="airtel_money">Airtel Money</option><option value="airtel_open_api">Airtel Open API</option><option value="mtn_momo">MTN MoMo</option><option value="safaricom_mpesa">Safaricom M-Pesa</option></select></label>
+            <label>Environment<select style={fieldStyle} value={credential.environment} onChange={(e) => {
+              const environment = e.target.value;
+              setCredential({ ...credential, environment, ...(credential.channelCode === 'mtn_momo' ? { baseCurrency: environment === 'SANDBOX' ? 'EUR' : 'UGX', currencyCode: environment === 'SANDBOX' ? 'EUR' : 'UGX', baseUrl: environment === 'SANDBOX' ? 'https://sandbox.momodeveloper.mtn.com' : '', targetEnvironment: environment === 'SANDBOX' ? 'sandbox' : 'mtnuganda' } : {}) });
+            }}><option>PRODUCTION</option><option>SANDBOX</option></select></label>
             <label>Country<input required style={fieldStyle} value={credential.countryCode} onChange={(e) => setCredential({ ...credential, countryCode: e.target.value.toUpperCase() })} /></label>
             <label>Currency<input required style={fieldStyle} value={credential.currencyCode} onChange={(e) => setCredential({ ...credential, currencyCode: e.target.value.toUpperCase() })} /></label>
-            <label>Collect URL<input required={credential.environment === 'PRODUCTION'} style={fieldStyle} value={credential.collectUrl} onChange={(e) => setCredential({ ...credential, collectUrl: e.target.value })} /></label>
-            <label>Payout URL<input required={credential.environment === 'PRODUCTION'} style={fieldStyle} value={credential.payoutUrl} onChange={(e) => setCredential({ ...credential, payoutUrl: e.target.value })} /></label>
-            <label>Auth header name<input style={fieldStyle} value={credential.authHeaderName} onChange={(e) => setCredential({ ...credential, authHeaderName: e.target.value })} /></label>
-            <label>Auth header value<input type="password" style={fieldStyle} value={credential.authHeaderValue} onChange={(e) => setCredential({ ...credential, authHeaderValue: e.target.value })} /></label>
-            <label>Token alias<input style={fieldStyle} value={credential.tokenAlias} onChange={(e) => setCredential({ ...credential, tokenAlias: e.target.value })} /></label>
+            {credential.channelCode === 'mtn_momo' ? <>
+              <label>MTN API base URL<input required type="url" style={fieldStyle} value={credential.baseUrl} onChange={(e) => setCredential({ ...credential, baseUrl: e.target.value })} /></label>
+              <label>X-Target-Environment<input required style={fieldStyle} value={credential.targetEnvironment} onChange={(e) => setCredential({ ...credential, targetEnvironment: e.target.value })} /></label>
+              <label>MTN base currency<input required style={fieldStyle} value={credential.baseCurrency} onChange={(e) => setCredential({ ...credential, baseCurrency: e.target.value.toUpperCase() })} /></label>
+              <label>Registered callback host<input required placeholder="payments.example.com" style={fieldStyle} value={credential.callbackHost} onChange={(e) => setCredential({ ...credential, callbackHost: e.target.value })} /></label>
+              <label>CPay callback URL<input required type="url" style={fieldStyle} value={credential.callbackUrl} onChange={(e) => setCredential({ ...credential, callbackUrl: e.target.value })} /></label>
+              <label>Collection API user<input required type="password" autoComplete="new-password" style={fieldStyle} value={credential.collectionApiUser} onChange={(e) => setCredential({ ...credential, collectionApiUser: e.target.value })} /></label>
+              <label>Collection API key<input required type="password" autoComplete="new-password" style={fieldStyle} value={credential.collectionApiKey} onChange={(e) => setCredential({ ...credential, collectionApiKey: e.target.value })} /></label>
+              <label>Collection primary subscription key<input required type="password" autoComplete="new-password" style={fieldStyle} value={credential.collectionSubscriptionKey} onChange={(e) => setCredential({ ...credential, collectionSubscriptionKey: e.target.value })} /></label>
+              <label>Collection secondary key<input type="password" autoComplete="new-password" style={fieldStyle} value={credential.collectionSecondarySubscriptionKey} onChange={(e) => setCredential({ ...credential, collectionSecondarySubscriptionKey: e.target.value })} /></label>
+              <label>Disbursement API user<input required type="password" autoComplete="new-password" style={fieldStyle} value={credential.disbursementApiUser} onChange={(e) => setCredential({ ...credential, disbursementApiUser: e.target.value })} /></label>
+              <label>Disbursement API key<input required type="password" autoComplete="new-password" style={fieldStyle} value={credential.disbursementApiKey} onChange={(e) => setCredential({ ...credential, disbursementApiKey: e.target.value })} /></label>
+              <label>Disbursement primary subscription key<input required type="password" autoComplete="new-password" style={fieldStyle} value={credential.disbursementSubscriptionKey} onChange={(e) => setCredential({ ...credential, disbursementSubscriptionKey: e.target.value })} /></label>
+              <label>Disbursement secondary key<input type="password" autoComplete="new-password" style={fieldStyle} value={credential.disbursementSecondarySubscriptionKey} onChange={(e) => setCredential({ ...credential, disbursementSecondarySubscriptionKey: e.target.value })} /></label>
+            </> : <>
+              <label>Collect URL<input required={credential.environment === 'PRODUCTION'} style={fieldStyle} value={credential.collectUrl} onChange={(e) => setCredential({ ...credential, collectUrl: e.target.value })} /></label>
+              <label>Payout URL<input required={credential.environment === 'PRODUCTION'} style={fieldStyle} value={credential.payoutUrl} onChange={(e) => setCredential({ ...credential, payoutUrl: e.target.value })} /></label>
+              <label>Auth header name<input style={fieldStyle} value={credential.authHeaderName} onChange={(e) => setCredential({ ...credential, authHeaderName: e.target.value })} /></label>
+              <label>Auth header value<input type="password" style={fieldStyle} value={credential.authHeaderValue} onChange={(e) => setCredential({ ...credential, authHeaderValue: e.target.value })} /></label>
+              <label>Token alias<input style={fieldStyle} value={credential.tokenAlias} onChange={(e) => setCredential({ ...credential, tokenAlias: e.target.value })} /></label>
+            </>}
             <Button variant="primary" type="submit" disabled={saveCredential.isPending}>Save encrypted credential</Button>
           </form>
         </Card>
