@@ -84,11 +84,6 @@ public final class MtnMomoCredentialSchema {
     }
 
     public static String endpoint(Map<String, String> credentials, String operation) {
-        String explicit =
-                "PAYOUT".equalsIgnoreCase(operation)
-                        ? credentials.get("payoutUrl")
-                        : credentials.get("collectUrl");
-        if (!blank(explicit)) return explicit.trim();
         String base = value(credentials, "baseUrl").replaceAll("/+$", "");
         return "PAYOUT".equalsIgnoreCase(operation)
                 ? base + "/disbursement/v1_0/transfer"

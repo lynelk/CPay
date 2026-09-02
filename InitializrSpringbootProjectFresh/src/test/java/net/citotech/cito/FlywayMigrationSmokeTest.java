@@ -41,7 +41,7 @@ class FlywayMigrationSmokeTest {
         assertTrue(result.migrationsExecuted > 0, "A clean schema must execute migrations");
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
-            assertEquals("112", latestSuccessfulVersion(connection));
+            assertEquals("113", latestSuccessfulVersion(connection));
             assertEquals(4, auditProtectionTriggerCount(connection));
             assertEquals(5, treasuryAccountRoleCount(connection, "MASTER"));
             assertEquals(5, treasuryAccountRoleCount(connection, "COLLECTION"));
@@ -49,6 +49,11 @@ class FlywayMigrationSmokeTest {
             assertEquals(3, mtnScopeAccountCount(connection, "PRODUCTION", "UGX"));
             assertEquals(3, mtnScopeAccountCount(connection, "SANDBOX", "EUR"));
             assertEquals(0, nonZeroSeededTreasuryAccountCount(connection));
+            assertEquals(4, defaultOperationalMerchantCount(connection));
+            assertEquals(4, configuredOperationalSettingCount(connection));
+            assertEquals(20, defaultOperationalChannelBalanceCount(connection));
+            assertEquals(0, defaultOperationalMerchantUserCount(connection));
+            assertEquals(0, nonZeroDefaultOperationalBalanceCount(connection));
         }
     }
 
@@ -118,6 +123,60 @@ class FlywayMigrationSmokeTest {
                                         + "OR pending_outgoing_balance<>0 OR pending_incoming_balance<>0");
                 ResultSet resultSet = statement.executeQuery()) {
             assertTrue(resultSet.next(), "Seeded treasury balance count must return a row");
+            return resultSet.getInt(1);
+        }
+    }
+
+    private static int defaultOperationalMerchantCount(Connection connection) throws SQLException {
+        return scalarCount(
+                connection,
+                "SELECT COUNT(*) FROM merchants WHERE account_number IN "
+                        + "('CITO-FLOAT-STOCK','CITO-GATEWAY-REVENUE','CITO-GATEWAY-SUSPENSE','CITO-SMS-REVENUE')");
+    }
+
+    private static int configuredOperationalSettingCount(Connection connection)
+            throws SQLException {
+        return scalarCount(
+                connection,
+                "SELECT COUNT(*) FROM settings WHERE "
+                        + "(name='float_stock_account' AND setting_value='CITO-FLOAT-STOCK') OR "
+                        + "(name='revenue_account' AND setting_value='CITO-GATEWAY-REVENUE') OR "
+                        + "(name='suspense_account' AND setting_value='CITO-GATEWAY-SUSPENSE') OR "
+                        + "(name='sms_revenue_account' AND setting_value='CITO-SMS-REVENUE')");
+    }
+
+    private static int defaultOperationalChannelBalanceCount(Connection connection)
+            throws SQLException {
+        return scalarCount(
+                connection,
+                "SELECT COUNT(*) FROM merchant_channel_balances b JOIN merchants m ON m.id=b.merchant_id "
+                        + "WHERE m.account_number IN "
+                        + "('CITO-FLOAT-STOCK','CITO-GATEWAY-REVENUE','CITO-GATEWAY-SUSPENSE','CITO-SMS-REVENUE')");
+    }
+
+    private static int defaultOperationalMerchantUserCount(Connection connection)
+            throws SQLException {
+        return scalarCount(
+                connection,
+                "SELECT COUNT(*) FROM merchant_admins ma JOIN merchants m ON m.id=ma.merchant_id "
+                        + "WHERE m.account_number IN "
+                        + "('CITO-FLOAT-STOCK','CITO-GATEWAY-REVENUE','CITO-GATEWAY-SUSPENSE','CITO-SMS-REVENUE')");
+    }
+
+    private static int nonZeroDefaultOperationalBalanceCount(Connection connection)
+            throws SQLException {
+        return scalarCount(
+                connection,
+                "SELECT COUNT(*) FROM merchant_channel_balances b JOIN merchants m ON m.id=b.merchant_id "
+                        + "WHERE m.account_number IN "
+                        + "('CITO-FLOAT-STOCK','CITO-GATEWAY-REVENUE','CITO-GATEWAY-SUSPENSE','CITO-SMS-REVENUE') "
+                        + "AND (b.available_balance<>0 OR b.ledger_balance<>0 OR b.pending_balance<>0)");
+    }
+
+    private static int scalarCount(Connection connection, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet resultSet = statement.executeQuery()) {
+            assertTrue(resultSet.next(), "Count query must return a row");
             return resultSet.getInt(1);
         }
     }

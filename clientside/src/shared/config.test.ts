@@ -11,6 +11,10 @@ describe('apiUrl', () => {
     expect(apiUrl('/api/ui/auth/authenticate')).toBe('/api/ui/auth/authenticate');
   });
 
+  it('preserves public gateway paths below /api', () => {
+    expect(apiUrl('/api/v2/payments/collect')).toBe('/api/v2/payments/collect');
+  });
+
   it('preserves absolute URLs', () => {
     expect(apiUrl('https://example.com/status')).toBe('https://example.com/status');
   });

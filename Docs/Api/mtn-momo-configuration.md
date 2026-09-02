@@ -77,6 +77,24 @@ shared-provider payouts, post a maker-checker `CREDIT` adjustment to the applica
 `DISBURSEMENT` sub-account using the bank/provider funding reference and evidence. Reconcile each
 operational sub-account independently to the matching provider product statement.
 
+### Core application operational accounts
+
+The application also retains four merchant-shaped internal accounts because established posting,
+reversal, reporting, and SMS workflows resolve these settings to `Merchant` records. Migration
+V113 creates them without users, keys, API permissions, or opening funds:
+
+| Setting | Default account | Purpose |
+| --- | --- | --- |
+| `float_stock_account` | `CITO-FLOAT-STOCK` | Compatibility float/stock postings |
+| `revenue_account` | `CITO-GATEWAY-REVENUE` | Gateway fee revenue |
+| `suspense_account` | `CITO-GATEWAY-SUSPENSE` | Pending and ambiguous postings |
+| `sms_revenue_account` | `CITO-SMS-REVENUE` | SMS revenue |
+
+These are not substitutes for the provider product sub-accounts. MTN provider money and
+reconciliation remain separated under the MTN `COLLECTION` and `DISBURSEMENT` treasury accounts.
+All seeded balances are zero. Fund only through an approved, evidenced posting after the matching
+provider wallet is active; never update balance columns directly.
+
 ## Activation checklist
 
 1. Subscribe to both Collection and Disbursement in the correct MTN environment.

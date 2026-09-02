@@ -51,16 +51,16 @@ public final class SettingsRegistry {
         register("use_merchant_provider_credentials", SettingType.BOOLEAN, "false", "gateway",
             "When true, merchants use their own configured provider credentials and channel "
                 + "accounts instead of the shared float/suspense/revenue accounts below.");
-        register("float_stock_account", SettingType.STRING, "", "ledger",
+        register("float_stock_account", SettingType.STRING, "CITO-FLOAT-STOCK", "ledger",
             "Merchant account number used as the shared float/stock account for gateway fund "
                 + "postings when use_merchant_provider_credentials is false.");
-        register("suspense_account", SettingType.STRING, "", "ledger",
+        register("suspense_account", SettingType.STRING, "CITO-GATEWAY-SUSPENSE", "ledger",
             "Merchant account number used as the shared suspense account for in-flight gateway "
                 + "postings when use_merchant_provider_credentials is false.");
-        register("revenue_account", SettingType.STRING, "", "ledger",
+        register("revenue_account", SettingType.STRING, "CITO-GATEWAY-REVENUE", "ledger",
             "Merchant account number used as the shared revenue account for gateway fee postings "
                 + "when use_merchant_provider_credentials is false.");
-        register("sms_revenue_account", SettingType.STRING, "", "ledger",
+        register("sms_revenue_account", SettingType.STRING, "CITO-SMS-REVENUE", "ledger",
             "Merchant account number credited for SMS gateway revenue.");
 
         // Gateway mode / simulation toggles (DoPayGateway.java, StartupApplicationListener.java).

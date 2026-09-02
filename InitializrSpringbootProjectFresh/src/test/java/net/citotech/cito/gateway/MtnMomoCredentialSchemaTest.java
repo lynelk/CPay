@@ -1,7 +1,8 @@
 package net.citotech.cito.gateway;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,6 +43,20 @@ class MtnMomoCredentialSchemaTest {
                                         credentials, "SANDBOX", "UG", "EUR"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("must match");
+    }
+
+    @Test
+    void derivesOfficialProductPathsAndIgnoresGenericEndpointOverrides() {
+        Map<String, String> values = new LinkedHashMap<>();
+        values.put("baseUrl", "https://sandbox.momodeveloper.mtn.com/");
+        values.put("collectUrl", "https://untrusted.example/requesttopay");
+        values.put("payoutUrl", "https://untrusted.example/transfer");
+
+        assertThat(MtnMomoCredentialSchema.endpoint(values, "COLLECT"))
+                .isEqualTo(
+                        "https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay");
+        assertThat(MtnMomoCredentialSchema.endpoint(values, "PAYOUT"))
+                .isEqualTo("https://sandbox.momodeveloper.mtn.com/disbursement/v1_0/transfer");
     }
 
     private Map<String, Object> credentials() {
