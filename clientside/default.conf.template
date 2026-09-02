@@ -65,6 +65,17 @@ server {
         proxy_pass http://cito-backend/status/health;
     }
 
+    # Preserve the legacy public backend health URL without capturing the
+    # customer-facing React Router /status page.
+    location = /status/health {
+        access_log off;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 5s;
+        proxy_pass http://cito-backend/status/health;
+    }
+
     # Public CPay gateway. Preserve /api because the backend already exposes
     # versioned contracts such as /api/v1 and /api/v2. This avoids breaking
     # existing merchant integrations during the single-domain cutover.
@@ -84,7 +95,7 @@ server {
     # Temporary compatibility for older clients/bookmarks that called backend
     # controller families directly on the UI origin. New browser traffic uses
     # /api/ui while external integrations continue to use /api.
-    location ~ ^/(auth|admins|merchants|settings|audittrail|transactions|actuator|status|v3|swagger-ui)(/|$) {
+    location ~ ^/(auth|admins|merchants|settings|audittrail|transactions|actuator|v3|swagger-ui)(/|$) {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
