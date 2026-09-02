@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   iso-governance:
@@ -84,5 +84,20 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      - name: Apply canonical Java formatting (temporary)
+        if: github.event_name == 'push'
+        env:
+          FORMAT_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mvn -B spotless:apply --no-transfer-progress
+          if git diff --quiet -- src/main/java src/test/java; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/main/java src/test/java
+          git commit -m "style: apply canonical Java formatting"
+          git push origin "HEAD:${FORMAT_BRANCH}"
       - name: Compile, test, package and enforce formatting
         run: mvn -B verify --no-transfer-progress -Dspring.flyway.enabled=false
