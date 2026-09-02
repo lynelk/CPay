@@ -1,22 +1,19 @@
 package net.citotech.cito.merchant;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.MerchantUser;
 import net.citotech.cito.gateway.MtnMomoCredentialSchema;
 import net.citotech.cito.gateway.PaymentChannelAdapter;
 import net.citotech.cito.gateway.PaymentChannelRegistry;
 import net.citotech.cito.gateway.PaymentGatewayException;
-
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class MerchantChannelCredentialService {
@@ -167,12 +164,12 @@ public class MerchantChannelCredentialService {
         p.addValue("actor", user.getEmail());
         String sql =
                 "INSERT INTO merchant_channel_credentials (merchant_id, channel_code, environment,"
-                    + " display_name, credential_payload, credential_mask, status, created_by,"
-                    + " updated_by) VALUES (:merchant_id, :channel_code, :environment,"
-                    + " :display_name, :credential_payload, :credential_mask, :status, :actor,"
-                    + " :actor) ON DUPLICATE KEY UPDATE display_name=:display_name,"
-                    + " credential_payload=:credential_payload, credential_mask=:credential_mask,"
-                    + " status=:status, updated_by=:actor, updated_at=CURRENT_TIMESTAMP";
+                        + " display_name, credential_payload, credential_mask, status, created_by,"
+                        + " updated_by) VALUES (:merchant_id, :channel_code, :environment,"
+                        + " :display_name, :credential_payload, :credential_mask, :status, :actor,"
+                        + " :actor) ON DUPLICATE KEY UPDATE display_name=:display_name,"
+                        + " credential_payload=:credential_payload, credential_mask=:credential_mask,"
+                        + " status=:status, updated_by=:actor, updated_at=CURRENT_TIMESTAMP";
         jdbcTemplate.update(sql, p);
         audit(
                 user.getMerchant_id(),
@@ -211,9 +208,9 @@ public class MerchantChannelCredentialService {
                         + "; no provider request was sent");
         jdbcTemplate.update(
                 "UPDATE merchant_channel_credentials SET status=:status,"
-                    + " last_test_status=:test_status, last_test_message=:message,"
-                    + " last_tested_at=CURRENT_TIMESTAMP WHERE merchant_id=:merchant_id AND"
-                    + " channel_code=:channel_code AND environment=:environment",
+                        + " last_test_status=:test_status, last_test_message=:message,"
+                        + " last_tested_at=CURRENT_TIMESTAMP WHERE merchant_id=:merchant_id AND"
+                        + " channel_code=:channel_code AND environment=:environment",
                 p);
         audit(
                 user.getMerchant_id(),
@@ -234,9 +231,9 @@ public class MerchantChannelCredentialService {
         int updated =
                 jdbcTemplate.update(
                         "UPDATE merchant_channel_credentials SET status='SUBMITTED_FOR_APPROVAL',"
-                            + " submitted_for_approval_at=CURRENT_TIMESTAMP, updated_by=:actor"
-                            + " WHERE merchant_id=:merchant_id AND channel_code=:channel_code AND"
-                            + " environment=:environment",
+                                + " submitted_for_approval_at=CURRENT_TIMESTAMP, updated_by=:actor"
+                                + " WHERE merchant_id=:merchant_id AND channel_code=:channel_code AND"
+                                + " environment=:environment",
                         p.addValue("actor", user.getEmail()));
         if (updated < 1)
             throw new PaymentGatewayException("Channel credentials are not configured");
@@ -290,8 +287,8 @@ public class MerchantChannelCredentialService {
             Long merchantId, String channelCode, String environment) {
         String sql =
                 "SELECT credential_payload FROM merchant_channel_credentials WHERE"
-                    + " merchant_id=:merchant_id AND channel_code=:channel_code AND"
-                    + " environment=:environment LIMIT 1";
+                        + " merchant_id=:merchant_id AND channel_code=:channel_code AND"
+                        + " environment=:environment LIMIT 1";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("merchant_id", merchantId);
         p.addValue("channel_code", channelCode);
@@ -303,10 +300,10 @@ public class MerchantChannelCredentialService {
     private Map<String, Object> find(Long merchantId, String channelCode, String environment) {
         String sql =
                 "SELECT channel_code, environment, display_name, credential_mask, status,"
-                    + " last_test_status, last_test_message, last_tested_at,"
-                    + " submitted_for_approval_at, approved_by, approved_at FROM"
-                    + " merchant_channel_credentials WHERE merchant_id=:merchant_id AND"
-                    + " channel_code=:channel_code AND environment=:environment LIMIT 1";
+                        + " last_test_status, last_test_message, last_tested_at,"
+                        + " submitted_for_approval_at, approved_by, approved_at FROM"
+                        + " merchant_channel_credentials WHERE merchant_id=:merchant_id AND"
+                        + " channel_code=:channel_code AND environment=:environment LIMIT 1";
         List<Map<String, Object>> rows =
                 jdbcTemplate.query(
                         sql,
@@ -398,8 +395,8 @@ public class MerchantChannelCredentialService {
         p.addValue("message", message);
         jdbcTemplate.update(
                 "INSERT INTO merchant_channel_audit_events (merchant_id, channel_code, environment,"
-                    + " action, actor, message) VALUES (:merchant_id, :channel_code, :environment,"
-                    + " :action, :actor, :message)",
+                        + " action, actor, message) VALUES (:merchant_id, :channel_code, :environment,"
+                        + " :action, :actor, :message)",
                 p);
     }
 

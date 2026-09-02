@@ -9,13 +9,6 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-
-import net.citotech.cito.Model.GateWayResponse;
-
-import org.json.JSONObject;
-import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -25,6 +18,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import net.citotech.cito.Model.GateWayResponse;
+import org.json.JSONObject;
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 class MtnMomoExecutionTest {
 

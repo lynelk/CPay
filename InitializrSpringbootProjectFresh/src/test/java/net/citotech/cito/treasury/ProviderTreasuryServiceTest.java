@@ -9,19 +9,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.gateway.PaymentGatewayException;
 import net.citotech.cito.sharedprovider.SharedProviderAccessService;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
 
 class ProviderTreasuryServiceTest {
     private NamedParameterJdbcTemplate jdbc;

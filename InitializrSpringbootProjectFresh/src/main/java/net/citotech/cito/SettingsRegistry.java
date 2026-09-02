@@ -1,9 +1,5 @@
 package net.citotech.cito;
 
-import net.citotech.cito.Model.Setting;
-
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,6 +7,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.citotech.cito.Model.Setting;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 /**
  * Typed, self-documenting registry over the generic {@code settings} table (audit O5). The {@code
@@ -76,7 +74,7 @@ public final class SettingsRegistry {
                 "CITO-GATEWAY-REVENUE",
                 "ledger",
                 "Merchant account number used as the shared revenue account for gateway fee"
-                    + " postings when use_merchant_provider_credentials is false.");
+                        + " postings when use_merchant_provider_credentials is false.");
         register(
                 "sms_revenue_account",
                 SettingType.STRING,
@@ -105,14 +103,14 @@ public final class SettingsRegistry {
                 "false",
                 "gateway",
                 "When true, Airtel Money transactions are routed through the Airtel OpenAPI adapter"
-                    + " instead of the legacy Airtel Money API.");
+                        + " instead of the legacy Airtel Money API.");
         register(
                 "gw_mtn_api_env",
                 SettingType.STRING,
                 "sandbox",
                 "gateway",
                 "MTN MoMo API environment selector used to pick which gw_mtn_api_* credential set"
-                    + " to use ('mtnuganda' for production, anything else falls back to sandbox).");
+                        + " to use ('mtnuganda' for production, anything else falls back to sandbox).");
         register(
                 "gw_safaricom_api_version",
                 SettingType.STRING,
@@ -141,14 +139,14 @@ public final class SettingsRegistry {
                 "https://sandbox.cpay.example",
                 "merchant",
                 "Base URL shown to merchants in the developer sandbox guide for sandbox-environment"
-                    + " API calls.");
+                        + " API calls.");
         register(
                 "developer_production_base_url",
                 SettingType.STRING,
                 "https://api.cpay.example",
                 "merchant",
                 "Base URL shown to merchants in the developer sandbox guide for"
-                    + " production-environment API calls.");
+                        + " production-environment API calls.");
         register(
                 "developer_sandbox_merchant_number",
                 SettingType.STRING,

@@ -1,14 +1,5 @@
 package net.citotech.cito.gateway;
 
-import net.citotech.cito.Common;
-import net.citotech.cito.Model.GateWayResponse;
-import net.citotech.cito.Model.HttpRequestResponse;
-
-import org.json.JSONObject;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Service;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -17,6 +8,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import net.citotech.cito.Common;
+import net.citotech.cito.Model.GateWayResponse;
+import net.citotech.cito.Model.HttpRequestResponse;
+import org.json.JSONObject;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ProviderEndpointExecutionService {
@@ -139,7 +137,7 @@ public class ProviderEndpointExecutionService {
                     runStatus = "SIGNATURE_INVALID";
                     recordMessage =
                             "Provider response signature verification failed - response rejected as"
-                                + " untrusted";
+                                    + " untrusted";
                 }
             }
 
@@ -445,8 +443,8 @@ public class ProviderEndpointExecutionService {
         try {
             jdbcTemplate.update(
                     "INSERT INTO provider_conversation_references (provider_code, conversation_id,"
-                        + " tx_reference) VALUES (:provider,:conversation,:reference) ON DUPLICATE"
-                        + " KEY UPDATE tx_reference=:reference",
+                            + " tx_reference) VALUES (:provider,:conversation,:reference) ON DUPLICATE"
+                            + " KEY UPDATE tx_reference=:reference",
                     new MapSqlParameterSource()
                             .addValue("provider", MtnMomoCredentialSchema.CHANNEL_CODE)
                             .addValue("conversation", providerReference)
@@ -494,10 +492,10 @@ public class ProviderEndpointExecutionService {
             String message) {
         String sql =
                 "INSERT INTO provider_endpoint_runs (channel_code, operation_name, reference_value,"
-                    + " endpoint_url, http_status, request_hash, response_summary, run_status,"
-                    + " merchant_number, environment) VALUES (:channel_code, :operation_name,"
-                    + " :reference_value, :endpoint_url, :http_status, :request_hash,"
-                    + " :response_summary, :run_status, :merchant_number, :environment)";
+                        + " endpoint_url, http_status, request_hash, response_summary, run_status,"
+                        + " merchant_number, environment) VALUES (:channel_code, :operation_name,"
+                        + " :reference_value, :endpoint_url, :http_status, :request_hash,"
+                        + " :response_summary, :run_status, :merchant_number, :environment)";
         MapSqlParameterSource p = new MapSqlParameterSource();
         p.addValue("channel_code", channelCode);
         p.addValue("operation_name", operation);

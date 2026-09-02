@@ -1,13 +1,5 @@
 package net.citotech.cito.Model;
 
-import net.citotech.cito.Common;
-import net.citotech.cito.SettingsController;
-import net.citotech.cito.gateway.ProviderToken;
-import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -21,6 +13,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.citotech.cito.Common;
+import net.citotech.cito.SettingsController;
+import net.citotech.cito.gateway.ProviderToken;
+import net.citotech.cito.gateway.ProviderTokenStoreRegistry;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * @author josephtabajjwa

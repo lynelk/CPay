@@ -1,15 +1,5 @@
 package net.citotech.cito.treasury;
 
-import net.citotech.cito.Model.Merchant;
-import net.citotech.cito.gateway.PaymentGatewayException;
-import net.citotech.cito.sharedprovider.SharedProviderAccessService.CredentialContext;
-
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +11,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import net.citotech.cito.Model.Merchant;
+import net.citotech.cito.gateway.PaymentGatewayException;
+import net.citotech.cito.sharedprovider.SharedProviderAccessService.CredentialContext;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Authoritative accounting service for CPay-owned provider float.
@@ -44,18 +42,18 @@ public class ProviderTreasuryService {
         List<Map<String, Object>> rows =
                 jdbc.queryForList(
                         "SELECT id, channel_code AS channelCode, environment, country_code AS"
-                            + " countryCode, currency_code AS currencyCode, account_role AS"
-                            + " accountRole, display_name AS displayName, parent_account_id AS"
-                            + " parentAccountId, prefund_required AS prefundRequired, book_balance"
-                            + " AS bookBalance, reserved_balance AS reservedBalance,"
-                            + " pending_outgoing_balance AS pendingOutgoingBalance,"
-                            + " pending_incoming_balance AS pendingIncomingBalance,"
-                            + " provider_reported_balance AS providerReportedBalance,"
-                            + " low_float_threshold AS lowFloatThreshold, reconciliation_state AS"
-                            + " reconciliationState, updated_at AS updatedAt FROM"
-                            + " provider_treasury_accounts ORDER BY environment, country_code,"
-                            + " currency_code, channel_code,"
-                            + " FIELD(account_role,'MASTER','COLLECTION','DISBURSEMENT')",
+                                + " countryCode, currency_code AS currencyCode, account_role AS"
+                                + " accountRole, display_name AS displayName, parent_account_id AS"
+                                + " parentAccountId, prefund_required AS prefundRequired, book_balance"
+                                + " AS bookBalance, reserved_balance AS reservedBalance,"
+                                + " pending_outgoing_balance AS pendingOutgoingBalance,"
+                                + " pending_incoming_balance AS pendingIncomingBalance,"
+                                + " provider_reported_balance AS providerReportedBalance,"
+                                + " low_float_threshold AS lowFloatThreshold, reconciliation_state AS"
+                                + " reconciliationState, updated_at AS updatedAt FROM"
+                                + " provider_treasury_accounts ORDER BY environment, country_code,"
+                                + " currency_code, channel_code,"
+                                + " FIELD(account_role,'MASTER','COLLECTION','DISBURSEMENT')",
                         Map.of());
         for (Map<String, Object> row : rows) enrichAccount(row);
         return rows;
@@ -64,60 +62,60 @@ public class ProviderTreasuryService {
     public List<Map<String, Object>> listAdjustments() {
         return jdbc.queryForList(
                 "SELECT id, idempotency_key AS idempotencyKey, adjustment_type AS adjustmentType,"
-                    + " source_account_id AS sourceAccountId, destination_account_id AS"
-                    + " destinationAccountId, amount, reason, external_reference AS"
-                    + " externalReference, evidence_reference AS evidenceReference, value_date AS"
-                    + " valueDate, status, requested_by AS requestedBy, requested_at AS"
-                    + " requestedAt, approved_by AS approvedBy, approved_at AS approvedAt,"
-                    + " rejected_by AS rejectedBy, rejected_at AS rejectedAt, posted_at AS postedAt"
-                    + " FROM provider_treasury_adjustments ORDER BY requested_at DESC LIMIT 500",
+                        + " source_account_id AS sourceAccountId, destination_account_id AS"
+                        + " destinationAccountId, amount, reason, external_reference AS"
+                        + " externalReference, evidence_reference AS evidenceReference, value_date AS"
+                        + " valueDate, status, requested_by AS requestedBy, requested_at AS"
+                        + " requestedAt, approved_by AS approvedBy, approved_at AS approvedAt,"
+                        + " rejected_by AS rejectedBy, rejected_at AS rejectedAt, posted_at AS postedAt"
+                        + " FROM provider_treasury_adjustments ORDER BY requested_at DESC LIMIT 500",
                 Map.of());
     }
 
     public List<Map<String, Object>> listReservations() {
         return jdbc.queryForList(
                 "SELECT id, treasury_account_id AS treasuryAccountId, merchant_id AS merchantId,"
-                    + " merchant_number AS merchantNumber, operation, direction, amount,"
-                    + " currency_code AS currencyCode, merchant_reference AS merchantReference,"
-                    + " provider_reference AS providerReference, status, created_at AS createdAt,"
-                    + " updated_at AS updatedAt FROM provider_treasury_reservations ORDER BY"
-                    + " created_at DESC LIMIT 500",
+                        + " merchant_number AS merchantNumber, operation, direction, amount,"
+                        + " currency_code AS currencyCode, merchant_reference AS merchantReference,"
+                        + " provider_reference AS providerReference, status, created_at AS createdAt,"
+                        + " updated_at AS updatedAt FROM provider_treasury_reservations ORDER BY"
+                        + " created_at DESC LIMIT 500",
                 Map.of());
     }
 
     public List<Map<String, Object>> listExposures() {
         return jdbc.queryForList(
                 "SELECT id, merchant_id AS merchantId, channel_code AS channelCode, environment,"
-                    + " country_code AS countryCode, currency_code AS currencyCode,"
-                    + " reserved_outgoing AS reservedOutgoing, pending_outgoing AS pendingOutgoing,"
-                    + " pending_incoming AS pendingIncoming, settled_net AS settledNet, updated_at"
-                    + " AS updatedAt FROM merchant_provider_exposures ORDER BY updated_at DESC"
-                    + " LIMIT 500",
+                        + " country_code AS countryCode, currency_code AS currencyCode,"
+                        + " reserved_outgoing AS reservedOutgoing, pending_outgoing AS pendingOutgoing,"
+                        + " pending_incoming AS pendingIncoming, settled_net AS settledNet, updated_at"
+                        + " AS updatedAt FROM merchant_provider_exposures ORDER BY updated_at DESC"
+                        + " LIMIT 500",
                 Map.of());
     }
 
     public List<Map<String, Object>> listJournal() {
         return jdbc.queryForList(
                 "SELECT id, entry_group AS entryGroup, sequence_no AS sequenceNo,"
-                    + " treasury_account_id AS treasuryAccountId, ledger_account_code AS"
-                    + " ledgerAccountCode, merchant_id AS merchantId, reservation_id AS"
-                    + " reservationId, adjustment_id AS adjustmentId, transaction_reference AS"
-                    + " transactionReference, entry_type AS entryType, entry_side AS entrySide,"
-                    + " amount, currency_code AS currencyCode, reason, external_reference AS"
-                    + " externalReference, previous_hash AS previousHash, entry_hash AS entryHash,"
-                    + " actor, created_at AS createdAt FROM provider_treasury_journal ORDER BY id"
-                    + " DESC LIMIT 1000",
+                        + " treasury_account_id AS treasuryAccountId, ledger_account_code AS"
+                        + " ledgerAccountCode, merchant_id AS merchantId, reservation_id AS"
+                        + " reservationId, adjustment_id AS adjustmentId, transaction_reference AS"
+                        + " transactionReference, entry_type AS entryType, entry_side AS entrySide,"
+                        + " amount, currency_code AS currencyCode, reason, external_reference AS"
+                        + " externalReference, previous_hash AS previousHash, entry_hash AS entryHash,"
+                        + " actor, created_at AS createdAt FROM provider_treasury_journal ORDER BY id"
+                        + " DESC LIMIT 1000",
                 Map.of());
     }
 
     public List<Map<String, Object>> listReconciliations() {
         return jdbc.queryForList(
                 "SELECT id, treasury_account_id AS treasuryAccountId, statement_reference AS"
-                    + " statementReference, evidence_reference AS evidenceReference, book_balance"
-                    + " AS bookBalance, provider_reported_balance AS providerReportedBalance,"
-                    + " variance, state, notes, reconciled_by AS reconciledBy, reconciled_at AS"
-                    + " reconciledAt FROM provider_treasury_reconciliations ORDER BY reconciled_at"
-                    + " DESC LIMIT 500",
+                        + " statementReference, evidence_reference AS evidenceReference, book_balance"
+                        + " AS bookBalance, provider_reported_balance AS providerReportedBalance,"
+                        + " variance, state, notes, reconciled_by AS reconciledBy, reconciled_at AS"
+                        + " reconciledAt FROM provider_treasury_reconciliations ORDER BY reconciled_at"
+                        + " DESC LIMIT 500",
                 Map.of());
     }
 
@@ -157,9 +155,9 @@ public class ProviderTreasuryService {
         List<Map<String, Object>> existing =
                 jdbc.queryForList(
                         "SELECT id, treasury_account_id, entitlement_id, merchant_id,"
-                            + " merchant_number, operation, direction, amount, currency_code,"
-                            + " merchant_reference, status FROM provider_treasury_reservations"
-                            + " WHERE idempotency_key=:key LIMIT 1",
+                                + " merchant_number, operation, direction, amount, currency_code,"
+                                + " merchant_reference, status FROM provider_treasury_reservations"
+                                + " WHERE idempotency_key=:key LIMIT 1",
                         new MapSqlParameterSource().addValue("key", idempotency));
         if (!existing.isEmpty()) return reservation(existing.get(0));
 
@@ -176,8 +174,8 @@ public class ProviderTreasuryService {
             }
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET"
-                        + " reserved_balance=reserved_balance+:amount, lock_version=lock_version+1"
-                        + " WHERE id=:id",
+                            + " reserved_balance=reserved_balance+:amount, lock_version=lock_version+1"
+                            + " WHERE id=:id",
                     params(accountId, money));
             upsertExposure(
                     merchant.getId(),
@@ -206,9 +204,9 @@ public class ProviderTreasuryService {
                         .addValue("status", status);
         jdbc.update(
                 "INSERT INTO provider_treasury_reservations (idempotency_key, treasury_account_id,"
-                    + " entitlement_id, merchant_id, merchant_number, operation, direction, amount,"
-                    + " currency_code, merchant_reference, status) VALUES"
-                    + " (:key,:account,:entitlement,:merchant,:merchant_number,:operation,:direction,:amount,:currency,:reference,:status)",
+                        + " entitlement_id, merchant_id, merchant_number, operation, direction, amount,"
+                        + " currency_code, merchant_reference, status) VALUES"
+                        + " (:key,:account,:entitlement,:merchant,:merchant_number,:operation,:direction,:amount,:currency,:reference,:status)",
                 p);
         long id =
                 jdbc.queryForObject(
@@ -298,9 +296,9 @@ public class ProviderTreasuryService {
         List<Map<String, Object>> matches =
                 jdbc.queryForList(
                         "SELECT r.id FROM provider_treasury_reservations r JOIN"
-                            + " provider_treasury_accounts a ON a.id=r.treasury_account_id WHERE"
-                            + " a.channel_code=:channel AND"
-                            + " r.provider_reference=:provider_reference LIMIT 1",
+                                + " provider_treasury_accounts a ON a.id=r.treasury_account_id WHERE"
+                                + " a.channel_code=:channel AND"
+                                + " r.provider_reference=:provider_reference LIMIT 1",
                         new MapSqlParameterSource()
                                 .addValue("channel", required(channelCode, "channelCode"))
                                 .addValue(
@@ -376,7 +374,7 @@ public class ProviderTreasuryService {
         List<Map<String, Object>> prior =
                 jdbc.queryForList(
                         "SELECT * FROM provider_treasury_adjustments WHERE idempotency_key=:key OR"
-                            + " request_hash=:hash LIMIT 1",
+                                + " request_hash=:hash LIMIT 1",
                         new MapSqlParameterSource()
                                 .addValue("key", idempotency)
                                 .addValue("hash", requestHash));
@@ -384,10 +382,10 @@ public class ProviderTreasuryService {
         try {
             jdbc.update(
                     "INSERT INTO provider_treasury_adjustments (idempotency_key, adjustment_type,"
-                        + " source_account_id, destination_account_id, amount, reason,"
-                        + " external_reference, evidence_reference, value_date, status,"
-                        + " request_hash, requested_by) VALUES"
-                        + " (:key,:type,:source,:destination,:amount,:reason,:external,:evidence,:value_date,'PENDING',:hash,:actor)",
+                            + " source_account_id, destination_account_id, amount, reason,"
+                            + " external_reference, evidence_reference, value_date, status,"
+                            + " request_hash, requested_by) VALUES"
+                            + " (:key,:type,:source,:destination,:amount,:reason,:external,:evidence,:value_date,'PENDING',:hash,:actor)",
                     new MapSqlParameterSource()
                             .addValue("key", idempotency)
                             .addValue("type", type)
@@ -415,7 +413,7 @@ public class ProviderTreasuryService {
         if (checker.equalsIgnoreCase(text(adjustment.get("requested_by")))) {
             throw new PaymentGatewayException(
                     "Maker-checker violation: requester cannot approve the same treasury"
-                        + " adjustment");
+                            + " adjustment");
         }
         String type = text(adjustment.get("adjustment_type"));
         BigDecimal amount = money(adjustment.get("amount"));
@@ -429,7 +427,7 @@ public class ProviderTreasuryService {
             Map<String, Object> dest = lockAccount(destination);
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET book_balance=book_balance+:amount,"
-                        + " lock_version=lock_version+1 WHERE id=:id",
+                            + " lock_version=lock_version+1 WHERE id=:id",
                     params(destination, amount));
             String currency = text(dest.get("currency_code"));
             appendBalanced(
@@ -461,7 +459,7 @@ public class ProviderTreasuryService {
             ensureAvailable(src, amount);
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET book_balance=book_balance-:amount,"
-                        + " lock_version=lock_version+1 WHERE id=:id",
+                            + " lock_version=lock_version+1 WHERE id=:id",
                     params(source, amount));
             String currency = text(src.get("currency_code"));
             appendBalanced(
@@ -505,11 +503,11 @@ public class ProviderTreasuryService {
             ensureAvailable(src, amount);
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET book_balance=book_balance-:amount,"
-                        + " lock_version=lock_version+1 WHERE id=:id",
+                            + " lock_version=lock_version+1 WHERE id=:id",
                     params(source, amount));
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET book_balance=book_balance+:amount,"
-                        + " lock_version=lock_version+1 WHERE id=:id",
+                            + " lock_version=lock_version+1 WHERE id=:id",
                     params(destination, amount));
             String currency = text(src.get("currency_code"));
             appendBalanced(
@@ -539,8 +537,8 @@ public class ProviderTreasuryService {
         }
         jdbc.update(
                 "UPDATE provider_treasury_adjustments SET status='POSTED', approved_by=:actor,"
-                    + " approved_at=CURRENT_TIMESTAMP(6), posted_at=CURRENT_TIMESTAMP(6) WHERE"
-                    + " id=:id",
+                        + " approved_at=CURRENT_TIMESTAMP(6), posted_at=CURRENT_TIMESTAMP(6) WHERE"
+                        + " id=:id",
                 new MapSqlParameterSource()
                         .addValue("id", adjustmentId)
                         .addValue("actor", checker));
@@ -556,11 +554,11 @@ public class ProviderTreasuryService {
         if (checker.equalsIgnoreCase(text(adjustment.get("requested_by")))) {
             throw new PaymentGatewayException(
                     "Maker-checker violation: requester cannot reject the same treasury"
-                        + " adjustment");
+                            + " adjustment");
         }
         jdbc.update(
                 "UPDATE provider_treasury_adjustments SET status='REJECTED', rejected_by=:actor,"
-                    + " rejected_at=CURRENT_TIMESTAMP(6) WHERE id=:id",
+                        + " rejected_at=CURRENT_TIMESTAMP(6) WHERE id=:id",
                 new MapSqlParameterSource()
                         .addValue("id", adjustmentId)
                         .addValue("actor", checker));
@@ -579,9 +577,9 @@ public class ProviderTreasuryService {
         String evidence = text(body.get("evidenceReference"));
         jdbc.update(
                 "INSERT INTO provider_treasury_reconciliations (treasury_account_id,"
-                    + " statement_reference, evidence_reference, book_balance,"
-                    + " provider_reported_balance, variance, state, notes, reconciled_by) VALUES"
-                    + " (:account,:statement,:evidence,:book,:reported,:variance,:state,:notes,:actor)",
+                        + " statement_reference, evidence_reference, book_balance,"
+                        + " provider_reported_balance, variance, state, notes, reconciled_by) VALUES"
+                        + " (:account,:statement,:evidence,:book,:reported,:variance,:state,:notes,:actor)",
                 new MapSqlParameterSource()
                         .addValue("account", accountId)
                         .addValue("statement", statement)
@@ -594,7 +592,7 @@ public class ProviderTreasuryService {
                         .addValue("actor", required(actor, "actor")));
         jdbc.update(
                 "UPDATE provider_treasury_accounts SET provider_reported_balance=:reported,"
-                    + " reconciliation_state=:state, lock_version=lock_version+1 WHERE id=:id",
+                        + " reconciliation_state=:state, lock_version=lock_version+1 WHERE id=:id",
                 new MapSqlParameterSource()
                         .addValue("id", accountId)
                         .addValue("reported", reported)
@@ -610,7 +608,7 @@ public class ProviderTreasuryService {
         lockAccount(accountId);
         jdbc.update(
                 "UPDATE provider_treasury_accounts SET low_float_threshold=:value,"
-                    + " lock_version=lock_version+1 WHERE id=:id",
+                        + " lock_version=lock_version+1 WHERE id=:id",
                 new MapSqlParameterSource().addValue("id", accountId).addValue("value", value));
         return accountById(accountId);
     }
@@ -634,9 +632,9 @@ public class ProviderTreasuryService {
             if ("RESERVED".equals(status)) {
                 jdbc.update(
                         "UPDATE provider_treasury_accounts SET"
-                            + " reserved_balance=reserved_balance-:amount,"
-                            + " book_balance=book_balance-:amount, lock_version=lock_version+1"
-                            + " WHERE id=:id",
+                                + " reserved_balance=reserved_balance-:amount,"
+                                + " book_balance=book_balance-:amount, lock_version=lock_version+1"
+                                + " WHERE id=:id",
                         params(accountId, amount));
                 upsertExposure(
                         merchantId,
@@ -651,9 +649,9 @@ public class ProviderTreasuryService {
             } else if ("PENDING".equals(status)) {
                 jdbc.update(
                         "UPDATE provider_treasury_accounts SET"
-                            + " pending_outgoing_balance=pending_outgoing_balance-:amount,"
-                            + " book_balance=book_balance-:amount, lock_version=lock_version+1"
-                            + " WHERE id=:id",
+                                + " pending_outgoing_balance=pending_outgoing_balance-:amount,"
+                                + " book_balance=book_balance-:amount, lock_version=lock_version+1"
+                                + " WHERE id=:id",
                         params(accountId, amount));
                 upsertExposure(
                         merchantId,
@@ -694,9 +692,9 @@ public class ProviderTreasuryService {
             if ("PENDING".equals(status)) {
                 jdbc.update(
                         "UPDATE provider_treasury_accounts SET"
-                            + " pending_incoming_balance=pending_incoming_balance-:amount,"
-                            + " book_balance=book_balance+:amount, lock_version=lock_version+1"
-                            + " WHERE id=:id",
+                                + " pending_incoming_balance=pending_incoming_balance-:amount,"
+                                + " book_balance=book_balance+:amount, lock_version=lock_version+1"
+                                + " WHERE id=:id",
                         params(accountId, amount));
                 upsertExposure(
                         merchantId,
@@ -711,7 +709,7 @@ public class ProviderTreasuryService {
             } else {
                 jdbc.update(
                         "UPDATE provider_treasury_accounts SET book_balance=book_balance+:amount,"
-                            + " lock_version=lock_version+1 WHERE id=:id",
+                                + " lock_version=lock_version+1 WHERE id=:id",
                         params(accountId, amount));
                 upsertExposure(
                         merchantId,
@@ -751,7 +749,7 @@ public class ProviderTreasuryService {
         }
         jdbc.update(
                 "UPDATE provider_treasury_reservations SET status='SETTLED',"
-                    + " provider_reference=:provider, settled_at=CURRENT_TIMESTAMP(6) WHERE id=:id",
+                        + " provider_reference=:provider, settled_at=CURRENT_TIMESTAMP(6) WHERE id=:id",
                 new MapSqlParameterSource().addValue("id", id).addValue("provider", providerRef));
     }
 
@@ -773,9 +771,9 @@ public class ProviderTreasuryService {
         if ("PAYOUT".equals(operation)) {
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET"
-                        + " reserved_balance=reserved_balance-:amount,"
-                        + " pending_outgoing_balance=pending_outgoing_balance+:amount,"
-                        + " lock_version=lock_version+1 WHERE id=:id",
+                            + " reserved_balance=reserved_balance-:amount,"
+                            + " pending_outgoing_balance=pending_outgoing_balance+:amount,"
+                            + " lock_version=lock_version+1 WHERE id=:id",
                     params(accountId, amount));
             upsertExposure(
                     merchantId,
@@ -814,8 +812,8 @@ public class ProviderTreasuryService {
         } else {
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET"
-                        + " pending_incoming_balance=pending_incoming_balance+:amount,"
-                        + " lock_version=lock_version+1 WHERE id=:id",
+                            + " pending_incoming_balance=pending_incoming_balance+:amount,"
+                            + " lock_version=lock_version+1 WHERE id=:id",
                     params(accountId, amount));
             upsertExposure(
                     merchantId, channel, environment, country, currency, ZERO, ZERO, amount, ZERO);
@@ -846,7 +844,7 @@ public class ProviderTreasuryService {
         }
         jdbc.update(
                 "UPDATE provider_treasury_reservations SET status='PENDING',"
-                    + " provider_reference=:provider WHERE id=:id",
+                        + " provider_reference=:provider WHERE id=:id",
                 new MapSqlParameterSource()
                         .addValue("id", id)
                         .addValue("provider", text(providerReference)));
@@ -869,8 +867,8 @@ public class ProviderTreasuryService {
             if ("RESERVED".equals(status)) {
                 jdbc.update(
                         "UPDATE provider_treasury_accounts SET"
-                            + " reserved_balance=reserved_balance-:amount,"
-                            + " lock_version=lock_version+1 WHERE id=:id",
+                                + " reserved_balance=reserved_balance-:amount,"
+                                + " lock_version=lock_version+1 WHERE id=:id",
                         params(accountId, amount));
                 upsertExposure(
                         merchantId,
@@ -885,8 +883,8 @@ public class ProviderTreasuryService {
             } else if ("PENDING".equals(status)) {
                 jdbc.update(
                         "UPDATE provider_treasury_accounts SET"
-                            + " pending_outgoing_balance=pending_outgoing_balance-:amount,"
-                            + " lock_version=lock_version+1 WHERE id=:id",
+                                + " pending_outgoing_balance=pending_outgoing_balance-:amount,"
+                                + " lock_version=lock_version+1 WHERE id=:id",
                         params(accountId, amount));
                 upsertExposure(
                         merchantId,
@@ -926,8 +924,8 @@ public class ProviderTreasuryService {
         } else if ("PENDING".equals(status)) {
             jdbc.update(
                     "UPDATE provider_treasury_accounts SET"
-                        + " pending_incoming_balance=pending_incoming_balance-:amount,"
-                        + " lock_version=lock_version+1 WHERE id=:id",
+                            + " pending_incoming_balance=pending_incoming_balance-:amount,"
+                            + " lock_version=lock_version+1 WHERE id=:id",
                     params(accountId, amount));
             upsertExposure(
                     merchantId,
@@ -942,8 +940,8 @@ public class ProviderTreasuryService {
         }
         jdbc.update(
                 "UPDATE provider_treasury_reservations SET status='FAILED',"
-                    + " provider_reference=:provider, released_at=CURRENT_TIMESTAMP(6) WHERE"
-                    + " id=:id",
+                        + " provider_reference=:provider, released_at=CURRENT_TIMESTAMP(6) WHERE"
+                        + " id=:id",
                 new MapSqlParameterSource()
                         .addValue("id", id)
                         .addValue("provider", text(providerReference)));
@@ -972,14 +970,14 @@ public class ProviderTreasuryService {
                         .addValue("settled", settledDelta);
         jdbc.update(
                 "INSERT INTO merchant_provider_exposures (merchant_id, channel_code, environment,"
-                    + " country_code, currency_code, reserved_outgoing, pending_outgoing,"
-                    + " pending_incoming, settled_net) VALUES"
-                    + " (:merchant,:channel,:environment,:country,:currency,:reserved,:pending_out,:pending_in,:settled)"
-                    + " ON DUPLICATE KEY UPDATE"
-                    + " reserved_outgoing=GREATEST(0,reserved_outgoing+:reserved),"
-                    + " pending_outgoing=GREATEST(0,pending_outgoing+:pending_out),"
-                    + " pending_incoming=GREATEST(0,pending_incoming+:pending_in),"
-                    + " settled_net=settled_net+:settled",
+                        + " country_code, currency_code, reserved_outgoing, pending_outgoing,"
+                        + " pending_incoming, settled_net) VALUES"
+                        + " (:merchant,:channel,:environment,:country,:currency,:reserved,:pending_out,:pending_in,:settled)"
+                        + " ON DUPLICATE KEY UPDATE"
+                        + " reserved_outgoing=GREATEST(0,reserved_outgoing+:reserved),"
+                        + " pending_outgoing=GREATEST(0,pending_outgoing+:pending_out),"
+                        + " pending_incoming=GREATEST(0,pending_incoming+:pending_in),"
+                        + " settled_net=settled_net+:settled",
                 p);
     }
 
@@ -1025,11 +1023,11 @@ public class ProviderTreasuryService {
         String hash = sha256(canonical);
         jdbc.update(
                 "INSERT INTO provider_treasury_journal (entry_group, sequence_no,"
-                    + " treasury_account_id, ledger_account_code, merchant_id, reservation_id,"
-                    + " adjustment_id, transaction_reference, entry_type, entry_side, amount,"
-                    + " currency_code, reason, external_reference, previous_hash, entry_hash,"
-                    + " actor) VALUES"
-                    + " (:group,:sequence,:account,:ledger,:merchant,:reservation,:adjustment,:reference,:type,:side,:amount,:currency,:reason,:external,:previous,:hash,:actor)",
+                        + " treasury_account_id, ledger_account_code, merchant_id, reservation_id,"
+                        + " adjustment_id, transaction_reference, entry_type, entry_side, amount,"
+                        + " currency_code, reason, external_reference, previous_hash, entry_hash,"
+                        + " actor) VALUES"
+                        + " (:group,:sequence,:account,:ledger,:merchant,:reservation,:adjustment,:reference,:type,:side,:amount,:currency,:reason,:external,:previous,:hash,:actor)",
                 new MapSqlParameterSource()
                         .addValue("group", group)
                         .addValue("sequence", sequence)
@@ -1054,7 +1052,7 @@ public class ProviderTreasuryService {
         List<String> rows =
                 jdbc.query(
                         "SELECT entry_hash FROM provider_treasury_journal WHERE"
-                            + " ledger_account_code=:ledger ORDER BY id DESC LIMIT 1",
+                                + " ledger_account_code=:ledger ORDER BY id DESC LIMIT 1",
                         new MapSqlParameterSource().addValue("ledger", ledgerCode),
                         (rs, i) -> rs.getString(1));
         return rows.isEmpty() ? "" : rows.get(0);
@@ -1066,8 +1064,8 @@ public class ProviderTreasuryService {
         List<Map<String, Object>> rows =
                 jdbc.queryForList(
                         "SELECT * FROM provider_treasury_accounts WHERE channel_code=:channel AND"
-                            + " environment=:environment AND country_code=:country AND"
-                            + " currency_code=:currency AND account_role=:account_role FOR UPDATE",
+                                + " environment=:environment AND country_code=:country AND"
+                                + " currency_code=:currency AND account_role=:account_role FOR UPDATE",
                         new MapSqlParameterSource()
                                 .addValue("channel", channel)
                                 .addValue("environment", environment.toUpperCase(Locale.ROOT))
@@ -1102,16 +1100,16 @@ public class ProviderTreasuryService {
         List<Map<String, Object>> rows =
                 jdbc.queryForList(
                         "SELECT id, channel_code AS channelCode, environment, country_code AS"
-                            + " countryCode, currency_code AS currencyCode, account_role AS"
-                            + " accountRole, display_name AS displayName, parent_account_id AS"
-                            + " parentAccountId, prefund_required AS prefundRequired, book_balance"
-                            + " AS bookBalance, reserved_balance AS reservedBalance,"
-                            + " pending_outgoing_balance AS pendingOutgoingBalance,"
-                            + " pending_incoming_balance AS pendingIncomingBalance,"
-                            + " provider_reported_balance AS providerReportedBalance,"
-                            + " low_float_threshold AS lowFloatThreshold, reconciliation_state AS"
-                            + " reconciliationState, updated_at AS updatedAt FROM"
-                            + " provider_treasury_accounts WHERE id=:id",
+                                + " countryCode, currency_code AS currencyCode, account_role AS"
+                                + " accountRole, display_name AS displayName, parent_account_id AS"
+                                + " parentAccountId, prefund_required AS prefundRequired, book_balance"
+                                + " AS bookBalance, reserved_balance AS reservedBalance,"
+                                + " pending_outgoing_balance AS pendingOutgoingBalance,"
+                                + " pending_incoming_balance AS pendingIncomingBalance,"
+                                + " provider_reported_balance AS providerReportedBalance,"
+                                + " low_float_threshold AS lowFloatThreshold, reconciliation_state AS"
+                                + " reconciliationState, updated_at AS updatedAt FROM"
+                                + " provider_treasury_accounts WHERE id=:id",
                         new MapSqlParameterSource().addValue("id", id));
         if (rows.isEmpty())
             throw new PaymentGatewayException("Provider treasury account not found: " + id);
