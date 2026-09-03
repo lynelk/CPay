@@ -15,6 +15,39 @@ import {
 const RECENT_ACTIVITY_LIMIT = 8;
 const READY_CHANNEL_STATUSES = new Set(['ACTIVE', 'SANDBOX_TESTED', 'SUBMITTED_FOR_APPROVAL']);
 
+const SERVICE_FAMILIES = [
+  {
+    code: 'payments', mark: 'P', title: 'Payments', route: '/bo/admin/money-operations',
+    description: 'Collections, payouts, refunds, reconciliation and settlement through CPay orchestration.',
+    capabilities: ['CPay', 'MTN', 'Airtel', 'Yo!', 'FlexiPay'],
+  },
+  {
+    code: 'communications', mark: 'C', title: 'Communications', route: '/bo/admin/communicationrouting',
+    description: 'SMS, WhatsApp Business and USSD routing with provider failover, delivery evidence and charging.',
+    capabilities: ['SMS', 'WhatsApp', 'USSD', 'Failover'],
+  },
+  {
+    code: 'identity', mark: 'I', title: 'Identity, Credit & Scoring', route: '/bo/admin/risk-compliance',
+    description: 'NIN, KYC/KYB, CRB reports, bank checks and normalized scoring through approved providers.',
+    capabilities: ['NIN', 'KYB', 'CRB', '0–1000 scoring'],
+  },
+  {
+    code: 'vending', mark: 'V', title: 'Vending & VAS', route: '/bo/admin/vending',
+    description: 'Airtime, data, utilities, devices and other value-added services through one vending layer.',
+    capabilities: ['Airtime', 'Data', 'Utilities', 'Devices'],
+  },
+  {
+    code: 'billing', mark: 'B', title: 'Billing & Monetisation', route: '/bo/admin/platform',
+    description: 'Metering, rating, invoicing and Billing-as-a-Service with pricing, tax and FX evidence.',
+    capabilities: ['Metering', 'Rating', 'BaaS', 'Invoices'],
+  },
+  {
+    code: 'integrations', mark: 'A', title: 'Integrations & Automation', route: '/bo/admin/providers-integrations',
+    description: 'APIs, webhooks, provider adapters, certification, routing and automation.',
+    capabilities: ['APIs', 'Webhooks', 'Connectors', 'Automation'],
+  },
+];
+
 function numberValue(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -54,6 +87,13 @@ function transactionTone(status) {
   return 'neutral';
 }
 
+function friendlyError(error) {
+  const message = error?.message || 'Review the data source and retry.';
+  return /internal application error|internal server error|something went wrong/i.test(message)
+    ? 'A live insight source could not be refreshed. Other data remains available and Cito has not substituted fallback values.'
+    : message;
+}
+
 function ModuleInsightsC(props) {
   const { loader, refreshSignal, sessionExpired, history } = props;
   const { hasPrivilege } = useAuth('admin');
@@ -73,11 +113,7 @@ function ModuleInsightsC(props) {
     || (canViewTransactions && recentActivityQuery.isFetching);
   useLoaderSync(loader, busy);
 
-  const refreshers = [
-    summaryQuery.refetch,
-    charts.payinsVsPayouts.refetch,
-    charts.txVolumes.refetch,
-  ];
+  const refreshers = [summaryQuery.refetch, charts.payinsVsPayouts.refetch, charts.txVolumes.refetch];
   if (canViewTransactions) refreshers.push(recentActivityQuery.refetch);
   useRefreshSignal(refreshSignal, refreshers);
 
@@ -104,8 +140,8 @@ function ModuleInsightsC(props) {
   const needsAttention = [];
   if (errors.length > 0) {
     needsAttention.push({
-      title: 'One or more insight sources could not be refreshed',
-      detail: errors[0]?.message || 'Review the data source and retry.',
+      title: 'One or more live insight sources need attention',
+      detail: friendlyError(errors[0]),
       route: null,
     });
   }
@@ -122,7 +158,7 @@ function ModuleInsightsC(props) {
     .forEach((channel) => {
       const state = serviceState(channel.status);
       needsAttention.push({
-        title: `${channel.display_name || channel.channel_code || 'Service'}: ${state.label}`,
+        title: `${channel.display_name || channel.channel_code || 'Payment channel'}: ${state.label}`,
         detail: channel.environment ? `Environment: ${channel.environment}` : 'Provider configuration requires review.',
         route: '/bo/admin/providers-integrations',
       });
@@ -144,36 +180,32 @@ function ModuleInsightsC(props) {
 
   return (
     <div className="cpay-dashboard cpay-dashboard--console" data-testid="admin-insights">
-      <section className="cpay-dashboard-toolbar">
-        <div className="cpay-dashboard-toolbar-copy">
-          <h2>Insights</h2>
-          <p>A live, action-oriented view of what is happening across Cito right now.</p>
+      <header className="cito-workspace-hero" style={{ marginBottom: 18 }}>
+        <div>
+          <p className="cito-workspace-hero__eyebrow">Cito command centre</p>
+          <h2>See the business, then act</h2>
+          <p>Priorities, money movement and the wider Cito service portfolio in one place. The dashboard should answer what is happening, what needs attention and where to go next.</p>
         </div>
-        <div className="cpay-dashboard-actions">
-          <Badge tone="info">{summary.environment || 'Current environment'}</Badge>
-          <Button variant="ghost" onClick={() => history.push('/bo/admin/money-operations')}>Money Operations</Button>
-          <Button variant="ghost" onClick={() => history.push('/bo/admin/providers-integrations')}>Providers</Button>
+        <div className="cito-workspace-hero__actions">
+          <Button variant="ghost" onClick={() => history.push('/bo/admin/search')}>Search</Button>
+          <Button variant="primary" onClick={() => history.push('/bo/admin/platform')}>Services & Products</Button>
         </div>
-      </section>
+      </header>
 
       <section className="cpay-dashboard-pinned" aria-labelledby="needs-attention-heading">
         <header className="cpay-dashboard-section-header">
-          <div>
-            <span>Priority</span>
-            <h3 id="needs-attention-heading">Needs Attention</h3>
-          </div>
-          <p>Exceptions and incomplete service states that may require action.</p>
+          <div><span>Priority</span><h3 id="needs-attention-heading">Needs Attention</h3></div>
+          <p>Exceptions and incomplete states that may require action now.</p>
         </header>
         <div className="cpay-dashboard-snapshot-grid">
           {needsAttention.length === 0 ? (
             <article className="cpay-dashboard-card">
               <strong>No active issues detected</strong>
-              <p>Available insight sources are not reporting an exception that needs intervention.</p>
+              <p>Available live sources are not reporting an exception that needs intervention.</p>
             </article>
           ) : needsAttention.map((item, index) => (
             <article className="cpay-dashboard-card" key={`${item.title}-${index}`}>
-              <strong>{item.title}</strong>
-              <p>{item.detail}</p>
+              <strong>{item.title}</strong><p>{item.detail}</p>
               {item.route ? <Button variant="ghost" onClick={() => history.push(item.route)}>Review</Button> : null}
             </article>
           ))}
@@ -182,44 +214,54 @@ function ModuleInsightsC(props) {
 
       <section className="cpay-dashboard-pinned" aria-labelledby="today-business-heading">
         <header className="cpay-dashboard-section-header">
-          <div>
-            <span>Today</span>
-            <h3 id="today-business-heading">Today&apos;s Business</h3>
-          </div>
+          <div><span>Today</span><h3 id="today-business-heading">Today&apos;s Business</h3></div>
           <p>Live totals only. Missing data is shown as no activity rather than being guessed.</p>
         </header>
         <div className="cpay-dashboard-snapshot-grid">
           {metrics.map((metric) => (
             <article className="cpay-dashboard-card" key={metric.label}>
-              <span>{metric.label}</span>
-              <div className="cpay-dashboard-metric">{metric.value}</div>
-              <p>{metric.meta}</p>
+              <span>{metric.label}</span><div className="cpay-dashboard-metric">{metric.value}</div><p>{metric.meta}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="cpay-dashboard-pinned" aria-labelledby="services-heading">
+      <section className="cpay-dashboard-pinned" aria-labelledby="service-portfolio-heading">
         <header className="cpay-dashboard-section-header">
-          <div>
-            <span>Capability health</span>
-            <h3 id="services-heading">Services</h3>
-          </div>
-          <p>Payment and service channels grouped by their actual configuration state.</p>
+          <div><span>Capabilities</span><h3 id="service-portfolio-heading">Cito Service Portfolio</h3></div>
+          <p>Payments sit alongside communications, identity and scoring, vending, billing and integration services.</p>
+        </header>
+        <div className="cito-service-grid">
+          {SERVICE_FAMILIES.map((family) => (
+            <article className="cito-service-card" key={family.code}>
+              <div className="cito-service-card__top"><span className="cito-service-card__mark" aria-hidden="true">{family.mark}</span></div>
+              <h3>{family.title}</h3>
+              <p>{family.description}</p>
+              <div className="cito-service-card__capabilities">{family.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div>
+              <div className="cito-service-card__actions"><button className="cito-service-card__link" type="button" onClick={() => history.push(family.route)}>Open workspace →</button></div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="cpay-dashboard-pinned" aria-labelledby="channels-heading">
+        <header className="cpay-dashboard-section-header">
+          <div><span>Payments</span><h3 id="channels-heading">Payment Channel Health</h3></div>
+          <p>Configured payment channels only. Provider availability is not inferred from adapter code.</p>
         </header>
         <div className="cpay-dashboard-snapshot-grid">
           {channels.length === 0 ? (
             <article className="cpay-dashboard-card">
-              <strong>Setup Required</strong>
-              <p>No service channels are reported for this environment.</p>
-              <Button variant="ghost" onClick={() => history.push('/bo/admin/providers-integrations')}>Configure services</Button>
+              <strong>No payment channels reported</strong>
+              <p>Configure or certify payment providers before describing them as operational.</p>
+              <Button variant="ghost" onClick={() => history.push('/bo/admin/providers-integrations')}>Configure providers</Button>
             </article>
           ) : channels.map((channel, index) => {
             const state = serviceState(channel.status);
             return (
               <article className="cpay-dashboard-card" key={`${channel.channel_code || channel.display_name}-${index}`}>
                 <span>{channel.environment || 'Current environment'}</span>
-                <h3>{channel.display_name || channel.channel_code || 'Service'}</h3>
+                <h3>{channel.display_name || channel.channel_code || 'Payment channel'}</h3>
                 <Badge tone={state.tone}>{state.label}</Badge>
                 <p>{channel.status || 'Not configured'}</p>
               </article>
@@ -230,30 +272,17 @@ function ModuleInsightsC(props) {
 
       <section className="cpay-dashboard-pinned" aria-labelledby="recent-activity-heading">
         <header className="cpay-dashboard-section-header">
-          <div>
-            <span>Operational timeline</span>
-            <h3 id="recent-activity-heading">Recent Activity</h3>
-          </div>
-          {canViewTransactions
-            ? <Button variant="ghost" onClick={() => history.push('/bo/admin/money-operations')}>View all transactions</Button>
-            : null}
+          <div><span>Operational timeline</span><h3 id="recent-activity-heading">Recent Activity</h3></div>
+          {canViewTransactions ? <Button variant="ghost" onClick={() => history.push('/bo/admin/money-operations')}>View all transactions</Button> : null}
         </header>
         {!canViewTransactions ? (
-          <article className="cpay-dashboard-card">
-            <strong>Transaction activity is restricted</strong>
-            <p>Your role does not include access to the transaction log.</p>
-          </article>
+          <article className="cpay-dashboard-card"><strong>Transaction activity is restricted</strong><p>Your role does not include access to the transaction log.</p></article>
         ) : recentRows.length === 0 ? (
-          <article className="cpay-dashboard-card">
-            <strong>No recent transaction activity</strong>
-            <p>The transaction log has not returned activity for this view.</p>
-          </article>
+          <article className="cpay-dashboard-card"><strong>No recent transaction activity</strong><p>The transaction log has not returned activity for this view.</p></article>
         ) : (
           <div className="cpay-dashboard-card">
             <div className="cpay-health-table">
-              <div className="cpay-health-row cpay-health-head">
-                <span>Time</span><span>Merchant / reference</span><span>Type</span><span>Status</span>
-              </div>
+              <div className="cpay-health-row cpay-health-head"><span>Time</span><span>Merchant / reference</span><span>Type</span><span>Status</span></div>
               {recentRows.map((row, index) => (
                 <div className="cpay-health-row" key={row.id || `${row.tx_merchant_ref}-${index}`}>
                   <span>{row.created_on || '-'}</span>
@@ -269,24 +298,17 @@ function ModuleInsightsC(props) {
 
       <section className="cpay-dashboard-pinned" aria-labelledby="performance-heading">
         <header className="cpay-dashboard-section-header">
-          <div>
-            <span>Trend</span>
-            <h3 id="performance-heading">Performance</h3>
-          </div>
+          <div><span>Trend</span><h3 id="performance-heading">Performance</h3></div>
           <p>Live chart sources from the existing admin dashboard APIs.</p>
         </header>
         <div className="cpay-dashboard-grid cpay-dashboard-grid--console">
           <article className="cpay-dashboard-card cpay-dashboard-panel-chart">
             <header className="cpay-dashboard-card-header"><h3>Collections vs Disbursements</h3></header>
-            {charts.payinsVsPayouts.data
-              ? <LinearChart data={charts.payinsVsPayouts.data} title="Collections vs Disbursements" />
-              : <div className="cpay-dashboard-empty">No performance series is available yet.</div>}
+            {charts.payinsVsPayouts.data ? <LinearChart data={charts.payinsVsPayouts.data} title="Collections vs Disbursements" /> : <div className="cpay-dashboard-empty">No performance series is available yet.</div>}
           </article>
           <article className="cpay-dashboard-card cpay-dashboard-panel-chart">
             <header className="cpay-dashboard-card-header"><h3>Transaction Volume</h3></header>
-            {charts.txVolumes.data
-              ? <LinearChart data={charts.txVolumes.data} title="Transaction Volume" />
-              : <div className="cpay-dashboard-empty">No transaction-volume series is available yet.</div>}
+            {charts.txVolumes.data ? <LinearChart data={charts.txVolumes.data} title="Transaction Volume" /> : <div className="cpay-dashboard-empty">No transaction-volume series is available yet.</div>}
           </article>
         </div>
       </section>

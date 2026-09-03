@@ -1,0 +1,544 @@
+/* Cito experience reconstruction: shared portal shell and workspace hierarchy.
+ * These rules intentionally override the older iOS-inspired shell where it
+ * obstructs enterprise density, navigation clarity, or responsive behavior.
+ */
+
+:root {
+  --cito-shell-sidebar: 276px;
+  --cito-shell-gutter: 24px;
+  --cito-surface: #ffffff;
+  --cito-canvas: #f4f7fb;
+  --cito-border: #e3e9f1;
+  --cito-text: #102a43;
+  --cito-muted: #64748b;
+  --cito-accent: #0ea5c6;
+  --cito-accent-soft: #e8f8fc;
+  --cito-success-soft: #ecfdf3;
+  --cito-warning-soft: #fff8e6;
+  --cito-danger-soft: #fff1f1;
+}
+
+.ios-shell {
+  background: var(--cito-canvas);
+  grid-template-columns: var(--cito-shell-sidebar) minmax(0, 1fr) !important;
+}
+
+.ios-sidebar {
+  width: var(--cito-shell-sidebar) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-right: 1px solid var(--cito-border) !important;
+  box-shadow: none !important;
+  padding: 18px 14px 14px !important;
+}
+
+.ios-brand {
+  min-height: 60px;
+  gap: 12px !important;
+  padding: 6px 8px 18px !important;
+  border-bottom: 1px solid var(--cito-border);
+  margin-bottom: 14px;
+}
+
+.ios-brand__logo {
+  display: none !important;
+}
+
+.ios-brand::before {
+  content: 'C';
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #0b7fa4, #13b3d0);
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+  box-shadow: 0 6px 18px rgba(14, 165, 198, 0.18);
+}
+
+.ios-brand__name {
+  color: var(--cito-text) !important;
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+
+.ios-brand__product {
+  color: var(--cito-muted) !important;
+  font-size: 12px !important;
+  margin-top: 2px;
+}
+
+.ios-nav {
+  padding: 0 !important;
+}
+
+.ios-nav-group {
+  gap: 4px !important;
+  margin-bottom: 15px !important;
+}
+
+.ios-nav-group__title {
+  color: #94a3b8 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase;
+  padding: 0 10px 6px !important;
+}
+
+.ios-nav-item {
+  width: 100%;
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  padding: 9px 11px !important;
+  gap: 10px !important;
+  color: #314a67 !important;
+  font-size: 13.5px !important;
+  font-weight: 650 !important;
+  text-align: left;
+}
+
+.ios-nav-item > span:last-child {
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.ios-nav-item--active {
+  background: var(--cito-accent-soft) !important;
+  color: #087b9b !important;
+  box-shadow: inset 3px 0 0 var(--cito-accent) !important;
+}
+
+.ios-nav-item--danger {
+  color: #dc2626 !important;
+}
+
+.ios-main {
+  min-width: 0;
+}
+
+.ios-topbar {
+  min-height: 74px !important;
+  padding: 10px var(--cito-shell-gutter) !important;
+  gap: 18px !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-bottom: 1px solid var(--cito-border) !important;
+  box-shadow: none !important;
+}
+
+.ios-topbar__left {
+  min-width: 0;
+  flex: 1 1 auto !important;
+  gap: 12px !important;
+}
+
+.ios-topbar__right {
+  flex: 0 0 auto !important;
+  gap: 7px !important;
+}
+
+.cpay-topbar-heading {
+  min-width: 0;
+  max-width: min(660px, 46vw);
+}
+
+.cpay-topbar-heading h1 {
+  color: var(--cito-text) !important;
+  font-size: 21px !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.025em;
+  margin: 0 !important;
+}
+
+.cpay-topbar-heading p {
+  color: var(--cito-muted) !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  margin: 3px 0 0 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.ios-topbar .ios-btn {
+  min-height: 38px !important;
+  padding: 7px 12px !important;
+  font-size: 12.5px !important;
+  border-radius: 10px !important;
+}
+
+.ios-icon-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 10px !important;
+}
+
+.ios-user-chip {
+  min-height: 42px !important;
+  padding: 5px 9px !important;
+  border-radius: 12px !important;
+  max-width: 220px;
+}
+
+.ios-user-meta strong,
+.ios-user-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ios-page {
+  width: 100%;
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 22px var(--cito-shell-gutter) 40px !important;
+}
+
+.cito-environment-switcher {
+  display: inline-flex !important;
+  align-items: center;
+}
+
+.cito-environment-switcher select {
+  min-height: 38px;
+  border-radius: 999px !important;
+  padding: 6px 28px 6px 12px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #fff !important;
+  color: #334155 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cito-environment-switcher[data-environment='PRODUCTION'] select {
+  border-color: #fecaca !important;
+  background: #fff1f2 !important;
+  color: #dc2626 !important;
+}
+
+.cito-environment-switcher[data-environment='SANDBOX'] select {
+  border-color: #bae6fd !important;
+  background: #eff9ff !important;
+  color: #0369a1 !important;
+}
+
+/* Service hub */
+.cito-service-hub,
+.cito-compliance-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.cito-workspace-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: end;
+  padding: 22px 24px;
+  border: 1px solid var(--cito-border);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #f7fbfd 100%);
+}
+
+.cito-workspace-hero__eyebrow {
+  margin: 0 0 7px;
+  color: #0b86a8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cito-workspace-hero h2 {
+  margin: 0;
+  color: var(--cito-text);
+  font-size: clamp(24px, 2vw, 31px);
+  letter-spacing: -0.035em;
+}
+
+.cito-workspace-hero p {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--cito-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cito-workspace-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cito-service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cito-service-card {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border: 1px solid var(--cito-border);
+  border-radius: 16px;
+  background: var(--cito-surface);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.cito-service-card:hover {
+  transform: translateY(-1px);
+  border-color: #bfd6e3;
+  box-shadow: 0 12px 30px rgba(31, 60, 90, 0.08);
+}
+
+.cito-service-card__top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.cito-service-card__mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--cito-accent-soft);
+  color: #087b9b;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.cito-service-card h3 {
+  margin: 14px 0 6px;
+  color: var(--cito-text);
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.cito-service-card p {
+  margin: 0;
+  color: var(--cito-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cito-service-card__capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 18px;
+}
+
+.cito-service-card__capabilities span {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #49627e;
+  background: #f8fafc;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.cito-service-card__actions {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cito-service-card__link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #087b9b;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cito-service-card__link:hover {
+  text-decoration: underline;
+}
+
+.cito-management-panel {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px;
+}
+
+.cito-management-panel > section,
+.cito-management-panel > div,
+.cito-compliance-panel {
+  border: 1px solid var(--cito-border);
+  border-radius: 16px;
+  background: var(--cito-surface);
+  padding: 20px;
+}
+
+.cito-section-heading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.cito-section-heading h3 {
+  margin: 0;
+  color: var(--cito-text);
+  font-size: 16px;
+}
+
+.cito-section-heading p {
+  margin: 4px 0 0;
+  color: var(--cito-muted);
+  font-size: 12.5px;
+}
+
+/* Compliance */
+.cito-compliance-posture {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(120px, 0.5fr));
+  gap: 10px;
+}
+
+.cito-posture-primary,
+.cito-posture-metric {
+  border: 1px solid var(--cito-border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px 18px;
+}
+
+.cito-posture-primary {
+  background: linear-gradient(135deg, #f9fffc 0%, #f4fbff 100%);
+}
+
+.cito-posture-primary strong,
+.cito-posture-metric strong {
+  display: block;
+  color: var(--cito-text);
+}
+
+.cito-posture-primary strong {
+  font-size: 17px;
+}
+
+.cito-posture-primary span,
+.cito-posture-metric span {
+  color: var(--cito-muted);
+  font-size: 12px;
+}
+
+.cito-posture-metric strong {
+  margin-top: 7px;
+  font-size: 22px;
+}
+
+.cito-compliance-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--cito-border);
+  padding: 0 2px;
+}
+
+.cito-compliance-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 11px 13px;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.cito-compliance-tabs button[aria-selected='true'] {
+  color: #087b9b;
+  border-bottom-color: var(--cito-accent);
+}
+
+.cito-inline-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: var(--cito-danger-soft);
+}
+
+.cito-inline-error strong {
+  display: block;
+  color: #991b1b;
+  margin-bottom: 3px;
+}
+
+.cito-inline-error p {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 12.5px;
+}
+
+.cito-purpose-empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  padding: 26px;
+  text-align: center;
+}
+
+.cito-purpose-empty strong {
+  color: var(--cito-text);
+  font-size: 15px;
+}
+
+.cito-purpose-empty p {
+  max-width: 500px;
+  margin: 7px 0 0;
+  color: var(--cito-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1180px) {
+  :root { --cito-shell-sidebar: 246px; --cito-shell-gutter: 18px; }
+  .cito-service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cito-compliance-posture { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cito-posture-primary { grid-column: 1 / -1; }
+  .ios-user-meta { display: none !important; }
+  .ios-user-chip { padding: 4px !important; }
+}
+
+@media (max-width: 880px) {
+  .ios-shell { grid-template-columns: 1fr !important; }
+  .ios-sidebar { width: min(86vw, 290px) !important; }
+  .ios-topbar { padding: 8px 12px !important; }
+  .ios-page { padding: 16px 12px 32px !important; }
+  .cpay-topbar-heading { max-width: 52vw; }
+  .cpay-topbar-heading p { display: none; }
+  .cito-service-grid,
+  .cito-management-panel,
+  .cito-compliance-posture,
+  .cito-workspace-hero { grid-template-columns: 1fr; }
+  .cito-workspace-hero__actions { justify-content: flex-start; }
+}
+
+@media (max-width: 620px) {
+  .cito-service-grid { grid-template-columns: 1fr; }
+  .ios-topbar__right .ios-btn:not(.ios-btn--primary) { display: none; }
+  .cito-environment-switcher select { max-width: 118px; }
+}

@@ -1,0 +1,52 @@
+name: Browser and Responsive Matrix
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "clientside/**"
+      - ".github/workflows/browser-responsive-matrix.yml"
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "clientside/**"
+      - ".github/workflows/browser-responsive-matrix.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  browser-responsive:
+    name: Chromium Firefox WebKit and Mobile Viewports
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: clientside
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: clientside/package-lock.json
+      - name: Install application dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Install pinned browser test runner without changing the lockfile
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+      - name: Install Chromium Firefox and WebKit
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Build production frontend
+        run: npm run build
+      - name: Run desktop and mobile browser matrix
+        run: npx playwright test --config=playwright.config.mjs
+      - name: Upload responsive evidence and failure traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cito-browser-responsive-evidence
+          path: |
+            clientside/playwright-report/
+            clientside/test-results/browser-matrix/
+          retention-days: 14

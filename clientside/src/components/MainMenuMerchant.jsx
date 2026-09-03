@@ -7,7 +7,7 @@ const navGroups = [
     { value: 'payments', text: 'Payments', Icon: Icons.PaymentsIcon, service: 'CPAY' },
     { value: 'balances-settlements', text: 'Balances & Settlements', Icon: Icons.ReconcileIcon, service: 'CPAY' },
     { value: 'customers', text: 'Customers', Icon: Icons.UsersIcon },
-    { value: 'services', text: 'Services', Icon: Icons.LightningIcon },
+    { value: 'services', text: 'Services & Products', Icon: Icons.LightningIcon },
     { value: 'reports', text: 'Reports', Icon: Icons.ReceiptIcon },
   ] },
   { title: 'Build and manage', items: [

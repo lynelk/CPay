@@ -1,0 +1,145 @@
+.cito-inline-error.cito-inline-success {
+  border-color: #bbf7d0;
+  background: var(--cito-success-soft);
+}
+
+.cito-inline-error.cito-inline-success strong {
+  color: #166534;
+}
+
+.cito-inline-error.cito-inline-success p {
+  color: #15803d;
+}
+
+/* Avoid nested legacy service cards visually swallowing the new merchant portfolio. */
+.cito-compliance-panel > .cito-platform {
+  margin: 0;
+}
+
+.cito-compliance-panel > .cito-platform > .ios-card:first-child {
+  margin-top: 0;
+}
+
+/* Keep public landing content inside the visual viewport. Grid and flex items
+ * otherwise retain min-content widths in Safari and can create a small but
+ * very real horizontal scroll area on compact phones. */
+.cito-landing {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+.cito-landing .cito-hero > *,
+.cito-landing .cito-developers > *,
+.cito-landing .cito-security > *,
+.cito-landing .cito-final-cta > *,
+.cito-landing .cito-product-card-head > *,
+.cito-landing .cito-footer-links > * {
+  min-width: 0;
+}
+
+.cito-landing .cito-text-link {
+  max-width: 100%;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  .cito-landing .cito-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+  }
+
+  .cito-landing .cito-brand,
+  .cito-landing .cito-brand > span:last-child {
+    min-width: 0;
+  }
+
+  .cito-landing .cito-mobile-panel {
+    width: min(280px, calc(100vw - 24px));
+    min-width: 0;
+  }
+}
+
+/* Compact mobile chrome. The environment stays visible; secondary utilities
+ * move into the page/navigation instead of forcing horizontal overflow. */
+@media (max-width: 620px) {
+  .ios-topbar {
+    min-height: 62px !important;
+    gap: 6px !important;
+    padding: 7px 9px !important;
+  }
+
+  .ios-topbar__left {
+    gap: 7px !important;
+  }
+
+  .cpay-topbar-heading {
+    max-width: calc(100vw - 188px) !important;
+  }
+
+  .cpay-topbar-heading h1 {
+    overflow: hidden;
+    font-size: 17px !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ios-topbar__right {
+    gap: 4px !important;
+  }
+
+  .ios-topbar__right > .ios-icon-btn,
+  .ios-topbar__right > .ios-user-chip,
+  .ios-topbar__right > .ios-btn {
+    display: none !important;
+  }
+
+  .cito-environment-switcher select {
+    width: 108px;
+    max-width: 108px;
+    min-height: 36px;
+    padding-left: 10px !important;
+    font-size: 10.5px !important;
+  }
+
+  .cito-workspace-hero {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+
+  .cito-workspace-hero h2 {
+    font-size: 23px;
+  }
+
+  .cito-compliance-tabs,
+  .ios-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .cito-compliance-tabs button,
+  .ios-tabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .cito-inline-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cito-inline-error .ios-btn {
+    width: 100%;
+  }
+
+  .cito-landing .cito-text-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+  }
+}

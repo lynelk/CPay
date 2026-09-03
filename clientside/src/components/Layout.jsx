@@ -42,9 +42,9 @@ const menuTitles = {
   home: { title: 'Insights', subtitle: 'Live priorities, today’s activity, service health, recent activity, and performance' },
   'merchants-accounts': { title: 'Merchants & Accounts', subtitle: 'Activation, account controls, lifecycle, and merchant 360' },
   'money-operations': { title: 'Money Operations', subtitle: 'Payments, payouts, refunds, disputes, reconciliation, and settlements' },
-  'risk-compliance': { title: 'Risk & Compliance', subtitle: 'KYB, screening, reviews, and compliance controls' },
+  'risk-compliance': { title: 'Risk & Compliance', subtitle: 'KYB, identity, CRB/scoring, screening, reviews, and compliance controls' },
   'providers-integrations': { title: 'Providers & Integrations', subtitle: 'Credentials, certification, health, incidents, and routing' },
-  platform: { title: 'Platform', subtitle: 'Service catalogue, entitlements, communications, and access governance' },
+  platform: { title: 'Services & Products', subtitle: 'Payments, communications, identity & scoring, vending, billing, integrations, and entitlements' },
   administration: { title: 'Administration', subtitle: 'Users, roles, audit, settings, and support operations' },
   engineering: { title: 'Engineering / Internal', subtitle: 'Production maturity, observability, and internal control planes' },
   search: { title: 'Global Search', subtitle: 'Scoped search across merchants, transactions, and support cases' },
@@ -53,7 +53,7 @@ const menuTitles = {
   'transaction-detail': { title: 'Transaction Detail', subtitle: 'Finality, provider, reconciliation, and settlement evidence' },
   'provider-incidents': { title: 'Provider Incidents', subtitle: 'Incident handling and safe status communication' },
   dashboard: { title: 'Insights', subtitle: 'Live priorities, today’s activity, service health, recent activity, and performance' },
-  citoplatform: { title: 'Cito Control Plane', subtitle: 'Service catalogue, merchant entitlements and access governance' },
+  citoplatform: { title: 'Services & Products', subtitle: 'Service catalogue, merchant entitlements and access governance' },
   vending: { title: 'Vending', subtitle: 'Multi-tenant device estate, rentals, callbacks and manufacturer commands' },
   merchants: { title: strings.menu_merchants, subtitle: strings.menu_merchants_subtitle },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_admin },
@@ -63,7 +63,7 @@ const menuTitles = {
   payoutcontrols: { title: 'Payout Controls', subtitle: 'Configure payout risk limits enforced on the v2 path' },
   settlementclose: { title: 'Settlement Close', subtitle: 'Maker-checker settlement batch close' },
   webhookops: { title: 'Webhook Ops', subtitle: 'Merchant callback verification and test events' },
-  communicationrouting: { title: 'Communication Routing', subtitle: 'SMS provider selection and routing rules' },
+  communicationrouting: { title: 'Communications', subtitle: 'SMS and configured communication channels, provider routing and delivery operations' },
   compliance: { title: 'Compliance', subtitle: 'AML/KYC cases, screening events and compliance profiles' },
   kybreview: { title: 'KYB Review', subtitle: 'Approve or reject beneficial owners and KYC documents' },
   certification: { title: 'Certification', subtitle: 'Provider sandbox/statement evidence and approvals' },
@@ -343,7 +343,7 @@ class LayoutWithOutRouter extends React.Component {
       <Shell
         navOpen={this.state.navOpen}
         sidebar={
-          <Sidebar brand={<Brand logo={Logo} name="Cito" product="Admin Portal" />}>
+          <Sidebar brand={<Brand logo={Logo} name="Cito" product="Operations Console" />}>
             <MainMenu activeItem={this.state.currentMenuKey} onChangeMenu={this.menuChanged} />
           </Sidebar>
         }
