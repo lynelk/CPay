@@ -48,6 +48,7 @@ export default defineConfig({
     { name: 'chrome-edge-1920', use: desktop('chromium', 1920, 1080) },
     { name: 'firefox-desktop', use: desktop('firefox', 1440, 900) },
     { name: 'safari-webkit-desktop', use: desktop('webkit', 1440, 900) },
+    { name: 'android-small-chrome', use: mobile('chromium', 360, 800, 3) },
     { name: 'android-chrome', use: mobile('chromium', 412, 915, 2.625) },
     { name: 'iphone-safari', use: mobile('webkit', 390, 844, 3) },
     { name: 'ipad-safari', use: mobile('webkit', 820, 1180, 2) },

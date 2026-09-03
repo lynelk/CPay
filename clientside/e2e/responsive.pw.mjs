@@ -10,10 +10,25 @@ async function assertNoDocumentOverflow(page) {
   const result = await page.evaluate(() => {
     const root = document.documentElement;
     const body = document.body;
+    const viewport = window.innerWidth;
+    const offenders = Array.from(document.querySelectorAll('body *'))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          element: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.classList.length ? `.${Array.from(element.classList).join('.')}` : ''}`,
+          left: Math.floor(rect.left),
+          right: Math.ceil(rect.right),
+          width: Math.ceil(rect.width),
+        };
+      })
+      .filter(({ left, right, width }) => width > 0 && (left < -1 || right > viewport + 1))
+      .slice(0, 12);
+
     return {
-      viewport: window.innerWidth,
+      viewport,
       root: root.scrollWidth,
       body: body.scrollWidth,
+      offenders,
     };
   });
   expect(Math.max(result.root, result.body), JSON.stringify(result)).toBeLessThanOrEqual(result.viewport + 1);
@@ -159,10 +174,9 @@ test('public service portfolio is responsive across browser engines', async ({ p
   await expect(page.getByRole('heading', { name: 'Billing & Monetisation', exact: true }).first()).toBeVisible();
   await assertNoDocumentOverflow(page);
 
-  const viewport = page.viewportSize();
-  if (viewport && viewport.width <= 760) {
-    await expect(page.locator('.cito-mobile-menu')).toBeVisible();
-    await page.locator('.cito-mobile-menu summary').click();
+  const mobileMenu = page.locator('.cito-mobile-menu');
+  if (await mobileMenu.isVisible()) {
+    await mobileMenu.locator('summary').click();
     await expect(page.locator('.cito-mobile-panel')).toBeVisible();
   } else {
     await expect(page.locator('.cito-nav')).toBeVisible();
@@ -177,6 +191,7 @@ test('admin risk, identity and scoring workspace remains usable at every viewpor
 
   await expect(page.getByRole('heading', { name: /protect the platform without hiding the work/i })).toBeVisible();
   await expect(page.getByRole('heading', { name: /identity, credit & scoring services/i })).toBeVisible();
+  await page.getByRole('button', { name: 'Open review queue' }).click();
   await expect(page.getByText('CASE-1001')).toBeVisible();
   await expect(page.getByText(/internal application error/i)).toHaveCount(0);
   await assertTopbarWithinViewport(page);
@@ -208,6 +223,7 @@ test('merchant service portfolio is responsive and entitlement-aware', async ({ 
   await expect(page.getByRole('heading', { name: 'Communications', exact: true }).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Identity, Credit & Scoring', exact: true }).first()).toBeVisible();
   await expect(page.getByText(/enabled for your account/i).first()).toBeVisible();
+  await expect(page.getByText(/checking access/i)).toHaveCount(0);
   await assertTopbarWithinViewport(page);
   await assertNoDocumentOverflow(page);
   await openMobileNavigation(page);

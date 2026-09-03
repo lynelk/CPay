@@ -89,7 +89,6 @@ class LayoutMerchantWithOutRouter extends React.Component {
       currentMenuKey: merchantMenuFromPath(props.location?.pathname || ''),
       refreshTick: 0,
       user: readStoredUser('merchant'),
-      currentMenuItem: this.renderModule(merchantMenuFromPath(props.location?.pathname || ''), 0),
       entitlements: undefined,
     };
     this.menuChanged = this.menuChanged.bind(this);
@@ -118,20 +117,29 @@ class LayoutMerchantWithOutRouter extends React.Component {
     if (previousProps.location?.pathname !== this.props.location?.pathname) {
       const item = merchantMenuFromPath(this.props.location.pathname);
       if (item !== this.state.currentMenuKey) {
-        this.setState({ currentMenuKey: item, currentMenuItem: this.renderModule(item, this.state.refreshTick) });
+        this.setState({ currentMenuKey: item });
       }
     }
   }
 
   async loadEntitlements() {
     const merchantId = Number(this.state.user?.merchant_id || this.state.user?.merchantId);
-    if (!Number.isFinite(merchantId) || merchantId <= 0) return;
+    if (!Number.isFinite(merchantId) || merchantId <= 0) {
+      this.setState({ entitlements: [] });
+      return;
+    }
     try {
       const response = await apiFetch(`/api/v2/merchants/${merchantId}/overview`);
       if (!response.ok) return;
       const body = await response.json();
       const rows = Array.isArray(body.entitlements) ? body.entitlements : [];
-      if (rows.length) this.setState({ entitlements: rows.filter(row => !['REVOKED', 'EXPIRED', 'DISABLED'].includes(String(row.status))).map(row => row.service_code) });
+      const disabledStatuses = new Set(['REVOKED', 'EXPIRED', 'DISABLED']);
+      const entitlements = rows
+        .filter((row) => !disabledStatuses.has(String(row.status || '').toUpperCase()))
+        .map((row) => row.service_code || row.serviceCode)
+        .filter(Boolean)
+        .map(String);
+      this.setState({ entitlements });
     } catch {
       // Navigation remains usable when entitlement metadata is temporarily unavailable.
     }
@@ -218,20 +226,11 @@ class LayoutMerchantWithOutRouter extends React.Component {
 
     const route = merchantRoutes[item];
     if (route) this.props.history.push(route);
-    this.setState({
-      currentMenuKey: item,
-      currentMenuItem: this.renderModule(item, this.state.refreshTick),
-    });
+    this.setState({ currentMenuKey: item });
   }
 
   refreshCurrentPage() {
-    this.setState(prevState => {
-      const refreshTick = prevState.refreshTick + 1;
-      return {
-        refreshTick,
-        currentMenuItem: this.renderModule(prevState.currentMenuKey, refreshTick),
-      };
-    });
+    this.setState((previousState) => ({ refreshTick: previousState.refreshTick + 1 }));
   }
 
   startOrStopLoader(action) {
@@ -315,7 +314,7 @@ class LayoutMerchantWithOutRouter extends React.Component {
         }
       >
         <Page>
-          {this.state.currentMenuItem}
+          {this.renderModule(this.state.currentMenuKey, this.state.refreshTick)}
         </Page>
 
         <Messager ref={ref => this.messager = ref}></Messager>
