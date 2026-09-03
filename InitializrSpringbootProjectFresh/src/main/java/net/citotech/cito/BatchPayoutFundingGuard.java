@@ -110,13 +110,13 @@ public class BatchPayoutFundingGuard {
         if (gatewayId == null || gatewayId.isBlank()) {
             // The payout scheduler already terminalizes unsupported beneficiaries; do not compete
             // with that path here.
-            return FundingCheck.funded();
+            return FundingCheck.allow();
         }
 
         Merchant merchant =
                 Common.getMerchantById(Long.toString(candidate.merchantId()), jdbcTemplate);
         if (merchant == null) {
-            return FundingCheck.funded();
+            return FundingCheck.allow();
         }
 
         GatewayChargeDetails chargeDetails =
@@ -213,7 +213,7 @@ public class BatchPayoutFundingGuard {
             BigDecimal ledgerAvailable,
             BigDecimal legacyAvailable,
             String gatewayId) {
-        static FundingCheck funded() {
+        static FundingCheck allow() {
             return new FundingCheck(
                     true, BigDecimal.ZERO, BigDecimal.ZERO, null, "not-applicable");
         }
