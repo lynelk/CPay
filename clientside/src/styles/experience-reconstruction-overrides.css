@@ -19,3 +19,78 @@
 .cito-compliance-panel > .cito-platform > .ios-card:first-child {
   margin-top: 0;
 }
+
+/* Compact mobile chrome. The environment stays visible; secondary utilities
+ * move into the page/navigation instead of forcing horizontal overflow. */
+@media (max-width: 620px) {
+  .ios-topbar {
+    min-height: 62px !important;
+    gap: 6px !important;
+    padding: 7px 9px !important;
+  }
+
+  .ios-topbar__left {
+    gap: 7px !important;
+  }
+
+  .cpay-topbar-heading {
+    max-width: calc(100vw - 188px) !important;
+  }
+
+  .cpay-topbar-heading h1 {
+    overflow: hidden;
+    font-size: 17px !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ios-topbar__right {
+    gap: 4px !important;
+  }
+
+  .ios-topbar__right > .ios-icon-btn,
+  .ios-topbar__right > .ios-user-chip,
+  .ios-topbar__right > .ios-btn {
+    display: none !important;
+  }
+
+  .cito-environment-switcher select {
+    width: 108px;
+    max-width: 108px;
+    min-height: 36px;
+    padding-left: 10px !important;
+    font-size: 10.5px !important;
+  }
+
+  .cito-workspace-hero {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+
+  .cito-workspace-hero h2 {
+    font-size: 23px;
+  }
+
+  .cito-compliance-tabs,
+  .ios-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .cito-compliance-tabs button,
+  .ios-tabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .cito-inline-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cito-inline-error .ios-btn {
+    width: 100%;
+  }
+}
