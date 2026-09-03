@@ -70,28 +70,28 @@ function ModuleInsightsC(props) {
   const busy = summaryQuery.isFetching
     || charts.payinsVsPayouts.isFetching
     || charts.txVolumes.isFetching
-    || recentActivityQuery.isFetching;
+    || (canViewTransactions && recentActivityQuery.isFetching);
   useLoaderSync(loader, busy);
 
-  useRefreshSignal(refreshSignal, [
+  const refreshers = [
     summaryQuery.refetch,
     charts.payinsVsPayouts.refetch,
     charts.txVolumes.refetch,
-    recentActivityQuery.refetch,
-  ]);
+  ];
+  if (canViewTransactions) refreshers.push(recentActivityQuery.refetch);
+  useRefreshSignal(refreshSignal, refreshers);
 
   const errors = [
     summaryQuery.error,
     charts.payinsVsPayouts.error,
     charts.txVolumes.error,
-    recentActivityQuery.error,
+    canViewTransactions ? recentActivityQuery.error : null,
   ].filter(Boolean);
+  const hasSessionExpiredError = errors.some((error) => error instanceof SessionExpiredError);
 
   useEffect(() => {
-    if (errors.some((error) => error instanceof SessionExpiredError)) {
-      sessionExpired?.();
-    }
-  }, [errors, sessionExpired]);
+    if (hasSessionExpiredError) sessionExpired?.();
+  }, [hasSessionExpiredError, sessionExpired]);
 
   const summary = summaryQuery.data || {};
   const channels = Array.isArray(summary.activeChannels) ? summary.activeChannels : [];
@@ -129,7 +129,9 @@ function ModuleInsightsC(props) {
     });
 
   const recentRows = Array.isArray(recentActivityQuery.data?.rows)
-    ? [...recentActivityQuery.data.rows].sort((a, b) => String(b.created_on || '').localeCompare(String(a.created_on || ''))).slice(0, RECENT_ACTIVITY_LIMIT)
+    ? [...recentActivityQuery.data.rows]
+      .sort((a, b) => String(b.created_on || '').localeCompare(String(a.created_on || '')))
+      .slice(0, RECENT_ACTIVITY_LIMIT)
     : [];
 
   const metrics = [
@@ -232,7 +234,9 @@ function ModuleInsightsC(props) {
             <span>Operational timeline</span>
             <h3 id="recent-activity-heading">Recent Activity</h3>
           </div>
-          <Button variant="ghost" onClick={() => history.push('/bo/admin/money-operations')}>View all transactions</Button>
+          {canViewTransactions
+            ? <Button variant="ghost" onClick={() => history.push('/bo/admin/money-operations')}>View all transactions</Button>
+            : null}
         </header>
         {!canViewTransactions ? (
           <article className="cpay-dashboard-card">
