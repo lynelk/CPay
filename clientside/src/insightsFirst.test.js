@@ -20,11 +20,11 @@ describe('admin insights-first experience', () => {
     expect(mainMenu.indexOf("value: 'insights'")).toBeLessThan(mainMenu.indexOf("value: 'merchants-accounts'"));
   });
 
-  test('keeps the overview ordered around action, business, services, activity, and performance', () => {
+  test('keeps the overview ordered around action, business, service portfolio, activity, and performance', () => {
     const headings = [
       'Needs Attention',
       'Today&apos;s Business',
-      'Services',
+      'Cito Service Portfolio',
       'Recent Activity',
       'Performance',
     ];
