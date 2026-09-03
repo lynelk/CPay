@@ -50,17 +50,17 @@ function Routers(): React.ReactElement {
           <Route path="/bo/partner" element={<PartnerLogin />} />
           <Route path="/bo/partner/*" element={<LayoutMerchant />} />
 
-          {/* Backward-compatible aliases. New links and authentication redirects use /bo. */}
+          {/* Backward-compatible aliases. Admin aliases now converge on Insights. */}
           <Route path="/login" element={<Navigate to="/bo" replace />} />
           <Route path="/portal" element={<Navigate to="/bo/admin" replace />} />
           <Route path="/admin" element={<Navigate to="/bo/admin" replace />} />
           <Route path="/admin/operations" element={<Navigate to="/bo/admin/operations" replace />} />
           <Route path="/admin/provider-treasury" element={<Navigate to="/bo/admin/provider-treasury" replace />} />
           <Route path="/admin/production-maturity" element={<Navigate to="/bo/admin/production-maturity" replace />} />
-          <Route path="/admin/*" element={<Navigate to="/bo/admin/dashboard" replace />} />
+          <Route path="/admin/*" element={<Navigate to="/bo/admin/insights" replace />} />
           <Route path="/partner" element={<Navigate to="/bo/partner" replace />} />
           <Route path="/partner/*" element={<Navigate to="/bo/partner/dashboard" replace />} />
-          <Route path="/dashboard/*" element={<Navigate to="/bo/admin/dashboard" replace />} />
+          <Route path="/dashboard/*" element={<Navigate to="/bo/admin/insights" replace />} />
           <Route path="/dashboardMerchant/*" element={<Navigate to="/bo/partner/dashboard" replace />} />
           <Route path="/operations" element={<Navigate to="/bo/admin/operations" replace />} />
           <Route path="/provider-treasury" element={<Navigate to="/bo/admin/provider-treasury" replace />} />
