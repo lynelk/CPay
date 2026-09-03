@@ -1,0 +1,21 @@
+.cito-inline-error.cito-inline-success {
+  border-color: #bbf7d0;
+  background: var(--cito-success-soft);
+}
+
+.cito-inline-error.cito-inline-success strong {
+  color: #166534;
+}
+
+.cito-inline-error.cito-inline-success p {
+  color: #15803d;
+}
+
+/* Avoid nested legacy service cards visually swallowing the new merchant portfolio. */
+.cito-compliance-panel > .cito-platform {
+  margin: 0;
+}
+
+.cito-compliance-panel > .cito-platform > .ios-card:first-child {
+  margin-top: 0;
+}
