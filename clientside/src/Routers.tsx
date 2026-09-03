@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
+import AdminSessionGate from './components/AdminSessionGate';
 
 // Public and authenticated surfaces are code-split so each entry point stays focused and light.
 const CitoLandingPage = lazy(() => import('./components/CitoLandingPage'));
@@ -19,6 +20,10 @@ const PublicContactPage = lazy(() => import('./components/PublicExperiencePages'
 
 function RouteFallback(): React.ReactElement {
   return <div style={{ padding: 24 }}>Loading…</div>;
+}
+
+function protectAdmin(element: React.ReactElement): React.ReactElement {
+  return <AdminSessionGate>{element}</AdminSessionGate>;
 }
 
 function Routers(): React.ReactElement {
@@ -42,10 +47,10 @@ function Routers(): React.ReactElement {
           {/* Canonical single-domain back-office surfaces. */}
           <Route path="/bo" element={<CitoAccessGateway />} />
           <Route path="/bo/admin" element={<PlatformLogin />} />
-          <Route path="/bo/admin/operations" element={<OperationsConsole />} />
-          <Route path="/bo/admin/provider-treasury" element={<ProviderTreasuryConsole />} />
-          <Route path="/bo/admin/production-maturity" element={<ProductionMaturityDashboard />} />
-          <Route path="/bo/admin/*" element={<Layout />} />
+          <Route path="/bo/admin/operations" element={protectAdmin(<OperationsConsole />)} />
+          <Route path="/bo/admin/provider-treasury" element={protectAdmin(<ProviderTreasuryConsole />)} />
+          <Route path="/bo/admin/production-maturity" element={protectAdmin(<ProductionMaturityDashboard />)} />
+          <Route path="/bo/admin/*" element={protectAdmin(<Layout />)} />
 
           <Route path="/bo/partner" element={<PartnerLogin />} />
           <Route path="/bo/partner/*" element={<LayoutMerchant />} />
