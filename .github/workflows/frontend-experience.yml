@@ -1,0 +1,55 @@
+name: Frontend Experience Quality Gates
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "clientside/**"
+      - ".github/workflows/frontend-experience.yml"
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "clientside/**"
+      - ".github/workflows/frontend-experience.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-experience:
+    name: Lint, Test, Typecheck and Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clientside
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: clientside/package-lock.json
+      - name: Install exact dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+        env:
+          CI: "true"
+          NODE_OPTIONS: "--openssl-legacy-provider"
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+      - name: Assert service-first experience assets
+        run: |
+          set -euo pipefail
+          test -s src/styles/experience-reconstruction.css
+          test -s src/features/MerchantServicePortfolio.tsx
+          grep -q "Communications" src/components/modules/ModuleInsights.jsx
+          grep -q "Identity, Credit & Scoring" src/components/modules/ModuleInsights.jsx
+          grep -q "Billing & Monetisation" src/components/modules/ModuleCitoPlatform.tsx
+          grep -q "WhatsApp Business" src/features/MerchantServicePortfolio.tsx
+          grep -q "0–1000" src/components/modules/ModuleCompliance.tsx
