@@ -10,6 +10,7 @@ import {
   Button, EnvironmentSwitcher, ThemeToggle, Icons,
 } from '../ui';
 import ExperienceWorkspace from '../features/ExperienceWorkspace';
+import MerchantServicePortfolio from '../features/MerchantServicePortfolio';
 
 import MerchantModuleDashboard from './modules/merchant/MerchantModuleDashboard';
 import MerchantModuleAdmins from './modules/merchant/MerchantModuleAdmins';
@@ -34,7 +35,7 @@ const menuTitles = {
   'balances-settlements': { title: 'Balances & Settlements', subtitle: 'Available funds, statements, reconciliation, and settlement evidence' },
   customers: { title: 'Customers', subtitle: 'Customers created by real payment and billing journeys' },
   developers: { title: 'Developers', subtitle: 'Sandbox, applications, credentials, webhooks, logs, and go-live' },
-  services: { title: 'Services', subtitle: 'Entitled Cito products and service configuration' },
+  services: { title: 'Services & Products', subtitle: 'Payments, communications, identity and scoring, vending, billing, and integrations' },
   reports: { title: 'Reports', subtitle: 'Transactions, statements, exports, and operational reports' },
   business: { title: 'Business', subtitle: 'Team, roles, billing, and commercial context' },
   help: { title: 'Help', subtitle: 'Support cases with transaction and account context' },
@@ -48,7 +49,7 @@ const menuTitles = {
   webhooks: { title: strings.menu_webhooks, subtitle: strings.menu_webhooks_subtitle },
   payments: { title: strings.menu_payments, subtitle: strings.menu_payments_subtitle },
   vending: { title: 'Vending', subtitle: 'Devices, pricing, rentals, QR journeys and manufacturer integration' },
-  sms: { title: strings.menu_sms, subtitle: strings.menu_sms_subtitle },
+  sms: { title: 'Communications', subtitle: 'SMS and configured communication channels, routing, delivery, and usage' },
   transactions: { title: strings.menu_transactions, subtitle: strings.menu_transactions_subtitle_merchant },
   admins: { title: strings.menu_admins, subtitle: strings.menu_admins_subtitle_merchant },
   audittrail: { title: strings.menu_audittrail, subtitle: strings.menu_audittrail_subtitle_merchant },
@@ -149,14 +150,14 @@ class LayoutMerchantWithOutRouter extends React.Component {
       case 'balances-settlements': return <MerchantModuleMerchantAccount {...moduleProps} />;
       case 'customers': return <ExperienceWorkspace portal="merchant" section="customers" />;
       case 'developers': return <MerchantModuleSandbox {...moduleProps} />;
-      case 'services': return <MerchantModuleCitoServices {...moduleProps} />;
+      case 'services': return <><MerchantServicePortfolio entitlements={this.state?.entitlements} /><section className="cito-compliance-panel"><div className="cito-section-heading"><div><h3>Advanced service controls</h3><p>Detailed marketplace, recurring, routing, analytics, virtual-account, embedded and connector tools remain available below.</p></div></div><MerchantModuleCitoServices {...moduleProps} /></section></>;
       case 'reports': return <MerchantModuleTransactions {...moduleProps} />;
       case 'business': return <ExperienceWorkspace portal="merchant" section="business" />;
       case 'help': return <ExperienceWorkspace portal="merchant" section="support" />;
       case 'notifications': return <ExperienceWorkspace portal="merchant" section="notifications" />;
       case 'transaction-detail': return <ExperienceWorkspace portal="merchant" section="transaction-detail" />;
       case 'sandbox': return <MerchantModuleSandbox {...moduleProps} />;
-      case 'cito-services': return <MerchantModuleCitoServices {...moduleProps} />;
+      case 'cito-services': return <><MerchantServicePortfolio entitlements={this.state?.entitlements} /><MerchantModuleCitoServices {...moduleProps} /></>;
       case 'channels': return <MerchantModulePaymentChannels {...moduleProps} />;
       case 'statement': return <MerchantModuleMerchantAccount {...moduleProps} />;
       case 'admins': return <MerchantModuleAdmins {...moduleProps} />;
