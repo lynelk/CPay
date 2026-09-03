@@ -1,0 +1,44 @@
+name: One-time fast-uri security update
+
+on:
+  push:
+    branches:
+      - fix/release-verification-and-production-promotion-20260903
+    paths:
+      - '.github/workflows/fix-fast-uri-20260903.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/release-verification-and-production-promotion-20260903
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: clientside/package-lock.json
+      - name: Pin the non-vulnerable fast-uri release and regenerate the lockfile
+        working-directory: clientside
+        run: |
+          npm pkg set overrides.fast-uri=4.1.4
+          npm install --package-lock-only --legacy-peer-deps
+          npm ci --legacy-peer-deps
+          npm audit --audit-level=high
+          npm ls fast-uri
+      - name: Commit the generated dependency update and remove this one-time workflow
+        run: |
+          git config user.name 'Cito Release Bot'
+          git config user.email 'noreply@github.com'
+          git rm .github/workflows/fix-fast-uri-20260903.yml
+          git add clientside/package.json clientside/package-lock.json
+          git diff --cached --check
+          git commit -m 'fix(deps): pin fast-uri 4.1.4'
+          git push origin HEAD:fix/release-verification-and-production-promotion-20260903
