@@ -1,3 +1,4 @@
+# Deterministic release gate for the exact checked-out revision.
 name: Cito Exact-Head Release Verification
 
 on:
