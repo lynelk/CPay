@@ -3,10 +3,10 @@ package net.citotech.cito;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.citotech.cito.Model.Balance;
+import net.citotech.cito.Model.GatewayChargeDetails;
 import net.citotech.cito.Model.Merchant;
 import net.citotech.cito.Model.Transaction;
 import net.citotech.cito.ledger.DoubleEntryLedgerService;
@@ -113,7 +113,8 @@ public class BatchPayoutFundingGuard {
             return FundingCheck.funded();
         }
 
-        Merchant merchant = Common.getMerchantById(Long.toString(candidate.merchantId()), jdbcTemplate);
+        Merchant merchant =
+                Common.getMerchantById(Long.toString(candidate.merchantId()), jdbcTemplate);
         if (merchant == null) {
             return FundingCheck.funded();
         }
