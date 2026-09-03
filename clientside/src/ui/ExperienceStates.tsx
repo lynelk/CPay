@@ -20,9 +20,8 @@ export function EnvironmentSwitcher({ portal }: { portal: EnvironmentPortal }): 
     setEnvironment(next);
   }
   return (
-    <label className="cito-environment-switcher">
+    <label className="cito-environment-switcher" data-environment={environment} title={`Current environment: ${environment}`}>
       <span className="sr-only">Environment</span>
-      <EnvironmentBadge environment={environment} />
       <select value={environment} onChange={(event) => change(event.target.value as CitoEnvironment)}>
         <option value="SANDBOX">Sandbox</option>
         <option value="PRODUCTION">Production</option>
@@ -44,10 +43,14 @@ export function EmptyState({
 }
 
 export function ErrorState({ message, retry }: { message: string; retry?: () => void }): React.ReactElement {
+  const generic = /internal application error|internal server error|something went wrong/i.test(message);
+  const safeMessage = generic
+    ? 'Cito could not load this live section. Other areas remain available while the request is retried.'
+    : message;
   return (
     <Card className="cito-state cito-state--error" role="alert">
-      <h2>Live data is unavailable</h2>
-      <p>{message} No fallback figures have been substituted.</p>
+      <h2>Live data is temporarily unavailable</h2>
+      <p>{safeMessage} No fallback figures have been substituted.</p>
       {retry ? <Button onClick={retry}>Try again</Button> : null}
     </Card>
   );
@@ -60,9 +63,9 @@ export function Skeleton({ label = 'Loading live data' }: { label?: string }): R
 export function StatusBadge({ status }: { status: string }): React.ReactElement {
   const normalized = status.toUpperCase();
   let tone: BadgeTone = 'neutral';
-  if (['ACTIVE', 'LIVE', 'COMPLETED', 'SUCCESSFUL', 'OPERATIONAL', 'RESOLVED'].includes(normalized)) tone = 'success';
-  else if (['FAILED', 'CRITICAL', 'SUSPENDED', 'MAJOR_OUTAGE'].includes(normalized)) tone = 'danger';
-  else if (['PENDING', 'IN_PROGRESS', 'DEGRADED', 'BLOCKED', 'REVIEW_REQUIRED'].includes(normalized)) tone = 'warning';
+  if (['ACTIVE', 'LIVE', 'COMPLETED', 'SUCCESSFUL', 'OPERATIONAL', 'RESOLVED', 'APPROVED', 'ALLOW', 'CLOSED', 'REVIEWED'].includes(normalized)) tone = 'success';
+  else if (['FAILED', 'CRITICAL', 'SUSPENDED', 'MAJOR_OUTAGE', 'REJECTED', 'BLOCK', 'HIGH'].includes(normalized)) tone = 'danger';
+  else if (['PENDING', 'IN_PROGRESS', 'DEGRADED', 'BLOCKED', 'REVIEW_REQUIRED', 'IN_REVIEW', 'OPEN', 'REVIEW'].includes(normalized)) tone = 'warning';
   return <Badge tone={tone}>{normalized.replaceAll('_', ' ')}</Badge>;
 }
 

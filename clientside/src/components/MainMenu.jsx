@@ -7,11 +7,11 @@ const navGroups = [
     { value: 'merchants-accounts', text: 'Merchants & Accounts', Icon: Icons.StoreIcon },
     { value: 'money-operations', text: 'Money Operations', Icon: Icons.PaymentsIcon },
     { value: 'treasury', text: 'Treasury', Icon: Icons.BarChartIcon },
+    { value: 'platform', text: 'Services & Products', Icon: Icons.CardsIcon },
   ] },
   { title: 'Control', items: [
     { value: 'risk-compliance', text: 'Risk & Compliance', Icon: Icons.ShieldIcon },
     { value: 'providers-integrations', text: 'Providers & Integrations', Icon: Icons.LightningIcon },
-    { value: 'platform', text: 'Platform', Icon: Icons.CardsIcon },
   ] },
   { title: 'Manage', items: [
     { value: 'administration', text: 'Administration', Icon: Icons.UsersIcon },

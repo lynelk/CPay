@@ -1,0 +1,86 @@
+# Deterministic release gate for the exact checked-out revision.
+name: Cito Exact-Head Release Verification
+
+on:
+  pull_request:
+    branches: [main, production]
+    paths:
+      - 'clientside/**'
+      - '.github/workflows/cito-correct-everything-20260903.yml'
+  push:
+    branches: [main, production]
+    paths:
+      - 'clientside/**'
+      - '.github/workflows/cito-correct-everything-20260903.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: cito-exact-head-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-exact-head:
+    name: Audit, static checks, tests, build and browser matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: clientside
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@v7
+
+      - name: Configure Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: clientside/package-lock.json
+
+      - name: Install exact application dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Reject high-severity dependency findings
+        run: npm audit --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Run unit and component tests
+        run: npm test
+        env:
+          CI: 'true'
+          NODE_OPTIONS: '--openssl-legacy-provider'
+
+      - name: Build the production frontend
+        run: npm run build
+
+      - name: Install the pinned browser test runner
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium, Firefox and WebKit
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run the automated responsive browser matrix
+        run: npx playwright test --config=playwright.config.mjs
+
+      - name: Verify repository hygiene
+        working-directory: .
+        run: git diff --check
+
+      - name: Upload browser evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cito-exact-head-browser-evidence-${{ github.run_id }}
+          path: |
+            clientside/playwright-report/
+            clientside/test-results/browser-matrix/
+          retention-days: 14
+          if-no-files-found: warn

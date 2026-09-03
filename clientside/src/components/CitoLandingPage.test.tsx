@@ -12,13 +12,14 @@ function renderLandingPage() {
 }
 
 describe('CitoLandingPage', () => {
-  it('positions Cito as the gateway and Cito Payments as the payments product', () => {
+  it('positions Cito as a multi-service business platform', () => {
     renderLandingPage();
 
-    expect(screen.getByRole('heading', { level: 1, name: /connect your business through cito/i })).toBeInTheDocument();
-    expect(screen.getByText(/cito is the gateway/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/cito payments is the payment product/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { level: 2, name: /^gateway$/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /one platform for the services your business runs on/i })).toBeInTheDocument();
+    expect(screen.getByText(/accept payments, make payouts, communicate with customers/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /business infrastructure without the usual integration sprawl/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: /identity, credit & scoring/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: /communications/i }).length).toBeGreaterThan(0);
   });
 
   it('routes every primary access action to the live Cito access screens', () => {
@@ -31,16 +32,24 @@ describe('CitoLandingPage', () => {
     signUpLinks.forEach((link) => expect(link).toHaveAttribute('href', '/signup'));
   });
 
-  it('exposes Cito Payments developer documentation and supported payment channels', () => {
+  it('surfaces the full service portfolio without implying provider certification', () => {
     renderLandingPage();
 
-    expect(screen.getByText(/Cito Payments · Collections/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cito Payments · Payouts/i)).toBeInTheDocument();
+    expect(screen.getByText(/sms, whatsapp business and ussd/i)).toBeInTheDocument();
+    expect(screen.getByText(/nin, kyc\/kyb, crb reports/i)).toBeInTheDocument();
+    expect(screen.getByText(/metering, rating, invoicing and billing-as-a-service/i)).toBeInTheDocument();
+    expect(screen.getByText(/airtime, data, utilities, devices/i)).toBeInTheDocument();
+    expect(screen.getByText(/production availability is explicit per provider, country and account/i)).toBeInTheDocument();
+  });
+
+  it('exposes Cito Payments developer documentation and provider-family context', () => {
+    renderLandingPage();
+
     expect(screen.getAllByRole('link', { name: /cito payments api documentation/i })[0]).toHaveAttribute(
       'href',
       'https://lynelk.github.io/CPay/',
     );
-    expect(screen.getByText(/MTN MoMo · Airtel Money · Airtel OpenAPI · Safaricom M-Pesa · Yo! Payments/i)).toBeInTheDocument();
+    expect(screen.getByText(/MTN MoMo · Airtel Money · Yo! Payments · Safaricom M-Pesa · FlexiPay/i)).toBeInTheDocument();
   });
 
   it('includes direct Cito sales and support contact paths', () => {
