@@ -3,7 +3,7 @@ import { NavGroup, NavItem, Icons } from '../ui';
 
 const navGroups = [
   { title: 'Operate', items: [
-    { value: 'home', text: 'Home', Icon: Icons.DashboardIcon },
+    { value: 'insights', text: 'Insights', Icon: Icons.DashboardIcon },
     { value: 'merchants-accounts', text: 'Merchants & Accounts', Icon: Icons.StoreIcon },
     { value: 'money-operations', text: 'Money Operations', Icon: Icons.PaymentsIcon },
     { value: 'treasury', text: 'Treasury', Icon: Icons.BarChartIcon },
