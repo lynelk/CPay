@@ -18,12 +18,14 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.pw.mjs',
   outputDir: 'test-results/browser-matrix',
-  timeout: 45_000,
-  expect: { timeout: 10_000 },
+  timeout: 60_000,
+  expect: { timeout: 12_000 },
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 4 : undefined,
+  // Browser engines are memory-heavy. Two workers keep the matrix reliable on
+  // standard hosted runners instead of turning layout checks into CPU races.
+  workers: process.env.CI ? 2 : undefined,
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -32,9 +34,10 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     colorScheme: 'light',
     locale: 'en-GB',
+    reducedMotion: 'reduce',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
-    video: 'retain-on-failure',
+    video: 'off',
   },
   webServer: {
     command: 'npm run preview -- --host 127.0.0.1 --port 4173',
