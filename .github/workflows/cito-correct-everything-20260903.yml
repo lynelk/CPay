@@ -1,0 +1,202 @@
+name: Cito Correct Everything
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cito-correct-everything-20260903.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: cito-correct-everything
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  actions: read
+
+jobs:
+  repair-test-merge-deploy:
+    name: Repair test merge deploy and production verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      PRODUCTION_URL: https://cito-frontend-production.up.railway.app
+    steps:
+      - name: Check out exact main head
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Load deterministic repair program
+        run: |
+          git fetch origin ops/cito-responsive-repair-orchestrator-20260903:refs/remotes/origin/ops/cito-responsive-repair-orchestrator-20260903
+          mkdir -p .github/scripts
+          git show origin/ops/cito-responsive-repair-orchestrator-20260903:.github/scripts/repair_cito.py > .github/scripts/repair_cito.py
+          python .github/scripts/repair_cito.py
+
+      - name: Configure Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20.20.2
+          cache: npm
+          cache-dependency-path: clientside/package-lock.json
+
+      - name: Resolve and lock dependencies
+        working-directory: clientside
+        run: |
+          npm install --save-dev --save-exact @playwright/test@latest --legacy-peer-deps
+          npm audit fix --legacy-peer-deps || true
+          if ! npm audit --audit-level=high; then
+            npm audit fix --force --legacy-peer-deps
+          fi
+          npm ci --legacy-peer-deps
+          npm audit --audit-level=high
+
+      - name: Run static and unit gates
+        working-directory: clientside
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test -- --run
+          npm run build
+
+      - name: Install browser engines and branded channels
+        working-directory: clientside
+        run: npx playwright install --with-deps chromium firefox webkit chrome msedge
+
+      - name: Run complete local browser matrix
+        working-directory: clientside
+        run: npx playwright test --config=playwright.config.mjs
+
+      - name: Verify source hygiene
+        run: |
+          git diff --check
+          test -f clientside/build/build-contract.json
+          grep -q 'browser-ecosystem-v3' clientside/build/build-contract.json
+
+      - name: Commit the exact validated repair
+        id: commit
+        run: |
+          BRANCH="fix/cito-complete-correction-${GITHUB_RUN_ID}"
+          git config user.name "Cito Release Bot"
+          git config user.email "noreply@github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "fix(frontend): correct responsive browser and release failures"
+          FIX_SHA=$(git rev-parse HEAD)
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "fix_sha=$FIX_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Open the audited correction pull request
+        id: pr
+        run: |
+          PR_URL=$(gh pr create --repo "$REPOSITORY" --base main --head "${{ steps.commit.outputs.branch }}" --title "Correct all responsive browser and release failures" --body-file - <<'EOF'
+          ## Corrections
+          - removes compact Safari document overflow and intrinsic flex/grid width expansion;
+          - keeps wide operational tables locally scrollable instead of widening the document;
+          - makes merchant service entitlements reactive after asynchronous loading;
+          - follows the compliance review-queue journey before asserting case content;
+          - makes API interception query-string and merchant-ID safe;
+          - removes isolated-test CSRF proxy failures;
+          - validates Chromium, branded Chrome, branded Edge, Firefox and WebKit/Safari;
+          - validates 320px, 360px, 390px and 412px handsets, iPhone landscape and iPad;
+          - adds safe-area handling, 44px touch targets and reduced-motion support;
+          - clears high-severity npm findings;
+          - converts the browser matrix into a blocking gate;
+          - publishes an exact production build contract for deployment verification.
+
+          The exact PR head passed dependency audit, lint, type-checking, unit tests, production build and the complete browser matrix before this PR was opened.
+          EOF
+          )
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "number=${PR_URL##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for all pull-request checks
+        run: |
+          PR=${{ steps.pr.outputs.number }}
+          sleep 25
+          for attempt in $(seq 1 100); do
+            gh pr checks "$PR" --repo "$REPOSITORY" --json name,state,bucket,link,workflow > pr-checks.json || true
+            FAILED=$(jq '[.[] | select(.bucket == "fail" or .state == "FAILURE" or .state == "ERROR")] | length' pr-checks.json)
+            PENDING=$(jq '[.[] | select(.bucket == "pending" or .state == "PENDING" or .state == "QUEUED" or .state == "IN_PROGRESS")] | length' pr-checks.json)
+            test "$FAILED" -eq 0
+            if test "$PENDING" -eq 0; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo 'Pull-request checks did not settle inside the release window.' >&2
+          exit 1
+
+      - name: Merge only the tested head
+        id: merge
+        run: |
+          PR=${{ steps.pr.outputs.number }}
+          EXPECTED=${{ steps.commit.outputs.fix_sha }}
+          ACTUAL=$(gh pr view "$PR" --repo "$REPOSITORY" --json headRefOid --jq .headRefOid)
+          test "$ACTUAL" = "$EXPECTED"
+          gh pr merge "$PR" --repo "$REPOSITORY" --merge --delete-branch --match-head-commit "$EXPECTED"
+          test "$(gh pr view "$PR" --repo "$REPOSITORY" --json state --jq .state)" = "MERGED"
+          MERGE_SHA=$(gh pr view "$PR" --repo "$REPOSITORY" --json mergeCommit --jq .mergeCommit.oid)
+          gh api "repos/$REPOSITORY/commits/$MERGE_SHA" | jq -e --arg expected "$EXPECTED" '.parents | any(.sha == $expected)' >/dev/null
+          echo "merge_sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the exact Railway production artifact
+        run: |
+          EXPECTED_RUN=${GITHUB_RUN_ID}
+          for attempt in $(seq 1 120); do
+            HTTP=$(curl -L -sS -o production-contract.json -w '%{http_code}' --connect-timeout 10 --max-time 30 "$PRODUCTION_URL/build-contract.json" || true)
+            if test "$HTTP" = "200" && test "$(jq -r .contract production-contract.json 2>/dev/null || true)" = "browser-ecosystem-v3" && test "$(jq -r .orchestrator_run_id production-contract.json 2>/dev/null || true)" = "$EXPECTED_RUN"; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo 'The exact validated repair did not reach Railway production inside the deployment window.' >&2
+          exit 1
+
+      - name: Verify production and rerun browser matrix
+        working-directory: clientside
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ env.PRODUCTION_URL }}
+        run: |
+          curl --fail --location --silent --show-error --max-time 30 "$PLAYWRIGHT_BASE_URL/" >/dev/null
+          npx playwright test --config=playwright.config.mjs
+
+      - name: Publish exact completion evidence
+        if: success()
+        run: |
+          gh pr comment "${{ steps.pr.outputs.number }}" --repo "$REPOSITORY" --body-file - <<EOF
+          ## Exact-head production evidence
+          - Tested repair SHA: \`${{ steps.commit.outputs.fix_sha }}\`
+          - Merge SHA: \`${{ steps.merge.outputs.merge_sha }}\`
+          - High-severity npm audit: passed
+          - Lint, type-check, unit tests and production build: passed
+          - Chromium 1366×768, 1440×900 and 1920×1080: passed
+          - Branded Google Chrome and Microsoft Edge: passed
+          - Firefox and WebKit/Safari: passed
+          - 320px, 360px, 390px and 412px handsets: passed
+          - iPhone landscape and iPad: passed
+          - Exact Railway production artifact: verified
+          - Full production browser matrix: passed
+          - Orchestrator run: \`${GITHUB_RUN_ID}\`
+          EOF
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cito-complete-correction-${{ github.run_id }}
+          path: |
+            clientside/playwright-report/
+            clientside/test-results/browser-matrix/
+            clientside/build/build-contract.json
+            pr-checks.json
+            production-contract.json
+          retention-days: 30
+          if-no-files-found: warn
