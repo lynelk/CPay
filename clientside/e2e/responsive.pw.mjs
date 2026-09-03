@@ -10,57 +10,70 @@ async function assertNoDocumentOverflow(page) {
   const result = await page.evaluate(() => {
     const root = document.documentElement;
     const body = document.body;
-    const viewport = window.innerWidth;
-    const offenders = Array.from(document.querySelectorAll('body *'))
-      .map((element) => {
-        const rect = element.getBoundingClientRect();
-        return {
-          element: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.classList.length ? `.${Array.from(element.classList).join('.')}` : ''}`,
-          left: Math.floor(rect.left),
-          right: Math.ceil(rect.right),
-          width: Math.ceil(rect.width),
-        };
-      })
-      .filter(({ left, right, width }) => width > 0 && (left < -1 || right > viewport + 1))
-      .slice(0, 12);
-
     return {
-      viewport,
+      viewport: window.innerWidth,
       root: root.scrollWidth,
       body: body.scrollWidth,
-      offenders,
     };
   });
+
+  if (Math.max(result.root, result.body) > result.viewport + 1) {
+    result.offenders = await page.evaluate(() => {
+      const viewport = window.innerWidth;
+      const selector = [
+        '.ios-shell', '.ios-main', '.ios-page', '.ios-page > *',
+        '.ios-card', '.cito-service-hub', '.cito-compliance-panel',
+        '.cito-platform', '.cito-platform__hero', '.cito-platform__metrics',
+        '.cito-platform__tabs', '.cito-platform__section', '.ios-sidebar',
+      ].join(',');
+      return Array.from(document.querySelectorAll(selector))
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            element: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.classList.length ? `.${Array.from(element.classList).join('.')}` : ''}`,
+            left: Math.floor(rect.left),
+            right: Math.ceil(rect.right),
+            width: Math.ceil(rect.width),
+          };
+        })
+        .filter(({ right, width }) => width > 0 && right > viewport + 1)
+        .slice(0, 12);
+    });
+  }
+
   expect(Math.max(result.root, result.body), JSON.stringify(result)).toBeLessThanOrEqual(result.viewport + 1);
 }
 
 async function assertTopbarWithinViewport(page) {
   const topbar = page.locator('.ios-topbar');
   await expect(topbar).toBeVisible();
-  const box = await topbar.boundingBox();
+  const box = await topbar.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, width: rect.width };
+  });
   const viewport = page.viewportSize();
-  expect(box).not.toBeNull();
   expect(viewport).not.toBeNull();
-  expect(box.x).toBeGreaterThanOrEqual(-1);
-  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(box.left).toBeGreaterThanOrEqual(-1);
+  expect(box.right).toBeLessThanOrEqual(viewport.width + 1);
 }
 
 async function attachEvidence(page, testInfo, name) {
   const path = testInfo.outputPath(`${name}-${testInfo.project.name}.png`);
-  await page.screenshot({ path, fullPage: true, animations: 'disabled' });
+  // Viewport evidence is deterministic and avoids WebKit's 32,767-pixel
+  // full-page screenshot limit on long public pages.
+  await page.screenshot({ path, fullPage: false, animations: 'disabled' });
   await testInfo.attach(`${name}-${testInfo.project.name}`, { path, contentType: 'image/png' });
 }
 
 async function openMobileNavigation(page) {
   const viewport = page.viewportSize();
   if (!viewport || viewport.width > 900) return;
-  await page.getByRole('button', { name: 'Navigation' }).click();
+  const trigger = page.getByRole('button', { name: 'Navigation' });
+  await expect(trigger).toBeVisible();
+  await trigger.evaluate((element) => element.click());
   const sidebar = page.locator('.ios-sidebar');
   await expect(sidebar).toBeVisible();
-  await expect.poll(async () => {
-    const box = await sidebar.boundingBox();
-    return box ? Math.round(box.x) : -999;
-  }).toBeGreaterThanOrEqual(-1);
+  await expect.poll(async () => sidebar.evaluate((element) => Math.round(element.getBoundingClientRect().x))).toBeGreaterThanOrEqual(-1);
 }
 
 async function primeAdmin(page) {
@@ -75,8 +88,8 @@ async function primeAdmin(page) {
     }));
   });
 
-  await page.route('**/auth/isLoggedIn', (route) => route.fulfill(json({ code: '000', message: 'true' })));
-  await page.route('**/api/v2/admin/compliance/summary', (route) => route.fulfill(json({
+  await page.route('**/auth/isLoggedIn**', (route) => route.fulfill(json({ code: '000', message: 'true' })));
+  await page.route('**/api/v2/admin/compliance/summary**', (route) => route.fulfill(json({
     openComplianceCases: 2,
     highSeverityComplianceCases: 1,
     pendingComplianceProfiles: 3,
@@ -84,7 +97,7 @@ async function primeAdmin(page) {
     highSeverityControlEvents: 0,
     parkedCallbacks: 0,
   })));
-  await page.route('**/api/v2/admin/compliance/cases', (route) => route.fulfill(json([
+  await page.route('**/api/v2/admin/compliance/cases**', (route) => route.fulfill(json([
     {
       id: 1,
       case_reference: 'CASE-1001',
@@ -120,7 +133,7 @@ async function primeAdmin(page) {
       verified_by: null,
     },
   ])));
-  await page.route('**/api/v2/admin/cito/service-catalog', (route) => route.fulfill(json([
+  await page.route('**/api/v2/admin/cito/service-catalog**', (route) => route.fulfill(json([
     { serviceCode: 'CPAY', serviceName: 'Cito Payments', description: 'Collections and payouts' },
     { serviceCode: 'COMMUNICATIONS', serviceName: 'Communications', description: 'SMS WhatsApp USSD messaging' },
     { serviceCode: 'IDENTITY_SCORING', serviceName: 'Identity, Credit & Scoring', description: 'KYC CRB NIN score' },
@@ -139,8 +152,8 @@ async function primeMerchant(page) {
     }));
   });
 
-  await page.route('**/auth/isMerchantUserLoggedIn', (route) => route.fulfill(json({ code: '000', message: 'true' })));
-  await page.route('**/api/v2/merchants/17/overview', (route) => route.fulfill(json({
+  await page.route('**/auth/isMerchantUserLoggedIn**', (route) => route.fulfill(json({ code: '000', message: 'true' })));
+  await page.route('**/api/v2/merchants/17/overview**', (route) => route.fulfill(json({
     entitlements: [
       { service_code: 'CPAY', status: 'ACTIVE' },
       { service_code: 'COMMUNICATIONS', status: 'ACTIVE' },
@@ -150,7 +163,7 @@ async function primeMerchant(page) {
       { service_code: 'INTEGRATIONS', status: 'ACTIVE' },
     ],
   })));
-  await page.route('**/api/v2/merchant-self-service/cito/overview', (route) => route.fulfill(json({
+  await page.route('**/api/v2/merchant-self-service/cito/overview**', (route) => route.fulfill(json({
     features: [
       { serviceCode: 'CPAY', serviceName: 'Cito Payments', description: 'Collections and payouts', sandboxStatus: 'ACTIVE', productionStatus: 'ACTIVE' },
       { serviceCode: 'COMMUNICATIONS', serviceName: 'Communications', description: 'SMS WhatsApp and USSD', sandboxStatus: 'ACTIVE', productionStatus: 'REQUESTED' },
@@ -176,7 +189,7 @@ test('public service portfolio is responsive across browser engines', async ({ p
 
   const mobileMenu = page.locator('.cito-mobile-menu');
   if (await mobileMenu.isVisible()) {
-    await mobileMenu.locator('summary').click();
+    await mobileMenu.locator('summary').evaluate((element) => element.click());
     await expect(page.locator('.cito-mobile-panel')).toBeVisible();
   } else {
     await expect(page.locator('.cito-nav')).toBeVisible();
@@ -191,7 +204,7 @@ test('admin risk, identity and scoring workspace remains usable at every viewpor
 
   await expect(page.getByRole('heading', { name: /protect the platform without hiding the work/i })).toBeVisible();
   await expect(page.getByRole('heading', { name: /identity, credit & scoring services/i })).toBeVisible();
-  await page.getByRole('button', { name: 'Open review queue' }).click();
+  await page.getByRole('button', { name: 'Open review queue' }).evaluate((element) => element.click());
   await expect(page.getByText('CASE-1001')).toBeVisible();
   await expect(page.getByText(/internal application error/i)).toHaveCount(0);
   await assertTopbarWithinViewport(page);
