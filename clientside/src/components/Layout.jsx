@@ -11,7 +11,7 @@ import {
 } from '../ui';
 import ExperienceWorkspace from '../features/ExperienceWorkspace';
 
-import ModuleDashboard from './modules/ModuleDashboard';
+import ModuleInsights from './modules/ModuleInsights';
 import ModuleCitoPlatform from './modules/ModuleCitoPlatform';
 import ModuleVending from './modules/ModuleVending';
 import ModuleAdmins from './modules/ModuleAdmins';
@@ -38,7 +38,8 @@ import { apiUrl } from '../shared/config';
 import { readStoredUser } from '../shared/useAuth';
 
 const menuTitles = {
-  home: { title: 'Home', subtitle: 'Role-sensitive platform priorities, live health, and actions' },
+  insights: { title: 'Insights', subtitle: 'Live priorities, today’s activity, service health, recent activity, and performance' },
+  home: { title: 'Insights', subtitle: 'Live priorities, today’s activity, service health, recent activity, and performance' },
   'merchants-accounts': { title: 'Merchants & Accounts', subtitle: 'Activation, account controls, lifecycle, and merchant 360' },
   'money-operations': { title: 'Money Operations', subtitle: 'Payments, payouts, refunds, disputes, reconciliation, and settlements' },
   'risk-compliance': { title: 'Risk & Compliance', subtitle: 'KYB, screening, reviews, and compliance controls' },
@@ -51,7 +52,7 @@ const menuTitles = {
   notifications: { title: 'Notifications', subtitle: 'Operational and account updates' },
   'transaction-detail': { title: 'Transaction Detail', subtitle: 'Finality, provider, reconciliation, and settlement evidence' },
   'provider-incidents': { title: 'Provider Incidents', subtitle: 'Incident handling and safe status communication' },
-  dashboard: { title: strings.menu_dashboard, subtitle: strings.menu_dashboard_subtitle_admin },
+  dashboard: { title: 'Insights', subtitle: 'Live priorities, today’s activity, service health, recent activity, and performance' },
   citoplatform: { title: 'Cito Control Plane', subtitle: 'Service catalogue, merchant entitlements and access governance' },
   vending: { title: 'Vending', subtitle: 'Multi-tenant device estate, rentals, callbacks and manufacturer commands' },
   merchants: { title: strings.menu_merchants, subtitle: strings.menu_merchants_subtitle },
@@ -75,7 +76,9 @@ const menuTitles = {
 };
 
 const adminRoutes = {
-  home: '/bo/admin/home',
+  insights: '/bo/admin/insights',
+  home: '/bo/admin/insights',
+  dashboard: '/bo/admin/insights',
   'merchants-accounts': '/bo/admin/merchants-accounts',
   'money-operations': '/bo/admin/money-operations',
   treasury: '/bo/admin/treasury',
@@ -94,8 +97,19 @@ function adminMenuFromPath(pathname) {
   if (/\/bo\/admin\/transactions\/[^/]+/.test(pathname)) return 'transaction-detail';
   if (pathname.includes('/providers-integrations/incidents')) return 'provider-incidents';
   const segment = pathname.replace(/^\/bo\/admin\/?/, '').split('/')[0];
-  const aliases = { dashboard: 'home', merchants: 'merchants-accounts', transactions: 'money-operations', compliance: 'risk-compliance', certification: 'providers-integrations', citoplatform: 'platform', admins: 'administration', productionmaturity: 'engineering' };
-  return aliases[segment] || (menuTitles[segment] ? segment : 'home');
+  const aliases = {
+    '': 'insights',
+    home: 'insights',
+    dashboard: 'insights',
+    merchants: 'merchants-accounts',
+    transactions: 'money-operations',
+    compliance: 'risk-compliance',
+    certification: 'providers-integrations',
+    citoplatform: 'platform',
+    admins: 'administration',
+    productionmaturity: 'engineering',
+  };
+  return aliases[segment] || (menuTitles[segment] ? segment : 'insights');
 }
 
 class LayoutWithOutRouter extends React.Component {
@@ -103,14 +117,15 @@ class LayoutWithOutRouter extends React.Component {
     super(props);
     this.chartRef = React.createRef();
 
+    const currentMenuKey = adminMenuFromPath(props.location?.pathname || '');
     this.state = {
       loader: false,
       isLogged: false,
       progressValue: 0,
-      currentMenuKey: adminMenuFromPath(props.location?.pathname || ''),
+      currentMenuKey,
       refreshTick: 0,
       user: readStoredUser('admin'),
-      currentMenuItem: this.renderModule(adminMenuFromPath(props.location?.pathname || ''), 0),
+      currentMenuItem: this.renderModule(currentMenuKey, 0),
     };
     this.menuChanged = this.menuChanged.bind(this);
     this.refreshCurrentPage = this.refreshCurrentPage.bind(this);
@@ -130,6 +145,10 @@ class LayoutWithOutRouter extends React.Component {
       });
     } else {
       this.setState({ isLogged: true });
+      const pathname = this.props.location?.pathname || '';
+      if (pathname === '/bo/admin' || pathname === '/bo/admin/' || pathname === '/bo/admin/home' || pathname === '/bo/admin/dashboard') {
+        history.replace('/bo/admin/insights');
+      }
     }
   }
 
@@ -151,7 +170,9 @@ class LayoutWithOutRouter extends React.Component {
     };
 
     switch (item) {
-      case 'home': return <ModuleDashboard {...moduleProps} />;
+      case 'insights':
+      case 'home':
+      case 'dashboard': return <ModuleInsights {...moduleProps} />;
       case 'merchants-accounts': return <ModuleMerchants {...moduleProps} />;
       case 'money-operations': return <ModuleTransactions {...moduleProps} />;
       case 'risk-compliance': return <ModuleCompliance {...moduleProps} />;
@@ -184,8 +205,7 @@ class LayoutWithOutRouter extends React.Component {
       case 'productionmaturity': return <ProductionMaturityDashboard {...moduleProps} />;
       case 'audittrail': return <ModuleAuditTrail {...moduleProps} />;
       case 'settings': return <ModuleSettings {...moduleProps} />;
-      case 'dashboard':
-      default: return <ModuleDashboard {...moduleProps} />;
+      default: return <ModuleInsights {...moduleProps} />;
     }
   }
 
@@ -317,7 +337,7 @@ class LayoutWithOutRouter extends React.Component {
     }
 
     const user = this.state.user || {};
-    const current = menuTitles[this.state.currentMenuKey] || menuTitles.dashboard;
+    const current = menuTitles[this.state.currentMenuKey] || menuTitles.insights;
 
     return (
       <Shell
