@@ -145,7 +145,11 @@ public class BatchPayoutFundingGuard {
         boolean legacyFunded = legacyAvailable == null || legacyAvailable.compareTo(required) >= 0;
         boolean ledgerFunded = ledgerAvailable.compareTo(required) >= 0;
         return new FundingCheck(
-                legacyFunded && ledgerFunded, required, ledgerAvailable, legacyAvailable, gatewayId);
+                legacyFunded && ledgerFunded,
+                required,
+                ledgerAvailable,
+                legacyAvailable,
+                gatewayId);
     }
 
     private void pause(Candidate candidate, FundingCheck check) {
@@ -214,8 +218,7 @@ public class BatchPayoutFundingGuard {
             BigDecimal legacyAvailable,
             String gatewayId) {
         static FundingCheck allow() {
-            return new FundingCheck(
-                    true, BigDecimal.ZERO, BigDecimal.ZERO, null, "not-applicable");
+            return new FundingCheck(true, BigDecimal.ZERO, BigDecimal.ZERO, null, "not-applicable");
         }
     }
 }
