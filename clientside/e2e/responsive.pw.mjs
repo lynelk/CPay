@@ -45,7 +45,7 @@ async function assertNoDocumentOverflow(page) {
 }
 
 async function assertTopbarWithinViewport(page) {
-  const topbar = page.locator('.ios-topbar');
+  const topbar = page.getByRole('banner').first();
   await expect(topbar).toBeVisible();
   const box = await topbar.evaluate((element) => {
     const rect = element.getBoundingClientRect();
