@@ -1,0 +1,21 @@
+name: Brand governance
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+    paths: ["AGENTS.md", "Docs/Brand/**", ".github/workflows/brand-governance.yml"]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  brand-baseline:
+    name: Brand baseline and assessment
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify brand mirror and PR assessment
+        run: python3 Docs/Brand/check_brand.py --event "$GITHUB_EVENT_PATH"
