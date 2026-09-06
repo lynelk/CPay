@@ -53,8 +53,8 @@ async function assertTopbarWithinViewport(page) {
   });
   const viewport = page.viewportSize();
   expect(viewport).not.toBeNull();
-  expect(box.left).toBeGreaterThanOrEqual(-1);
-  expect(box.right).toBeLessThanOrEqual(viewport.width + 1);
+  expect(box.x).toBeGreaterThanOrEqual(-1);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
 }
 
 async function attachEvidence(page, testInfo, name) {
