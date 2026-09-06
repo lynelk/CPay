@@ -80,3 +80,19 @@ Every production capability should have a sandbox test path unless an explicit r
 - [ ] Sandbox/staging verification evidence is recorded before manual promotion to production.
 - [ ] Production configuration changes are peer-reviewed and secret values remain outside source control.
 - [ ] High-risk or emergency changes identify the required retrospective problem/CAPA review.
+
+## Brand and customer experience
+
+Read `Docs/Brand/LATEST.json` and its referenced standard. Replace every field below; do not leave the brand assessment implicit.
+
+Brand version: [current version from the pointer]
+
+Brand impact: [changed touchpoints, or not applicable with a specific reason]
+
+- [ ] Current tokens, approved artwork, naming and voice are used where relevant.
+- [ ] Capabilities, prices, limits, permissions and financial states remain truthful.
+- [ ] Responsive/state, keyboard/focus, 200% text and relevant assistive-technology evidence is attached, or non-applicability is explained.
+- [ ] Claims and exceptions have real owners, evidence and review/expiry dates.
+- [ ] Documentation, messaging and release scope identify exactly which surfaces changed.
+
+Evidence / approvals / exceptions: [references or explicit non-applicability]

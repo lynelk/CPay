@@ -45,28 +45,12 @@ async function assertNoDocumentOverflow(page) {
 }
 
 async function assertTopbarWithinViewport(page) {
-  // Validate the visible workspace banner without coupling the contract to one
-  // portal's CSS class or waiting on a locator that can be replaced during
-  // route hydration. boundingBox() gives the geometry we actually care about.
-  const banners = page.getByRole('banner');
-  await expect.poll(async () => {
-    const count = await banners.count();
-    for (let index = 0; index < count; index += 1) {
-      if (await banners.nth(index).isVisible()) return true;
-    }
-    return false;
-  }).toBe(true);
-
-  let box = null;
-  const count = await banners.count();
-  for (let index = 0; index < count; index += 1) {
-    const candidate = banners.nth(index);
-    if (!(await candidate.isVisible())) continue;
-    box = await candidate.boundingBox();
-    if (box) break;
-  }
-
-  expect(box).not.toBeNull();
+  const topbar = page.getByRole('banner').first();
+  await expect(topbar).toBeVisible();
+  const box = await topbar.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, width: rect.width };
+  });
   const viewport = page.viewportSize();
   expect(viewport).not.toBeNull();
   expect(box.x).toBeGreaterThanOrEqual(-1);
